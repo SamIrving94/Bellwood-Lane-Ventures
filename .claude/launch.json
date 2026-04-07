@@ -1,0 +1,23 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "app (dashboard)",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--filter", "app", "dev"],
+      "port": 3000
+    },
+    {
+      "name": "web (marketing site)",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--filter", "web", "dev"],
+      "port": 3001
+    },
+    {
+      "name": "api (webhooks + crons)",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--filter", "api", "dev"],
+      "port": 3002
+    }
+  ]
+}
