@@ -19,17 +19,19 @@ import {
 } from '@repo/design-system/components/ui/sidebar';
 import { NotificationsTrigger } from '@repo/notifications/components/trigger';
 import {
-  BarChartIcon,
-  BookOpenIcon,
-  CalendarIcon,
-  HistoryIcon,
-  LifeBuoyIcon,
-  PenLineIcon,
+  BuildingIcon,
+  ContactIcon,
+  GaugeIcon,
+  KanbanIcon,
+  MailIcon,
+  ScaleIcon,
+  SearchIcon,
   Settings2Icon,
+  UsersIcon,
 } from 'lucide-react';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import type { ReactNode } from 'react';
-import { Search } from './search';
 
 type GlobalSidebarProperties = {
   readonly children: ReactNode;
@@ -38,42 +40,48 @@ type GlobalSidebarProperties = {
 const data = {
   navMain: [
     {
-      title: 'Journal',
+      title: 'Dashboard',
       url: '/',
-      icon: BookOpenIcon,
+      icon: GaugeIcon,
     },
     {
-      title: 'History',
-      url: '/entries',
-      icon: HistoryIcon,
+      title: 'Pipeline',
+      url: '/pipeline',
+      icon: KanbanIcon,
     },
     {
-      title: 'Calendar',
-      url: '/calendar',
-      icon: CalendarIcon,
+      title: 'Leads',
+      url: '/leads',
+      icon: SearchIcon,
     },
     {
-      title: 'Insights',
-      url: '/insights',
-      icon: BarChartIcon,
+      title: 'Valuations',
+      url: '/valuations',
+      icon: ScaleIcon,
     },
+    {
+      title: 'Contacts',
+      url: '/contacts',
+      icon: UsersIcon,
+    },
+    {
+      title: 'Outreach',
+      url: '/outreach',
+      icon: MailIcon,
+    },
+  ],
+  navSecondary: [
     {
       title: 'Settings',
       url: '/settings',
       icon: Settings2Icon,
     },
   ],
-  navSecondary: [
-    {
-      title: 'Support',
-      url: 'mailto:support@microjournal.app',
-      icon: LifeBuoyIcon,
-    },
-  ],
 };
 
 export const GlobalSidebar = ({ children }: GlobalSidebarProperties) => {
   const sidebar = useSidebar();
+  const pathname = usePathname();
 
   return (
     <>
@@ -82,22 +90,29 @@ export const GlobalSidebar = ({ children }: GlobalSidebarProperties) => {
           <SidebarMenu>
             <SidebarMenuItem>
               <Link href="/" className="flex items-center gap-2 px-2 py-1.5">
-                <PenLineIcon className="h-5 w-5 text-primary" />
+                <BuildingIcon className="h-5 w-5 text-primary" />
                 {sidebar.open && (
-                  <span className="font-semibold text-sm">Microjournal</span>
+                  <span className="font-semibold text-sm">Bellwood Ventures</span>
                 )}
               </Link>
             </SidebarMenuItem>
           </SidebarMenu>
         </SidebarHeader>
-        <Search />
         <SidebarContent>
           <SidebarGroup>
-            <SidebarGroupLabel>Microjournal</SidebarGroupLabel>
+            <SidebarGroupLabel>Deal Management</SidebarGroupLabel>
             <SidebarMenu>
               {data.navMain.map((item) => (
                 <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild tooltip={item.title}>
+                  <SidebarMenuButton
+                    asChild
+                    tooltip={item.title}
+                    isActive={
+                      item.url === '/'
+                        ? pathname === '/'
+                        : pathname.startsWith(item.url)
+                    }
+                  >
                     <Link href={item.url}>
                       <item.icon />
                       <span>{item.title}</span>

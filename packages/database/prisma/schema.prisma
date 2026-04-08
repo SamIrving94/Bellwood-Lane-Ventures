@@ -13,38 +13,211 @@ datasource db {
   relationMode = "prisma"
 }
 
-model JournalEntry {
+enum DealStatus {
+  new_lead
+  contacted
+  valuation
+  offer_made
+  under_offer
+  exchanged
+  completed
+  rejected
+  withdrawn
+}
+
+enum DealSource {
+  intake_form
+  scout_lead
+  manual
+  referral
+  auction
+  middleman
+}
+
+enum SellerType {
+  probate
+  chain_break
+  short_lease
+  repossession
+  relocation
+  standard
+}
+
+enum Verdict {
+  STRONG
+  VIABLE
+  THIN
+  PASS
+  INSUFFICIENT_DATA
+}
+
+model Deal {
+  id                        String     @id @default(cuid())
+  address                   String
+  postcode                  String
+  propertyType              String
+  bedrooms                  Int?
+  sellerType                SellerType @default(standard)
+  source                    DealSource @default(manual)
+  status                    DealStatus @default(new_lead)
+  askingPricePence          Int?
+  ourOfferPence             Int?
+  estimatedMarketValuePence Int?
+  marginPercent             Float?
+  verdict                   Verdict?
+  sellerName                String?
+  sellerEmail               String?
+  sellerPhone               String?
+  notes                     String?    @db.Text
+  stageEnteredAt            DateTime   @default(now())
+  convertedFromLeadId       String?
+  createdAt                 DateTime   @default(now())
+  updatedAt                 DateTime   @updatedAt
+
+  activities     DealActivity[]
+  legalSteps     LegalStep[]
+  legalDocuments LegalDocument[]
+  avmResults     AvmResult[]
+
+  @@index([status])
+  @@index([postcode])
+  @@index([sellerType])
+}
+
+model DealActivity {
   id        String   @id @default(cuid())
-  userId    String
-  content   String
-  mood      String? // optional emoji e.g. "😊"
-  imageUrl  String? // optional attached image URL
-  source    String   @default("web") // "web" | "whatsapp"
+  dealId    String
+  deal      Deal     @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  action    String
+  detail    String?  @db.Text
+  userId    String?
+  createdAt DateTime @default(now())
+
+  @@index([dealId])
+}
+
+model ScoutLead {
+  id                   String   @id @default(cuid())
+  runDate              DateTime
+  source               String
+  address              String
+  postcode             String
+  leadType             String
+  estimatedEquityPence Int?
+  contactName          String?
+  contactPhone         String?
+  contactEmail         String?
+  leadScore            Int
+  verdict              Verdict
+  marketTrend          String?
+  sourceTrail          String?
+  rawPayload           Json?
+  status               String   @default("new")
+  convertedDealId      String?
+  createdAt            DateTime @default(now())
+
+  @@index([status])
+  @@index([leadScore])
+  @@index([postcode])
+}
+
+model AvmResult {
+  id           String   @id @default(cuid())
+  dealId       String?
+  deal         Deal?    @relation(fields: [dealId], references: [id], onDelete: SetNull)
+  postcode     String
+  propertyType String
+  riskScore    Int
+  resultJson   Json
+  expiresAt    DateTime
+  createdAt    DateTime @default(now())
+
+  @@index([dealId])
+  @@index([postcode, propertyType])
+}
+
+model LegalStep {
+  id          String    @id @default(cuid())
+  dealId      String
+  deal        Deal      @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  stepKey     String
+  completed   Boolean   @default(false)
+  completedAt DateTime?
+  notes       String?   @db.Text
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([dealId, stepKey])
+  @@index([dealId])
+}
+
+model LegalDocument {
+  id        String   @id @default(cuid())
+  dealId    String
+  deal      Deal     @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  stepKey   String
+  filename  String
+  url       String
+  mimeType  String?
+  sizeByte  Int?
+  createdAt DateTime @default(now())
+
+  @@index([dealId])
+}
+
+model Contact {
+  id       String   @id @default(cuid())
+  type     String
+  name     String
+  company  String?
+  email    String?
+  phone    String?
+  location String?
+  notes    String?  @db.Text
+  tags     String[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@index([userId])
-  @@index([userId, createdAt])
+  outreachRecipients OutreachRecipient[]
+
+  @@index([type])
 }
 
-model UserPreference {
-  id         String   @id @default(cuid())
-  userId     String   @unique
-  promptHour Int      @default(18) // 0-23 in user's local timezone
-  timezone   String   @default("UTC")
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
-
-  @@index([userId])
+model OutreachTemplate {
+  id        String   @id @default(cuid())
+  name      String
+  subject   String
+  body      String   @db.Text
+  type      String
+  sequence  Int      @default(1)
+  delayDays Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
-model PhoneMapping {
+model OutreachCampaign {
   id          String   @id @default(cuid())
-  phoneNumber String   @unique
-  userId      String   @unique
+  name        String
+  templateIds String[]
+  status      String   @default("draft")
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  @@index([phoneNumber])
-  @@index([userId])
+  recipients OutreachRecipient[]
+}
+
+model OutreachRecipient {
+  id          String           @id @default(cuid())
+  campaignId  String
+  campaign    OutreachCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  contactId   String
+  contact     Contact          @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  currentStep Int              @default(0)
+  lastSentAt  DateTime?
+  status      String           @default("pending")
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  @@index([campaignId])
+  @@index([contactId])
 }

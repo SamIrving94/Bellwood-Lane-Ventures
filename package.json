@@ -1,5 +1,5 @@
 {
-  "name": "next-forge",
+  "name": "bellwood-ventures",
   "version": "3.3.8",
   "bin": {
     "next-forge": "dist/index.js"

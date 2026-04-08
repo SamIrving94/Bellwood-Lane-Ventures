@@ -1,120 +1,187 @@
 import { auth } from '@repo/auth/server';
 import { database } from '@repo/database';
 import type { Metadata } from 'next';
-import { format, subDays, subYears, startOfDay, endOfDay } from 'date-fns';
 import { redirect } from 'next/navigation';
-import { calculateStreak } from '@repo/whatsapp/commands';
-import { DashboardStats } from './components/dashboard-stats';
-import { EntryComposer } from './components/entry-composer';
-import { EntryList } from './components/entry-list';
 import { Header } from './components/header';
-import { OnboardingWizard } from './components/onboarding-wizard';
 
 export const metadata: Metadata = {
-  title: 'Microjournal',
-  description: 'Your daily journaling companion.',
+  title: 'Dashboard — Bellwood Ventures',
+  description: 'Deal pipeline overview',
 };
 
-const App = async () => {
+// Format pence to GBP string
+function formatGBP(pence: number): string {
+  return new Intl.NumberFormat('en-GB', {
+    style: 'currency',
+    currency: 'GBP',
+    maximumFractionDigits: 0,
+  }).format(pence / 100);
+}
+
+const Dashboard = async () => {
   const { userId } = await auth();
 
   if (!userId) {
     redirect('/sign-in');
   }
 
-  const now = new Date();
-  const sevenDaysAgo = subDays(now, 7);
-
-  // Build "this day" queries for up to 5 years back
-  const yearDates = Array.from({ length: 5 }, (_, i) => subYears(now, i + 1));
-  const thisDayQueries = yearDates.map((date) =>
-    database.journalEntry.findMany({
+  // Fetch pipeline stats in parallel
+  const [
+    totalDeals,
+    dealsByStatus,
+    recentDeals,
+    leadsThisWeek,
+    strongLeads,
+  ] = await Promise.all([
+    database.deal.count(),
+    database.deal.groupBy({
+      by: ['status'],
+      _count: { id: true },
+    }),
+    database.deal.findMany({
+      orderBy: { updatedAt: 'desc' },
+      take: 5,
+    }),
+    database.scoutLead.count({
       where: {
-        userId,
-        createdAt: { gte: startOfDay(date), lte: endOfDay(date) },
+        createdAt: {
+          gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
+        },
       },
-      orderBy: { createdAt: 'desc' },
-    })
+    }),
+    database.scoutLead.count({
+      where: {
+        verdict: 'STRONG',
+        status: 'new',
+      },
+    }),
+  ]);
+
+  // Calculate pipeline value (sum of asking prices for active deals)
+  const activeDeals = await database.deal.findMany({
+    where: {
+      status: {
+        in: ['contacted', 'valuation', 'offer_made', 'under_offer'],
+      },
+    },
+    select: { askingPricePence: true, ourOfferPence: true },
+  });
+
+  const pipelineValue = activeDeals.reduce(
+    (sum, d) => sum + (d.ourOfferPence || d.askingPricePence || 0),
+    0
   );
 
-  // Run all queries in parallel
-  const [entries, streakDates, weekEntries, phoneMapping, ...thisDayResults] =
-    await Promise.all([
-      // Recent entries for the list
-      database.journalEntry.findMany({
-        where: { userId },
-        orderBy: { createdAt: 'desc' },
-        take: 10,
-      }),
-      // All entry dates for streak calculation (last 365 days)
-      database.journalEntry.findMany({
-        where: { userId, createdAt: { gte: subDays(now, 365) } },
-        select: { createdAt: true },
-        orderBy: { createdAt: 'desc' },
-      }),
-      // Entries from the last 7 days for mood summary
-      database.journalEntry.findMany({
-        where: { userId, createdAt: { gte: sevenDaysAgo } },
-        select: { mood: true },
-      }),
-      // Check if phone is linked (for onboarding)
-      database.phoneMapping.findUnique({
-        where: { userId },
-        select: { id: true },
-      }),
-      // This day in previous years (1-5 years ago)
-      ...thisDayQueries,
-    ]);
+  // Build status counts map
+  const statusCounts = Object.fromEntries(
+    dealsByStatus.map((s) => [s.status, s._count.id])
+  );
 
-  // Build "this day" grouped by year
-  const thisDayByYear = thisDayResults
-    .map((entries, i) => ({
-      yearsAgo: i + 1,
-      entries,
-    }))
-    .filter((g) => g.entries.length > 0);
-
-  // Calculate streak
-  const streak = calculateStreak(streakDates.map((e) => e.createdAt));
-
-  // Count moods from this week
-  const moodCounts: Record<string, number> = {};
-  for (const e of weekEntries) {
-    if (e.mood) {
-      moodCounts[e.mood] = (moodCounts[e.mood] || 0) + 1;
-    }
-  }
-
-  const today = format(now, 'EEEE, MMMM d, yyyy');
-  const isNewUser = entries.length === 0 && !phoneMapping;
+  const stages = [
+    { key: 'new_lead', label: 'New', color: 'bg-slate-500' },
+    { key: 'contacted', label: 'Contacted', color: 'bg-blue-500' },
+    { key: 'valuation', label: 'Valuation', color: 'bg-amber-500' },
+    { key: 'offer_made', label: 'Offer Made', color: 'bg-purple-500' },
+    { key: 'under_offer', label: 'Under Offer', color: 'bg-emerald-500' },
+    { key: 'exchanged', label: 'Exchanged', color: 'bg-green-600' },
+    { key: 'completed', label: 'Completed', color: 'bg-green-800' },
+  ];
 
   return (
     <>
-      <Header pages={[]} page={today} />
-      {isNewUser && <OnboardingWizard />}
+      <Header pages={[]} page="Dashboard" />
       <div className="flex flex-1 flex-col gap-6 p-6">
-        <DashboardStats
-          streak={streak}
-          moodCounts={moodCounts}
-          thisDayByYear={thisDayByYear}
-        />
+        {/* Key metrics */}
+        <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+          <div className="rounded-lg border bg-card p-4">
+            <p className="text-sm text-muted-foreground">Active Deals</p>
+            <p className="text-2xl font-bold">{totalDeals}</p>
+          </div>
+          <div className="rounded-lg border bg-card p-4">
+            <p className="text-sm text-muted-foreground">Pipeline Value</p>
+            <p className="text-2xl font-bold">
+              {pipelineValue > 0 ? formatGBP(pipelineValue) : '—'}
+            </p>
+          </div>
+          <div className="rounded-lg border bg-card p-4">
+            <p className="text-sm text-muted-foreground">Leads This Week</p>
+            <p className="text-2xl font-bold">{leadsThisWeek}</p>
+          </div>
+          <div className="rounded-lg border bg-card p-4">
+            <p className="text-sm text-muted-foreground">Strong Leads</p>
+            <p className="text-2xl font-bold text-emerald-600">
+              {strongLeads}
+            </p>
+          </div>
+        </div>
 
+        {/* Pipeline stages */}
         <section>
-          <h2 className="mb-3 text-sm font-medium text-muted-foreground uppercase tracking-wide">
-            Today's entry
+          <h2 className="mb-3 text-sm font-medium uppercase tracking-wide text-muted-foreground">
+            Pipeline
           </h2>
-          <EntryComposer />
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-4 lg:grid-cols-7">
+            {stages.map((stage) => (
+              <div
+                key={stage.key}
+                className="rounded-lg border bg-card p-3 text-center"
+              >
+                <div
+                  className={`mx-auto mb-2 h-2 w-2 rounded-full ${stage.color}`}
+                />
+                <p className="text-xs text-muted-foreground">{stage.label}</p>
+                <p className="text-lg font-semibold">
+                  {statusCounts[stage.key] || 0}
+                </p>
+              </div>
+            ))}
+          </div>
         </section>
 
+        {/* Recent deals */}
         <section>
-          <h2 className="mb-3 text-sm font-medium text-muted-foreground uppercase tracking-wide">
-            Recent entries
+          <h2 className="mb-3 text-sm font-medium uppercase tracking-wide text-muted-foreground">
+            Recent Deals
           </h2>
-          <EntryList initialEntries={entries} />
+          {recentDeals.length === 0 ? (
+            <div className="rounded-lg border bg-card p-8 text-center">
+              <p className="text-muted-foreground">
+                No deals yet. Add your first deal from the Pipeline page.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {recentDeals.map((deal) => (
+                <a
+                  key={deal.id}
+                  href={`/deals/${deal.id}`}
+                  className="flex items-center justify-between rounded-lg border bg-card p-4 transition-colors hover:bg-accent"
+                >
+                  <div>
+                    <p className="font-medium">{deal.address}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {deal.postcode} &middot; {deal.sellerType.replace('_', ' ')} &middot;{' '}
+                      {deal.propertyType}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    {deal.askingPricePence && (
+                      <p className="font-medium">
+                        {formatGBP(deal.askingPricePence)}
+                      </p>
+                    )}
+                    <p className="text-xs text-muted-foreground capitalize">
+                      {deal.status.replace('_', ' ')}
+                    </p>
+                  </div>
+                </a>
+              ))}
+            </div>
+          )}
         </section>
       </div>
     </>
   );
 };
 
-export default App;
+export default Dashboard;

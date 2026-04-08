@@ -5,7 +5,6 @@ import { keys as email } from '@repo/email/keys';
 import { keys as core } from '@repo/next-config/keys';
 import { keys as observability } from '@repo/observability/keys';
 import { keys as payments } from '@repo/payments/keys';
-import { keys as whatsapp } from '@repo/whatsapp/keys';
 import { createEnv } from '@t3-oss/env-nextjs';
 import { z } from 'zod';
 
@@ -18,7 +17,6 @@ export const env = createEnv({
     email(),
     observability(),
     payments(),
-    whatsapp(),
   ],
   server: {
     CRON_SECRET: z.string().min(1),
