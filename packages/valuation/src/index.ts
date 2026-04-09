@@ -21,23 +21,23 @@
 
 import 'server-only';
 
-import { getBaseValuation, type BaseValuationInput, type PropertyType } from './base-valuation.js';
-import { scoreRisk, type RiskScoringInput, type RadonCategory, type CoalMiningZone, type KnotweedProximity, type FloodZone, type NoiseBand, type ConstructionType } from './risk-scoring.js';
-import { calculateOffer, type SellerType, type InvestmentGrade, type OfferResult } from './offer-calculation.js';
-import { projectTrend, type TrendProjection } from './trend-projection.js';
+import { getBaseValuation, type BaseValuationInput, type PropertyType } from './base-valuation';
+import { scoreRisk, type RiskScoringInput, type RadonCategory, type CoalMiningZone, type KnotweedProximity, type FloodZone, type NoiseBand, type ConstructionType } from './risk-scoring';
+import { calculateOffer, type SellerType, type InvestmentGrade, type OfferResult } from './offer-calculation';
+import { projectTrend, type TrendProjection } from './trend-projection';
 
 // ---------------------------------------------------------------------------
 // Re-exports for consumers
 // ---------------------------------------------------------------------------
 
-export type { PropertyType, BaseValuation, ComparableSale, ConfidenceLevel } from './base-valuation.js';
+export type { PropertyType, BaseValuation, ComparableSale, ConfidenceLevel } from './base-valuation';
 export type {
   RadonCategory, CoalMiningZone, KnotweedProximity, FloodZone, NoiseBand,
   ConstructionType, RiskScore, EnvironmentalScores, BuildingCharacteristics,
   FactorScore,
-} from './risk-scoring.js';
-export type { SellerType, InvestmentGrade, OfferResult, DiscountLine } from './offer-calculation.js';
-export type { TrendProjection, TrendForecastPoint } from './trend-projection.js';
+} from './risk-scoring';
+export type { SellerType, InvestmentGrade, OfferResult, DiscountLine } from './offer-calculation';
+export type { TrendProjection, TrendForecastPoint } from './trend-projection';
 
 // ---------------------------------------------------------------------------
 // Input type

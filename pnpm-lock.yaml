@@ -72,6 +72,9 @@ importers:
       '@repo/payments':
         specifier: workspace:*
         version: link:../../packages/payments
+      '@repo/scouting':
+        specifier: workspace:*
+        version: link:../../packages/scouting
       '@repo/storage':
         specifier: workspace:*
         version: link:../../packages/storage
@@ -1145,6 +1148,28 @@ importers:
         specifier: ^5.8.2
         version: 5.8.2
 
+  packages/property-data:
+    dependencies:
+      '@t3-oss/env-nextjs':
+        specifier: ^0.12.0
+        version: 0.12.0(typescript@5.8.2)(zod@3.24.2)
+      server-only:
+        specifier: ^0.0.1
+        version: 0.0.1
+      zod:
+        specifier: ^3.24.2
+        version: 3.24.2
+    devDependencies:
+      '@repo/typescript-config':
+        specifier: workspace:*
+        version: link:../typescript-config
+      '@types/node':
+        specifier: 22.13.9
+        version: 22.13.9
+      typescript:
+        specifier: ^5.8.2
+        version: 5.8.2
+
   packages/rate-limit:
     dependencies:
       '@t3-oss/env-nextjs':
@@ -1163,6 +1188,28 @@ importers:
       '@repo/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
+      typescript:
+        specifier: ^5.8.2
+        version: 5.8.2
+
+  packages/scouting:
+    dependencies:
+      '@repo/property-data':
+        specifier: workspace:*
+        version: link:../property-data
+      server-only:
+        specifier: ^0.0.1
+        version: 0.0.1
+      zod:
+        specifier: ^3.24.2
+        version: 3.24.2
+    devDependencies:
+      '@repo/typescript-config':
+        specifier: workspace:*
+        version: link:../typescript-config
+      '@types/node':
+        specifier: 22.13.9
+        version: 22.13.9
       typescript:
         specifier: ^5.8.2
         version: 5.8.2
@@ -1246,6 +1293,28 @@ importers:
         version: 3.0.7(@types/debug@4.1.12)(@types/node@22.13.9)(jiti@2.4.2)(jsdom@26.0.0(bufferutil@4.0.9))(lightningcss@1.29.2)(terser@5.39.0)(yaml@2.7.0)
 
   packages/typescript-config: {}
+
+  packages/valuation:
+    dependencies:
+      '@repo/property-data':
+        specifier: workspace:*
+        version: link:../property-data
+      server-only:
+        specifier: ^0.0.1
+        version: 0.0.1
+      zod:
+        specifier: ^3.24.2
+        version: 3.24.2
+    devDependencies:
+      '@repo/typescript-config':
+        specifier: workspace:*
+        version: link:../typescript-config
+      '@types/node':
+        specifier: 22.13.9
+        version: 22.13.9
+      typescript:
+        specifier: ^5.8.2
+        version: 5.8.2
 
   packages/webhooks:
     dependencies:
