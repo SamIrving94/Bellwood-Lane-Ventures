@@ -3,6 +3,7 @@ import { database } from '@repo/database';
 import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 import { Header } from '../components/header';
+import { AddDealDialog } from './components/add-deal-dialog';
 import { PipelineBoard } from './components/pipeline-board';
 
 export const metadata: Metadata = {
@@ -28,7 +29,11 @@ const PipelinePage = async () => {
 
   return (
     <>
-      <Header pages={[]} page="Pipeline" />
+      <Header pages={[]} page="Pipeline">
+        <div className="pr-4">
+          <AddDealDialog />
+        </div>
+      </Header>
       <div className="flex flex-1 flex-col gap-4 p-6">
         <PipelineBoard initialDeals={deals} />
       </div>

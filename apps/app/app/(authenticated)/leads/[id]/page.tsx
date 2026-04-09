@@ -3,6 +3,7 @@ import { database } from '@repo/database';
 import type { Metadata } from 'next';
 import { notFound, redirect } from 'next/navigation';
 import { Header } from '../../components/header';
+import { ConvertButton } from './convert-button';
 
 export const metadata: Metadata = {
   title: 'Lead Detail — Bellwood Ventures',
@@ -161,12 +162,7 @@ const LeadDetailPage = async ({
         {/* Convert to deal button */}
         {lead.status === 'new' && (
           <div className="flex justify-end">
-            <button
-              type="button"
-              className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-            >
-              Convert to Deal
-            </button>
+            <ConvertButton leadId={lead.id} />
           </div>
         )}
       </div>

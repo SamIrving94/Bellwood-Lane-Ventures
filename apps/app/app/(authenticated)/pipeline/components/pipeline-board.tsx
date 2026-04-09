@@ -1,7 +1,9 @@
 'use client';
 
+import { updateDealStatus } from '@/app/actions/deals/update-status';
 import type { Deal, DealStatus } from '@repo/database/generated/client';
-import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { useState, useTransition } from 'react';
 
 type PipelineBoardProps = {
   initialDeals: Deal[];
@@ -30,12 +32,108 @@ function daysInStage(stageEnteredAt: Date): number {
   );
 }
 
+function DealCard({
+  deal,
+  stageIndex,
+}: {
+  deal: Deal;
+  stageIndex: number;
+}) {
+  const [isPending, startTransition] = useTransition();
+  const router = useRouter();
+
+  const canMoveForward = stageIndex < stages.length - 1;
+  const canMoveBack = stageIndex > 0;
+
+  const moveTo = (direction: 'forward' | 'back') => {
+    const newIndex = direction === 'forward' ? stageIndex + 1 : stageIndex - 1;
+    const newStatus = stages[newIndex].key;
+
+    startTransition(async () => {
+      await updateDealStatus(deal.id, newStatus);
+      router.refresh();
+    });
+  };
+
+  return (
+    <div
+      className={`rounded-md border bg-background p-3 shadow-sm ${isPending ? 'opacity-50' : ''}`}
+    >
+      <a
+        href={`/deals/${deal.id}`}
+        className="block transition-colors hover:text-primary"
+      >
+        <p className="text-sm font-medium leading-tight">{deal.address}</p>
+        <p className="mt-1 text-xs text-muted-foreground">{deal.postcode}</p>
+      </a>
+
+      <div className="mt-2 flex items-center justify-between">
+        {deal.askingPricePence ? (
+          <span className="text-xs font-medium">
+            {formatGBP(deal.askingPricePence)}
+          </span>
+        ) : (
+          <span className="text-xs text-muted-foreground">No price</span>
+        )}
+        <span className="text-xs text-muted-foreground">
+          {daysInStage(deal.stageEnteredAt)}d
+        </span>
+      </div>
+
+      <div className="mt-1 flex items-center gap-2">
+        <span className="rounded bg-muted px-1 py-0.5 text-[10px] capitalize">
+          {deal.sellerType.replace('_', ' ')}
+        </span>
+        {deal.verdict && (
+          <span
+            className={`rounded px-1 py-0.5 text-[10px] font-medium ${
+              deal.verdict === 'STRONG'
+                ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200'
+                : deal.verdict === 'VIABLE'
+                  ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
+                  : deal.verdict === 'THIN'
+                    ? 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200'
+                    : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
+            }`}
+          >
+            {deal.verdict}
+          </span>
+        )}
+      </div>
+
+      {/* Stage movement buttons */}
+      <div className="mt-2 flex items-center justify-between border-t pt-2">
+        <button
+          type="button"
+          disabled={!canMoveBack || isPending}
+          onClick={() => moveTo('back')}
+          className="rounded px-1.5 py-0.5 text-[10px] text-muted-foreground hover:bg-accent disabled:invisible"
+          title={canMoveBack ? `Move to ${stages[stageIndex - 1].label}` : ''}
+        >
+          &larr; Back
+        </button>
+        <button
+          type="button"
+          disabled={!canMoveForward || isPending}
+          onClick={() => moveTo('forward')}
+          className="rounded px-1.5 py-0.5 text-[10px] font-medium text-primary hover:bg-accent disabled:invisible"
+          title={
+            canMoveForward ? `Move to ${stages[stageIndex + 1].label}` : ''
+          }
+        >
+          {canMoveForward ? `${stages[stageIndex + 1].label} &rarr;` : ''}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export const PipelineBoard = ({ initialDeals }: PipelineBoardProps) => {
   const [deals] = useState(initialDeals);
 
   return (
     <div className="grid grid-cols-1 gap-4 overflow-x-auto md:grid-cols-3 lg:grid-cols-6">
-      {stages.map((stage) => {
+      {stages.map((stage, stageIndex) => {
         const stageDeals = deals.filter((d) => d.status === stage.key);
         const stageValue = stageDeals.reduce(
           (sum, d) => sum + (d.ourOfferPence || d.askingPricePence || 0),
@@ -62,52 +160,11 @@ export const PipelineBoard = ({ initialDeals }: PipelineBoardProps) => {
             )}
             <div className="flex-1 space-y-2 overflow-y-auto p-2">
               {stageDeals.map((deal) => (
-                <a
+                <DealCard
                   key={deal.id}
-                  href={`/deals/${deal.id}`}
-                  className="block rounded-md border bg-background p-3 shadow-sm transition-colors hover:bg-accent"
-                >
-                  <p className="text-sm font-medium leading-tight">
-                    {deal.address}
-                  </p>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    {deal.postcode}
-                  </p>
-                  <div className="mt-2 flex items-center justify-between">
-                    {deal.askingPricePence ? (
-                      <span className="text-xs font-medium">
-                        {formatGBP(deal.askingPricePence)}
-                      </span>
-                    ) : (
-                      <span className="text-xs text-muted-foreground">
-                        No price
-                      </span>
-                    )}
-                    <span className="text-xs text-muted-foreground">
-                      {daysInStage(deal.stageEnteredAt)}d
-                    </span>
-                  </div>
-                  <div className="mt-1 flex items-center gap-2">
-                    <span className="rounded bg-muted px-1 py-0.5 text-[10px] capitalize">
-                      {deal.sellerType.replace('_', ' ')}
-                    </span>
-                    {deal.verdict && (
-                      <span
-                        className={`rounded px-1 py-0.5 text-[10px] font-medium ${
-                          deal.verdict === 'STRONG'
-                            ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200'
-                            : deal.verdict === 'VIABLE'
-                              ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
-                              : deal.verdict === 'THIN'
-                                ? 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200'
-                                : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
-                        }`}
-                      >
-                        {deal.verdict}
-                      </span>
-                    )}
-                  </div>
-                </a>
+                  deal={deal}
+                  stageIndex={stageIndex}
+                />
               ))}
               {stageDeals.length === 0 && (
                 <p className="py-4 text-center text-xs text-muted-foreground">

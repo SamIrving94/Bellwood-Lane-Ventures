@@ -10,8 +10,13 @@ import { Separator } from '@repo/design-system/components/ui/separator';
 import { SidebarTrigger } from '@repo/design-system/components/ui/sidebar';
 import { Fragment, type ReactNode } from 'react';
 
+type BreadcrumbPage = {
+  title: string;
+  url: string;
+};
+
 type HeaderProps = {
-  pages: string[];
+  pages: BreadcrumbPage[];
   page: string;
   children?: ReactNode;
 };
@@ -23,15 +28,19 @@ export const Header = ({ pages, page, children }: HeaderProps) => (
       <Separator orientation="vertical" className="mr-2 h-4" />
       <Breadcrumb>
         <BreadcrumbList>
-          {pages.map((page, index) => (
-            <Fragment key={page}>
-              {index > 0 && <BreadcrumbSeparator className="hidden md:block" />}
+          {pages.map((p, index) => (
+            <Fragment key={p.url}>
+              {index > 0 && (
+                <BreadcrumbSeparator className="hidden md:block" />
+              )}
               <BreadcrumbItem className="hidden md:block">
-                <BreadcrumbLink href="#">{page}</BreadcrumbLink>
+                <BreadcrumbLink href={p.url}>{p.title}</BreadcrumbLink>
               </BreadcrumbItem>
             </Fragment>
           ))}
-          <BreadcrumbSeparator className="hidden md:block" />
+          {pages.length > 0 && (
+            <BreadcrumbSeparator className="hidden md:block" />
+          )}
           <BreadcrumbItem>
             <BreadcrumbPage>{page}</BreadcrumbPage>
           </BreadcrumbItem>

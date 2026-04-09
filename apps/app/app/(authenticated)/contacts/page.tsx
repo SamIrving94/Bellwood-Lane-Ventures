@@ -3,6 +3,7 @@ import { database } from '@repo/database';
 import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 import { Header } from '../components/header';
+import { AddContactDialog } from './add-contact-dialog';
 
 export const metadata: Metadata = {
   title: 'Contacts — Bellwood Ventures',
@@ -31,7 +32,11 @@ const ContactsPage = async () => {
 
   return (
     <>
-      <Header pages={[]} page="Contacts" />
+      <Header pages={[]} page="Contacts">
+        <div className="pr-4">
+          <AddContactDialog />
+        </div>
+      </Header>
       <div className="flex flex-1 flex-col gap-4 p-6">
         <div className="flex items-center justify-between">
           <p className="text-sm text-muted-foreground">
