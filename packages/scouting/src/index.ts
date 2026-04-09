@@ -15,23 +15,23 @@ import 'server-only';
 import { getPricePaid } from '@repo/property-data/src/hmlr';
 import { getHousepriceIndex } from '@repo/property-data/src/hmlr-hpi';
 
-import { fetchProbateGrants } from './probate-data.js';
-import { enrichLeads } from './enrichment.js';
-import { scoreLead } from './scorer.js';
-import { sanitisePayload, auditProtectedFields } from './rbac.js';
+import { fetchProbateGrants } from './probate-data';
+import { enrichLeads } from './enrichment';
+import { scoreLead } from './scorer';
+import { sanitisePayload, auditProtectedFields } from './rbac';
 
 // ---------------------------------------------------------------------------
 // Re-exports (public API surface)
 // ---------------------------------------------------------------------------
 
-export { fetchProbateGrants } from './probate-data.js';
-export { enrichLeads } from './enrichment.js';
-export { scoreLead } from './scorer.js';
-export { sanitisePayload, auditProtectedFields } from './rbac.js';
+export { fetchProbateGrants } from './probate-data';
+export { enrichLeads } from './enrichment';
+export { scoreLead } from './scorer';
+export { sanitisePayload, auditProtectedFields } from './rbac';
 
-export type { ProbateLead } from './probate-data.js';
-export type { EnrichedLead } from './enrichment.js';
-export type { ScoreBreakdown, Verdict } from './scorer.js';
+export type { ProbateLead } from './probate-data';
+export type { EnrichedLead } from './enrichment';
+export type { ScoreBreakdown, Verdict } from './scorer';
 
 // ---------------------------------------------------------------------------
 // ScoutLead — matches packages/database/prisma/schema.prisma ScoutLead model

@@ -19,7 +19,7 @@
 
 import type { Hpi } from '@repo/property-data/src/hmlr-hpi';
 import type { PricePaid } from '@repo/property-data/src/hmlr';
-import type { EnrichedLead } from './enrichment.js';
+import type { EnrichedLead } from './enrichment';
 
 // ---------------------------------------------------------------------------
 // Types

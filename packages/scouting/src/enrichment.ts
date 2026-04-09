@@ -12,8 +12,8 @@
  * from executor/solicitor-on-record sources, not next-of-kin medical files.
  */
 
-import type { ProbateLead } from './probate-data.js';
-import { goldenWindowLabel } from './probate-data.js';
+import type { ProbateLead } from './probate-data';
+import { goldenWindowLabel } from './probate-data';
 
 // ---------------------------------------------------------------------------
 // Enriched lead type
