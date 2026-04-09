@@ -34,7 +34,7 @@ export async function POST(request: Request) {
   }
 
   const ext = file.type.split('/')[1] ?? 'jpg';
-  const filename = `journal/${userId}/${Date.now()}.${ext}`;
+  const filename = `uploads/${userId}/${Date.now()}.${ext}`;
 
   const blob = await put(filename, file, {
     access: 'public',
