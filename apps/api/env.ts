@@ -20,9 +20,11 @@ export const env = createEnv({
   ],
   server: {
     CRON_SECRET: z.string().min(1),
+    PAPERCLIP_API_KEY: z.string().min(1),
   },
   client: {},
   runtimeEnv: {
     CRON_SECRET: process.env.CRON_SECRET,
+    PAPERCLIP_API_KEY: process.env.PAPERCLIP_API_KEY,
   },
 });

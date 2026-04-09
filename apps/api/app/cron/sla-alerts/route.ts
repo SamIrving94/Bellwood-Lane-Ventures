@@ -4,6 +4,7 @@ import { NextResponse } from 'next/server';
 
 // Daily SLA breach check — runs at 9am
 // Flags deals that have been in a stage too long
+// Creates FounderActions so breaches appear in the Action Centre
 const SLA_LIMITS: Record<string, number> = {
   new_lead: 2,       // 2 days max before first contact
   contacted: 5,      // 5 days max before valuation
@@ -30,7 +31,7 @@ export const POST = async (request: Request) => {
         status: status as any,
         stageEnteredAt: { lt: cutoff },
       },
-      select: { id: true, address: true, status: true, stageEnteredAt: true },
+      select: { id: true, address: true, postcode: true, status: true, stageEnteredAt: true },
     });
 
     for (const deal of overdueDeals) {
@@ -43,10 +44,50 @@ export const POST = async (request: Request) => {
         status: deal.status,
         daysInStage,
       });
+
+      // Check if there's already a pending SLA action for this deal
+      const existing = await database.founderAction.findFirst({
+        where: {
+          dealId: deal.id,
+          type: 'sla_breach',
+          status: 'pending',
+        },
+      });
+
+      if (!existing) {
+        // Create FounderAction for the breach
+        await database.founderAction.create({
+          data: {
+            type: 'sla_breach',
+            priority: daysInStage > maxDays * 2 ? 'critical' : 'high',
+            title: `SLA breach: ${deal.address} stuck in "${status.replace('_', ' ')}" for ${daysInStage} days`,
+            description: `This deal has exceeded the ${maxDays}-day SLA for the "${status.replace('_', ' ')}" stage. It's been ${daysInStage} days. Take action to move it forward or withdraw.`,
+            agent: 'system',
+            dealId: deal.id,
+            metadata: {
+              status,
+              maxDays,
+              daysInStage,
+              stageEnteredAt: deal.stageEnteredAt.toISOString(),
+            },
+          },
+        });
+      }
     }
   }
 
-  // TODO: Send email alerts via @repo/email for breaches
+  // Log one agent event for the whole run
+  if (breaches.length > 0) {
+    await database.agentEvent.create({
+      data: {
+        agent: 'system',
+        eventType: 'sla_check',
+        summary: `SLA check found ${breaches.length} breach${breaches.length === 1 ? '' : 'es'}`,
+        count: breaches.length,
+        payload: { breaches },
+      },
+    });
+  }
 
   return NextResponse.json({
     success: true,

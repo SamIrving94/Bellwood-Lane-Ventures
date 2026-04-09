@@ -51,6 +51,65 @@ enum Verdict {
   INSUFFICIENT_DATA
 }
 
+// ─── Founder Action Centre ─────────────────────────────────
+
+enum AgentName {
+  scout
+  appraiser
+  counsel
+  marketer
+  liaison
+  cto
+  orchestrator
+  system
+}
+
+enum ActionType {
+  review_leads
+  approve_offer
+  chain_break_alert
+  sla_breach
+  legal_flag
+  review_campaign
+  ceo_escalation
+  golden_window
+  general
+}
+
+enum ActionPriority {
+  critical
+  high
+  medium
+  low
+}
+
+enum ActionStatus {
+  pending
+  in_progress
+  completed
+  dismissed
+  expired
+}
+
+// ─── Feedback & Eval System ────────────────────────────────
+
+enum FeedbackTargetType {
+  scout_lead
+  avm_result
+  outreach_template
+  outreach_campaign
+  legal_step
+  deal
+  founder_action
+}
+
+enum EvalType {
+  lead_scoring
+  avm_confidence
+  outreach_quality
+  deal_quality
+}
+
 model Deal {
   id                        String     @id @default(cuid())
   address                   String
@@ -73,6 +132,11 @@ model Deal {
   convertedFromLeadId       String?
   createdAt                 DateTime   @default(now())
   updatedAt                 DateTime   @updatedAt
+
+  // Founder Action Centre fields
+  suggestedNextAction   String?   @db.Text   // JSON: { action, reasoning, agent }
+  goldenWindowExpiresAt DateTime?            // Probate/chain break deadline
+  mortgageExpiryDate    DateTime?            // Vendor mortgage expiry for chain breaks
 
   activities     DealActivity[]
   legalSteps     LegalStep[]
@@ -116,6 +180,8 @@ model ScoutLead {
   convertedDealId      String?
   createdAt            DateTime @default(now())
 
+  evalConfigVersion Int?     // version of lead_scoring eval used
+
   @@index([status])
   @@index([leadScore])
   @@index([postcode])
@@ -131,6 +197,8 @@ model AvmResult {
   resultJson   Json
   expiresAt    DateTime
   createdAt    DateTime @default(now())
+
+  evalConfigVersion Int?     // version of avm_confidence eval used
 
   @@index([dealId])
   @@index([postcode, propertyType])
@@ -220,4 +288,99 @@ model OutreachRecipient {
 
   @@index([campaignId])
   @@index([contactId])
+}
+
+// ─── Founder Action Centre ─────────────────────────────────
+
+model AgentEvent {
+  id            String    @id @default(cuid())
+  agent         AgentName
+  eventType     String              // e.g. "leads_created", "avm_completed"
+  summary       String              // human-readable: "Scout created 12 leads (8 STRONG)"
+  payload       Json?               // structured data for downstream use
+  dealId        String?             // optional link to deal
+  count         Int       @default(1)
+  pipelineRunId String?             // groups events from one overnight run
+  createdAt     DateTime  @default(now())
+
+  @@index([agent])
+  @@index([createdAt])
+  @@index([dealId])
+  @@index([pipelineRunId])
+}
+
+model FounderAction {
+  id           String         @id @default(cuid())
+  type         ActionType
+  priority     ActionPriority @default(medium)
+  status       ActionStatus   @default(pending)
+  title        String
+  description  String?        @db.Text
+  agent        AgentName
+  dealId       String?
+  metadata     Json?          // type-specific structured data
+  assignedTo   String?        // Clerk userId (null = both founders)
+  resolvedBy   String?
+  resolvedAt   DateTime?
+  expiresAt    DateTime?
+  agentEventId String?
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  @@index([status, priority])
+  @@index([dealId])
+  @@index([type])
+  @@index([createdAt])
+}
+
+// ─── Feedback & Eval System ────────────────────────────────
+
+model FounderFeedback {
+  id               String             @id @default(cuid())
+  targetType       FeedbackTargetType
+  targetId         String              // polymorphic FK to the rated entity
+  founderId        String              // Clerk userId
+  rating           Int                 // 1-5 stars
+  overrides        Json?               // { leadScore: 85, verdict: "STRONG", ... }
+  notes            String?             @db.Text
+  markedAsTemplate Boolean             @default(false) // "perfect template" flag
+  createdAt        DateTime            @default(now())
+
+  @@index([targetType, targetId])
+  @@index([founderId])
+  @@index([createdAt])
+}
+
+model EvalConfig {
+  id          String    @id @default(cuid())
+  evalType    EvalType
+  version     Int
+  config      Json      // the weights/thresholds/params
+  description String?
+  activatedAt DateTime? // null = draft, set = live version
+  activatedBy String?   // Clerk userId
+  createdAt   DateTime  @default(now())
+
+  @@unique([evalType, version])
+  @@index([evalType, activatedAt])
+}
+
+model OutreachHold {
+  id              String    @id @default(cuid())
+  recipientId     String
+  campaignId      String?
+  templateId      String?
+  recipientType   String    // "individual" | "estate_agent" | "solicitor"
+  recipientName   String?
+  recipientEmail  String?
+  renderedSubject String
+  renderedBody    String    @db.Text
+  status          String    @default("held") // held | approved | rejected | sent
+  reviewedBy      String?
+  reviewedAt      DateTime?
+  editedBody      String?   @db.Text
+  createdAt       DateTime  @default(now())
+
+  @@index([status])
+  @@index([campaignId])
 }

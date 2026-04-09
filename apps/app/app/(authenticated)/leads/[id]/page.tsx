@@ -3,6 +3,7 @@ import { database } from '@repo/database';
 import type { Metadata } from 'next';
 import { notFound, redirect } from 'next/navigation';
 import { Header } from '../../components/header';
+import { FeedbackPanel } from '../../components/feedback-panel';
 import { ConvertButton } from './convert-button';
 
 export const metadata: Metadata = {
@@ -18,11 +19,11 @@ function formatGBP(pence: number): string {
 }
 
 const verdictColors: Record<string, string> = {
-  STRONG: 'bg-emerald-100 text-emerald-800',
-  VIABLE: 'bg-blue-100 text-blue-800',
-  THIN: 'bg-amber-100 text-amber-800',
-  PASS: 'bg-red-100 text-red-800',
-  INSUFFICIENT_DATA: 'bg-gray-100 text-gray-800',
+  STRONG: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-400',
+  VIABLE: 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-400',
+  THIN: 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-400',
+  PASS: 'bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-400',
+  INSUFFICIENT_DATA: 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-400',
 };
 
 const LeadDetailPage = async ({
@@ -31,20 +32,19 @@ const LeadDetailPage = async ({
   params: Promise<{ id: string }>;
 }) => {
   const { userId } = await auth();
-
-  if (!userId) {
-    redirect('/sign-in');
-  }
+  if (!userId) redirect('/sign-in');
 
   const { id } = await params;
 
-  const lead = await database.scoutLead.findUnique({
-    where: { id },
-  });
+  const [lead, existingFeedback] = await Promise.all([
+    database.scoutLead.findUnique({ where: { id } }),
+    database.founderFeedback.findFirst({
+      where: { targetType: 'scout_lead', targetId: id },
+      orderBy: { createdAt: 'desc' },
+    }),
+  ]);
 
-  if (!lead) {
-    notFound();
-  }
+  if (!lead) notFound();
 
   return (
     <>
@@ -123,6 +123,42 @@ const LeadDetailPage = async ({
           </div>
         )}
 
+        {/* Founder Feedback — Rate this lead */}
+        <FeedbackPanel
+          targetType="scout_lead"
+          targetId={lead.id}
+          overrideFields={[
+            {
+              key: 'leadScore',
+              label: 'Lead Score',
+              type: 'number',
+              currentValue: lead.leadScore,
+              suffix: '/ 100',
+            },
+            {
+              key: 'verdict',
+              label: 'Verdict',
+              type: 'select',
+              currentValue: lead.verdict,
+              options: [
+                { label: 'STRONG', value: 'STRONG' },
+                { label: 'VIABLE', value: 'VIABLE' },
+                { label: 'THIN', value: 'THIN' },
+                { label: 'PASS', value: 'PASS' },
+              ],
+            },
+          ]}
+          existingFeedback={
+            existingFeedback
+              ? {
+                  rating: existingFeedback.rating,
+                  notes: existingFeedback.notes,
+                  overrides: existingFeedback.overrides as Record<string, unknown> | null,
+                }
+              : null
+          }
+        />
+
         {/* Metadata */}
         <div className="rounded-lg border bg-card p-4">
           <h2 className="mb-2 text-sm font-medium uppercase tracking-wide text-muted-foreground">
@@ -145,6 +181,12 @@ const LeadDetailPage = async ({
                 {new Date(lead.createdAt).toLocaleDateString('en-GB')}
               </span>
             </div>
+            {lead.evalConfigVersion && (
+              <div>
+                <span className="text-muted-foreground">Eval Version: </span>
+                <span>v{lead.evalConfigVersion}</span>
+              </div>
+            )}
             {lead.convertedDealId && (
               <div>
                 <span className="text-muted-foreground">Converted to: </span>

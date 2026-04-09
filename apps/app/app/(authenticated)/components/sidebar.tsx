@@ -19,14 +19,17 @@ import {
 } from '@repo/design-system/components/ui/sidebar';
 import { NotificationsTrigger } from '@repo/notifications/components/trigger';
 import {
+  BotIcon,
   BuildingIcon,
   ContactIcon,
   GaugeIcon,
+  InboxIcon,
   KanbanIcon,
   MailIcon,
   ScaleIcon,
   SearchIcon,
   Settings2Icon,
+  SlidersHorizontalIcon,
   UsersIcon,
 } from 'lucide-react';
 import Link from 'next/link';
@@ -35,10 +38,17 @@ import type { ReactNode } from 'react';
 
 type GlobalSidebarProperties = {
   readonly children: ReactNode;
+  readonly pendingActionCount?: number;
 };
 
 const data = {
   navMain: [
+    {
+      title: 'Action Centre',
+      url: '/actions',
+      icon: InboxIcon,
+      hasBadge: true,
+    },
     {
       title: 'Dashboard',
       url: '/',
@@ -69,8 +79,18 @@ const data = {
       url: '/outreach',
       icon: MailIcon,
     },
+    {
+      title: 'Agents',
+      url: '/agents',
+      icon: BotIcon,
+    },
   ],
   navSecondary: [
+    {
+      title: 'Eval Models',
+      url: '/settings/evals',
+      icon: SlidersHorizontalIcon,
+    },
     {
       title: 'Settings',
       url: '/settings',
@@ -79,7 +99,7 @@ const data = {
   ],
 };
 
-export const GlobalSidebar = ({ children }: GlobalSidebarProperties) => {
+export const GlobalSidebar = ({ children, pendingActionCount = 0 }: GlobalSidebarProperties) => {
   const sidebar = useSidebar();
   const pathname = usePathname();
 
@@ -116,6 +136,11 @@ export const GlobalSidebar = ({ children }: GlobalSidebarProperties) => {
                     <Link href={item.url}>
                       <item.icon />
                       <span>{item.title}</span>
+                      {'hasBadge' in item && item.hasBadge && pendingActionCount > 0 && (
+                        <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1.5 text-xs font-medium text-white">
+                          {pendingActionCount > 99 ? '99+' : pendingActionCount}
+                        </span>
+                      )}
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>

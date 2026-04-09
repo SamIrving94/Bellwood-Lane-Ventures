@@ -26,12 +26,18 @@ const Dashboard = async () => {
   }
 
   // Fetch pipeline stats in parallel
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
+
   const [
     totalDeals,
     dealsByStatus,
     recentDeals,
     leadsThisWeek,
     strongLeads,
+    pendingActions,
+    agentEventsToday,
+    upcomingDeadlines,
   ] = await Promise.all([
     database.deal.count(),
     database.deal.groupBy({
@@ -54,6 +60,25 @@ const Dashboard = async () => {
         verdict: 'STRONG',
         status: 'new',
       },
+    }),
+    database.founderAction.count({
+      where: { status: { in: ['pending', 'in_progress'] } },
+    }),
+    database.agentEvent.findMany({
+      where: { createdAt: { gte: todayStart } },
+      orderBy: { createdAt: 'desc' },
+      take: 10,
+    }),
+    database.deal.findMany({
+      where: {
+        OR: [
+          { goldenWindowExpiresAt: { gte: new Date(), lte: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) } },
+          { mortgageExpiryDate: { gte: new Date(), lte: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000) } },
+        ],
+      },
+      orderBy: { goldenWindowExpiresAt: 'asc' },
+      take: 5,
+      select: { id: true, address: true, postcode: true, sellerType: true, goldenWindowExpiresAt: true, mortgageExpiryDate: true },
     }),
   ]);
 
@@ -92,7 +117,7 @@ const Dashboard = async () => {
       <Header pages={[]} page="Dashboard" />
       <div className="flex flex-1 flex-col gap-6 p-6">
         {/* Key metrics */}
-        <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+        <div className="grid grid-cols-2 gap-4 md:grid-cols-5">
           <div className="rounded-lg border bg-card p-4">
             <p className="text-sm text-muted-foreground">Active Deals</p>
             <p className="text-2xl font-bold">{totalDeals}</p>
@@ -112,6 +137,17 @@ const Dashboard = async () => {
             <p className="text-2xl font-bold text-emerald-600">
               {strongLeads}
             </p>
+          </div>
+          <div className="rounded-lg border bg-card p-4">
+            <p className="text-sm text-muted-foreground">Actions Pending</p>
+            <p className={`text-2xl font-bold ${pendingActions > 0 ? 'text-red-600' : ''}`}>
+              {pendingActions}
+            </p>
+            {pendingActions > 0 && (
+              <a href="/actions" className="text-xs text-primary hover:underline">
+                View Action Centre →
+              </a>
+            )}
           </div>
         </div>
 
@@ -179,6 +215,93 @@ const Dashboard = async () => {
             </div>
           )}
         </section>
+        {/* Two-column layout: Agent Activity + Upcoming Deadlines */}
+        <div className="grid gap-6 md:grid-cols-2">
+          {/* Agent Activity Feed */}
+          <section>
+            <h2 className="mb-3 text-sm font-medium uppercase tracking-wide text-muted-foreground">
+              Agent Activity Today
+            </h2>
+            {agentEventsToday.length === 0 ? (
+              <div className="rounded-lg border bg-card p-6 text-center">
+                <p className="text-sm text-muted-foreground">
+                  No agent activity yet today.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {agentEventsToday.map((event) => (
+                  <div
+                    key={event.id}
+                    className="flex items-start gap-3 rounded-lg border bg-card p-3"
+                  >
+                    <span className="mt-0.5 rounded bg-slate-100 px-1.5 py-0.5 text-xs font-medium capitalize dark:bg-slate-800">
+                      {event.agent}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm">{event.summary}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {new Date(event.createdAt).toLocaleTimeString('en-GB', {
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+
+          {/* Upcoming Deadlines */}
+          <section>
+            <h2 className="mb-3 text-sm font-medium uppercase tracking-wide text-muted-foreground">
+              Upcoming Deadlines
+            </h2>
+            {upcomingDeadlines.length === 0 ? (
+              <div className="rounded-lg border bg-card p-6 text-center">
+                <p className="text-sm text-muted-foreground">
+                  No upcoming deadlines.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {upcomingDeadlines.map((deal) => {
+                  const deadline = deal.goldenWindowExpiresAt ?? deal.mortgageExpiryDate;
+                  const daysLeft = deadline
+                    ? Math.ceil((new Date(deadline).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+                    : null;
+                  const isUrgent = daysLeft !== null && daysLeft <= 14;
+
+                  return (
+                    <a
+                      key={deal.id}
+                      href={`/deals/${deal.id}`}
+                      className="flex items-center justify-between rounded-lg border bg-card p-3 transition-colors hover:bg-accent"
+                    >
+                      <div>
+                        <p className="text-sm font-medium">{deal.address}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {deal.sellerType.replace('_', ' ')} &middot; {deal.postcode}
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        {daysLeft !== null && (
+                          <p className={`text-sm font-medium ${isUrgent ? 'text-red-600' : 'text-amber-600'}`}>
+                            {daysLeft}d left
+                          </p>
+                        )}
+                        <p className="text-xs text-muted-foreground">
+                          {deal.goldenWindowExpiresAt ? 'Golden window' : 'Mortgage expiry'}
+                        </p>
+                      </div>
+                    </a>
+                  );
+                })}
+              </div>
+            )}
+          </section>
+        </div>
       </div>
     </>
   );
