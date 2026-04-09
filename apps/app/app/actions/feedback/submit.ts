@@ -1,7 +1,7 @@
 'use server';
 
 import { auth } from '@repo/auth/server';
-import { database } from '@repo/database';
+import { database, Prisma } from '@repo/database';
 import { revalidatePath } from 'next/cache';
 
 type SubmitFeedbackInput = {
@@ -28,7 +28,7 @@ export async function submitFeedback(data: SubmitFeedbackInput) {
       targetId: data.targetId,
       founderId: userId,
       rating: data.rating,
-      overrides: data.overrides ?? undefined,
+      overrides: data.overrides ? (data.overrides as Prisma.InputJsonValue) : undefined,
       notes: data.notes ?? undefined,
       markedAsTemplate: data.markedAsTemplate ?? false,
     },

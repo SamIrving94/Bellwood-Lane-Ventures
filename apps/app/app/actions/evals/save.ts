@@ -1,7 +1,7 @@
 'use server';
 
 import { auth } from '@repo/auth/server';
-import { database } from '@repo/database';
+import { database, Prisma } from '@repo/database';
 import { revalidatePath } from 'next/cache';
 
 type SaveEvalInput = {
@@ -27,7 +27,7 @@ export async function saveEvalConfig(data: SaveEvalInput) {
     data: {
       evalType: data.evalType,
       version: newVersion,
-      config: data.config,
+      config: data.config as Prisma.InputJsonValue,
       description: data.description,
     },
   });

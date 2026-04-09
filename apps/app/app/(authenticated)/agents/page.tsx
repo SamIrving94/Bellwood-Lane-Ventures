@@ -1,5 +1,5 @@
 import { auth } from '@repo/auth/server';
-import { database } from '@repo/database';
+import { database, Prisma } from '@repo/database';
 import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 import { Header } from '../components/header';
@@ -63,7 +63,7 @@ const AgentsPage = async () => {
           database.founderFeedback.count({
             where: {
               targetType: agent.feedbackType,
-              overrides: { not: null },
+              overrides: { not: Prisma.DbNull },
               createdAt: { gte: thirtyDaysAgo },
             },
           }),
