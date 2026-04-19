@@ -1,5 +1,5 @@
 import { env } from '@/env';
-import { database } from '@repo/database';
+import { database, Prisma } from '@repo/database';
 import { runScoutingPipeline } from '@repo/scouting';
 import { NextResponse } from 'next/server';
 
@@ -15,7 +15,10 @@ export const POST = async (request: Request) => {
 
   if (result.leads.length > 0) {
     await database.scoutLead.createMany({
-      data: result.leads,
+      data: result.leads.map((lead) => ({
+        ...lead,
+        rawPayload: lead.rawPayload === null ? Prisma.JsonNull : (lead.rawPayload as Prisma.InputJsonValue),
+      })),
       skipDuplicates: true,
     });
   }
