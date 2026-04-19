@@ -2,12 +2,14 @@
 
 import { Button } from '@repo/design-system/components/ui/button';
 import { StarIcon, SendIcon, BookmarkIcon } from 'lucide-react';
-import { useState, useTransition } from 'react';
+import { useState, useTransition, useEffect, useRef, useCallback } from 'react';
 import { submitFeedback } from '@/app/actions/feedback/submit';
 
 type FeedbackPanelProps = {
   targetType: 'scout_lead' | 'avm_result' | 'outreach_template' | 'outreach_campaign' | 'legal_step' | 'deal' | 'founder_action';
   targetId: string;
+  title?: string;
+  quickMode?: boolean;
   overrideFields?: OverrideField[];
   existingFeedback?: {
     rating: number;
@@ -21,14 +23,34 @@ type OverrideField = {
   key: string;
   label: string;
   type: 'number' | 'select' | 'text';
+  format?: 'gbp';
   currentValue?: unknown;
   options?: { label: string; value: string }[];
   suffix?: string;
 };
 
+function formatGBPInput(pence: number | undefined): string {
+  if (!pence) return '';
+  return new Intl.NumberFormat('en-GB', {
+    style: 'currency',
+    currency: 'GBP',
+    maximumFractionDigits: 0,
+  }).format(pence / 100);
+}
+
+function parsePoundsInput(value: string): number | undefined {
+  // Strip £, commas, spaces — accept plain number (pounds)
+  const cleaned = value.replace(/[£,\s]/g, '');
+  const pounds = parseFloat(cleaned);
+  if (isNaN(pounds) || pounds < 0) return undefined;
+  return Math.round(pounds * 100); // store as pence
+}
+
 export function FeedbackPanel({
   targetType,
   targetId,
+  title = 'Rate this output',
+  quickMode = false,
   overrideFields = [],
   existingFeedback,
   onComplete,
@@ -39,11 +61,26 @@ export function FeedbackPanel({
   const [overrides, setOverrides] = useState<Record<string, unknown>>(
     (existingFeedback?.overrides as Record<string, unknown>) ?? {}
   );
+  // For GBP fields, keep the raw display string separately
+  const [gbpDisplayValues, setGbpDisplayValues] = useState<Record<string, string>>(() => {
+    const initial: Record<string, string> = {};
+    for (const field of overrideFields) {
+      if (field.format === 'gbp' && field.currentValue) {
+        initial[field.key] = formatGBPInput(field.currentValue as number) || '';
+      }
+    }
+    return initial;
+  });
   const [markedAsTemplate, setMarkedAsTemplate] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [submitted, setSubmitted] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
 
-  const handleSubmit = () => {
+  const hasOverridesFilled = Object.values(overrides).some(
+    (v) => v !== undefined && v !== ''
+  );
+
+  const handleSubmit = useCallback(() => {
     if (rating === 0) return;
 
     startTransition(async () => {
@@ -63,7 +100,45 @@ export function FeedbackPanel({
       setSubmitted(true);
       onComplete?.();
     });
+  }, [rating, overrides, notes, markedAsTemplate, targetType, targetId, onComplete]);
+
+  const handleStarClick = (star: number) => {
+    setRating(star);
+    // quickMode: auto-submit on star click if no override fields are filled
+    if (quickMode && !hasOverridesFilled && overrideFields.length === 0) {
+      startTransition(async () => {
+        await submitFeedback({
+          targetType,
+          targetId,
+          rating: star,
+        });
+        setSubmitted(true);
+        onComplete?.();
+      });
+    }
   };
+
+  // Keyboard shortcuts: 1-5 to set star rating, Enter to submit
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+
+    const onKeyDown = (e: KeyboardEvent) => {
+      // Only handle when focus is inside the panel
+      if (!el.contains(document.activeElement)) return;
+      const key = e.key;
+      if (key >= '1' && key <= '5') {
+        e.preventDefault();
+        setRating(Number(key));
+      } else if (key === 'Enter' && rating > 0 && !isPending) {
+        e.preventDefault();
+        handleSubmit();
+      }
+    };
+
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [rating, isPending, handleSubmit]);
 
   if (submitted) {
     return (
@@ -76,21 +151,28 @@ export function FeedbackPanel({
   }
 
   return (
-    <div className="rounded-lg border bg-card p-4 space-y-4">
+    <div ref={containerRef} className="rounded-lg border bg-card p-4 space-y-4" tabIndex={-1}>
       <h4 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
-        Rate this output
+        {title}
       </h4>
 
       {/* Star rating */}
-      <div className="flex items-center gap-1">
+      <div
+        role="radiogroup"
+        aria-label="Rating"
+        className="flex items-center gap-1"
+      >
         {[1, 2, 3, 4, 5].map((star) => (
           <button
             key={star}
             type="button"
-            className="p-1 transition-colors"
+            role="radio"
+            aria-checked={rating === star}
+            aria-label={`${star} star${star !== 1 ? 's' : ''}`}
+            className="p-1 transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
             onMouseEnter={() => setHoverRating(star)}
             onMouseLeave={() => setHoverRating(0)}
-            onClick={() => setRating(star)}
+            onClick={() => handleStarClick(star)}
           >
             <StarIcon
               className={`h-6 w-6 ${
@@ -120,8 +202,60 @@ export function FeedbackPanel({
           </p>
           {overrideFields.map((field) => (
             <div key={field.key} className="flex items-center gap-3">
-              <label className="text-sm w-32 shrink-0">{field.label}</label>
-              {field.type === 'number' && (
+              <label className="text-sm w-36 shrink-0">{field.label}</label>
+              {field.type === 'number' && field.format === 'gbp' && (
+                <div className="flex items-center gap-1">
+                  <div className="relative flex items-center">
+                    <span className="absolute left-3 text-sm text-muted-foreground pointer-events-none">£</span>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      className="w-36 rounded-md border bg-background pl-6 pr-3 py-1.5 text-sm"
+                      placeholder={
+                        field.currentValue
+                          ? new Intl.NumberFormat('en-GB').format(
+                              Math.round((field.currentValue as number) / 100)
+                            )
+                          : '245,000'
+                      }
+                      value={gbpDisplayValues[field.key] ?? ''}
+                      onChange={(e) => {
+                        const raw = e.target.value;
+                        setGbpDisplayValues((prev) => ({ ...prev, [field.key]: raw }));
+                        const pence = parsePoundsInput(raw);
+                        setOverrides((prev) => ({
+                          ...prev,
+                          [field.key]: pence,
+                        }));
+                      }}
+                      onBlur={(e) => {
+                        // Format nicely on blur
+                        const pence = parsePoundsInput(e.target.value);
+                        if (pence !== undefined) {
+                          setGbpDisplayValues((prev) => ({
+                            ...prev,
+                            [field.key]: new Intl.NumberFormat('en-GB').format(pence / 100),
+                          }));
+                        }
+                      }}
+                    />
+                  </div>
+                  {/* AVM sanity warning */}
+                  {field.currentValue != null && overrides[field.key] !== undefined ? (() => {
+                      const enteredPence = overrides[field.key] as number;
+                      const ratio = enteredPence / (field.currentValue as number);
+                      if (ratio > 10 || ratio < 0.1) {
+                        return (
+                          <span className="text-xs text-amber-600 dark:text-amber-400">
+                            Value looks unusual — check entry
+                          </span>
+                        );
+                      }
+                      return null;
+                    })() : null}
+                </div>
+              )}
+              {field.type === 'number' && field.format !== 'gbp' && (
                 <div className="flex items-center gap-1">
                   <input
                     type="number"
@@ -204,7 +338,10 @@ export function FeedbackPanel({
       )}
 
       {/* Submit */}
-      <div className="flex justify-end">
+      <div className="flex items-center justify-between">
+        <p className="text-xs text-muted-foreground">
+          Tip: press 1–5 to rate, Enter to submit
+        </p>
         <Button
           size="sm"
           onClick={handleSubmit}
