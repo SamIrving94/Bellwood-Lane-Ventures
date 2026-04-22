@@ -12,6 +12,7 @@ import {
 import Link from 'next/link';
 import { useState, useTransition } from 'react';
 import { resolveAction } from '@/app/actions/founder-actions/resolve';
+import { checkFeedbackCompletion } from '@/app/actions/founder-actions/check-feedback';
 
 type Action = {
   id: string;
@@ -57,12 +58,29 @@ function timeAgo(date: Date): string {
 export function ActionCard({ action }: { action: Action }) {
   const [expanded, setExpanded] = useState(false);
   const [isPending, startTransition] = useTransition();
+  const [showFeedbackWarning, setShowFeedbackWarning] = useState(false);
   const style = priorityStyles[action.priority] ?? priorityStyles.medium;
 
   const handleResolve = (resolution: 'completed' | 'dismissed') => {
     startTransition(async () => {
       await resolveAction(action.id, resolution);
     });
+  };
+
+  const handleDoneClick = () => {
+    // For review_leads actions, warn if no feedback has been submitted
+    if (action.type === 'review_leads') {
+      startTransition(async () => {
+        const hasRatedAny = await checkFeedbackCompletion(action.id);
+        if (!hasRatedAny) {
+          setShowFeedbackWarning(true);
+        } else {
+          await resolveAction(action.id, 'completed');
+        }
+      });
+    } else {
+      handleResolve('completed');
+    }
   };
 
   return (
@@ -106,51 +124,90 @@ export function ActionCard({ action }: { action: Action }) {
         )}
       </div>
 
+      {/* Feedback completion warning */}
+      {showFeedbackWarning && (
+        <div className="mt-3 rounded-lg border border-amber-300 bg-amber-50 p-3 dark:border-amber-700 dark:bg-amber-950">
+          <div className="flex items-start gap-2">
+            <AlertTriangleIcon className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
+            <div className="flex-1 text-sm">
+              <p className="font-medium text-amber-800 dark:text-amber-300">
+                No leads have been rated yet
+              </p>
+              <p className="mt-0.5 text-xs text-amber-700 dark:text-amber-400">
+                Rating leads helps improve scouting accuracy. You can still mark Done without rating.
+              </p>
+            </div>
+          </div>
+          <div className="mt-3 flex items-center gap-2 justify-end">
+            <Button
+              variant="outline"
+              size="sm"
+              asChild
+              onClick={() => setShowFeedbackWarning(false)}
+            >
+              <Link href="/leads?filter=unrated">
+                Rate Leads
+              </Link>
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => handleResolve('completed')}
+              disabled={isPending}
+            >
+              Skip and Mark Done
+            </Button>
+          </div>
+        </div>
+      )}
+
       {/* Actions */}
-      <div className="mt-3 flex items-center gap-2">
-        {action.dealId && (
-          <Button variant="outline" size="sm" asChild>
-            <Link href={`/deals/${action.dealId}`}>
-              <ExternalLinkIcon className="mr-1 h-3 w-3" />
-              View Deal
-            </Link>
+      {!showFeedbackWarning && (
+        <div className="mt-3 flex items-center gap-2">
+          {action.dealId && (
+            <Button variant="outline" size="sm" asChild>
+              <Link href={`/deals/${action.dealId}`}>
+                <ExternalLinkIcon className="mr-1 h-3 w-3" />
+                View Deal
+              </Link>
+            </Button>
+          )}
+          {action.type === 'review_leads' && (
+            <Button variant="outline" size="sm" asChild>
+              <Link href="/leads?filter=unrated">
+                <ExternalLinkIcon className="mr-1 h-3 w-3" />
+                View Leads
+              </Link>
+            </Button>
+          )}
+          {action.type === 'review_campaign' && (
+            <Button variant="outline" size="sm" asChild>
+              <Link href="/outreach">
+                <ExternalLinkIcon className="mr-1 h-3 w-3" />
+                View Campaign
+              </Link>
+            </Button>
+          )}
+          <div className="flex-1" />
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => handleResolve('dismissed')}
+            disabled={isPending}
+          >
+            <XCircleIcon className="mr-1 h-3 w-3" />
+            Dismiss
           </Button>
-        )}
-        {action.type === 'review_leads' && (
-          <Button variant="outline" size="sm" asChild>
-            <Link href="/leads?status=new&minScore=70">
-              <ExternalLinkIcon className="mr-1 h-3 w-3" />
-              View Leads
-            </Link>
+          <Button
+            size="sm"
+            onClick={handleDoneClick}
+            disabled={isPending}
+          >
+            <CheckCircleIcon className="mr-1 h-3 w-3" />
+            Done
           </Button>
-        )}
-        {action.type === 'review_campaign' && (
-          <Button variant="outline" size="sm" asChild>
-            <Link href="/outreach">
-              <ExternalLinkIcon className="mr-1 h-3 w-3" />
-              View Campaign
-            </Link>
-          </Button>
-        )}
-        <div className="flex-1" />
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => handleResolve('dismissed')}
-          disabled={isPending}
-        >
-          <XCircleIcon className="mr-1 h-3 w-3" />
-          Dismiss
-        </Button>
-        <Button
-          size="sm"
-          onClick={() => handleResolve('completed')}
-          disabled={isPending}
-        >
-          <CheckCircleIcon className="mr-1 h-3 w-3" />
-          Done
-        </Button>
-      </div>
+        </div>
+      )}
     </div>
   );
 }

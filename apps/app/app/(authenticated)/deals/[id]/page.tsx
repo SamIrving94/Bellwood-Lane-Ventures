@@ -245,20 +245,21 @@ const DealDetailPage = async ({
             <FeedbackPanel
               targetType="avm_result"
               targetId={latestAvm.id}
+              title="Rate this valuation"
               overrideFields={[
                 {
                   key: 'estimatedMarketValuePence',
-                  label: 'Est. Value (p)',
+                  label: 'Estimated Value',
                   type: 'number',
+                  format: 'gbp',
                   currentValue: deal.estimatedMarketValuePence,
-                  suffix: 'pence',
                 },
                 {
                   key: 'ourOfferPence',
-                  label: 'Our Offer (p)',
+                  label: 'Our Offer',
                   type: 'number',
+                  format: 'gbp',
                   currentValue: deal.ourOfferPence,
-                  suffix: 'pence',
                 },
                 {
                   key: 'verdict',
@@ -290,6 +291,7 @@ const DealDetailPage = async ({
         <FeedbackPanel
           targetType="deal"
           targetId={deal.id}
+          title="Rate this deal overall"
           overrideFields={[
             {
               key: 'verdict',
@@ -327,20 +329,29 @@ const DealDetailPage = async ({
           ) : (
             <div className="space-y-2">
               {deal.legalSteps.map((step) => (
-                <div key={step.id} className="flex items-center gap-3 text-sm">
+                <div key={step.id} className="flex items-start gap-3 text-sm">
                   <div
-                    className={`h-3 w-3 rounded-full ${
+                    className={`mt-1 h-3 w-3 shrink-0 rounded-full ${
                       step.completed ? 'bg-green-500' : 'bg-muted'
                     }`}
                   />
-                  <span className={step.completed ? '' : 'text-muted-foreground'}>
-                    {step.stepKey.replace(/_/g, ' ')}
-                  </span>
-                  {step.completedAt && (
-                    <span className="text-xs text-muted-foreground">
-                      {new Date(step.completedAt).toLocaleDateString('en-GB')}
-                    </span>
-                  )}
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className={step.completed ? '' : 'text-muted-foreground capitalize'}>
+                        {step.stepKey.replace(/_/g, ' ')}
+                      </span>
+                      {step.completedAt && (
+                        <span className="text-xs text-muted-foreground">
+                          {new Date(step.completedAt).toLocaleDateString('en-GB')}
+                        </span>
+                      )}
+                    </div>
+                    {step.notes && (
+                      <p className="mt-0.5 text-xs text-muted-foreground">
+                        {step.notes}
+                      </p>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>
