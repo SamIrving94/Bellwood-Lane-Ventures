@@ -121,6 +121,13 @@ enum EvalType {
   campaign_targeting
 }
 
+enum ParseStatus {
+  pending
+  parsed
+  failed
+  manual_review
+}
+
 model Deal {
   id                        String     @id @default(cuid())
   address                   String
@@ -204,10 +211,35 @@ model ScoutLead {
   campaignId String?
   campaign   Campaign? @relation(fields: [campaignId], references: [id], onDelete: SetNull)
 
+  whatsAppIntake WhatsAppIntake?
+
   @@index([status])
   @@index([leadScore])
   @@index([postcode])
   @@index([campaignId])
+}
+
+model WhatsAppIntake {
+  id               String      @id @default(cuid())
+  source           String      // "bridge" | "paste" | "share_sheet" | "email"
+  groupName        String?
+  senderName       String?
+  senderPhone      String?
+  rawText          String      @db.Text
+  mediaUrls        String[]    @default([])
+  parsedFields     Json?
+  parsedConfidence Float?
+  parseStatus      ParseStatus @default(pending)
+  parseError       String?
+  scoutLeadId      String?     @unique
+  scoutLead        ScoutLead?  @relation(fields: [scoutLeadId], references: [id])
+  founderActionId  String?
+  receivedAt       DateTime    @default(now())
+  processedAt      DateTime?
+
+  @@index([parseStatus])
+  @@index([source])
+  @@index([receivedAt])
 }
 
 model AvmResult {

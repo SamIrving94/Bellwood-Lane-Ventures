@@ -27,6 +27,7 @@ import {
   KanbanIcon,
   MailIcon,
   MegaphoneIcon,
+  MessageSquareIcon,
   ScaleIcon,
   SearchIcon,
   Settings2Icon,
@@ -64,6 +65,11 @@ const data = {
       title: 'Leads',
       url: '/leads',
       icon: SearchIcon,
+    },
+    {
+      title: 'Intake',
+      url: '/intake',
+      icon: MessageSquareIcon,
     },
     {
       title: 'Valuations',
