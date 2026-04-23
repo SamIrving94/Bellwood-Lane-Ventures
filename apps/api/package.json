@@ -15,7 +15,9 @@
   "dependencies": {
     "@repo/ai": "workspace:*",
     "@repo/analytics": "workspace:*",
+    "@repo/auctions": "workspace:*",
     "@repo/auth": "workspace:*",
+    "@repo/calendly": "workspace:*",
     "@repo/database": "workspace:*",
     "@repo/design-system": "workspace:*",
     "@repo/next-config": "workspace:*",

@@ -1,5 +1,6 @@
 import { keys as analytics } from '@repo/analytics/keys';
 import { keys as auth } from '@repo/auth/keys';
+import { keys as calendly } from '@repo/calendly/keys';
 import { keys as database } from '@repo/database/keys';
 import { keys as email } from '@repo/email/keys';
 import { keys as core } from '@repo/next-config/keys';
@@ -12,6 +13,7 @@ export const env = createEnv({
   extends: [
     auth(),
     analytics(),
+    calendly(),
     core(),
     database(),
     email(),

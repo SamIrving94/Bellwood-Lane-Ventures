@@ -138,6 +138,10 @@ model Deal {
   goldenWindowExpiresAt DateTime?            // Probate/chain break deadline
   mortgageExpiryDate    DateTime?            // Vendor mortgage expiry for chain breaks
 
+  // Calendly booking
+  calendlyBookingLink String?
+  calendlyEventAt     DateTime?
+
   activities     DealActivity[]
   legalSteps     LegalStep[]
   legalDocuments LegalDocument[]
@@ -181,6 +185,9 @@ model ScoutLead {
   createdAt            DateTime @default(now())
 
   evalConfigVersion Int?     // version of lead_scoring eval used
+
+  // Calendly booking (pre-conversion — once we send the link to a lead)
+  calendlyBookingLink String?
 
   @@index([status])
   @@index([leadScore])
@@ -383,4 +390,27 @@ model OutreachHold {
 
   @@index([status])
   @@index([campaignId])
+}
+
+// ─── Auctions ───────────────────────────────────────────────
+
+model AuctionLot {
+  id                 String   @id @default(cuid())
+  sourceHouse        String              // e.g. "auction_house_uk", "savills", "clive_emson"
+  sourceLotRef       String              // the auction house's own lot ref / number
+  auctionDate        DateTime
+  address            String
+  postcode           String
+  propertyType       String              // terraced_house | semi_detached | detached | flat | commercial | land | other
+  guidePriceMinPence Int?
+  guidePriceMaxPence Int?
+  sold               Boolean  @default(false)
+  soldPricePence     Int?
+  lotUrl             String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@unique([sourceHouse, sourceLotRef])
+  @@index([auctionDate])
+  @@index([postcode])
 }
