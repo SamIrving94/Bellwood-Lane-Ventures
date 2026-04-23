@@ -1,4 +1,5 @@
 import { auth } from '@repo/auth/server';
+import { getBookingLink } from '@repo/calendly';
 import { database } from '@repo/database';
 import type { Metadata } from 'next';
 import { notFound, redirect } from 'next/navigation';
@@ -207,6 +208,42 @@ const DealDetailPage = async ({
               {deal.marginPercent ? `${deal.marginPercent.toFixed(1)}%` : '—'}
             </p>
           </div>
+        </div>
+
+        {/* Calendly booking status */}
+        <div className="rounded-lg border bg-card p-4">
+          <h2 className="mb-2 text-sm font-medium uppercase tracking-wide text-muted-foreground">
+            Initial Call
+          </h2>
+          {deal.calendlyEventAt ? (
+            <p className="text-sm">
+              <span className="font-medium text-emerald-700 dark:text-emerald-400">
+                Call booked
+              </span>{' '}
+              for{' '}
+              <strong>
+                {new Date(deal.calendlyEventAt).toLocaleString('en-GB', {
+                  weekday: 'short',
+                  day: 'numeric',
+                  month: 'short',
+                  hour: '2-digit',
+                  minute: '2-digit',
+                })}
+              </strong>
+            </p>
+          ) : (
+            <div className="space-y-2">
+              <p className="text-sm text-muted-foreground">No call yet.</p>
+              <a
+                href={getBookingLink(deal.id)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-block text-xs font-medium text-primary hover:underline"
+              >
+                Open booking link
+              </a>
+            </div>
+          )}
         </div>
 
         {/* Seller contact */}

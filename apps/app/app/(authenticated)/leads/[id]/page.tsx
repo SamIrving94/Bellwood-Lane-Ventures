@@ -1,9 +1,11 @@
 import { auth } from '@repo/auth/server';
+import { getBookingLink } from '@repo/calendly';
 import { database } from '@repo/database';
 import type { Metadata } from 'next';
 import { notFound, redirect } from 'next/navigation';
 import { Header } from '../../components/header';
 import { FeedbackPanel } from '../../components/feedback-panel';
+import { CalendlyButton } from './calendly-button';
 import { ConvertButton } from './convert-button';
 
 export const metadata: Metadata = {
@@ -199,6 +201,18 @@ const LeadDetailPage = async ({
               </div>
             )}
           </div>
+        </div>
+
+        {/* Calendly booking link */}
+        <div className="rounded-lg border bg-card p-4">
+          <h2 className="mb-2 text-sm font-medium uppercase tracking-wide text-muted-foreground">
+            Book Initial Call
+          </h2>
+          <p className="mb-3 text-xs text-muted-foreground">
+            Copy and send this link to the vendor. When they book, the deal
+            timeline will update automatically.
+          </p>
+          <CalendlyButton bookingLink={getBookingLink(lead.id)} />
         </div>
 
         {/* Convert to deal button */}
