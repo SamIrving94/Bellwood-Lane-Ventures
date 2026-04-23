@@ -1,5 +1,7 @@
 import { env } from '@/env';
 import { database } from '@repo/database';
+import { sendEmail } from '@repo/email';
+import { log } from '@repo/observability/log';
 import { NextResponse } from 'next/server';
 
 // Pipeline Stage 3: Auto-outreach (7:30am daily)
@@ -29,6 +31,17 @@ export const POST = async (request: Request) => {
   let autoSent = 0;
   let heldForReview = 0;
   let skipped = 0;
+  let sendFailures = 0;
+  // Per-send results keyed by recipient id — surfaced via AgentEvent.payload so
+  // the Resend message ids are recoverable without a schema migration.
+  const sendResults: Array<{
+    recipientId: string;
+    campaignId: string;
+    to: string;
+    messageId?: string;
+    skipped?: string;
+    error?: string;
+  }> = [];
 
   // Find templates for active campaigns
   for (const campaign of activeCampaigns) {
@@ -49,10 +62,6 @@ export const POST = async (request: Request) => {
       const isIndividual = ['vendor', 'seller', 'individual'].includes(
         contact.type.toLowerCase()
       );
-      const isEstateAgent = contact.type.toLowerCase().includes('estate_agent') ||
-        contact.type.toLowerCase().includes('agent');
-      const isSolicitor = contact.type.toLowerCase().includes('solicitor') ||
-        contact.type.toLowerCase().includes('lawyer');
 
       // Render template (basic variable substitution)
       const renderedSubject = template.subject
@@ -87,19 +96,58 @@ export const POST = async (request: Request) => {
         heldForReview++;
       } else {
         // AUTO-SEND — B2B comms to agents and solicitors
-        // TODO: Wire up @repo/email (Resend) to actually send
-        // For now, mark as sent and log
+        try {
+          const result = await sendEmail({
+            to: contact.email,
+            subject: renderedSubject,
+            text: renderedBody,
+          });
 
-        await database.outreachRecipient.update({
-          where: { id: recipient.id },
-          data: {
-            status: 'sent',
-            lastSentAt: new Date(),
-            currentStep: recipient.currentStep + 1,
-          },
-        });
+          if (result.skipped) {
+            sendResults.push({
+              recipientId: recipient.id,
+              campaignId: campaign.id,
+              to: contact.email,
+              skipped: result.reason,
+            });
+            // Still advance recipient — the skip is intentional (no token in
+            // dev/staging). In production this branch shouldn't hit.
+          } else {
+            sendResults.push({
+              recipientId: recipient.id,
+              campaignId: campaign.id,
+              to: contact.email,
+              messageId: result.messageId,
+            });
+          }
 
-        autoSent++;
+          await database.outreachRecipient.update({
+            where: { id: recipient.id },
+            data: {
+              status: 'sent',
+              lastSentAt: new Date(),
+              currentStep: recipient.currentStep + 1,
+            },
+          });
+
+          autoSent++;
+        } catch (err) {
+          sendFailures++;
+          const message = err instanceof Error ? err.message : String(err);
+          log.error('pipeline-outreach: send failed', {
+            recipientId: recipient.id,
+            campaignId: campaign.id,
+            to: contact.email,
+            error: message,
+          });
+          sendResults.push({
+            recipientId: recipient.id,
+            campaignId: campaign.id,
+            to: contact.email,
+            error: message,
+          });
+          // Leave recipient in `pending` so the next run retries.
+        }
       }
     }
   }
@@ -123,15 +171,23 @@ export const POST = async (request: Request) => {
     });
   }
 
-  // Log agent event
+  // Log agent event — include per-send results (incl. Resend message ids) in
+  // the payload so they're recoverable without a schema change.
   await database.agentEvent.create({
     data: {
       agent: 'marketer',
       eventType: 'pipeline_outreach',
-      summary: `Outreach: ${autoSent} auto-sent, ${heldForReview} held for review, ${skipped} skipped`,
+      summary: `Outreach: ${autoSent} auto-sent, ${heldForReview} held for review, ${skipped} skipped, ${sendFailures} failed`,
       count: autoSent + heldForReview,
       pipelineRunId,
-      payload: { autoSent, heldForReview, skipped, campaigns: activeCampaigns.length },
+      payload: {
+        autoSent,
+        heldForReview,
+        skipped,
+        sendFailures,
+        campaigns: activeCampaigns.length,
+        sendResults,
+      },
     },
   });
 
@@ -141,6 +197,7 @@ export const POST = async (request: Request) => {
     autoSent,
     heldForReview,
     skipped,
+    sendFailures,
     campaignsProcessed: activeCampaigns.length,
   });
 };
