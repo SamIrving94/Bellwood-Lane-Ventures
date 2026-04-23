@@ -13,6 +13,7 @@ import Link from 'next/link';
 import { useState, useTransition } from 'react';
 import { resolveAction } from '@/app/actions/founder-actions/resolve';
 import { checkFeedbackCompletion } from '@/app/actions/founder-actions/check-feedback';
+import { StarRatingInline } from '../../components/star-rating-inline';
 
 type Action = {
   id: string;
@@ -24,6 +25,15 @@ type Action = {
   agent: string;
   dealId: string | null;
   createdAt: Date;
+};
+
+type ReviewLead = {
+  id: string;
+  address: string;
+  postcode: string;
+  leadScore: number;
+  verdict: string;
+  existingRating: number;
 };
 
 const priorityStyles: Record<string, { bg: string; text: string; label: string }> = {
@@ -55,10 +65,19 @@ function timeAgo(date: Date): string {
   return `${days}d ago`;
 }
 
-export function ActionCard({ action }: { action: Action }) {
+const verdictColors: Record<string, string> = {
+  STRONG: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200',
+  VIABLE: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
+  THIN: 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200',
+  PASS: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
+  INSUFFICIENT_DATA: 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200',
+};
+
+export function ActionCard({ action, reviewLeads }: { action: Action; reviewLeads?: ReviewLead[] }) {
   const [expanded, setExpanded] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [showFeedbackWarning, setShowFeedbackWarning] = useState(false);
+  const [localRatings, setLocalRatings] = useState<Record<string, number>>({});
   const style = priorityStyles[action.priority] ?? priorityStyles.medium;
 
   const handleResolve = (resolution: 'completed' | 'dismissed') => {
@@ -123,6 +142,58 @@ export function ActionCard({ action }: { action: Action }) {
           </Button>
         )}
       </div>
+
+      {/* Inline lead raters for review_leads actions */}
+      {action.type === 'review_leads' && reviewLeads && reviewLeads.length > 0 && (
+        <div className="mt-3 space-y-1">
+          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+            Top unrated leads — rate inline or{' '}
+            <Link href="/leads?filter=unrated" className="underline hover:text-foreground">
+              view all
+            </Link>
+          </p>
+          <div className="rounded-lg border divide-y">
+            {reviewLeads.map((lead) => {
+              const rating = localRatings[lead.id] ?? lead.existingRating;
+              return (
+                <div
+                  key={lead.id}
+                  className="flex items-center gap-3 px-3 py-2 text-sm"
+                >
+                  <div className="min-w-0 flex-1">
+                    <Link
+                      href={`/leads/${lead.id}`}
+                      className="font-medium hover:underline truncate block"
+                    >
+                      {lead.address}
+                    </Link>
+                    <p className="text-xs text-muted-foreground">{lead.postcode}</p>
+                  </div>
+                  <span className="font-mono text-xs shrink-0">{lead.leadScore}</span>
+                  <span
+                    className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${
+                      verdictColors[lead.verdict] ?? ''
+                    }`}
+                  >
+                    {lead.verdict}
+                  </span>
+                  <div className="relative shrink-0">
+                    <StarRatingInline
+                      targetType="scout_lead"
+                      targetId={lead.id}
+                      existingRating={rating}
+                      compact
+                      onRated={(r) =>
+                        setLocalRatings((prev) => ({ ...prev, [lead.id]: r }))
+                      }
+                    />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Feedback completion warning */}
       {showFeedbackWarning && (

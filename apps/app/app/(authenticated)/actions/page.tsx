@@ -34,6 +34,36 @@ const ActionsPage = async () => {
       new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
   );
 
+  // For review_leads actions, fetch top 5 unrated leads to surface inline
+  const hasReviewLeads = sorted.some((a) => a.type === 'review_leads');
+  let inlineLeads: {
+    id: string;
+    address: string;
+    postcode: string;
+    leadScore: number;
+    verdict: string;
+    existingRating: number;
+  }[] = [];
+
+  if (hasReviewLeads) {
+    const topLeads = await database.scoutLead.findMany({
+      where: { status: 'new' },
+      orderBy: { leadScore: 'desc' },
+      take: 20,
+      select: { id: true, address: true, postcode: true, leadScore: true, verdict: true },
+    });
+    const leadIds = topLeads.map((l) => l.id);
+    const feedbackRecords = await database.founderFeedback.findMany({
+      where: { targetType: 'scout_lead', targetId: { in: leadIds } },
+      select: { targetId: true, rating: true },
+    });
+    const ratedIds = new Set(feedbackRecords.map((f) => f.targetId));
+    inlineLeads = topLeads
+      .filter((l) => !ratedIds.has(l.id))
+      .slice(0, 5)
+      .map((l) => ({ ...l, verdict: String(l.verdict), existingRating: 0 }));
+  }
+
   // Count by priority for header
   const criticalCount = sorted.filter((a) => a.priority === 'critical').length;
   const highCount = sorted.filter((a) => a.priority === 'high').length;
@@ -85,7 +115,11 @@ const ActionsPage = async () => {
         ) : (
           <div className="space-y-3">
             {sorted.map((action) => (
-              <ActionCard key={action.id} action={action} />
+              <ActionCard
+                key={action.id}
+                action={action}
+                reviewLeads={action.type === 'review_leads' ? inlineLeads : undefined}
+              />
             ))}
           </div>
         )}
