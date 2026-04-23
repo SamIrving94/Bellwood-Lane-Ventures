@@ -73,7 +73,16 @@ enum ActionType {
   review_campaign
   ceo_escalation
   golden_window
+  dispatch_campaign
   general
+}
+
+enum CampaignStatus {
+  draft
+  active
+  paused
+  completed
+  archived
 }
 
 enum ActionPriority {
@@ -101,6 +110,7 @@ enum FeedbackTargetType {
   legal_step
   deal
   founder_action
+  campaign
 }
 
 enum EvalType {
@@ -108,6 +118,7 @@ enum EvalType {
   avm_confidence
   outreach_quality
   deal_quality
+  campaign_targeting
 }
 
 model Deal {
@@ -189,9 +200,14 @@ model ScoutLead {
   // Calendly booking (pre-conversion — once we send the link to a lead)
   calendlyBookingLink String?
 
+  // Targeted campaign
+  campaignId String?
+  campaign   Campaign? @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+
   @@index([status])
   @@index([leadScore])
   @@index([postcode])
+  @@index([campaignId])
 }
 
 model AvmResult {
@@ -278,7 +294,51 @@ model OutreachCampaign {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
+  // Targeted campaign link
+  campaignId String?
+  campaign   Campaign? @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+
   recipients OutreachRecipient[]
+
+  @@index([campaignId])
+}
+
+// ─── Targeted Campaigns (Founder-defined geography + filters) ────
+
+model Campaign {
+  id               String         @id @default(cuid())
+  name             String
+  createdBy        String
+  status           CampaignStatus @default(draft)
+  postcodeArea     String         // e.g. "M1", "B15", "LS6"
+  radiusMiles      Int            @default(3)
+  propertyTypes    String[]       // ["terraced_house", "semi_detached", "flat"]
+  minPricePence    Int?
+  maxPricePence    Int?
+  sellerTypes      String[]       // ["probate", "chain_break", ...]
+  minLeadScore     Int            @default(50)
+  outreachChannels String[]       // ["estate_agents", "solicitors", "direct_mail"]
+  budgetPence      Int?
+  dailyCap         Int            @default(20)
+  targetEndDate    DateTime?
+
+  // Funnel metrics
+  leadsFound     Int @default(0)
+  leadsQualified Int @default(0)
+  outreachSent   Int @default(0)
+  replies        Int @default(0)
+  dealsCreated   Int @default(0)
+
+  launchedAt  DateTime?
+  completedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  scoutLeads        ScoutLead[]
+  outreachCampaigns OutreachCampaign[]
+
+  @@index([status])
+  @@index([postcodeArea])
 }
 
 model OutreachRecipient {

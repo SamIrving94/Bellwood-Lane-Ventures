@@ -62,6 +62,15 @@ const SEED_CONFIGS = {
     followUpDelayDays: [0, 5, 12],
     description: 'Default outreach quality and tone guidelines',
   },
+  campaign_targeting: {
+    areaMatchWeight: 30,
+    priceRangeMatchWeight: 25,
+    sellerTypeMatchWeight: 25,
+    leadScoreFloorWeight: 20,
+    minimumCampaignLeads: 10,
+    maximumDailyOutreach: 50,
+    description: 'Default targeted campaign filter weights and operational caps',
+  },
 } as const;
 
 export async function seedEvalConfigs() {

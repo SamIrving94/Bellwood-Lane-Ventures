@@ -5,7 +5,7 @@ import { database, Prisma } from '@repo/database';
 import { revalidatePath } from 'next/cache';
 
 type SubmitFeedbackInput = {
-  targetType: 'scout_lead' | 'avm_result' | 'outreach_template' | 'outreach_campaign' | 'legal_step' | 'deal' | 'founder_action';
+  targetType: 'scout_lead' | 'avm_result' | 'outreach_template' | 'outreach_campaign' | 'legal_step' | 'deal' | 'founder_action' | 'campaign';
   targetId: string;
   rating: number;
   overrides?: Record<string, unknown>;

@@ -26,6 +26,7 @@ import {
   InboxIcon,
   KanbanIcon,
   MailIcon,
+  MegaphoneIcon,
   ScaleIcon,
   SearchIcon,
   Settings2Icon,
@@ -78,6 +79,11 @@ const data = {
       title: 'Outreach',
       url: '/outreach',
       icon: MailIcon,
+    },
+    {
+      title: 'Campaigns',
+      url: '/campaigns',
+      icon: MegaphoneIcon,
     },
     {
       title: 'Agents',

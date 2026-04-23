@@ -32,6 +32,11 @@ const EVAL_TYPES = [
     label: 'Outreach Quality',
     description: 'Tone guidelines by recipient type, follow-up schedules, max follow-ups',
   },
+  {
+    type: 'campaign_targeting' as const,
+    label: 'Campaign Targeting',
+    description: 'Weights for area, price, seller-type, lead-score match plus min leads and max daily outreach',
+  },
 ];
 
 const EvalsPage = async () => {

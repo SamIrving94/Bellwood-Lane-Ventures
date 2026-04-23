@@ -6,7 +6,7 @@ import { useState, useTransition, useEffect, useRef, useCallback } from 'react';
 import { submitFeedback } from '@/app/actions/feedback/submit';
 
 type FeedbackPanelProps = {
-  targetType: 'scout_lead' | 'avm_result' | 'outreach_template' | 'outreach_campaign' | 'legal_step' | 'deal' | 'founder_action';
+  targetType: 'scout_lead' | 'avm_result' | 'outreach_template' | 'outreach_campaign' | 'legal_step' | 'deal' | 'founder_action' | 'campaign';
   targetId: string;
   title?: string;
   quickMode?: boolean;

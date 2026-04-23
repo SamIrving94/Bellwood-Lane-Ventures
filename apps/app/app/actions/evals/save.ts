@@ -5,7 +5,7 @@ import { database, Prisma } from '@repo/database';
 import { revalidatePath } from 'next/cache';
 
 type SaveEvalInput = {
-  evalType: 'lead_scoring' | 'avm_confidence' | 'outreach_quality' | 'deal_quality';
+  evalType: 'lead_scoring' | 'avm_confidence' | 'outreach_quality' | 'deal_quality' | 'campaign_targeting';
   config: Record<string, unknown>;
   description?: string;
 };
@@ -67,7 +67,7 @@ export async function activateEvalConfig(configId: string) {
 }
 
 // Helper to get the active eval config at runtime
-export async function getActiveEvalConfig(evalType: 'lead_scoring' | 'avm_confidence' | 'outreach_quality' | 'deal_quality') {
+export async function getActiveEvalConfig(evalType: 'lead_scoring' | 'avm_confidence' | 'outreach_quality' | 'deal_quality' | 'campaign_targeting') {
   const config = await database.evalConfig.findFirst({
     where: {
       evalType,
