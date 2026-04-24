@@ -36,10 +36,10 @@ export default async function InstantOfferPage() {
             href="/instant-offer"
             className="font-serif text-xl font-semibold tracking-tight"
           >
-            BELLWOOD
+            BELLWOODS
             <span className="mx-2 inline-block h-px w-8 bg-[#C6A664] align-middle" />
             <span className="text-sm font-normal tracking-widest text-slate-500">
-              VENTURES
+              LANE
             </span>
           </Link>
           <nav className="hidden items-center gap-8 text-sm text-slate-600 md:flex">
@@ -292,7 +292,7 @@ export default async function InstantOfferPage() {
             </h2>
             <p className="mx-auto mt-6 max-w-2xl text-lg text-slate-600">
               When a chain breaks or a distressed seller needs certainty, most
-              agents lose the instruction — and the fee. With Bellwood you
+              agents lose the instruction — and the fee. With Bellwoods Lane you
               earn on every stage of the deal.
             </p>
           </div>
@@ -388,7 +388,7 @@ export default async function InstantOfferPage() {
                 }`}
               >
                 <p className="text-xs uppercase tracking-widest text-[#C6A664]">
-                  Bellwood {t.tier}
+                  Bellwoods Lane {t.tier}
                 </p>
                 <p className="mt-2 text-sm text-white/60">{t.req}</p>
                 <ul className="mt-6 space-y-2 text-sm text-white/90">
@@ -631,7 +631,7 @@ export default async function InstantOfferPage() {
                 a: 'Zero. Not to us, not to agents, not to solicitors (if you use our panel). The offer you see is the amount in your account at completion.',
               },
               {
-                q: 'Who are Bellwood?',
+                q: 'Who are Bellwoods Lane?',
                 a: 'A UK-based cash property buyer. Two named founders with track records. We publish every completed deal anonymously on our methodology page.',
               },
             ].map((item, i) => (
@@ -694,13 +694,13 @@ export default async function InstantOfferPage() {
             </nav>
           </div>
           <p className="mt-10 text-xs leading-relaxed text-slate-500">
-            Bellwood Ventures Ltd is a UK cash property buyer, not an
+            Bellwoods Lane Ltd is a UK cash property buyer, not an
             FCA-authorised firm. We do not provide financial or legal advice.
             Seek independent legal advice before accepting any offer. All
             offers are subject to satisfactory survey and title searches.
           </p>
           <p className="mt-4 text-xs text-slate-400">
-            © {new Date().getFullYear()} Bellwood Ventures Ltd.
+            © {new Date().getFullYear()} Bellwoods Lane Ltd.
           </p>
         </div>
       </footer>

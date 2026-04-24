@@ -646,7 +646,7 @@ function OfferCard({ offer }: { offer: OfferResult }) {
     return (
       <div className="rounded-3xl border border-[#1F6B3A]/30 bg-[#F0FAF3] p-8 text-center">
         <p className="font-serif text-2xl text-[#1F6B3A]">
-          Offer reserved. Welcome to Bellwood.
+          Offer reserved. Welcome to Bellwoods Lane.
         </p>
         <p className="mt-3 text-sm text-slate-700">
           We’ve emailed you the signed offer. Our team will be in touch within

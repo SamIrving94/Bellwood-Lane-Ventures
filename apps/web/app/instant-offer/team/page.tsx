@@ -2,7 +2,7 @@ import Link from 'next/link';
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'The team · Bellwood Ventures',
+  title: 'The team · Bellwoods Lane',
 };
 
 export default function TeamPage() {
@@ -14,10 +14,10 @@ export default function TeamPage() {
             href="/instant-offer"
             className="font-serif text-xl font-semibold tracking-tight"
           >
-            BELLWOOD
+            BELLWOODS
             <span className="mx-2 inline-block h-px w-8 bg-[#C6A664] align-middle" />
             <span className="text-sm font-normal tracking-widest text-slate-500">
-              VENTURES
+              LANE
             </span>
           </Link>
           <Link
@@ -45,13 +45,13 @@ export default function TeamPage() {
         <div className="mt-16 grid grid-cols-1 gap-8 md:grid-cols-2">
           {[
             {
-              name: 'Samir Irving',
+              name: 'Anthony',
               role: 'Founder · Deal pipeline',
-              bio: 'Runs the Bellwood deal engine — sourcing, appraisals, offers, completions. Former [role] with experience across [sector].',
+              bio: 'Runs the Bellwoods Lane deal engine — sourcing, appraisals, offers, completions. Former [role] with experience across [sector].',
               linkedin: '#',
             },
             {
-              name: '[Co-founder]',
+              name: 'Samir Irving',
               role: 'Founder · Capital & operations',
               bio: 'Manages the investor syndicate, capital allocation, and operational excellence. Background in [sector].',
               linkedin: '#',

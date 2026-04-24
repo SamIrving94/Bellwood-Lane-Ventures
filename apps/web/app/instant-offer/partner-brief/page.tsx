@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'Agent Partner Brief · Bellwood Ventures',
+  title: 'Agent Partner Brief · Bellwoods Lane',
   robots: 'noindex',
 };
 
@@ -32,10 +32,10 @@ export default function PartnerBriefPage() {
 
       <header className="border-b-2 border-[#C6A664] pb-6">
         <p className="font-serif text-xl font-semibold tracking-tight">
-          BELLWOOD
+          BELLWOODS
           <span className="mx-2 inline-block h-px w-8 bg-[#C6A664] align-middle" />
           <span className="text-sm font-normal tracking-widest text-slate-500">
-            VENTURES
+            LANE
           </span>
         </p>
         <p className="mt-4 text-xs uppercase tracking-widest text-[#C6A664]">
@@ -48,7 +48,7 @@ export default function PartnerBriefPage() {
 
       <section className="mt-10 space-y-6">
         <p className="text-base leading-relaxed text-slate-700">
-          Bellwood Ventures is a UK direct-to-vendor cash property buyer. We
+          Bellwoods Lane is a UK direct-to-vendor cash property buyer. We
           partner exclusively with estate agents to rescue chain breaks,
           probate sales, repossessions, and problem properties that
           conventional buyers will not touch.
@@ -208,19 +208,19 @@ export default function PartnerBriefPage() {
           Contact
         </p>
         <p className="mt-3 font-serif text-2xl font-semibold">
-          Samir Irving
+          Anthony
         </p>
-        <p className="text-sm text-white/70">Founder · Bellwood Ventures</p>
+        <p className="text-sm text-white/70">Founder · Bellwoods Lane</p>
         <div className="mt-4 grid grid-cols-1 gap-1 text-sm md:grid-cols-2">
-          <p>Email: samir@bellwoodlane.com</p>
+          <p>Email: anthony@bellwoodslane.co.uk</p>
           <p>Phone: +44 (0)&nbsp;[phone]</p>
-          <p>Web: bellwoodlane.com/instant-offer</p>
+          <p>Web: bellwoodslane.co.uk/instant-offer</p>
         </div>
       </section>
 
       <footer className="mt-10 border-t border-slate-200 pt-6 text-xs text-slate-500">
         <p>
-          Bellwood Ventures Ltd is a UK cash property buyer, registered for
+          Bellwoods Lane Ltd is a UK cash property buyer, registered for
           anti-money-laundering supervision with HMRC, a member of The
           Property Ombudsman (TPO) and the National Association of Property
           Buyers (NAPB). Fees disclosed to sellers in writing per National

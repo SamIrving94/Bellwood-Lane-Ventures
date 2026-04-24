@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'Thank You — Bellwood Ventures',
+  title: 'Thank You — Bellwoods Lane',
   description: 'We have received your property details.',
 };
 
@@ -13,17 +13,17 @@ const ThankYouPage = () => {
         Thank you for your submission
       </h1>
       <p className="mt-4 text-gray-600">
-        We&apos;ve received your property details. A member of the Bellwood
+        We&apos;ve received your property details. A member of the Bellwoods Lane
         team will be in touch within <strong>48 hours</strong> with a
         guaranteed cash offer.
       </p>
       <p className="mt-6 text-sm text-gray-500">
         If you need to speak to someone urgently, please email us at{' '}
         <a
-          href="mailto:hello@bellwoodventures.co.uk"
+          href="mailto:anthony@bellwoodslane.co.uk"
           className="font-medium text-gray-900 underline"
         >
-          hello@bellwoodventures.co.uk
+          anthony@bellwoodslane.co.uk
         </a>
       </p>
     </div>

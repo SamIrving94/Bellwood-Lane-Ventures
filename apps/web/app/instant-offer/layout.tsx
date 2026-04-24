@@ -16,11 +16,11 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: 'Get an instant cash offer · Bellwood Ventures',
+  title: 'Get an instant cash offer · Bellwoods Lane',
   description:
     'Legally binding cash property offer in 60 seconds. Completion in 14–28 days. No fees. No fall-throughs.',
   openGraph: {
-    title: 'Sell in 18 days. Cash. Guaranteed. · Bellwood Ventures',
+    title: 'Sell in 18 days. Cash. Guaranteed. · Bellwoods Lane',
     description:
       'Legally binding cash property offer in 60 seconds. Completion in 14–28 days.',
     type: 'website',

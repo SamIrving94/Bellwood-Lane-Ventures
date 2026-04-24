@@ -26,10 +26,10 @@ export default async function LoginPage({
           href="/instant-offer"
           className="font-serif text-xl font-semibold tracking-tight"
         >
-          BELLWOOD
+          BELLWOODS
           <span className="mx-2 inline-block h-px w-8 bg-[#C6A664] align-middle" />
           <span className="text-sm font-normal tracking-widest text-slate-500">
-            VENTURES
+            LANE
           </span>
         </Link>
         <h1 className="mt-10 font-serif text-4xl font-semibold">

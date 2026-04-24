@@ -54,16 +54,16 @@ export async function POST(request: Request) {
   const link = `${origin}/partners/verify?token=${encodeURIComponent(token)}`;
 
   // Send the email (gracefully skips if no Resend token)
-  const subject = 'Your Bellwood partner portal link';
+  const subject = 'Your Bellwoods Lane partner portal link';
   const html = `
     <div style="font-family:Inter,Arial,sans-serif;max-width:560px;margin:0 auto;padding:32px;background:#FAFAF7">
-      <p style="font-family:Georgia,serif;font-size:24px;font-weight:600;color:#0A2540;letter-spacing:-0.02em">BELLWOOD VENTURES</p>
+      <p style="font-family:Georgia,serif;font-size:24px;font-weight:600;color:#0A2540;letter-spacing:-0.02em">BELLWOODS LANE</p>
       <p style="color:#0A1020;font-size:16px;line-height:1.6;margin-top:32px">Hi ${contactName},</p>
-      <p style="color:#0A1020;font-size:16px;line-height:1.6">Click the link below to sign in to your Bellwood agent portal. The link is valid for 15 minutes.</p>
+      <p style="color:#0A1020;font-size:16px;line-height:1.6">Click the link below to sign in to your Bellwoods Lane agent portal. The link is valid for 15 minutes.</p>
       <p style="margin:32px 0"><a href="${link}" style="display:inline-block;background:#C6A664;color:#0A1020;padding:14px 32px;border-radius:999px;text-decoration:none;font-weight:600">Sign in to the portal →</a></p>
       <p style="color:#6B7280;font-size:13px;line-height:1.6">Or paste this link into your browser: <br/><a href="${link}" style="color:#0A2540">${link}</a></p>
       <p style="color:#6B7280;font-size:13px;line-height:1.6;margin-top:40px">Your referral code is <strong style="color:#0A1020">${agent.referralCode}</strong> — any seller who uses it on our instant-offer tool is automatically credited to you.</p>
-      <p style="color:#6B7280;font-size:12px;margin-top:40px;border-top:1px solid #e5e7eb;padding-top:16px">Bellwood Ventures Ltd · NAPB · TPO · HMRC AML supervised</p>
+      <p style="color:#6B7280;font-size:12px;margin-top:40px;border-top:1px solid #e5e7eb;padding-top:16px">Bellwoods Lane Ltd · NAPB · TPO · HMRC AML supervised</p>
     </div>
   `;
 

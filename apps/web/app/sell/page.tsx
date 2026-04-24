@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { SellerForm } from './seller-form';
 
 export const metadata: Metadata = {
-  title: 'Sell Your Property Fast — Bellwood Ventures',
+  title: 'Sell Your Property Fast — Bellwoods Lane',
   description:
     'Get a guaranteed cash offer within 48 hours. No chains, no fees, no hassle. We buy any property in any condition.',
 };

@@ -36,12 +36,12 @@ export async function POST(request: Request) {
     'http://localhost:3001';
   const link = `${origin}/partners/verify?token=${encodeURIComponent(token)}`;
 
-  const subject = 'Your Bellwood portal sign-in link';
+  const subject = 'Your Bellwoods Lane portal sign-in link';
   const html = `
     <div style="font-family:Inter,Arial,sans-serif;max-width:560px;margin:0 auto;padding:32px;background:#FAFAF7">
-      <p style="font-family:Georgia,serif;font-size:24px;font-weight:600;color:#0A2540;letter-spacing:-0.02em">BELLWOOD VENTURES</p>
+      <p style="font-family:Georgia,serif;font-size:24px;font-weight:600;color:#0A2540;letter-spacing:-0.02em">BELLWOODS LANE</p>
       <p style="color:#0A1020;font-size:16px;line-height:1.6;margin-top:32px">Hi ${agent.contactName},</p>
-      <p style="color:#0A1020;font-size:16px;line-height:1.6">Your sign-in link for the Bellwood agent portal. Valid for 15 minutes.</p>
+      <p style="color:#0A1020;font-size:16px;line-height:1.6">Your sign-in link for the Bellwoods Lane agent portal. Valid for 15 minutes.</p>
       <p style="margin:32px 0"><a href="${link}" style="display:inline-block;background:#C6A664;color:#0A1020;padding:14px 32px;border-radius:999px;text-decoration:none;font-weight:600">Sign in →</a></p>
       <p style="color:#6B7280;font-size:13px;line-height:1.6">Or paste: <a href="${link}" style="color:#0A2540">${link}</a></p>
       <p style="color:#6B7280;font-size:12px;margin-top:40px;border-top:1px solid #e5e7eb;padding-top:16px">Didn't request this? You can safely ignore this email.</p>

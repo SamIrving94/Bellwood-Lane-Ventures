@@ -2,7 +2,7 @@ import Link from 'next/link';
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'How we price your property · Bellwood Ventures',
+  title: 'How we price your property · Bellwoods Lane',
   description:
     'Full transparency on how we calculate our cash offers: comps, trend, risk, seller-situation margin, and floor/ceiling.',
 };
@@ -16,10 +16,10 @@ export default function MethodologyPage() {
             href="/instant-offer"
             className="font-serif text-xl font-semibold tracking-tight"
           >
-            BELLWOOD
+            BELLWOODS
             <span className="mx-2 inline-block h-px w-8 bg-[#C6A664] align-middle" />
             <span className="text-sm font-normal tracking-widest text-slate-500">
-              VENTURES
+              LANE
             </span>
           </Link>
           <Link

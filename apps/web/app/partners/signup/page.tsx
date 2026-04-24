@@ -9,10 +9,10 @@ export default function SignupPage() {
           href="/instant-offer"
           className="font-serif text-xl font-semibold tracking-tight"
         >
-          BELLWOOD
+          BELLWOODS
           <span className="mx-2 inline-block h-px w-8 bg-[#C6A664] align-middle" />
           <span className="text-sm font-normal tracking-widest text-slate-500">
-            VENTURES
+            LANE
           </span>
         </Link>
         <p className="mt-8 text-xs uppercase tracking-widest text-[#C6A664]">

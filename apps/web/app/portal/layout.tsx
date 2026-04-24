@@ -18,7 +18,7 @@ const inter = Inter({
 });
 
 export const metadata = {
-  title: 'Agent Portal · Bellwood Ventures',
+  title: 'Agent Portal · Bellwoods Lane',
   robots: 'noindex',
 };
 
@@ -42,10 +42,10 @@ export default async function PortalLayout({
             href="/portal"
             className="font-serif text-lg font-semibold tracking-tight"
           >
-            BELLWOOD
+            BELLWOODS
             <span className="mx-2 inline-block h-px w-6 bg-[#C6A664] align-middle" />
             <span className="text-xs font-normal tracking-widest text-slate-500">
-              PARTNER
+              LANE · PARTNER
             </span>
           </Link>
           <div className="flex items-center gap-6 text-sm">
