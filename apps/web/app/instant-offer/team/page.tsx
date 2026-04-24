@@ -42,18 +42,12 @@ export default function TeamPage() {
           completion.
         </p>
 
-        <div className="mt-16 grid grid-cols-1 gap-8 md:grid-cols-2">
+        <div className="mt-16 grid grid-cols-1 gap-8">
           {[
             {
               name: 'Anthony',
-              role: 'Founder · Deal pipeline',
-              bio: 'Runs the Bellwoods Lane deal engine — sourcing, appraisals, offers, completions. Former [role] with experience across [sector].',
-              linkedin: '#',
-            },
-            {
-              name: 'Samir Irving',
-              role: 'Founder · Capital & operations',
-              bio: 'Manages the investor syndicate, capital allocation, and operational excellence. Background in [sector].',
+              role: 'Founder',
+              bio: 'Runs the Bellwoods Lane deal engine end-to-end — sourcing, appraisals, offers, completions, and capital. Former [role] with experience across [sector].',
               linkedin: '#',
             },
           ].map((p) => (
