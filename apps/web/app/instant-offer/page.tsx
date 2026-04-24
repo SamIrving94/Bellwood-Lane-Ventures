@@ -80,9 +80,14 @@ export default async function InstantOfferPage() {
             Cash. <span className="text-[#C6A664]">Guaranteed.</span>
           </h1>
           <p className="mx-auto mt-8 max-w-2xl text-lg text-slate-600 md:text-xl">
-            Enter a property address. Get a legally binding cash offer in
-            60&nbsp;seconds. Completion in 14–28 days. No fees. No
-            fall-throughs.
+            The UK cash buyer built for estate agents. Instant offer.{' '}
+            <strong className="font-semibold text-[#0A1020]">
+              No re-trade.
+            </strong>{' '}
+            AML handled.{' '}
+            <strong className="font-semibold text-[#0A1020]">
+              Up to 3% + VAT commission protected.
+            </strong>
           </p>
           <div className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row">
             <a
@@ -229,6 +234,207 @@ export default async function InstantOfferPage() {
         </div>
       </section>
 
+      {/* The No Re-Trade Promise */}
+      <section className="border-b border-slate-200/60 bg-[#FAF6EA] px-6 py-24">
+        <div className="mx-auto max-w-4xl">
+          <div className="mb-14 text-center">
+            <p className="mb-3 text-xs uppercase tracking-widest text-[#C6A664]">
+              The one promise other buyers don&apos;t make
+            </p>
+            <h2 className="font-serif text-4xl font-semibold leading-tight md:text-5xl">
+              No re-trade. Ever. In writing.
+            </h2>
+            <p className="mx-auto mt-6 max-w-2xl text-lg text-slate-600">
+              Gazundering — reducing the offer days before completion — is the
+              single biggest complaint estate agents have about cash buyers.
+              We contractually can&apos;t do it.
+            </p>
+          </div>
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+            {[
+              {
+                t: 'Written guarantee',
+                b: 'The price in your offer document is the price at completion. Full stop.',
+              },
+              {
+                t: 'One exception — disclosed',
+                b: 'Only adjustable if a physical survey reveals material issues you did not know about. You have 48 hours to walk away, free.',
+              },
+              {
+                t: 'Audited completion rate',
+                b: 'We publish the percentage of offers we complete without adjustment. No competitor in the UK does.',
+              },
+            ].map((item) => (
+              <div
+                key={item.t}
+                className="rounded-2xl border border-[#C6A664]/30 bg-white p-6 shadow-sm"
+              >
+                <p className="font-serif text-lg font-semibold">{item.t}</p>
+                <p className="mt-3 text-sm text-slate-600">{item.b}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* How agents earn */}
+      <section className="border-b border-slate-200/60 px-6 py-24">
+        <div className="mx-auto max-w-5xl">
+          <div className="mb-16 text-center">
+            <p className="mb-3 text-xs uppercase tracking-widest text-[#C6A664]">
+              For estate agents
+            </p>
+            <h2 className="font-serif text-4xl font-semibold md:text-5xl">
+              Earn up to 3% + VAT per referral.
+            </h2>
+            <p className="mx-auto mt-6 max-w-2xl text-lg text-slate-600">
+              When a chain breaks or a distressed seller needs certainty, most
+              agents lose the instruction — and the fee. With Bellwood you
+              earn on every stage of the deal.
+            </p>
+          </div>
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+            {[
+              {
+                pct: '1%',
+                t: 'Sale fee',
+                b: 'The standard seller-side commission you would have earned on the open market — we pay it.',
+              },
+              {
+                pct: '1%',
+                t: 'Introducer fee',
+                b: 'Paid to you on top of the sale fee, on completion of our purchase from your seller.',
+              },
+              {
+                pct: '1%',
+                t: 'Resale instruction',
+                b: 'When we resell, you list it. You earn again — with no chain risk the second time.',
+              },
+            ].map((s) => (
+              <div
+                key={s.t}
+                className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm"
+              >
+                <p className="font-serif text-5xl font-semibold text-[#C6A664]">
+                  {s.pct}
+                </p>
+                <p className="mt-2 text-xs uppercase tracking-widest text-slate-500">
+                  + VAT
+                </p>
+                <p className="mt-4 font-serif text-xl font-semibold">{s.t}</p>
+                <p className="mt-2 text-sm text-slate-600">{s.b}</p>
+              </div>
+            ))}
+          </div>
+          <p className="mx-auto mt-10 max-w-2xl text-center text-sm text-slate-500">
+            All fees disclosed to the seller in writing per National Trading
+            Standards guidance. No hidden structure.
+          </p>
+        </div>
+      </section>
+
+      {/* Partnership tiers */}
+      <section className="border-b border-slate-200/60 bg-[#0A2540] px-6 py-24 text-white">
+        <div className="mx-auto max-w-5xl">
+          <div className="mb-14 text-center">
+            <p className="mb-3 text-xs uppercase tracking-widest text-[#C6A664]">
+              Partnership tiers
+            </p>
+            <h2 className="font-serif text-4xl font-semibold md:text-5xl">
+              The more you refer, the more we do.
+            </h2>
+          </div>
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+            {[
+              {
+                tier: 'Partner',
+                req: 'First referral completed',
+                perks: [
+                  'Access to the agent portal',
+                  '24-hour offer SLA',
+                  'Standard fee schedule',
+                ],
+              },
+              {
+                tier: 'Preferred',
+                req: '3+ completions',
+                perks: [
+                  '8-hour priority offer SLA',
+                  'Co-branded landing page',
+                  'Featured on our partner wall',
+                ],
+                highlight: true,
+              },
+              {
+                tier: 'Elite',
+                req: '10+ completions or 3 in 90 days',
+                perks: [
+                  'Dedicated relationship manager',
+                  'CPD-accredited training sessions',
+                  'Monthly league-table visibility',
+                  'Case study features',
+                ],
+              },
+            ].map((t) => (
+              <div
+                key={t.tier}
+                className={`rounded-2xl p-8 ${
+                  t.highlight
+                    ? 'border border-[#C6A664] bg-white/5 shadow-lg shadow-[#C6A664]/10'
+                    : 'border border-white/10 bg-white/[0.02]'
+                }`}
+              >
+                <p className="text-xs uppercase tracking-widest text-[#C6A664]">
+                  Bellwood {t.tier}
+                </p>
+                <p className="mt-2 text-sm text-white/60">{t.req}</p>
+                <ul className="mt-6 space-y-2 text-sm text-white/90">
+                  {t.perks.map((p) => (
+                    <li key={p} className="flex items-start gap-2">
+                      <span className="mt-1.5 block h-1 w-1 rounded-full bg-[#C6A664]" />
+                      <span>{p}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Either outcome */}
+      <section className="border-b border-slate-200/60 px-6 py-24">
+        <div className="mx-auto max-w-3xl text-center">
+          <p className="mb-3 text-xs uppercase tracking-widest text-[#C6A664]">
+            Either outcome reward
+          </p>
+          <h2 className="font-serif text-4xl font-semibold leading-tight md:text-5xl">
+            You earn whether the seller takes our offer or not.
+          </h2>
+          <p className="mt-6 text-lg text-slate-600">
+            If the seller decides open-market is the right route, we instruct
+            you to list the property on standard commission. No wasted
+            referral. No awkward conversation with your client.
+          </p>
+          <div className="mt-10 grid grid-cols-1 gap-4 text-left md:grid-cols-2">
+            <div className="rounded-xl bg-[#FAF6EA] p-5 text-sm text-slate-700">
+              <p className="font-semibold">If they take the cash offer</p>
+              <p className="mt-2 text-slate-600">
+                You earn the full 3% + VAT stack across our purchase and
+                resale.
+              </p>
+            </div>
+            <div className="rounded-xl bg-white p-5 text-sm text-slate-700 shadow-sm ring-1 ring-slate-200">
+              <p className="font-semibold">If they choose open-market</p>
+              <p className="mt-2 text-slate-600">
+                We hand you the listing on standard terms. You earn your
+                normal commission — with a warm lead we introduced.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Split audience */}
       <section className="border-b border-slate-200/60 px-6 py-24">
         <div className="mx-auto max-w-5xl">
@@ -238,10 +444,10 @@ export default async function InstantOfferPage() {
                 eyebrow: 'For estate agents',
                 title: 'Your chain-break rescue tool.',
                 bullets: [
-                  'Keep your full commission',
+                  'Up to 3% + VAT commission stack',
                   'Show your client a real offer on the call',
                   'Completion in weeks, not months',
-                  'Transparent, auditable pricing',
+                  'AML handled end-to-end — we give you a compliance receipt',
                 ],
               },
               {
@@ -315,8 +521,16 @@ export default async function InstantOfferPage() {
                 body: 'We cover your solicitor, or you use ours. Your choice.',
               },
               {
+                title: 'AML compliance receipt',
+                body: 'We run full KYC and source-of-funds checks on every seller. You get a signed receipt for your AML file — HMRC-ready.',
+              },
+              {
                 title: 'Completion-or-compensation',
                 body: 'If we fall through on our side, we compensate your costs.',
+              },
+              {
+                title: 'NAPB · TPO · HMRC registered',
+                body: 'Members of the National Association of Property Buyers, The Property Ombudsman, and HMRC-registered for anti-money-laundering supervision.',
               },
             ].map((card) => (
               <div
