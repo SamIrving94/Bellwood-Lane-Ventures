@@ -506,3 +506,89 @@ model AuctionLot {
   @@index([auctionDate])
   @@index([postcode])
 }
+
+enum QuoteStatus {
+  draft
+  processing
+  quoted
+  accepted
+  declined
+  expired
+  converted_to_deal
+}
+
+enum QuoteRole {
+  agent
+  seller
+  solicitor
+  other
+}
+
+model QuoteRequest {
+  id              String      @id @default(cuid())
+  source          String      // "public_web", "agent_portal", "api"
+  referralCode    String?
+  contactName     String
+  contactEmail    String
+  contactPhone    String?
+  role            QuoteRole
+  firmName        String?
+  address         String
+  postcode        String
+  propertyType    String?
+  bedrooms        Int?
+  condition       Int?        // 1-10
+  askingPricePence Int?
+  sellerSituation String?     // probate / chain_break / etc
+  urgencyDays     Int?
+  notes           String?     @db.Text
+  chatTranscript  Json?
+  status          QuoteStatus @default(draft)
+  offerId         String?     @unique
+  offer           QuoteOffer? @relation(fields: [offerId], references: [id])
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  @@index([status])
+  @@index([postcode])
+  @@index([referralCode])
+}
+
+model QuoteOffer {
+  id                           String        @id @default(cuid())
+  estimatedMarketValueMinPence Int
+  estimatedMarketValueMaxPence Int
+  offerPence                   Int
+  offerPercentOfAvm            Float
+  confidenceScore              Float
+  completionDays               Int
+  reasoning                    Json
+  lockedUntil                  DateTime
+  pdfUrl                       String?
+  acceptedAt                   DateTime?
+  quoteRequest                 QuoteRequest?
+  createdAt                    DateTime      @default(now())
+}
+
+model EstateAgentContact {
+  id                    String    @id @default(cuid())
+  firmName              String
+  contactName           String?
+  email                 String?   @unique
+  phone                 String?
+  address               String?
+  postcode              String?
+  rightmoveListingCount Int?
+  googleRating          Float?
+  referralCode          String?   @unique
+  outreachSent          Boolean   @default(false)
+  lastOutreachAt        DateTime?
+  lastClickAt           DateTime?
+  quotesRequested       Int       @default(0)
+  dealsCompleted        Int       @default(0)
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@index([postcode])
+  @@index([referralCode])
+}

@@ -13,6 +13,7 @@ export function createBridge() {
     authStrategy: new LocalAuth({ dataPath: DATA_DIR }),
     puppeteer: {
       args: ['--no-sandbox', '--disable-setuid-sandbox'],
+      executablePath: process.env.CHROME_PATH || undefined,
     },
   });
 
