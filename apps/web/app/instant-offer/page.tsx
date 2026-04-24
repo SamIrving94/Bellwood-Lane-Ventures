@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { Suspense } from 'react';
 import { database } from '@repo/database';
 import { ChatFlow } from './components/chat-flow';
 
@@ -53,6 +54,12 @@ export default async function InstantOfferPage() {
             </Link>
             <Link href="/instant-offer/team" className="hover:text-[#0A2540]">
               Team
+            </Link>
+            <Link
+              href="/partners/login"
+              className="hover:text-[#0A2540]"
+            >
+              Partner sign-in
             </Link>
             <a
               href="#chat"
@@ -162,7 +169,9 @@ export default async function InstantOfferPage() {
               Takes 60 seconds. Real offer, not an estimate.
             </p>
           </div>
-          <ChatFlow />
+          <Suspense fallback={<div className="h-96" />}>
+            <ChatFlow />
+          </Suspense>
         </div>
       </section>
 
@@ -398,6 +407,37 @@ export default async function InstantOfferPage() {
                 </ul>
               </div>
             ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Become a partner CTA */}
+      <section className="border-b border-slate-200/60 bg-[#FAF6EA] px-6 py-20">
+        <div className="mx-auto max-w-3xl text-center">
+          <p className="mb-3 text-xs uppercase tracking-widest text-[#C6A664]">
+            Partner application
+          </p>
+          <h2 className="font-serif text-4xl font-semibold leading-tight">
+            Start referring in 60 seconds.
+          </h2>
+          <p className="mx-auto mt-5 max-w-xl text-slate-600">
+            No contract. No signup fee. No minimums. Create your partner
+            account, get your referral link, and start earning on your
+            chain-break and distressed deals today.
+          </p>
+          <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
+            <Link
+              href="/partners/signup"
+              className="inline-flex items-center gap-2 rounded-full bg-[#C6A664] px-8 py-3 text-sm font-medium text-[#0A1020] transition hover:bg-[#b08f52]"
+            >
+              Create partner account →
+            </Link>
+            <Link
+              href="/partners/login"
+              className="inline-flex items-center gap-2 rounded-full border border-slate-300 px-8 py-3 text-sm text-slate-700 transition hover:border-slate-400"
+            >
+              I already have an account
+            </Link>
           </div>
         </div>
       </section>

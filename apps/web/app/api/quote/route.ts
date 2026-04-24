@@ -52,6 +52,7 @@ const InputSchema = z.object({
   contactName: z.string().min(1),
   contactEmail: z.string().email(),
   contactPhone: z.string().optional(),
+  referralCode: z.string().optional(),
 });
 
 function mapPropertyType(
@@ -107,7 +108,8 @@ export async function POST(request: Request) {
   try {
     quoteRequest = await database.quoteRequest.create({
       data: {
-        source: 'public_web',
+        source: input.referralCode ? 'agent_portal' : 'public_web',
+        referralCode: input.referralCode ? input.referralCode.toUpperCase() : undefined,
         contactName: input.contactName,
         contactEmail: input.contactEmail,
         contactPhone: input.contactPhone,
@@ -124,6 +126,18 @@ export async function POST(request: Request) {
         status: 'processing',
       },
     });
+
+    // Increment agent's totalReferrals counter (best-effort)
+    if (input.referralCode) {
+      try {
+        await database.agentAccount.update({
+          where: { referralCode: input.referralCode.toUpperCase() },
+          data: { totalReferrals: { increment: 1 } },
+        });
+      } catch {
+        // Referral code may not match an agent — non-fatal
+      }
+    }
   } catch (err) {
     console.error('[quote] DB create failed', err);
     return NextResponse.json(

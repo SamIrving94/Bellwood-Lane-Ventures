@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import { useSearchParams } from 'next/navigation';
 
 type Step =
   | 'address'
@@ -160,6 +161,8 @@ function formatGBP(pence: number) {
 }
 
 export function ChatFlow() {
+  const searchParams = useSearchParams();
+  const referralCode = searchParams?.get('ref') || undefined;
   const [step, setStep] = useState<Step>('address');
   const [state, setState] = useState<ChatState>({
     address: '',
@@ -301,6 +304,7 @@ export function ChatFlow() {
           contactName: name,
           contactEmail: email,
           contactPhone: phone,
+          referralCode,
         }),
       });
       const data = await res.json();

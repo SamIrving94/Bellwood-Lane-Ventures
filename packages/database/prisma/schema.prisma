@@ -570,6 +570,24 @@ model QuoteOffer {
   createdAt                    DateTime      @default(now())
 }
 
+model AgentAccount {
+  id             String    @id @default(cuid())
+  email          String    @unique
+  contactName    String
+  firmName       String
+  phone          String?
+  postcode       String?
+  referralCode   String    @unique
+  tier           String    @default("partner") // partner | preferred | elite
+  totalReferrals Int       @default(0)
+  totalDeals     Int       @default(0)
+  lastLoginAt    DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@index([referralCode])
+}
+
 model EstateAgentContact {
   id                    String    @id @default(cuid())
   firmName              String
