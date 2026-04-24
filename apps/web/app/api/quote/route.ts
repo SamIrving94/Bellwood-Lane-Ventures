@@ -6,6 +6,7 @@ import {
   type InstantOfferSituation,
 } from '@repo/instant-offer';
 import type { PropertyType } from '@repo/valuation';
+import { generateReferralCode } from '@/app/partners/_lib/auth';
 
 // Simple in-memory rate limit: 10 requests per IP per hour
 const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
@@ -105,6 +106,7 @@ export async function POST(request: Request) {
 
   // Create QuoteRequest with processing status
   let quoteRequest;
+  let autoCreatedAgent: { referralCode: string; contactName: string; firmName: string } | null = null;
   try {
     quoteRequest = await database.quoteRequest.create({
       data: {
@@ -136,6 +138,61 @@ export async function POST(request: Request) {
         });
       } catch {
         // Referral code may not match an agent — non-fatal
+      }
+    }
+
+    // Silent auto-account creation for agents (progressive disclosure):
+    // if the submitter picked role=agent with firm + email and isn't already
+    // linked to a referral code, lazy-create an AgentAccount so we have
+    // something to credit future referrals against.
+    if (
+      input.role === 'agent' &&
+      input.firmName &&
+      input.contactEmail &&
+      !input.referralCode
+    ) {
+      try {
+        const existing = await database.agentAccount.findUnique({
+          where: { email: input.contactEmail },
+        });
+        if (existing) {
+          autoCreatedAgent = existing;
+          // Attribute this quote to their existing code
+          await database.quoteRequest.update({
+            where: { id: quoteRequest.id },
+            data: { referralCode: existing.referralCode },
+          });
+          await database.agentAccount.update({
+            where: { id: existing.id },
+            data: { totalReferrals: { increment: 1 } },
+          });
+        } else {
+          // Find a unique referralCode
+          let code = generateReferralCode(input.firmName);
+          for (let i = 0; i < 5; i++) {
+            const clash = await database.agentAccount.findUnique({
+              where: { referralCode: code },
+            });
+            if (!clash) break;
+            code = generateReferralCode(input.firmName);
+          }
+          autoCreatedAgent = await database.agentAccount.create({
+            data: {
+              email: input.contactEmail,
+              contactName: input.contactName,
+              firmName: input.firmName,
+              phone: input.contactPhone,
+              referralCode: code,
+              totalReferrals: 1,
+            },
+          });
+          await database.quoteRequest.update({
+            where: { id: quoteRequest.id },
+            data: { referralCode: code },
+          });
+        }
+      } catch (err) {
+        console.warn('[quote] auto-create agent account failed', err);
       }
     }
   } catch (err) {
@@ -192,6 +249,13 @@ export async function POST(request: Request) {
       reasoning: offer.reasoning,
       lockedUntil: offer.lockedUntil.toISOString(),
       requiresReview: offer.requiresReview,
+      agentAccount: autoCreatedAgent
+        ? {
+            referralCode: autoCreatedAgent.referralCode,
+            contactName: autoCreatedAgent.contactName,
+            firmName: autoCreatedAgent.firmName,
+          }
+        : null,
     });
   } catch (err) {
     console.error('[quote] offer engine failed', err);

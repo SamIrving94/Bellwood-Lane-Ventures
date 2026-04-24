@@ -16,14 +16,16 @@ export default function SignupPage() {
           </span>
         </Link>
         <p className="mt-8 text-xs uppercase tracking-widest text-[#C6A664]">
-          Agent partner signup
+          Pre-register your firm
         </p>
         <h1 className="mt-2 font-serif text-4xl font-semibold leading-tight">
-          Join the Bellwood partner programme.
+          Grab your referral code early.
         </h1>
         <p className="mt-4 text-slate-600">
-          Earn up to <strong>3% + VAT</strong> per referral. Real portal, real
-          commission tracking, real completions.
+          You don&apos;t have to sign up to use our instant-offer tool — we
+          auto-create your code when you submit your first property. But if
+          you want a code ready to share right now, pre-register here. Up to{' '}
+          <strong>3% + VAT</strong> per referral.
         </p>
       </div>
 

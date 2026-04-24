@@ -33,10 +33,12 @@ export default async function LoginPage({
           </span>
         </Link>
         <h1 className="mt-10 font-serif text-4xl font-semibold">
-          Sign in to the partner portal.
+          Claim your partner dashboard.
         </h1>
         <p className="mt-3 text-slate-600">
-          We&apos;ll email you a magic link.
+          Already used our instant-offer tool as an agent? Your account is
+          already there. Enter your work email — we&apos;ll send you a
+          one-click sign-in link.
         </p>
       </div>
 

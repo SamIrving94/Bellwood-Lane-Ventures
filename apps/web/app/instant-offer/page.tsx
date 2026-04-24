@@ -55,12 +55,6 @@ export default async function InstantOfferPage() {
             <Link href="/instant-offer/team" className="hover:text-[#0A2540]">
               Team
             </Link>
-            <Link
-              href="/partners/login"
-              className="hover:text-[#0A2540]"
-            >
-              Partner sign-in
-            </Link>
             <a
               href="#chat"
               className="rounded-full bg-[#0A2540] px-5 py-2 text-white transition hover:bg-[#13365c]"
@@ -411,32 +405,34 @@ export default async function InstantOfferPage() {
         </div>
       </section>
 
-      {/* Become a partner CTA */}
-      <section className="border-b border-slate-200/60 bg-[#FAF6EA] px-6 py-20">
+      {/* Agents — no signup needed */}
+      <section className="border-b border-slate-200/60 bg-[#FAF6EA] px-6 py-16">
         <div className="mx-auto max-w-3xl text-center">
           <p className="mb-3 text-xs uppercase tracking-widest text-[#C6A664]">
-            Partner application
+            For estate agents
           </p>
-          <h2 className="font-serif text-4xl font-semibold leading-tight">
-            Start referring in 60 seconds.
+          <h2 className="font-serif text-3xl font-semibold leading-tight md:text-4xl">
+            No signup. Just start referring.
           </h2>
           <p className="mx-auto mt-5 max-w-xl text-slate-600">
-            No contract. No signup fee. No minimums. Create your partner
-            account, get your referral link, and start earning on your
-            chain-break and distressed deals today.
+            When you submit a property through the tool above as an agent,
+            we auto-create your referral code on the spot and show it on
+            the offer card. Bookmark it, share it with sellers, and we
+            credit every introduction to you. The dashboard is optional.
           </p>
-          <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
-            <Link
-              href="/partners/signup"
-              className="inline-flex items-center gap-2 rounded-full bg-[#C6A664] px-8 py-3 text-sm font-medium text-[#0A1020] transition hover:bg-[#b08f52]"
+          <div className="mt-8 flex items-center justify-center gap-4 text-sm">
+            <a
+              href="#chat"
+              className="font-medium text-[#0A2540] underline underline-offset-4 hover:text-[#C6A664]"
             >
-              Create partner account →
-            </Link>
+              Get an instant offer now →
+            </a>
+            <span className="text-slate-400">·</span>
             <Link
               href="/partners/login"
-              className="inline-flex items-center gap-2 rounded-full border border-slate-300 px-8 py-3 text-sm text-slate-700 transition hover:border-slate-400"
+              className="text-slate-500 underline underline-offset-4 hover:text-[#0A2540]"
             >
-              I already have an account
+              Already have an account?
             </Link>
           </div>
         </div>

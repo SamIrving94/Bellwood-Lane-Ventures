@@ -45,6 +45,11 @@ type OfferResult = {
   reasoning: string[];
   lockedUntil: string;
   requiresReview: boolean;
+  agentAccount?: {
+    referralCode: string;
+    contactName: string;
+    firmName: string;
+  } | null;
 };
 
 const PROPERTY_TYPES = [
@@ -726,6 +731,83 @@ function OfferCard({ offer }: { offer: OfferResult }) {
           Email me this offer
         </button>
       </div>
+
+      {offer.agentAccount && (
+        <AgentReferralCard account={offer.agentAccount} />
+      )}
+    </div>
+  );
+}
+
+function AgentReferralCard({
+  account,
+}: {
+  account: { referralCode: string; contactName: string; firmName: string };
+}) {
+  const [copied, setCopied] = useState(false);
+  const origin =
+    typeof window !== 'undefined' ? window.location.origin : '';
+  const link = `${origin}/partners/${account.referralCode}`;
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(link);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      /* ignore */
+    }
+  };
+
+  return (
+    <div className="mt-6 rounded-2xl border-2 border-[#C6A664]/40 bg-[#FAF6EA] p-6">
+      <div className="flex items-start gap-3">
+        <div className="mt-0.5 text-2xl">🎁</div>
+        <div className="flex-1">
+          <p className="font-serif text-lg font-semibold text-[#0A1020]">
+            You just earned commission on this referral.
+          </p>
+          <p className="mt-1 text-sm text-slate-700">
+            Every seller you send to the link below is credited to{' '}
+            <strong>{account.firmName}</strong> automatically. No signup.
+            Just bookmark and share.
+          </p>
+        </div>
+      </div>
+
+      <div className="mt-5 rounded-xl bg-white p-4 ring-1 ring-slate-200">
+        <p className="text-xs uppercase tracking-widest text-slate-500">
+          Your personal referral link
+        </p>
+        <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-center">
+          <input
+            readOnly
+            value={link}
+            className="flex-1 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 font-mono text-xs text-[#0A2540]"
+          />
+          <button
+            type="button"
+            onClick={handleCopy}
+            className="rounded-lg bg-[#0A2540] px-4 py-2 text-xs font-medium text-white transition hover:bg-[#13365c]"
+          >
+            {copied ? 'Copied ✓' : 'Copy link'}
+          </button>
+        </div>
+        <p className="mt-3 text-xs text-slate-500">
+          Referral code:{' '}
+          <span className="font-mono font-semibold text-[#0A2540]">
+            {account.referralCode}
+          </span>
+        </p>
+      </div>
+
+      <a
+        href="/partners/login"
+        className="mt-4 inline-block text-xs text-slate-600 underline underline-offset-4 hover:text-[#C6A664]"
+      >
+        Want a full dashboard of your referrals, deal stages, and
+        commissions? Claim your account →
+      </a>
     </div>
   );
 }
