@@ -166,20 +166,31 @@ function formatGBP(pence: number) {
   return `£${Math.round(pence / 100).toLocaleString('en-GB')}`;
 }
 
-export function ChatFlow() {
+type ChatFlowProps = {
+  /** Pre-set the role so the role question is skipped. */
+  defaultRole?: 'agent' | 'seller';
+};
+
+export function ChatFlow({ defaultRole }: ChatFlowProps = {}) {
   const searchParams = useSearchParams();
   const referralCode = searchParams?.get('ref') || undefined;
   const [step, setStep] = useState<Step>('address');
   const [state, setState] = useState<ChatState>({
     address: '',
     postcode: '',
+    role: defaultRole,
     contactName: '',
     contactEmail: '',
     contactPhone: '',
   });
+  const greeting = defaultRole === 'agent'
+    ? "Let's start with the property — what's the address?"
+    : defaultRole === 'seller'
+      ? "Welcome — what's the property address?"
+      : "Hi — what's the property address?";
   const [history, setHistory] = useState<
     { from: 'bot' | 'user'; text: string }[]
-  >([{ from: 'bot', text: 'Hi — what’s the property address?' }]);
+  >([{ from: 'bot', text: greeting }]);
   const [addressInput, setAddressInput] = useState('');
   const [postcodeInput, setPostcodeInput] = useState('');
   const [askingInput, setAskingInput] = useState('');
@@ -227,7 +238,15 @@ export function ChatFlow() {
   const handleBedrooms = (v: string | number, label: string) => {
     setState((s) => ({ ...s, bedrooms: Number(v) }));
     pushUser(label);
-    advance('role', 'Are you the agent, the seller, or someone else?');
+    // If the audience is pre-set (came from /agents or /sell), skip the
+    // role question.
+    if (defaultRole === 'agent') {
+      advance('firm', 'Which firm are you with?');
+    } else if (defaultRole === 'seller') {
+      advance('situation', "What's the seller's situation?");
+    } else {
+      advance('role', 'Are you the agent, the seller, or someone else?');
+    }
   };
 
   const handleRole = (v: string | number, label: string) => {
