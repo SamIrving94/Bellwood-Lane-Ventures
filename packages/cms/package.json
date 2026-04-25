@@ -3,9 +3,9 @@
   "version": "0.0.0",
   "private": true,
   "scripts": {
-    "dev": "basehub dev",
-    "build": "basehub build",
-    "analyze": "basehub",
+    "dev": "echo 'cms package stubbed — basehub disabled' && exit 0",
+    "build": "echo 'cms package stubbed — basehub disabled' && exit 0",
+    "analyze": "echo 'cms package stubbed — basehub disabled' && exit 0",
     "clean": "git clean -xdf .cache .turbo dist node_modules",
     "typecheck": "tsc --noEmit --emitDeclarationOnly false"
   },
