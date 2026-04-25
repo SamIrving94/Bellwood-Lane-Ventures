@@ -1,3 +1,4 @@
-import { initializeSentry } from '@repo/observability/instrumentation';
-
-export const register = initializeSentry();
+// Sentry instrumentation disabled — see next.config.ts.
+export function register() {
+  // no-op
+}

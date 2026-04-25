@@ -1,3 +1,5 @@
-import { initializeSentry } from '@repo/observability/instrumentation';
-
-export const register = initializeSentry();
+// Sentry instrumentation disabled — see next.config.ts. Re-enable on a
+// paid Vercel plan that allows larger lambda functions.
+export function register() {
+  // no-op
+}
