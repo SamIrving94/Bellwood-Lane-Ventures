@@ -2,20 +2,14 @@
 
 import { Button } from '@repo/design-system/components/ui/button';
 import { fonts } from '@repo/design-system/lib/fonts';
-import { captureException } from '@sentry/nextjs';
 import type NextError from 'next/error';
-import { useEffect } from 'react';
 
 type GlobalErrorProperties = {
   readonly error: NextError & { digest?: string };
   readonly reset: () => void;
 };
 
-const GlobalError = ({ error, reset }: GlobalErrorProperties) => {
-  useEffect(() => {
-    captureException(error);
-  }, [error]);
-
+const GlobalError = ({ error: _error, reset }: GlobalErrorProperties) => {
   return (
     <html lang="en" className={fonts}>
       <body>
