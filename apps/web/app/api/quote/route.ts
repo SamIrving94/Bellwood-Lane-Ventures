@@ -7,6 +7,7 @@ import {
 } from '@repo/instant-offer';
 import type { PropertyType } from '@repo/valuation';
 import { generateReferralCode } from '@/app/partners/_lib/auth';
+import { recordDealUpdate } from '@repo/deal-updates';
 
 // Simple in-memory rate limit: 10 requests per IP per hour
 const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
@@ -238,6 +239,31 @@ export async function POST(request: Request) {
       },
     });
 
+    // Record the offer event + dispatch transparent emails to all parties.
+    // Best-effort — never block the response.
+    let trackUrl: string | null = null;
+    try {
+      const recorded = await recordDealUpdate({
+        quoteRequestId: quoteRequest.id,
+        kind: 'offer_sent',
+        title: offer.requiresReview
+          ? 'Indicative offer ready — awaiting founder review'
+          : 'Cash offer issued',
+        detail: offer.requiresReview
+          ? 'A senior member of our team is reviewing the inputs and will confirm a binding offer within 2 hours.'
+          : `We can complete in ${offer.completionDays} days. The offer is locked, in writing, until ${offer.lockedUntil.toLocaleString('en-GB', { dateStyle: 'long', timeStyle: 'short' })}.`,
+        metadata: {
+          offerPence: offer.offerPence,
+          offerPercentOfAvm: offer.offerPercentOfAvm,
+          confidenceScore: offer.confidenceScore,
+          completionDays: offer.completionDays,
+        },
+      });
+      trackUrl = recorded.trackUrl;
+    } catch (err) {
+      console.warn('[quote] deal-update record failed (non-fatal)', err);
+    }
+
     return NextResponse.json({
       quoteId: quoteRequest.id,
       estimatedMarketValueMinPence: offer.estimatedMarketValueMinPence,
@@ -249,6 +275,7 @@ export async function POST(request: Request) {
       reasoning: offer.reasoning,
       lockedUntil: offer.lockedUntil.toISOString(),
       requiresReview: offer.requiresReview,
+      trackUrl,
       agentAccount: autoCreatedAgent
         ? {
             referralCode: autoCreatedAgent.referralCode,

@@ -45,6 +45,7 @@ type OfferResult = {
   reasoning: string[];
   lockedUntil: string;
   requiresReview: boolean;
+  trackUrl?: string | null;
   agentAccount?: {
     referralCode: string;
     contactName: string;
@@ -733,6 +734,26 @@ function OfferCard({ offer }: { offer: OfferResult }) {
           View certificate
         </a>
       </div>
+
+      {offer.trackUrl && (
+        <div className="mt-5 rounded-xl border border-slate-200 bg-[#FAFAF7] p-4">
+          <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-[#C6A664]">
+            Live timeline
+          </p>
+          <p className="mt-2 text-sm text-slate-700">
+            Bookmark this URL — every party in the chain sees the same
+            updates here, no login required.
+          </p>
+          <a
+            href={offer.trackUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-2 inline-block break-all font-mono text-xs text-[#0A2540] underline underline-offset-4"
+          >
+            {offer.trackUrl}
+          </a>
+        </div>
+      )}
 
       {offer.agentAccount && (
         <AgentReferralCard account={offer.agentAccount} />

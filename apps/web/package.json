@@ -15,6 +15,7 @@
     "@repo/cms": "workspace:*",
     "@repo/design-system": "workspace:*",
     "@repo/database": "workspace:*",
+    "@repo/deal-updates": "workspace:*",
     "@repo/email": "workspace:*",
     "@repo/instant-offer": "workspace:*",
     "@repo/property-data": "workspace:*",

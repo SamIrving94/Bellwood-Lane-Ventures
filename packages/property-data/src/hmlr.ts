@@ -9,8 +9,10 @@
 
 import { z } from 'zod';
 
+// HMLR Price Paid linked-data endpoint. Returns paginated transaction
+// records; we use _pageSize / _page rather than _limit.
 const PPD_BASE =
-  'https://landregistry.data.gov.uk/linked-data/transaction-history.json';
+  'https://landregistry.data.gov.uk/data/ppi/transaction-record.json';
 
 const REQUEST_TIMEOUT_MS = 8_000;
 
@@ -81,6 +83,37 @@ export function calcAvgPrice(transactions: PpdTransaction[]): number | null {
 }
 
 // ---------------------------------------------------------------------------
+// Linked-data helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * HMLR's linked-data API returns enums as either:
+ *   - a string (older endpoints)
+ *   - { prefLabel: 'Leasehold' }
+ *   - { prefLabel: [{ _value: 'Leasehold', _lang: 'en' }] }
+ * This normaliser handles all three, returning a lower-case string.
+ */
+function extractLinkedDataValue(raw: unknown): string | null {
+  if (raw == null) return null;
+  if (typeof raw === 'string') return raw.toLowerCase();
+
+  const obj = raw as Record<string, unknown>;
+  const label = obj.prefLabel ?? obj.label;
+  if (typeof label === 'string') return label.toLowerCase();
+  if (Array.isArray(label)) {
+    for (const entry of label) {
+      if (entry && typeof entry === 'object') {
+        const v = (entry as Record<string, unknown>)._value;
+        if (typeof v === 'string') return v.toLowerCase();
+      }
+      if (typeof entry === 'string') return entry.toLowerCase();
+    }
+  }
+  if (typeof obj._value === 'string') return (obj._value as string).toLowerCase();
+  return null;
+}
+
+// ---------------------------------------------------------------------------
 // Live fetch
 // ---------------------------------------------------------------------------
 
@@ -93,7 +126,7 @@ async function fetchPricePaidLive(
     'propertyAddress.postcode',
     postcode.toUpperCase().trim()
   );
-  url.searchParams.set('_limit', String(limit));
+  url.searchParams.set('_pageSize', String(limit));
   url.searchParams.set('_sort', '-transactionDate');
 
   const controller = new AbortController();
@@ -126,17 +159,12 @@ async function fetchPricePaidLive(
       (t.transactionDate as string | undefined) ??
       (t.date as string | undefined) ??
       '',
-    propertyType:
-      (
-        (t.propertyType as Record<string, string> | undefined)?.prefLabel ??
-        (t.propertyType as string | undefined)
-      ) ?? 'unknown',
+    propertyType: extractLinkedDataValue(t.propertyType) ?? 'unknown',
     newBuild: t.newBuild === 'Y' || t.newBuild === true,
     tenure:
-      (
-        (t.tenure as Record<string, string> | undefined)?.prefLabel ??
-        (t.tenure as string | undefined)
-      ) ?? 'unknown',
+      extractLinkedDataValue(t.estateType) ??
+      extractLinkedDataValue(t.tenure) ??
+      'unknown',
   }));
 
   const avgPrice = calcAvgPrice(transactions);

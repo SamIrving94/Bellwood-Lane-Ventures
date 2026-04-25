@@ -66,6 +66,9 @@ importers:
       '@repo/database':
         specifier: workspace:*
         version: link:../../packages/database
+      '@repo/deal-updates':
+        specifier: workspace:*
+        version: link:../../packages/deal-updates
       '@repo/design-system':
         specifier: workspace:*
         version: link:../../packages/design-system
@@ -418,6 +421,9 @@ importers:
       '@repo/database':
         specifier: workspace:*
         version: link:../../packages/database
+      '@repo/deal-updates':
+        specifier: workspace:*
+        version: link:../../packages/deal-updates
       '@repo/design-system':
         specifier: workspace:*
         version: link:../../packages/design-system
@@ -784,6 +790,31 @@ importers:
       prisma:
         specifier: 6.4.1
         version: 6.4.1(typescript@5.8.2)
+      typescript:
+        specifier: ^5.8.2
+        version: 5.8.2
+
+  packages/deal-updates:
+    dependencies:
+      '@repo/database':
+        specifier: workspace:*
+        version: link:../database
+      '@repo/email':
+        specifier: workspace:*
+        version: link:../email
+      server-only:
+        specifier: ^0.0.1
+        version: 0.0.1
+      zod:
+        specifier: ^3.24.2
+        version: 3.25.76
+    devDependencies:
+      '@repo/typescript-config':
+        specifier: workspace:*
+        version: link:../typescript-config
+      '@types/node':
+        specifier: 22.13.9
+        version: 22.13.9
       typescript:
         specifier: ^5.8.2
         version: 5.8.2

@@ -164,6 +164,8 @@ model Deal {
   legalSteps     LegalStep[]
   legalDocuments LegalDocument[]
   avmResults     AvmResult[]
+  dealUpdates    DealUpdate[]
+  trackToken     TrackToken?
 
   @@index([status])
   @@index([postcode])
@@ -546,6 +548,8 @@ model QuoteRequest {
   status          QuoteStatus @default(draft)
   offerId         String?     @unique
   offer           QuoteOffer? @relation(fields: [offerId], references: [id])
+  dealUpdates     DealUpdate[]
+  trackToken      TrackToken?
   createdAt       DateTime    @default(now())
   updatedAt       DateTime    @updatedAt
 
@@ -568,6 +572,74 @@ model QuoteOffer {
   acceptedAt                   DateTime?
   quoteRequest                 QuoteRequest?
   createdAt                    DateTime      @default(now())
+}
+
+// Transparent deal-timeline event. Every state change a seller / agent /
+// solicitor would care about is written here and emailed to all
+// parties on the deal. Visible publicly via /track/<trackToken>.
+model DealUpdate {
+  id            String           @id @default(cuid())
+  dealId        String?
+  deal          Deal?            @relation(fields: [dealId], references: [id])
+  quoteRequestId String?
+  quoteRequest  QuoteRequest?    @relation(fields: [quoteRequestId], references: [id])
+  kind          DealUpdateKind
+  title         String           // 1-line public-friendly summary
+  detail        String?          @db.Text
+  metadata      Json?            // structured data (e.g. survey result, ETA)
+  visibility    DealUpdateVisibility @default(public)
+  notifiedTo    String[]         @default([])  // emails dispatched to
+  notifiedBy    String?          // user/agent id that triggered the update
+  createdAt     DateTime         @default(now())
+
+  @@index([dealId, createdAt])
+  @@index([quoteRequestId, createdAt])
+  @@index([kind])
+}
+
+enum DealUpdateKind {
+  quote_requested
+  offer_sent
+  offer_accepted
+  offer_declined
+  offer_expired
+  solicitor_instructed
+  searches_ordered
+  survey_scheduled
+  survey_completed
+  enquiries_raised
+  enquiries_resolved
+  exchange_target_set
+  exchanged
+  completion_target_set
+  completed
+  delay
+  founder_review
+  resale_listed
+  note
+}
+
+enum DealUpdateVisibility {
+  public          // visible on /track/<token>
+  agent_only      // dashboard only, agents
+  internal        // founder + Paperclip agents only
+}
+
+// Public tracker token — sellers / agents share this URL to see live
+// deal status without logging in.
+model TrackToken {
+  id            String   @id @default(cuid())
+  token         String   @unique           // url-safe, 32 chars
+  quoteRequestId String?  @unique
+  quoteRequest  QuoteRequest? @relation(fields: [quoteRequestId], references: [id])
+  dealId        String?  @unique
+  deal          Deal?    @relation(fields: [dealId], references: [id])
+  createdAt     DateTime @default(now())
+  lastViewedAt  DateTime?
+  viewCount     Int      @default(0)
+
+  @@index([quoteRequestId])
+  @@index([dealId])
 }
 
 model AgentAccount {
