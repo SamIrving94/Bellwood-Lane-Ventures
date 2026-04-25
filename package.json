@@ -43,6 +43,10 @@
   },
   "type": "module",
   "pnpm": {
-    "onlyBuiltDependencies": ["puppeteer", "esbuild"]
+    "onlyBuiltDependencies": ["puppeteer", "esbuild"],
+    "overrides": {
+      "next": "15.5.15",
+      "@next/third-parties": "15.5.15"
+    }
   }
 }
