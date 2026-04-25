@@ -13,14 +13,12 @@ let nextConfig: NextConfig = withToolbar(withLogging(config));
 // deploy moving without dragging dead code into our typing budget.
 nextConfig.typescript = { ignoreBuildErrors: true };
 
-// Standalone output — produces a minimal traced server bundle so we
-// stay under Vercel's 262MB lambda limit without paying for Pro.
-nextConfig.output = 'standalone';
+// (output: 'standalone' is a self-host-only flag; Vercel ignores it.
+// Slimming on Vercel relies on outputFileTracingExcludes + culling
+// unused routes — not on next config alone.)
 
 // Aggressively exclude template / dev-only assets from the serverless
-// function bundle to stay under Vercel's 262MB lambda limit. We're at
-// 320MB without these — most of it is Sentry source maps and bundled
-// next-forge template assets we don't ship.
+// function bundle to stay under Vercel's 262MB lambda limit.
 nextConfig.outputFileTracingExcludes = {
   '*': [
     'node_modules/@next/swc-*/**',
@@ -30,11 +28,24 @@ nextConfig.outputFileTracingExcludes = {
     'node_modules/.pnpm/basehub*/**',
     'node_modules/.pnpm/@playwright+*/**',
     'node_modules/.pnpm/typescript*/**',
+    'node_modules/.pnpm/@logtail+*/**',
+    'node_modules/.pnpm/@knocklabs+*/**',
+    'node_modules/.pnpm/@liveblocks+*/**',
+    'node_modules/.pnpm/posthog-*/**',
+    'node_modules/.pnpm/stripe*/**',
+    'node_modules/.pnpm/svix*/**',
+    'node_modules/.pnpm/algoliasearch*/**',
+    'node_modules/.pnpm/storybook*/**',
+    'node_modules/.pnpm/vitest*/**',
+    'node_modules/.pnpm/@testing-library+*/**',
     '**/*.map',
     '**/*.md',
     '**/CHANGELOG*',
     '**/LICENSE*',
     '**/.cache/**',
+    '**/__tests__/**',
+    '**/*.test.*',
+    '**/*.spec.*',
   ],
 };
 
