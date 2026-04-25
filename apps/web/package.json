@@ -17,6 +17,7 @@
     "@repo/database": "workspace:*",
     "@repo/email": "workspace:*",
     "@repo/instant-offer": "workspace:*",
+    "@repo/property-data": "workspace:*",
     "@repo/feature-flags": "workspace:*",
     "@repo/internationalization": "workspace:*",
     "@repo/next-config": "workspace:*",

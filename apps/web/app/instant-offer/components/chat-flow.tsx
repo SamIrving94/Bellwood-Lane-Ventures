@@ -724,12 +724,14 @@ function OfferCard({ offer }: { offer: OfferResult }) {
         >
           {accepting ? 'Reserving...' : 'Reserve this offer →'}
         </button>
-        <button
-          type="button"
-          className="rounded-full border border-slate-300 px-6 py-4 text-sm text-slate-700 transition hover:border-slate-400"
+        <a
+          href={`/instant-offer/offer/${offer.quoteId}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="rounded-full border border-slate-300 px-6 py-4 text-sm text-slate-700 transition hover:border-slate-400 text-center"
         >
-          Email me this offer
-        </button>
+          View certificate
+        </a>
       </div>
 
       {offer.agentAccount && (
