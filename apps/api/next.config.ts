@@ -5,6 +5,9 @@ import type { NextConfig } from 'next';
 
 let nextConfig: NextConfig = withLogging(config);
 
+// Standalone output — minimal traced server bundle for Vercel's 262MB limit.
+nextConfig.output = 'standalone';
+
 nextConfig.outputFileTracingExcludes = {
   '*': [
     'node_modules/@next/swc-*/**',

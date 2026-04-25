@@ -13,6 +13,10 @@ let nextConfig: NextConfig = withToolbar(withLogging(config));
 // deploy moving without dragging dead code into our typing budget.
 nextConfig.typescript = { ignoreBuildErrors: true };
 
+// Standalone output — produces a minimal traced server bundle so we
+// stay under Vercel's 262MB lambda limit without paying for Pro.
+nextConfig.output = 'standalone';
+
 // Aggressively exclude template / dev-only assets from the serverless
 // function bundle to stay under Vercel's 262MB lambda limit. We're at
 // 320MB without these — most of it is Sentry source maps and bundled

@@ -6,6 +6,10 @@ import type { NextConfig } from 'next';
 
 let nextConfig: NextConfig = withToolbar(withLogging(config));
 
+// Standalone output — produces a minimal traced server bundle so we
+// stay under Vercel's 262MB lambda limit.
+nextConfig.output = 'standalone';
+
 // Aggressively exclude template / dev-only assets from the serverless
 // function bundle to stay under Vercel's 262MB lambda limit.
 nextConfig.outputFileTracingExcludes = {
