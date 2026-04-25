@@ -18,6 +18,7 @@
     "@repo/calendly": "workspace:*",
     "@repo/collaboration": "workspace:*",
     "@repo/database": "workspace:*",
+    "@repo/deal-updates": "workspace:*",
     "@repo/design-system": "workspace:*",
     "@repo/feature-flags": "workspace:*",
     "@repo/next-config": "workspace:*",

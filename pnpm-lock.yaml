@@ -163,6 +163,9 @@ importers:
       '@repo/database':
         specifier: workspace:*
         version: link:../../packages/database
+      '@repo/deal-updates':
+        specifier: workspace:*
+        version: link:../../packages/deal-updates
       '@repo/design-system':
         specifier: workspace:*
         version: link:../../packages/design-system

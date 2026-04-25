@@ -22,7 +22,10 @@ import {
   BotIcon,
   BuildingIcon,
   ContactIcon,
+  FileTextIcon,
   GaugeIcon,
+  GavelIcon,
+  HandshakeIcon,
   InboxIcon,
   KanbanIcon,
   MailIcon,
@@ -62,6 +65,11 @@ const data = {
       icon: KanbanIcon,
     },
     {
+      title: 'Quotes',
+      url: '/quotes',
+      icon: FileTextIcon,
+    },
+    {
       title: 'Leads',
       url: '/leads',
       icon: SearchIcon,
@@ -90,6 +98,16 @@ const data = {
       title: 'Campaigns',
       url: '/campaigns',
       icon: MegaphoneIcon,
+    },
+    {
+      title: 'Partners',
+      url: '/partners',
+      icon: HandshakeIcon,
+    },
+    {
+      title: 'Auctions',
+      url: '/auctions',
+      icon: GavelIcon,
     },
     {
       title: 'Agents',
@@ -124,7 +142,7 @@ export const GlobalSidebar = ({ children, pendingActionCount = 0 }: GlobalSideba
               <Link href="/" className="flex items-center gap-2 px-2 py-1.5">
                 <BuildingIcon className="h-5 w-5 text-primary" />
                 {sidebar.open && (
-                  <span className="font-semibold text-sm">Bellwood Ventures</span>
+                  <span className="font-semibold text-sm">Bellwoods Lane</span>
                 )}
               </Link>
             </SidebarMenuItem>

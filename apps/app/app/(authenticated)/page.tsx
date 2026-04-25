@@ -5,7 +5,7 @@ import { redirect } from 'next/navigation';
 import { Header } from './components/header';
 
 export const metadata: Metadata = {
-  title: 'Dashboard — Bellwood Ventures',
+  title: 'Dashboard — Bellwoods Lane',
   description: 'Deal pipeline overview',
 };
 
@@ -38,6 +38,9 @@ const Dashboard = async () => {
     pendingActions,
     agentEventsToday,
     upcomingDeadlines,
+    quotesToday,
+    quotesThisMonth,
+    recentQuotes,
   ] = await Promise.all([
     database.deal.count(),
     database.deal.groupBy({
@@ -80,6 +83,23 @@ const Dashboard = async () => {
       take: 5,
       select: { id: true, address: true, postcode: true, sellerType: true, goldenWindowExpiresAt: true, mortgageExpiryDate: true },
     }),
+    database.quoteRequest.count({
+      where: {
+        createdAt: { gte: todayStart },
+      },
+    }),
+    database.quoteRequest.count({
+      where: {
+        createdAt: {
+          gte: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
+        },
+      },
+    }),
+    database.quoteRequest.findMany({
+      orderBy: { createdAt: 'desc' },
+      take: 5,
+      include: { offer: true },
+    }),
   ]);
 
   // Calculate pipeline value (sum of asking prices for active deals)
@@ -117,7 +137,17 @@ const Dashboard = async () => {
       <Header pages={[]} page="Dashboard" />
       <div className="flex flex-1 flex-col gap-6 p-6">
         {/* Key metrics */}
-        <div className="grid grid-cols-2 gap-4 md:grid-cols-5">
+        <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-6">
+          <a
+            href="/quotes"
+            className="rounded-lg border-2 border-amber-300 bg-amber-50/40 p-4 transition hover:border-amber-400"
+          >
+            <p className="text-sm text-amber-700">Quotes today</p>
+            <p className="text-2xl font-bold text-amber-700">{quotesToday}</p>
+            <p className="text-xs text-muted-foreground">
+              {quotesThisMonth} this month
+            </p>
+          </a>
           <div className="rounded-lg border bg-card p-4">
             <p className="text-sm text-muted-foreground">Active Deals</p>
             <p className="text-2xl font-bold">{totalDeals}</p>
@@ -150,6 +180,48 @@ const Dashboard = async () => {
             )}
           </div>
         </div>
+
+        {/* Recent quotes */}
+        {recentQuotes.length > 0 && (
+          <div className="rounded-lg border bg-card p-5">
+            <div className="flex items-center justify-between">
+              <h2 className="font-semibold">Recent Instant Offer submissions</h2>
+              <a
+                href="/quotes"
+                className="text-sm text-primary hover:underline"
+              >
+                View all →
+              </a>
+            </div>
+            <div className="mt-4 divide-y divide-slate-100 text-sm">
+              {recentQuotes.map((q) => (
+                <a
+                  key={q.id}
+                  href={`/quotes/${q.id}`}
+                  className="flex items-center justify-between py-3 hover:text-amber-700"
+                >
+                  <div>
+                    <p className="font-medium">{q.address}</p>
+                    <p className="text-muted-foreground text-xs">
+                      {q.postcode} · {q.contactName}
+                      {q.role === 'agent' && q.firmName ? ` (${q.firmName})` : ''}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-medium">
+                      {q.offer
+                        ? `£${Math.round(q.offer.offerPence / 100).toLocaleString('en-GB')}`
+                        : '—'}
+                    </p>
+                    <p className="text-muted-foreground text-xs capitalize">
+                      {q.status.replace(/_/g, ' ')}
+                    </p>
+                  </div>
+                </a>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Pipeline stages */}
         <section>

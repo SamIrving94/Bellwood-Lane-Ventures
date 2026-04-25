@@ -239,6 +239,36 @@ export async function POST(request: Request) {
       },
     });
 
+    // If the offer requires founder review, surface it in the Action Centre.
+    // Best-effort — never block the response.
+    if (offer.requiresReview) {
+      try {
+        await database.founderAction.create({
+          data: {
+            type: 'ceo_escalation',
+            priority: 'high',
+            status: 'pending',
+            agent: 'appraiser',
+            title: `Review offer: ${input.address}, ${input.postcode}`,
+            description: `Auto-generated offer of £${Math.round(offer.offerPence / 100).toLocaleString('en-GB')} (${Math.round(offer.offerPercentOfAvm * 100)}% of AVM). Below the 60% floor — needs your sign-off before the seller is committed to.`,
+            metadata: {
+              quoteRequestId: quoteRequest.id,
+              offerPence: offer.offerPence,
+              offerPercentOfAvm: offer.offerPercentOfAvm,
+              avmMid: Math.round(
+                (offer.estimatedMarketValueMinPence +
+                  offer.estimatedMarketValueMaxPence) /
+                  2,
+              ),
+              link: `/quotes/${quoteRequest.id}`,
+            },
+          },
+        });
+      } catch (err) {
+        console.warn('[quote] founder-action create failed (non-fatal)', err);
+      }
+    }
+
     // Record the offer event + dispatch transparent emails to all parties.
     // Best-effort — never block the response.
     let trackUrl: string | null = null;

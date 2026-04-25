@@ -61,7 +61,21 @@ The **Prisma schema** is the canonical data contract for the whole platform:
 
 **Every agent should read this file first.** It defines every model, enum, and relation you will ever interact with via the API.
 
-### Step 3 — Read the files for your role
+### Step 3 — Read the research library
+
+**Mandatory before acting.** All Paperclip agents read these on first run
+and re-read when explicitly asked:
+
+- **`docs/research/README.md`** — index of all research
+- **`docs/research/agent-partner-research-2026-04.md`** — UK estate agent
+  market, pain points, competitor matrix, GTM playbook, regulatory brief
+- **`docs/research/agent-briefing-pack-2026-04.md`** — operating manual
+  for the Paperclip agent team
+
+When a research file is updated, agents must re-read it before their
+next action that touches that domain.
+
+### Step 4 — Read the files for your role
 
 | Agent | Must read |
 |:---|:---|
