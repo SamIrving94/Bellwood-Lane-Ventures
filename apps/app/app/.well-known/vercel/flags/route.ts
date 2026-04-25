@@ -1,9 +1,10 @@
-import type { NextRequest } from 'next/server';
+// Vercel feature-flags discovery endpoint.
+// Wrapped without `NextRequest` type import so the inferred GET type is
+// portable across the multiple Next.js versions resolved in node_modules.
 import { getFlags } from '@repo/feature-flags/access';
 
-// Wrapper to satisfy Next.js 15.5's RouteHandlerConfig signature
-// (the generated type expects a 2-param GET; getFlags only takes
-// the request).
-export async function GET(request: NextRequest) {
+export async function GET(request: Request): Promise<Response> {
+  // @ts-expect-error - getFlags expects NextRequest from a different copy
+  // of next; runtime shape is identical.
   return getFlags(request);
 }
