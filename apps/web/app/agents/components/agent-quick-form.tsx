@@ -2,21 +2,31 @@
 
 import { useState } from 'react';
 
-type Situation =
-  | 'chain_break'
-  | 'probate'
-  | 'repossession'
-  | 'problem_property'
-  | 'other';
+/**
+ * The list of triggers we surface to agents. UI labels match the language
+ * agents actually use; api values map onto the existing /api/quote enum so
+ * the backend doesn't need a schema change.
+ */
+type Trigger = {
+  ui: string;
+  api:
+    | 'chain_break'
+    | 'probate'
+    | 'repossession'
+    | 'problem_property'
+    | 'relocation'
+    | 'short_lease'
+    | 'other';
+};
 
-type SituationOption = { value: Situation; label: string };
-
-const SITUATIONS: Array<SituationOption> = [
-  { value: 'chain_break', label: 'Chain break' },
-  { value: 'probate', label: 'Probate' },
-  { value: 'repossession', label: 'Repossession' },
-  { value: 'problem_property', label: 'Problem property' },
-  { value: 'other', label: 'Other' },
+const TRIGGERS: Array<Trigger> = [
+  { ui: 'Buyer pulled out', api: 'chain_break' },
+  { ui: 'Mortgage refused', api: 'chain_break' },
+  { ui: 'Survey down-valued', api: 'problem_property' },
+  { ui: 'Chain break', api: 'chain_break' },
+  { ui: 'Probate', api: 'probate' },
+  { ui: 'Problem property', api: 'problem_property' },
+  { ui: 'Other', api: 'other' },
 ];
 
 type OfferResult = {
@@ -43,8 +53,8 @@ type SubmitState =
   | { kind: 'error'; message: string };
 
 type AgentQuickFormProperties = {
-  /** Pre-fill the situation chip — useful for /chain-break landing. */
-  defaultSituation?: Situation;
+  /** UI label of the trigger to pre-select. Falls back to 'Buyer pulled out'. */
+  defaultTriggerLabel?: string;
 };
 
 function formatGBP(pence?: number) {
@@ -52,10 +62,17 @@ function formatGBP(pence?: number) {
   return `£${Math.round(pence / 100).toLocaleString('en-GB')}`;
 }
 
-export function AgentQuickForm({ defaultSituation }: AgentQuickFormProperties = {}) {
+function findTrigger(label?: string): Trigger {
+  return (
+    TRIGGERS.find((t) => t.ui.toLowerCase() === (label ?? '').toLowerCase()) ??
+    TRIGGERS[0]
+  );
+}
+
+export function AgentQuickForm({ defaultTriggerLabel }: AgentQuickFormProperties = {}) {
   const [address, setAddress] = useState('');
   const [postcode, setPostcode] = useState('');
-  const [situation, setSituation] = useState<Situation>(defaultSituation ?? 'chain_break');
+  const [trigger, setTrigger] = useState<Trigger>(findTrigger(defaultTriggerLabel));
   const [firmName, setFirmName] = useState('');
   const [contactName, setContactName] = useState('');
   const [contactEmail, setContactEmail] = useState('');
@@ -84,9 +101,10 @@ export function AgentQuickForm({ defaultSituation }: AgentQuickFormProperties = 
           bedrooms: 3,
           role: 'agent',
           firmName: firmName.trim(),
-          situation,
+          situation: trigger.api,
+          triggerLabel: trigger.ui,
           condition: 5,
-          urgencyDays: situation === 'chain_break' ? 14 : 21,
+          urgencyDays: trigger.api === 'chain_break' ? 14 : 21,
           contactName: contactName.trim(),
           contactEmail: contactEmail.trim(),
           source: 'agent_quick_form',
@@ -162,21 +180,21 @@ export function AgentQuickForm({ defaultSituation }: AgentQuickFormProperties = 
 
       <div className="mt-6">
         <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-slate-500">
-          Situation
+          What&rsquo;s happened?
         </span>
         <div className="mt-2 flex flex-wrap gap-2">
-          {SITUATIONS.map((s) => (
+          {TRIGGERS.map((t) => (
             <button
-              key={s.value}
+              key={t.ui}
               type="button"
-              onClick={() => setSituation(s.value)}
+              onClick={() => setTrigger(t)}
               className={`rounded-full border px-4 py-2 text-sm transition ${
-                situation === s.value
+                trigger.ui === t.ui
                   ? 'border-[#C6A664] bg-[#FAF6EA] text-[#0A1020]'
                   : 'border-slate-300 bg-white text-slate-600 hover:border-slate-400'
               }`}
             >
-              {s.label}
+              {t.ui}
             </button>
           ))}
         </div>
@@ -301,9 +319,7 @@ function SuccessView({
             <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-slate-400">
               Locked
             </p>
-            <p className="mt-1 text-slate-700">
-              72 hours from now
-            </p>
+            <p className="mt-1 text-slate-700">72 hours from now</p>
           </div>
         </div>
         <p className="mt-6 rounded-xl bg-[#FAF6EA] px-5 py-4 text-[13px] leading-relaxed text-slate-700">

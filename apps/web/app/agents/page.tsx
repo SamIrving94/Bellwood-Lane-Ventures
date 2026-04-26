@@ -4,25 +4,18 @@ import { LivePill } from '../instant-offer/components/live-pill';
 
 export const revalidate = 300;
 
-const SITUATIONS_WE_BUY: Array<{ k: string; b: string }> = [
-  {
-    k: 'Chain break',
-    b: 'Buyer pulled out at exchange. We complete in 14\u201328 days so the chain holds and your fee survives.',
-  },
-  {
-    k: 'Probate',
-    b: 'IHT clock ticking, executors scattered. We flex completion to the grant date and absorb the AML weight.',
-  },
-  {
-    k: 'Problem property',
-    b: 'Knotweed, short lease, cladding, structural. Stock high-street lenders won\u2019t mortgage \u2014 we buy at fair value and carry the risk.',
-  },
-];
-
 const FAQ: Array<{ q: string; a: string }> = [
   {
     q: 'Will my client think I sold them short?',
     a: "No \u2014 because the offer is below open-market by a published, defensible margin (a speed premium for cash + 14\u201328 day completion + zero fall-through risk). You hand them the methodology page and a signed offer. They make the call.",
+  },
+  {
+    q: 'My buyer\u2019s mortgage was just refused. Can you replace them at the same price?',
+    a: 'Almost certainly not at the original asking price \u2014 our offer is below open-market by a published margin in exchange for cash and certainty. But for a vendor whose buyer just collapsed, that trade-off is often worth it: complete in 14 days at 75\u201387% of market value, instead of 4\u20138 months of re-marketing with no guarantee.',
+  },
+  {
+    q: 'The survey came back and the buyer wants a £15k reduction. What now?',
+    a: 'If the buyer has held the price down, we\u2019ll quote independently against the same comparables their surveyor used. Often we land within £5k of where the renegotiation was heading anyway, but with a fixed completion date and no further wobbles. Send us the property + the survey notes.',
   },
   {
     q: 'When and how do I get paid?',
@@ -37,16 +30,12 @@ const FAQ: Array<{ q: string; a: string }> = [
     a: 'You collect \u00a31,000 from us, plus your costs, in writing. The price in your client\u2019s offer document is the price at completion. The single legitimate exception is a RICS-survey-disclosed material defect \u2014 and your client gets 48 hours to walk away free of charge.',
   },
   {
+    q: 'What if my client decides to stay on the open market?',
+    a: 'You instruct the property as normal. We pay you a small introducer fee for the warm lead. No referral wasted, no awkward conversation. This is why you can send us a deal even before you start re-marketing \u2014 you risk nothing.',
+  },
+  {
     q: 'What about my AML obligations on the seller?',
     a: 'We carry the load. Bellwoods Lane is HMRC-registered for AML supervision. We run KYC and source-of-funds checks, then issue a written compliance receipt for your file.',
-  },
-  {
-    q: 'What\u2019s your completion rate?',
-    a: 'We are a new firm and committed to publishing our completion rate quarterly from launch \u2014 including failures. Our promise: any offer issued is binding for 72 hours, and any post-survey adjustment requires a disclosed material defect. If we walk without cause, we pay \u00a31,000 plus your costs.',
-  },
-  {
-    q: 'What if my client decides to stay on the open market?',
-    a: 'You instruct the property as normal. We pay you a small introducer fee for the warm lead. No referral wasted, no awkward conversation.',
   },
   {
     q: 'Are you regulated?',
@@ -127,16 +116,16 @@ export default function AgentsPage() {
       {/* ————— PANIC-MODE BAND ————— */}
       {/* Pinned at the very top for agents arriving in crisis. */}
       <a
-        href="#refer"
+        href="/save-the-sale"
         className="block bg-[#0A2540] px-6 py-3 text-center text-[13px] text-white/90 transition hover:bg-[#13365c] md:px-12"
       >
         <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-[#C6A664]">
-          Chain just broken?
+          Sale fallen through?
         </span>
         <span className="ml-3">
-          Send the address &mdash; indicative offer in 60 seconds, signed PDF in 4 hours.
+          Buyer pulled out, mortgage refused, survey down-valued or chain broken &mdash; we&rsquo;re your replacement buyer.
         </span>
-        <span className="ml-3 underline underline-offset-4">Skip to form →</span>
+        <span className="ml-3 underline underline-offset-4">Save the sale →</span>
       </a>
 
       {/* ————— NAV ————— */}
@@ -183,21 +172,22 @@ export default function AgentsPage() {
         <div className="mx-auto max-w-4xl">
           <LivePill>For UK estate agents</LivePill>
           <p className="mt-8 font-mono text-[12px] uppercase tracking-[0.22em] text-slate-500">
-            Chain just broken?
+            Sale fallen through?
           </p>
           <h1
             className="mt-3 font-serif font-semibold leading-[0.98] tracking-[-0.025em] text-[#0A1020]"
             style={{ fontSize: 'clamp(40px, 6vw, 72px)' }}
           >
-            Save the deal.
+            Save it.
             <br />
-            <span className="italic text-[#C6A664]">In an afternoon.</span>
+            <span className="italic text-[#C6A664]">Before you re-list.</span>
           </h1>
           <p className="mt-8 max-w-xl text-lg leading-relaxed text-slate-600">
-            A real cash figure on screen in 60 seconds. A signed binding offer
-            in your client&rsquo;s inbox in 4 hours. The price they accept is
-            the price they complete at &mdash; or we pay you £1,000 plus your
-            costs.
+            Buyer pulled out, mortgage refused, survey down-valued, chain
+            broken. We&rsquo;re the replacement buyer agents call{' '}
+            <em>before</em> they relist &mdash; not after weeks of trying. A
+            real cash figure on screen in 60 seconds, signed binding offer
+            in 4 working hours.
           </p>
           <div className="mt-10 flex flex-wrap items-center gap-4">
             <a
@@ -210,6 +200,73 @@ export default function AgentsPage() {
             <span className="text-[13px] text-slate-500">
               Five fields. No portal login.
             </span>
+          </div>
+        </div>
+      </section>
+
+      {/* ————— TWO OPTIONS. BOTH BAD. ————— */}
+      <section className="border-y border-slate-200/60 bg-[#0A2540] px-6 py-24 text-white md:px-12 md:py-28">
+        <div className="mx-auto max-w-6xl">
+          <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-[#C6A664]">
+            The agent&rsquo;s dilemma
+          </p>
+          <h2 className="mt-3 font-serif text-4xl font-semibold leading-[1.05] tracking-[-0.02em] md:text-6xl">
+            When a sale collapses, you have two options.
+            <br />
+            <span className="italic text-[#C6A664]">Both are bad.</span>
+          </h2>
+          <p className="mt-6 max-w-2xl text-[15px] leading-relaxed text-white/70">
+            6,200 UK sales collapse every week. £3,000 commission gone per
+            fall-through, on average. 43% fail at three months or later, after
+            you&rsquo;ve invested the most time. And then you face this:
+          </p>
+          <div className="mt-12 grid grid-cols-1 gap-6 md:grid-cols-2">
+            <div className="rounded-2xl border border-white/15 bg-white/5 p-7">
+              <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-white/50">
+                Option 1
+              </p>
+              <p className="mt-3 font-serif text-2xl font-semibold">
+                Re-market the property
+              </p>
+              <ul className="mt-5 space-y-2.5 text-[14px] leading-relaxed text-white/70">
+                <li>&middot; 4&ndash;8 months on average to find a new buyer</li>
+                <li>&middot; Vendor confidence is already cratered</li>
+                <li>&middot; You start the chain-build from zero</li>
+                <li>&middot; Your commission is delayed by months</li>
+              </ul>
+            </div>
+            <div className="rounded-2xl border border-white/15 bg-white/5 p-7">
+              <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-white/50">
+                Option 2
+              </p>
+              <p className="mt-3 font-serif text-2xl font-semibold">
+                Send to a national cash buyer
+              </p>
+              <ul className="mt-5 space-y-2.5 text-[14px] leading-relaxed text-white/70">
+                <li>&middot; 70&ndash;85% of market value, no negotiation</li>
+                <li>&middot; Re-trading at exchange is endemic</li>
+                <li>&middot; Your commission usually isn&rsquo;t paid</li>
+                <li>&middot; You never see the property again on resale</li>
+              </ul>
+            </div>
+          </div>
+          <div className="mt-12 rounded-3xl border-2 border-[#C6A664] bg-[#C6A664]/10 p-8 md:p-10">
+            <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-[#C6A664]">
+              We&rsquo;re trying to be Option 3
+            </p>
+            <h3 className="mt-3 font-serif text-3xl font-semibold leading-[1.1] md:text-4xl">
+              Speed without re-trading. Full commission stack. Resale instruction back to you.
+            </h3>
+            <p className="mt-5 max-w-2xl text-[15px] leading-relaxed text-white/80">
+              Send us the property <strong>before</strong> you relist. If your
+              client takes our offer, you earn up to 3% + VAT. If they decide
+              the open market is better, we still pay you the introducer fee
+              for trusting us first. It&rsquo;s a free shot.
+            </p>
+            <p className="mt-6 font-mono text-[10px] leading-relaxed text-white/40">
+              Sources: TwentyCi (2025 fall-through rate), Santander &laquo;Fixing the Broken Chain&raquo; (cost per
+              fall-through), HomeOwners Alliance (UK quick-sale market norms).
+            </p>
           </div>
         </div>
       </section>
@@ -406,28 +463,6 @@ export default function AgentsPage() {
             </a>
             {' '}&mdash; same 4-hour turnaround in working hours.
           </p>
-        </div>
-      </section>
-
-      {/* ————— SITUATIONS ————— */}
-      <section className="border-b border-slate-200/60 bg-[#FAF6EA] px-6 py-20 md:px-12 md:py-24">
-        <div className="mx-auto max-w-5xl">
-          <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-[#C6A664]">
-            What we buy
-          </p>
-          <h2 className="mt-3 font-serif text-3xl font-semibold leading-[1.05] tracking-[-0.02em] md:text-4xl">
-            The deals other buyers can&rsquo;t do.
-          </h2>
-          <div className="mt-12 grid grid-cols-1 gap-6 md:grid-cols-3">
-            {SITUATIONS_WE_BUY.map((s) => (
-              <div key={s.k}>
-                <p className="font-serif text-xl font-semibold">{s.k}</p>
-                <p className="mt-3 text-[14px] leading-relaxed text-slate-600">
-                  {s.b}
-                </p>
-              </div>
-            ))}
-          </div>
         </div>
       </section>
 
