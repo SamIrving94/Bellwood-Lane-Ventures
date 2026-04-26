@@ -47,11 +47,26 @@ Polling every 60s is fine for v1. Webhook later.
 **Within 30 minutes of submission:**
 
 1. **Enrich the data the panic-form didn't capture**
-   - Look up bedrooms / property type from Rightmove / Zoopla via address
-   - Run environmental risk lookup (radon / coal mining / flood / knotweed)
-     against the postcode
-   - Companies House check on the agent's firm
-   - Update the `QuoteRequest` with enriched fields
+
+   Use the PropertyData REST API (key in env as `PROPERTYDATA_API_KEY` —
+   see `docs/setup/propertydata.md`) for the heavy lifting:
+
+   | Endpoint | Returns | Why |
+   |---|---|---|
+   | `/floor-areas` | EPC sqft + bedrooms by postcode | Fixes the missing-inputs problem from the panic form |
+   | `/property-info` | Property type, tenure, build year | Replaces the `propertyType: 'other'` default |
+   | `/flood-risk` | Rivers/sea + surface water risk | Material risk factor |
+   | `/planning-applications` | Active + recent apps near postcode | Enforcement notices, refusals — risk |
+   | `/title` | Freehold/leasehold, lease length | Catches short leases before survey |
+   | `/demand` | Days on market + sales-demand score | Informs how aggressive our offer can be |
+
+   Then Companies House check on the agent's firm (already in
+   `@repo/property-data`).
+
+   Total credit cost per enrichment: ~12 credits = £0.10 at the 5k plan.
+
+   PATCH the writeback via `PATCH /agents/quote-ops/[id]` with the new
+   bedrooms / propertyType / condition / notesAppend.
 
 2. **Re-run the AVM with full inputs**
    - Call `@repo/valuation.runAVM()` with the enriched inputs

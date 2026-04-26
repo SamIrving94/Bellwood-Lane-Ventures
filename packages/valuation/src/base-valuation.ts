@@ -17,6 +17,7 @@ import {
   getPricePaid,
   getHousepriceIndex,
   getEpcData,
+  getPropertyDataValuation,
   type PpdTransaction,
   type Epc,
   type Hpi,
@@ -208,10 +209,20 @@ export async function getBaseValuation(
 ): Promise<BaseValuation> {
   const { postcode, propertyType, floorAreaSqm, bedrooms, address } = input;
 
-  const [pricePaid, hpi, epc] = await Promise.all([
+  const [pricePaid, hpi, epc, externalAvm] = await Promise.all([
     getPricePaid(postcode, 20),
     getHousepriceIndex(postcode),
     getEpcData(postcode, address),
+    // PropertyData's £/sqft-driven AVM. Returns null silently if no key
+    // is configured or the call fails — the rest of the engine carries on.
+    // Cached 7 days per postcode+type+bedrooms so we burn ~3 credits per
+    // unique property per week.
+    getPropertyDataValuation({
+      postcode,
+      propertyType,
+      bedrooms: bedrooms ?? undefined,
+      internalArea: floorAreaSqm ?? undefined,
+    }),
   ]);
 
   const comps = filterComps(pricePaid.transactions, propertyType, floorAreaSqm);
@@ -247,11 +258,16 @@ export async function getBaseValuation(
   const hpiNudge = 1 + (hpi.annualChange / 100) * 0.15;
   const hpiAdjustedHedonic = Math.round(hedonicValue * hpiNudge);
 
-  // Weighted triangulation (no external AVM in this package layer)
-  // Weights: CSA 50%, Hedonic (HPI-adjusted) 50%
-  const pointEstimate = Math.round(
-    csaValue * 0.50 + hpiAdjustedHedonic * 0.50
-  );
+  // Weighted triangulation per BELA-12 spec.
+  // With external AVM:    HMLR-CSA 40%, Hedonic 40%, External 20%
+  // Without external AVM: HMLR-CSA 50%, Hedonic 50% (degraded gracefully)
+  const pointEstimate = externalAvm
+    ? Math.round(
+        csaValue * 0.40 +
+          hpiAdjustedHedonic * 0.40 +
+          externalAvm.estimate * 0.20,
+      )
+    : Math.round(csaValue * 0.50 + hpiAdjustedHedonic * 0.50);
 
   const { level: confidenceLevel, interval: confidenceInterval } =
     calcConfidence(hpiAdjustedHedonic, csaValue);
