@@ -122,10 +122,134 @@ Write access to:
 - `FounderAction.status`, `.resolvedAt`, `.metadata` (workflow state)
 - `DealUpdate.create` (for adding events to the vendor-facing timeline)
 
-Suggested approach: a service-account API token + a small set of dedicated
-endpoints under `apps/api/app/agents/quote-ops/` (this repo, separate from
-the existing `agents/` paperclip routes which serve a different purpose).
-Out of scope for this brief — flag if you want me to scaffold those routes.
+Endpoints are now scaffolded under `apps/api/app/agents/quote-ops/`. All
+routes auth via `Authorization: Bearer ${PAPERCLIP_API_KEY}` (the existing
+shared secret used by the rest of `apps/api/agents/*`).
+
+### API contract
+
+**`GET /agents/quote-ops?status=pending&hours=48`**
+
+The Paperclip inbox. Returns agent_quick_form QuoteRequests still
+awaiting a signed PDF, oldest first. Each row includes the live
+`FounderAction` so Paperclip knows the SLA deadline.
+
+```json
+{
+  "count": 3,
+  "quotes": [
+    {
+      "id": "clx...",
+      "address": "14 Acacia Avenue, Stockport",
+      "postcode": "SK4 3HQ",
+      "contactName": "Jane Smith",
+      "contactEmail": "jane@acmeestates.co.uk",
+      "contactPhone": "07700900000",
+      "firmName": "Acme Estates",
+      "sellerSituation": "chain_break",
+      "bedrooms": null,
+      "propertyType": "other",
+      "condition": null,
+      "notes": "Trigger: Buyer pulled out\nSource: agent_quick_form",
+      "status": "quoted",
+      "createdAt": "2026-04-26T09:47:00.000Z",
+      "offer": {
+        "id": "...",
+        "offerPence": 24400000,
+        "estimatedMarketValueMinPence": 28000000,
+        "estimatedMarketValueMaxPence": 31000000,
+        "offerPercentOfAvm": 0.83,
+        "confidenceScore": 0.62,
+        "completionDays": 14,
+        "lockedUntil": "...",
+        "reasoning": ["..."]
+      },
+      "action": {
+        "id": "...",
+        "status": "pending",
+        "priority": "high",
+        "expiresAt": "2026-04-26T13:47:00.000Z"
+      }
+    }
+  ]
+}
+```
+
+**`GET /agents/quote-ops/[id]`**
+
+Full detail for a single quote. Returns `quote` (with offer, deal
+updates, track token) plus all matching `actions`.
+
+**`PATCH /agents/quote-ops/[id]`**
+
+Enrichment writeback after Paperclip looks up the missing data. Body:
+
+```json
+{
+  "bedrooms": 4,
+  "propertyType": "semi_detached",
+  "condition": 6,
+  "askingPricePence": 31000000,
+  "notesAppend": "Companies House: ACME LTD active since 2009. EPC C. Risk profile clean.",
+  "replaceOffer": {
+    "estimatedMarketValueMinPence": 29000000,
+    "estimatedMarketValueMaxPence": 32500000,
+    "offerPence": 25800000,
+    "offerPercentOfAvm": 0.84,
+    "confidenceScore": 0.91,
+    "completionDays": 14,
+    "reasoning": ["Re-run with full inputs", "..."],
+    "lockedUntil": "2026-04-29T09:47:00.000Z"
+  }
+}
+```
+
+All fields optional. `replaceOffer` creates a new `QuoteOffer` row and
+points `QuoteRequest.offerId` at it.
+
+**`POST /agents/quote-ops/[id]/deal-update`**
+
+Append an event to the vendor-facing timeline (mirrors the same
+`DealUpdate` shape the rest of the platform uses). Body:
+
+```json
+{
+  "kind": "offer_sent",
+  "title": "Signed binding offer issued",
+  "detail": "PDF sent to jane@acmeestates.co.uk + WhatsApp acknowledgement.",
+  "metadata": { "signedOfferUrl": "https://...", "messageId": "..." }
+}
+```
+
+Uses Prisma `DealUpdateKind` enum — `offer_sent`, `offer_accepted`,
+`offer_declined`, `delay`, `founder_review`, `note`, etc.
+
+**`POST /agents/quote-ops/[id]/resolve`**
+
+Stop the 4-hour SLA clock. Marks the matching `FounderAction(s)` as
+`completed`. Body:
+
+```json
+{
+  "resolvedBy": "paperclip-appraiser",
+  "outcome": "signed_pdf_sent",
+  "metadata": { "signedOfferUrl": "https://...", "deliveredAt": "..." }
+}
+```
+
+### Suggested Paperclip polling loop
+
+```
+every 60s {
+  GET /agents/quote-ops?status=pending
+  for each quote:
+    if not yet enriched → run enrichment, PATCH back
+    if enriched + offer fresh + no PDF → draft PDF, await founder approval
+    if PDF approved → send via email + WhatsApp, POST deal-update,
+                       POST resolve
+    if expiresAt < now and still pending → escalate to founder mobile
+}
+```
 
 ---
 
