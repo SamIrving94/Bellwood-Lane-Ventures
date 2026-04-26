@@ -9,7 +9,9 @@ type Situation =
   | 'problem_property'
   | 'other';
 
-const SITUATIONS: Array<{ value: Situation; label: string }> = [
+type SituationOption = { value: Situation; label: string };
+
+const SITUATIONS: Array<SituationOption> = [
   { value: 'chain_break', label: 'Chain break' },
   { value: 'probate', label: 'Probate' },
   { value: 'repossession', label: 'Repossession' },
@@ -17,21 +19,46 @@ const SITUATIONS: Array<{ value: Situation; label: string }> = [
   { value: 'other', label: 'Other' },
 ];
 
+type OfferResult = {
+  quoteId: string;
+  estimatedMarketValueMinPence?: number;
+  estimatedMarketValueMaxPence?: number;
+  offerPence?: number;
+  offerPercentOfAvm?: number;
+  completionDays?: number;
+  lockedUntil?: string;
+  requiresReview?: boolean;
+  trackUrl?: string | null;
+  agentAccount?: {
+    referralCode: string;
+    contactName: string;
+    firmName: string;
+  } | null;
+};
+
 type SubmitState =
   | { kind: 'idle' }
   | { kind: 'submitting' }
-  | { kind: 'success'; referralCode?: string }
+  | { kind: 'success'; offer: OfferResult; vendorEmail: string }
   | { kind: 'error'; message: string };
 
-export function AgentQuickForm() {
+type AgentQuickFormProperties = {
+  /** Pre-fill the situation chip — useful for /chain-break landing. */
+  defaultSituation?: Situation;
+};
+
+function formatGBP(pence?: number) {
+  if (!pence) return '—';
+  return `£${Math.round(pence / 100).toLocaleString('en-GB')}`;
+}
+
+export function AgentQuickForm({ defaultSituation }: AgentQuickFormProperties = {}) {
   const [address, setAddress] = useState('');
   const [postcode, setPostcode] = useState('');
-  const [situation, setSituation] = useState<Situation>('chain_break');
+  const [situation, setSituation] = useState<Situation>(defaultSituation ?? 'chain_break');
   const [firmName, setFirmName] = useState('');
   const [contactName, setContactName] = useState('');
   const [contactEmail, setContactEmail] = useState('');
-  const [contactPhone, setContactPhone] = useState('');
-  const [notes, setNotes] = useState('');
   const [state, setState] = useState<SubmitState>({ kind: 'idle' });
 
   const handleSubmit = async (event: React.FormEvent) => {
@@ -59,11 +86,9 @@ export function AgentQuickForm() {
           firmName: firmName.trim(),
           situation,
           condition: 5,
-          urgencyDays: 21,
+          urgencyDays: situation === 'chain_break' ? 14 : 21,
           contactName: contactName.trim(),
           contactEmail: contactEmail.trim(),
-          contactPhone: contactPhone.trim(),
-          notes: notes.trim() || undefined,
           source: 'agent_quick_form',
         }),
       });
@@ -77,10 +102,7 @@ export function AgentQuickForm() {
         });
         return;
       }
-      setState({
-        kind: 'success',
-        referralCode: data?.agentAccount?.referralCode,
-      });
+      setState({ kind: 'success', offer: data, vendorEmail: contactEmail.trim() });
     } catch (error) {
       setState({
         kind: 'error',
@@ -91,29 +113,7 @@ export function AgentQuickForm() {
   };
 
   if (state.kind === 'success') {
-    return (
-      <div className="rounded-3xl border border-[#1F6B3A]/30 bg-[#F0FAF3] p-10 text-center">
-        <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-[#1F6B3A]">
-          Received
-        </p>
-        <h3 className="mt-3 font-serif text-3xl font-semibold text-[#0A1020]">
-          We&rsquo;ve got the property.
-        </h3>
-        <p className="mx-auto mt-5 max-w-md text-[15px] leading-relaxed text-slate-700">
-          A signed offer document, with our methodology and your firm&rsquo;s
-          referral details, will land in <strong>{contactEmail}</strong> within
-          24 hours. Reply directly to that email if anything is urgent.
-        </p>
-        {state.referralCode && (
-          <p className="mt-6 text-sm text-slate-600">
-            Your referral code:{' '}
-            <span className="font-mono font-semibold text-[#0A2540]">
-              {state.referralCode}
-            </span>
-          </p>
-        )}
-      </div>
-    );
+    return <SuccessView state={state} />;
   }
 
   return (
@@ -205,29 +205,6 @@ export function AgentQuickForm() {
             className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-[#C6A664]"
           />
         </label>
-        <label className="block md:col-span-2">
-          <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-slate-500">
-            Phone (optional)
-          </span>
-          <input
-            type="tel"
-            value={contactPhone}
-            onChange={(e) => setContactPhone(e.target.value)}
-            className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-[#C6A664]"
-          />
-        </label>
-        <label className="block md:col-span-2">
-          <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-slate-500">
-            Anything we should know? (optional)
-          </span>
-          <textarea
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            rows={3}
-            placeholder="Asking price, vendor situation, deadlines\u2026"
-            className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-[#C6A664]"
-          />
-        </label>
       </div>
 
       {state.kind === 'error' && (
@@ -238,18 +215,156 @@ export function AgentQuickForm() {
 
       <div className="mt-7 flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
         <p className="text-xs text-slate-500">
-          We send a signed offer document to your email within 24 hours. No
-          obligation, no contract to sign.
+          Indicative offer on screen in 60 seconds.
+          <br />
+          Signed PDF in your inbox within 4 working hours.
         </p>
         <button
           type="submit"
           disabled={state.kind === 'submitting'}
           className="inline-flex items-center gap-2 rounded-full bg-[#0A2540] px-7 py-3 text-sm font-medium text-white transition hover:bg-[#13365c] disabled:opacity-50"
         >
-          {state.kind === 'submitting' ? 'Sending\u2026' : 'Send for offer'}
+          {state.kind === 'submitting' ? 'Pulling comps\u2026' : 'See the number'}
           <span aria-hidden>→</span>
         </button>
       </div>
     </form>
+  );
+}
+
+function SuccessView({
+  state,
+}: {
+  state: { kind: 'success'; offer: OfferResult; vendorEmail: string };
+}) {
+  const { offer, vendorEmail } = state;
+  const trackUrl =
+    offer.trackUrl ||
+    (typeof window !== 'undefined'
+      ? `${window.location.origin}/instant-offer/offer/${offer.quoteId}`
+      : '');
+
+  if (offer.requiresReview) {
+    return (
+      <div className="rounded-3xl border border-[#C6A664]/40 bg-white p-10 shadow-sm">
+        <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-[#C6A664]">
+          Manual review
+        </p>
+        <h3 className="mt-3 font-serif text-3xl font-semibold text-[#0A1020]">
+          This one needs a human look.
+        </h3>
+        <p className="mt-5 max-w-lg text-[15px] leading-relaxed text-slate-700">
+          We have your details. Our senior appraiser will personally verify
+          before issuing a binding figure. Expect a written offer in{' '}
+          <strong>{vendorEmail}</strong> within 2 working hours, no obligation.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-5">
+      <div className="rounded-3xl border-2 border-[#C6A664]/50 bg-white p-7 shadow-md md:p-9">
+        <div className="flex items-baseline justify-between">
+          <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-[#C6A664]">
+            Indicative offer
+          </p>
+          <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-slate-400">
+            Ref {offer.quoteId?.slice(-8).toUpperCase()}
+          </p>
+        </div>
+        <p
+          className="mt-3 font-serif font-semibold tracking-[-0.025em] text-[#0A1020]"
+          style={{ fontSize: 'clamp(48px, 8vw, 88px)', lineHeight: 1 }}
+        >
+          {formatGBP(offer.offerPence)}
+        </p>
+        <div className="mt-6 grid grid-cols-2 gap-6 text-sm md:grid-cols-3">
+          <div>
+            <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-slate-400">
+              AVM range
+            </p>
+            <p className="mt-1 text-slate-700">
+              {formatGBP(offer.estimatedMarketValueMinPence)} —{' '}
+              {formatGBP(offer.estimatedMarketValueMaxPence)}
+            </p>
+          </div>
+          <div>
+            <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-slate-400">
+              Completion
+            </p>
+            <p className="mt-1 text-slate-700">
+              {offer.completionDays ?? 21} days
+            </p>
+          </div>
+          <div>
+            <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-slate-400">
+              Locked
+            </p>
+            <p className="mt-1 text-slate-700">
+              72 hours from now
+            </p>
+          </div>
+        </div>
+        <p className="mt-6 rounded-xl bg-[#FAF6EA] px-5 py-4 text-[13px] leading-relaxed text-slate-700">
+          This is the indicative figure from our AVM (HM Land Registry comps,
+          last 24 months, adjusted for HPI). The signed binding offer
+          document, with full reasoning, will be in{' '}
+          <strong>{vendorEmail}</strong> within 4 working hours.
+        </p>
+      </div>
+
+      {trackUrl && (
+        <div className="rounded-2xl border border-slate-200 bg-white p-6">
+          <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-[#C6A664]">
+            Share with your vendor
+          </p>
+          <p className="mt-2 text-[14px] leading-relaxed text-slate-600">
+            One link, no login. Your vendor sees the offer, our methodology,
+            and the walk-away cover. Text or email it directly.
+          </p>
+          <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+            <input
+              readOnly
+              value={trackUrl}
+              className="flex-1 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 font-mono text-xs text-[#0A2540]"
+            />
+            <CopyButton value={trackUrl} />
+          </div>
+        </div>
+      )}
+
+      {offer.agentAccount?.referralCode && (
+        <p className="text-center text-[12px] text-slate-500">
+          Referral code{' '}
+          <span className="font-mono font-semibold text-[#0A2540]">
+            {offer.agentAccount.referralCode}
+          </span>
+          {' '}has been auto-issued to {offer.agentAccount.firmName}.
+        </p>
+      )}
+    </div>
+  );
+}
+
+function CopyButton({ value }: { value: string }) {
+  const [copied, setCopied] = useState(false);
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      /* ignore */
+    }
+  };
+  return (
+    <button
+      type="button"
+      onClick={handleCopy}
+      className="rounded-lg bg-[#0A2540] px-4 py-2 text-xs font-medium text-white transition hover:bg-[#13365c]"
+    >
+      {copied ? 'Copied \u2713' : 'Copy link'}
+    </button>
   );
 }

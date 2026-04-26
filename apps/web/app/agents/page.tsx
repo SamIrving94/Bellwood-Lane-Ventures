@@ -124,6 +124,21 @@ function SampleOfferDocument() {
 export default function AgentsPage() {
   return (
     <>
+      {/* ————— PANIC-MODE BAND ————— */}
+      {/* Pinned at the very top for agents arriving in crisis. */}
+      <a
+        href="#refer"
+        className="block bg-[#0A2540] px-6 py-3 text-center text-[13px] text-white/90 transition hover:bg-[#13365c] md:px-12"
+      >
+        <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-[#C6A664]">
+          Chain just broken?
+        </span>
+        <span className="ml-3">
+          Send the address &mdash; indicative offer in 60 seconds, signed PDF in 4 hours.
+        </span>
+        <span className="ml-3 underline underline-offset-4">Skip to form →</span>
+      </a>
+
       {/* ————— NAV ————— */}
       <header className="sticky top-0 z-40 border-b border-slate-200/60 bg-[#FAFAF7]/85 backdrop-blur-md">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4 md:px-10">
@@ -163,31 +178,38 @@ export default function AgentsPage() {
         </div>
       </header>
 
-      {/* ————— HERO ————— */}
-      <section className="px-6 pt-20 pb-16 md:px-12 md:pt-28 md:pb-24">
+      {/* ————— HERO — JTBD-led ————— */}
+      <section className="px-6 pt-20 pb-16 md:px-12 md:pt-24 md:pb-20">
         <div className="mx-auto max-w-4xl">
           <LivePill>For UK estate agents</LivePill>
+          <p className="mt-8 font-mono text-[12px] uppercase tracking-[0.22em] text-slate-500">
+            Chain just broken?
+          </p>
           <h1
-            className="mt-8 font-serif font-semibold leading-[0.98] tracking-[-0.025em] text-[#0A1020]"
+            className="mt-3 font-serif font-semibold leading-[0.98] tracking-[-0.025em] text-[#0A1020]"
             style={{ fontSize: 'clamp(40px, 6vw, 72px)' }}
           >
             Save the deal.
             <br />
-            <span className="italic text-[#C6A664]">No re-trade. In writing.</span>
+            <span className="italic text-[#C6A664]">In an afternoon.</span>
           </h1>
           <p className="mt-8 max-w-xl text-lg leading-relaxed text-slate-600">
-            A binding cash offer for chain-break, probate and problem
-            properties. The price your client accepts is the price they
-            complete at &mdash; or we pay you £1,000 plus your costs.
+            A real cash figure on screen in 60 seconds. A signed binding offer
+            in your client&rsquo;s inbox in 4 hours. The price they accept is
+            the price they complete at &mdash; or we pay you £1,000 plus your
+            costs.
           </p>
-          <div className="mt-10">
+          <div className="mt-10 flex flex-wrap items-center gap-4">
             <a
               href="#refer"
               className="inline-flex items-center gap-2 rounded-full bg-[#0A2540] px-8 py-4 text-[15px] font-medium text-white shadow-sm transition hover:bg-[#13365c]"
             >
-              Send us a property
+              Send the address
               <span aria-hidden>→</span>
             </a>
+            <span className="text-[13px] text-slate-500">
+              Five fields. No portal login.
+            </span>
           </div>
         </div>
       </section>
@@ -361,28 +383,28 @@ export default function AgentsPage() {
       >
         <div className="mx-auto max-w-4xl">
           <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-[#C6A664]">
-            Send us a property
+            60 seconds to a real number
           </p>
           <h2 className="mt-3 font-serif text-4xl font-semibold md:text-5xl">
-            One short form.
+            Send the address.
           </h2>
           <p className="mt-5 max-w-2xl text-[15px] leading-relaxed text-slate-600">
-            Tell us where the property is and what&rsquo;s going on. We email
-            you a signed offer document within 24 hours. No portal logins,
-            no contract to sign.
+            Five fields. The indicative figure appears on screen as soon as
+            you submit &mdash; pulled from HM Land Registry comps. The signed
+            binding offer document follows by email within 4 working hours.
           </p>
           <div className="mt-10">
             <AgentQuickForm />
           </div>
           <p className="mt-6 text-center text-[13px] text-slate-500">
-            Or email{' '}
+            Prefer email?{' '}
             <a
               href="mailto:hello@bellwoodslane.co.uk?subject=Agent%20referral"
               className="text-[#0A2540] underline underline-offset-4"
             >
               hello@bellwoodslane.co.uk
             </a>
-            {' '}&mdash; same 24-hour turnaround.
+            {' '}&mdash; same 4-hour turnaround in working hours.
           </p>
         </div>
       </section>
