@@ -14,7 +14,7 @@ const REASONS: Array<{ k: string; t: string; b: string }> = [
   {
     k: 'Chain break',
     t: 'Your buyer pulled out',
-    b: "You've spent months getting to exchange. Don't lose your onward purchase. We step in with a binding offer and complete in 18 days.",
+    b: "You've spent months getting to exchange. Don't lose your onward purchase. We step in with a binding offer so the chain holds and your move stays on track.",
   },
   {
     k: 'Relocation',
@@ -123,16 +123,18 @@ export default function SellPage() {
             className="mt-8 font-serif font-semibold leading-[0.98] tracking-[-0.025em] text-[#0A1020]"
             style={{ fontSize: 'clamp(44px, 7vw, 80px)' }}
           >
-            Sell your home in
+            Sell your home.
             <br />
-            eighteen days.
+            On your timeline.
             <br />
-            <span className="italic text-[#C6A664]">No fees. No chain.</span>
+            <span className="italic text-[#C6A664]">No fees. No chain. No re-trade.</span>
           </h1>
           <p className="mt-8 max-w-2xl text-lg leading-relaxed text-slate-600 md:mt-10">
-            We buy any UK residential property directly with our own
-            capital. Binding cash offer in 60 seconds. Completion in 14–28
-            days. No agents to pay. No buyer to lose. No fees, ever.
+            We buy UK residential property directly with our own capital.
+            A written, binding offer back the same day. Completion when
+            it suits you — fast if you need it, paced if you don&rsquo;t.
+            No agents to pay. No buyer to lose. The price you accept is
+            the price you complete at.
           </p>
 
           <div className="mt-10 flex flex-col items-start gap-3 sm:flex-row sm:items-center">
@@ -182,16 +184,16 @@ export default function SellPage() {
               {
                 n: '01',
                 t: 'Tell us about your home',
-                d: 'A short conversation — address, situation. Sixty seconds. No personal information needed for the offer.',
+                d: 'A short conversation — address, situation. No personal information needed for the offer itself.',
               },
               {
                 n: '02',
                 t: 'See the offer in writing',
-                d: 'Real binding price, locked for 72 hours. Includes the comparables we used, the risk score, and our methodology — so you can compare to any other valuation.',
+                d: 'A real binding price, locked for 72 hours. Includes the comparables we used, the risk score, and our methodology — so you can compare it against any other valuation.',
               },
               {
                 n: '03',
-                t: 'Complete in 14–28 days',
+                t: 'Complete on your timeline',
                 d: 'Accept, and we instruct solicitors the same day. We pay all legal costs. The amount in the offer is the amount in your account on completion.',
               },
             ].map((s) => (
@@ -258,7 +260,8 @@ export default function SellPage() {
               Tell us about your home.
             </h2>
             <p className="mt-4 text-slate-600">
-              Sixty seconds. Real binding offer, not an estimate.
+              A few quick details. A real binding offer back the same day —
+              not an estimate.
             </p>
           </div>
           <Suspense fallback={<div className="h-96" />}>
@@ -363,7 +366,7 @@ export default function SellPage() {
                 See the number
               </p>
               <h2 className="mt-4 font-serif text-5xl font-semibold leading-[1] tracking-[-0.025em] md:text-7xl">
-                Sixty seconds. Binding offer.
+                A real offer in writing.
               </h2>
             </div>
             <div className="lg:text-right">

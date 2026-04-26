@@ -18,11 +18,11 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: 'Sell your home for cash · Bellwoods Lane',
   description:
-    'Get a binding cash offer for your UK home in 60 seconds. Completion in 14–28 days. No fees. No fall-throughs. No agent needed.',
+    'A binding written cash offer for your UK home — same day. Completion on your timeline. No fees. No fall-throughs. No re-trade.',
   openGraph: {
     title: 'Sell your home for cash · Bellwoods Lane',
     description:
-      'Binding cash offer for your UK home in 60 seconds. Completion in 14–28 days. No fees.',
+      'Binding written cash offer for your UK home, same day. Completion on your timeline. No fees. No re-trade.',
     type: 'website',
   },
 };

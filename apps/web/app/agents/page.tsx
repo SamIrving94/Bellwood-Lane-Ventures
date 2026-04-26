@@ -71,7 +71,7 @@ const FAQ: Array<{ q: string; a: string }> = [
   },
   {
     q: 'Can I show my client your offer document?',
-    a: "Yes. We email a signed PDF certificate within 60 seconds of you submitting the property. It's legally binding upon us for 72 hours — your client has time to seek independent advice.",
+    a: "Yes. We email a signed PDF certificate within 24 hours of you submitting the property. It's legally binding upon us for 72 hours — your client has time to seek independent advice.",
   },
   {
     q: 'What about my AML obligations on the seller?',
@@ -87,7 +87,15 @@ const FAQ: Array<{ q: string; a: string }> = [
   },
   {
     q: 'How do I refer?',
-    a: "Submit the property below or email us the address + situation. We send you a signed offer within 24 hours. There's no contract to sign — just a written disclosure for your seller.",
+    a: "WhatsApp us, email deals@bellwoodslane.co.uk, or use the form below. We send you a signed offer within 24 hours. There's no contract to sign — just a written disclosure for your seller.",
+  },
+  {
+    q: 'How are you different from We Buy Any House / Good Move / Quick Move Now?',
+    a: "Three ways. (1) We pay you. They don't — they cut you out of the deal. (2) Our offer is contractually fixed; the household-name cash buyers are the firms most cited for re-trading at exchange. (3) We list the resale through you. They flip it through their own channels and you never see the property again.",
+  },
+  {
+    q: 'What if you re-trade my client at exchange?',
+    a: 'You collect £1,000 from us, plus your costs, in writing. The price in your client\'s offer document is the price at completion. The single legitimate exception is a RICS-survey-disclosed material defect — and your client gets 48 hours to walk away free of charge.',
   },
   {
     q: 'Are you regulated?',
@@ -157,35 +165,36 @@ export default async function AgentsPage() {
           <div className="mb-8 flex flex-wrap items-center gap-3">
             <LivePill>For UK estate agents</LivePill>
             <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-slate-500">
-              No signup · Just start referring
+              Built for agents who&rsquo;ve been burned
             </span>
           </div>
           <h1
             className="font-serif font-semibold leading-[0.98] tracking-[-0.025em] text-[#0A1020]"
-            style={{ fontSize: 'clamp(48px, 7vw, 88px)' }}
+            style={{ fontSize: 'clamp(44px, 6.5vw, 80px)' }}
           >
             Save the deal.
             <br />
             Keep the commission.
             <br />
-            <span className="italic text-[#C6A664]">In&nbsp;eighteen&nbsp;days.</span>
+            <span className="italic text-[#C6A664]">No&nbsp;re-trade. Ever.</span>
           </h1>
           <p className="mt-8 max-w-2xl text-lg leading-relaxed text-slate-600 md:mt-10">
-            When a chain breaks, probate stalls, or a buyer walks — Bellwoods
-            Lane buys in 18&nbsp;days. You earn up to{' '}
+            Most cash buyers promise speed and deliver chaos. They drop the
+            offer £20–40k right before exchange and dare your client to walk.
+            We promise something simpler:{' '}
             <strong className="font-semibold text-[#0A1020]">
-              3%&nbsp;+&nbsp;VAT
+              the price your client accepts is the price they complete at
             </strong>
-            . Your client thinks you&rsquo;re a hero. Your fee survives the
-            chain.
+            . Written into the contract. If we walk without cause, we pay you
+            £1,000 plus your costs.
           </p>
 
           <div className="mt-10 flex flex-col items-start gap-3 sm:flex-row sm:items-center">
             <a
-              href="#submit"
+              href="#refer"
               className="inline-flex items-center gap-2 rounded-full bg-[#C6A664] px-8 py-4 text-[15px] font-medium text-[#0A1020] shadow-sm transition hover:bg-[#b08f52]"
             >
-              Submit a deal in 60 seconds
+              Send us a property
               <span aria-hidden>→</span>
             </a>
             <Link
@@ -195,24 +204,49 @@ export default async function AgentsPage() {
               Read the partner brief
             </Link>
           </div>
+
+          <p className="mt-10 font-mono text-[10px] uppercase tracking-[0.22em] text-slate-500">
+            HMRC AML supervised · NAPB · TPO redress · No fees to your seller · Up to 3% + VAT to you
+          </p>
         </div>
       </section>
 
       {/* ————— PAIN STATS ————— */}
-      <section className="border-y border-slate-200/60 bg-[#0A2540] px-6 py-16 text-white md:px-12">
+      <section className="border-y border-slate-200/60 bg-[#0A2540] px-6 py-20 text-white md:px-12">
         <div className="mx-auto max-w-6xl">
           <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-[#C6A664]">
-            What fall-throughs cost UK agents
+            What&rsquo;s broken about UK cash buyers
           </p>
           <h2 className="mt-3 font-serif text-3xl font-semibold leading-tight md:text-5xl">
-            The pain we exist to solve.
+            We&rsquo;ve all heard the horror stories.
           </h2>
-          <div className="mt-12 grid grid-cols-2 gap-x-6 gap-y-10 md:grid-cols-4">
+          <p className="mt-5 max-w-2xl text-[15px] leading-relaxed text-white/70">
+            We built Bellwoods Lane after watching the cash-buyer market
+            burn the trust out of estate agents for a decade. The numbers
+            below are what every agent we spoke to was angry about.
+          </p>
+          <div className="mt-14 grid grid-cols-2 gap-x-6 gap-y-12 md:grid-cols-4">
             {[
-              { v: '£392M', l: 'Lost in agent fees to fall-throughs (Rightmove, 2024)' },
-              { v: '23%', l: 'Of agreed UK sales collapse before completion (TwentyCi)' },
-              { v: '£17,500', l: 'Average annual loss per agent on chain breaks alone' },
-              { v: '551', l: 'UK agents fined for AML breaches in 2023–24 (HMRC)' },
+              {
+                v: '£392M',
+                l: 'Lost in agent fees to fall-throughs in 2024 — every chain break is your commission walking out the door',
+                src: 'Rightmove',
+              },
+              {
+                v: '23%',
+                l: 'Of agreed UK sales collapse before completion — the highest rate on record',
+                src: 'TwentyCi',
+              },
+              {
+                v: '#1',
+                l: 'Re-trading (gazundering) is the most-cited complaint about cash buyers across Trustpilot, Reddit, and MoneySavingExpert forums',
+                src: 'Public review platforms',
+              },
+              {
+                v: '551',
+                l: 'UK estate agents fined £3.25M for AML breaches in 2023–24. Nexmove was expelled from TPO for not disclosing source of buyer funds',
+                src: 'HMRC + TPO',
+              },
             ].map((s) => (
               <div key={s.v}>
                 <p
@@ -224,13 +258,82 @@ export default async function AgentsPage() {
                 <p className="mt-3 text-[13px] leading-relaxed text-white/70">
                   {s.l}
                 </p>
+                <p className="mt-2 font-mono text-[10px] uppercase tracking-[0.18em] text-white/40">
+                  {s.src}
+                </p>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* ————— EARNINGS ————— */}
+      {/* ————— TWO COMMISSIONS ————— */}
+      <section className="border-b border-slate-200/60 bg-[#FAF6EA] px-6 py-24 md:px-12">
+        <div className="mx-auto max-w-5xl">
+          <div className="mb-12 max-w-3xl">
+            <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-[#C6A664]">
+              The hidden cost of referring
+            </p>
+            <h2 className="mt-3 font-serif text-4xl font-semibold leading-[1.05] tracking-[-0.02em] md:text-6xl">
+              You don&rsquo;t lose a commission.
+              <br />
+              <span className="italic text-[#C6A664]">You earn two.</span>
+            </h2>
+            <p className="mt-6 text-[15px] leading-relaxed text-slate-600">
+              The reason agents avoid cash-buyer referrals isn&rsquo;t the
+              fee — it&rsquo;s the <strong>second</strong> commission they
+              lose. The seller&rsquo;s onward purchase, the part-exchange
+              chain, the extra listing.
+              <br />
+              <br />
+              We solve that one explicit way:{' '}
+              <strong>when we resell the property, you list it.</strong>
+              {' '}One referral becomes two transactions on your books.
+            </p>
+          </div>
+          <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+            <div className="rounded-2xl border border-slate-200 bg-white p-7">
+              <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-slate-500">
+                Without us
+              </p>
+              <p className="mt-3 font-serif text-2xl font-semibold">
+                Chain breaks &rarr; deal dies
+              </p>
+              <ul className="mt-5 space-y-2 text-sm text-slate-600">
+                <li>· Your commission walks out the door</li>
+                <li>· Seller doesn&rsquo;t move on</li>
+                <li>· No onward purchase to list</li>
+                <li>· Months of work written off</li>
+              </ul>
+              <p className="mt-6 font-serif text-3xl font-semibold text-slate-400">
+                £0 earned
+              </p>
+            </div>
+            <div className="rounded-2xl border-2 border-[#C6A664] bg-white p-7">
+              <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-[#C6A664]">
+                With Bellwoods Lane
+              </p>
+              <p className="mt-3 font-serif text-2xl font-semibold">
+                Chain saved &rarr; double commission
+              </p>
+              <ul className="mt-5 space-y-2 text-sm text-slate-600">
+                <li>· You earn the sale fee on completion</li>
+                <li>· Plus an introducer fee, same day</li>
+                <li>· Then we list the resale through you</li>
+                <li>· One referral, two completed transactions</li>
+              </ul>
+              <p className="mt-6 font-serif text-3xl font-semibold text-[#C6A664]">
+                Up to £10,080 earned*
+              </p>
+              <p className="mt-2 text-[10px] text-slate-500">
+                *Worked example on a £280k chain-break sale at Bronze tier
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ————— EARNINGS BREAKDOWN ————— */}
       <section
         id="earnings"
         className="border-b border-slate-200/60 px-6 py-24 md:px-12"
@@ -238,69 +341,46 @@ export default async function AgentsPage() {
         <div className="mx-auto grid max-w-6xl grid-cols-1 gap-12 lg:grid-cols-[1fr_1.4fr] lg:gap-16">
           <div>
             <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-[#C6A664]">
-              How you earn
+              How the fee stack works
             </p>
-            <h2 className="mt-3 font-serif text-4xl font-semibold leading-[1.05] tracking-[-0.02em] md:text-6xl">
-              Up to{' '}
-              <span className="text-[#C6A664]">3% + VAT</span>
+            <h2 className="mt-3 font-serif text-4xl font-semibold leading-[1.05] tracking-[-0.02em] md:text-5xl">
+              Three fees. Two transactions.
               <br />
-              per referral.
+              All disclosed.
             </h2>
             <p className="mt-6 text-[15px] leading-relaxed text-slate-600">
-              Most cash buyers either undercut your fee or treat you as the
-              enemy. We pay you on every leg of the deal — explicitly,
-              disclosed in writing to the seller, and never in cash on the
-              side.
+              Every fee is documented in the seller&rsquo;s disclosure pack
+              before they sign. Per NTSELAT guidance — no cash on the side,
+              no surprises, no compliance risk to you.
             </p>
-            <div className="mt-8 rounded-2xl bg-[#FAF6EA] p-6">
-              <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-slate-500">
-                Worked example
-              </p>
-              <p className="mt-2 text-sm text-slate-700">
-                A £280k chain-break sale that would otherwise collapse:
-              </p>
-              <dl className="mt-4 space-y-2 text-sm">
-                <div className="flex justify-between border-b border-slate-200 py-2">
-                  <dt>Sale fee (1% + VAT)</dt>
-                  <dd className="font-medium">£3,360</dd>
-                </div>
-                <div className="flex justify-between border-b border-slate-200 py-2">
-                  <dt>Introducer fee (1% + VAT)</dt>
-                  <dd className="font-medium">£3,360</dd>
-                </div>
-                <div className="flex justify-between border-b border-slate-200 py-2">
-                  <dt>Resale instruction (1% + VAT)</dt>
-                  <dd className="font-medium">£3,360</dd>
-                </div>
-                <div className="flex justify-between pt-2 text-base">
-                  <dt className="font-semibold">You earn</dt>
-                  <dd className="font-semibold text-[#C6A664]">£10,080</dd>
-                </div>
-              </dl>
-            </div>
           </div>
 
           <div className="space-y-4">
             {[
               {
                 pct: '1%',
-                t: 'Sale fee',
-                b: 'The standard seller-side commission you would have earned on the open market — we pay it on our purchase completion.',
+                t: 'Resale instruction',
+                b: 'When we resell, you list it. Same property, second commission, zero chain risk this time. This is what fixes the two-commission problem.',
+                anchor: true,
               },
               {
                 pct: '1%',
                 t: 'Introducer fee',
-                b: 'Stacked on top, paid to you on the same day. Your reward for bringing the deal to a buyer who can actually complete.',
+                b: 'Paid the same day as the sale fee. Your reward for trusting us with the deal in the first place.',
               },
               {
                 pct: '1%',
-                t: 'Resale instruction',
-                b: 'When we resell, you list it. You earn again — same property, second commission, no chain risk this time.',
+                t: 'Sale fee',
+                b: 'The standard seller-side commission you would have earned on the open market — we pay it on our purchase completion.',
               },
             ].map((s) => (
               <div
                 key={s.t}
-                className="grid grid-cols-[80px_1fr] items-start gap-6 rounded-2xl border border-slate-200 bg-white p-6"
+                className={`grid grid-cols-[80px_1fr] items-start gap-6 rounded-2xl p-6 ${
+                  s.anchor
+                    ? 'border-2 border-[#C6A664] bg-white'
+                    : 'border border-slate-200 bg-white'
+                }`}
               >
                 <p className="font-serif text-5xl font-semibold leading-none text-[#C6A664]">
                   {s.pct}
@@ -405,23 +485,103 @@ export default async function AgentsPage() {
         </div>
       </section>
 
+      {/* ————— THREE WAYS TO REFER ————— */}
+      <section
+        id="refer"
+        className="border-b border-slate-200/60 px-6 py-24 md:px-12"
+      >
+        <div className="mx-auto max-w-6xl">
+          <div className="mb-14 max-w-3xl">
+            <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-[#C6A664]">
+              Three ways to refer
+            </p>
+            <h2 className="mt-3 font-serif text-4xl font-semibold leading-[1.05] tracking-[-0.02em] md:text-5xl">
+              Send us the address.
+              <br />
+              However suits your day.
+            </h2>
+            <p className="mt-6 text-[15px] leading-relaxed text-slate-600">
+              We don&rsquo;t expect you to log into a portal between viewings.
+              Send us the property the same way you&rsquo;d text a colleague —
+              we&rsquo;ll do the work.
+            </p>
+          </div>
+          <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
+            <a
+              href="https://wa.me/447000000000?text=Bellwoods%20Lane%20referral%3A%20"
+              className="group rounded-2xl border-2 border-[#C6A664] bg-white p-7 transition hover:shadow-lg"
+            >
+              <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-[#C6A664]">
+                Fastest
+              </p>
+              <p className="mt-3 font-serif text-2xl font-semibold">
+                WhatsApp
+              </p>
+              <p className="mt-3 text-sm leading-relaxed text-slate-600">
+                Text the address + situation. We reply with a written offer
+                inside 24 hours, signed PDF attached.
+              </p>
+              <p className="mt-6 text-sm font-medium text-[#0A2540] underline-offset-4 group-hover:underline">
+                Open WhatsApp →
+              </p>
+            </a>
+            <a
+              href="mailto:deals@bellwoodslane.co.uk?subject=Agent%20referral"
+              className="group rounded-2xl border border-slate-200 bg-white p-7 transition hover:border-slate-400"
+            >
+              <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-slate-500">
+                Most common
+              </p>
+              <p className="mt-3 font-serif text-2xl font-semibold">
+                Email
+              </p>
+              <p className="mt-3 text-sm leading-relaxed text-slate-600">
+                Forward the listing or send a one-line description.
+                deals@bellwoodslane.co.uk — same 24-hour SLA.
+              </p>
+              <p className="mt-6 text-sm font-medium text-[#0A2540] underline-offset-4 group-hover:underline">
+                Send email →
+              </p>
+            </a>
+            <a
+              href="#submit"
+              className="group rounded-2xl border border-slate-200 bg-white p-7 transition hover:border-slate-400"
+            >
+              <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-slate-500">
+                For repeat partners
+              </p>
+              <p className="mt-3 font-serif text-2xl font-semibold">
+                Portal form
+              </p>
+              <p className="mt-3 text-sm leading-relaxed text-slate-600">
+                Fill in the property below — we auto-issue your referral
+                code so you can track every offer in your dashboard.
+              </p>
+              <p className="mt-6 text-sm font-medium text-[#0A2540] underline-offset-4 group-hover:underline">
+                Use the form →
+              </p>
+            </a>
+          </div>
+        </div>
+      </section>
+
       {/* ————— SUBMIT (CHAT) ————— */}
       <section
         id="submit"
-        className="border-b border-slate-200/60 px-6 py-24 md:px-12"
+        className="border-b border-slate-200/60 bg-[#FAFAF7] px-6 py-24 md:px-12"
       >
         <div className="mx-auto max-w-3xl">
           <div className="mb-12 text-center">
             <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-[#C6A664]">
-              Submit a deal
+              Send us the address
             </p>
             <h2 className="mt-3 font-serif text-4xl font-semibold md:text-5xl">
               Tell us about the property.
             </h2>
             <p className="mt-4 text-slate-600">
-              Sixty seconds. Real binding offer, not an estimate. We auto-create
-              your referral code on the offer card — bookmark it, share it,
-              earn from every seller you send our way.
+              A few quick details, a written offer back inside 24 hours.
+              We auto-create your referral code on the offer card — bookmark
+              it, share it, earn from every seller you send our way.
             </p>
           </div>
           <Suspense fallback={<div className="h-96" />}>
@@ -659,7 +819,7 @@ export default async function AgentsPage() {
           <div className="grid grid-cols-1 items-end gap-10 lg:grid-cols-2">
             <div>
               <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-[#C6A664]">
-                Sixty seconds
+                Send us the next one
               </p>
               <h2 className="mt-4 font-serif text-5xl font-semibold leading-[1] tracking-[-0.025em] md:text-7xl">
                 Submit your next deal.
