@@ -9,7 +9,7 @@ const REASONS: Array<{ k: string; t: string; b: string }> = [
   {
     k: 'Probate',
     t: 'You inherited a property',
-    b: "HMRC charges 8.75% interest on inheritance tax 6 months after the death. Empty homes accrue council tax + insurance. We complete fast so the estate doesn't bleed.",
+    b: "HMRC charges 8.75% interest on inheritance tax six months after the death. Empty homes bleed council tax and insurance. We complete on the grant date so the estate doesn't lose money waiting.",
   },
   {
     k: 'Chain break',
@@ -19,57 +19,43 @@ const REASONS: Array<{ k: string; t: string; b: string }> = [
   {
     k: 'Relocation',
     t: 'You\u2019re moving abroad or for work',
-    b: "International signatures, time-zone delays, empty house syndrome — we handle it. You sign once, we complete on your timeline.",
+    b: "International signatures, time-zone delays, empty house syndrome. You sign once, we complete on your timeline.",
   },
   {
     k: 'Divorce or separation',
     t: 'You need a clean break',
     b: 'Court-ordered timelines, joint mortgage to clear, emotional weight. We move quietly and quickly. Solicitors talk to solicitors.',
   },
-  {
-    k: 'Problem property',
-    t: 'Knotweed, short lease, cladding, structural',
-    b: "Properties high-street lenders won't touch. We buy them at fair value and absorb the risk.",
-  },
-  {
-    k: 'Repossession risk',
-    t: 'Mortgage arrears mounting',
-    b: 'A controlled, voluntary sale beats a forced one. We pay on completion — before any repossession order can be filed.',
-  },
 ];
 
 const FAQ: Array<{ q: string; a: string }> = [
   {
-    q: 'How is the offer calculated?',
-    a: "We pull every comparable sale within 0.5 miles of your home from HM Land Registry's last 24 months, adjust for market trend (HPI), score risk factors, then apply a fair speed-premium discount. The calculation is published at /instant-offer/methodology.",
-  },
-  {
     q: 'Why is the offer below open-market?',
-    a: "Because we buy for cash, complete in 14–28 days, charge no fee, and take the risk of fall-through. Our typical offer is 75–87% of open-market value. You're paying us a 'speed premium' for certainty.",
+    a: "Because we buy for cash, complete in 14\u201328 days, charge no fee, and take the risk of fall-through. Our typical offer is 75\u201387% of open-market value. You're paying us a speed premium for certainty.",
   },
   {
-    q: 'How quickly can you complete?',
-    a: 'We aim for 14–28 days. Probate cases adjust to your grant timeline. We instruct solicitors within 24 hours of acceptance and share proof of funds the same day.',
-  },
-  {
-    q: 'What happens after I accept?',
-    a: 'We instruct solicitors and order searches the same day. You get a written, time-stamped offer document. We commission a RICS Level 2 survey at our cost. Target completion 14–28 days.',
-  },
-  {
-    q: 'Can the offer change later?',
-    a: 'Only if a survey reveals a material issue you did not disclose (e.g. structural movement, hidden damp). We tell you within 48 hours and you can walk away free of charge.',
+    q: 'Can I change my mind after I accept?',
+    a: 'Yes. The offer is binding upon Bellwoods Lane for 72 hours. It is not binding upon you until exchange of contracts. You can withdraw at any point before exchange at no cost.',
   },
   {
     q: 'What does it cost me?',
-    a: 'Zero. No agent fee. No solicitor fee (if you use our panel). No survey fee. The offer you see is the amount that lands in your account on completion day.',
+    a: 'Zero. No agent fee. No solicitor fee (if you use our panel). No survey fee. The figure you see in the offer is the figure that lands in your account on completion day.',
   },
   {
-    q: "Can I change my mind?",
-    a: "Yes. The offer is binding upon Bellwoods Lane for 72 hours. It is not binding upon you until exchange. You can withdraw at any point before exchange at no cost.",
+    q: 'How is the offer calculated?',
+    a: "We pull every comparable sale within 0.5 miles of your home from HM Land Registry's last 24 months, adjust for market trend, score risk factors, then apply a transparent speed-premium discount. The full methodology is published.",
+  },
+  {
+    q: 'How quickly can you complete?',
+    a: 'As fast as 14 days, or paced to suit a probate grant or onward move. We instruct solicitors within 24 hours of acceptance and share proof of funds the same day.',
+  },
+  {
+    q: 'Can the offer change later?',
+    a: 'Only if a RICS survey reveals a material issue you did not disclose (e.g. structural movement, hidden damp). We tell you within 48 hours and you can walk away free of charge.',
   },
   {
     q: 'Are you regulated?',
-    a: 'Cash property buying is unregulated by the FCA. We voluntarily follow The Property Ombudsman code and are members of the National Association of Property Buyers (NAPB). We are HMRC-registered for AML supervision. Full disclosure at /legal/fca-disclosure.',
+    a: 'Cash property buying is unregulated by the FCA. We voluntarily follow The Property Ombudsman code and are members of the National Association of Property Buyers (NAPB). We are HMRC-registered for AML supervision.',
   },
 ];
 
@@ -230,11 +216,11 @@ export default function SellPage() {
               Real reasons people choose certainty over price.
             </h2>
           </div>
-          <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
+          <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
             {REASONS.map((r) => (
               <div
                 key={r.k}
-                className="rounded-2xl border border-[#C6A664]/20 bg-white p-6"
+                className="rounded-2xl border border-[#C6A664]/20 bg-white p-7"
               >
                 <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-[#C6A664]">
                   {r.k}
