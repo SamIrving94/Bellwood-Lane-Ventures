@@ -137,7 +137,52 @@ All endpoints:
 
 ---
 
-## 4. Credit budget (5k plan = £48/mo)
+## 4. Weekly agent prospecting cron
+
+`apps/api/app/cron/agent-prospecting/route.ts` runs Mondays at 08:30 UTC.
+For each target postcode it pulls PropertyData's `/agents` endpoint and
+upserts every active estate agent into the `Contact` table (type
+`estate_agent`).
+
+### Configuration
+
+Set in Vercel env on the **bellwood-api** project:
+
+```sh
+# Comma-separated postcodes to scan. If unset, the cron uses the
+# Manchester/Stockport/Leeds/Sheffield fallback list in the source.
+AGENT_PROSPECTING_POSTCODES=M14,M19,SK4,SK7,LS1,LS6,S1,S11
+
+# Optional — email to receive the weekly summary. Falls back to
+# RESEND_FROM if not set; if neither configured, the email is skipped
+# but the FounderAction is still created in /actions.
+AGENT_PROSPECTING_REPORT_EMAIL=sam@bellwoodslane.co.uk
+```
+
+### What you'll see Monday morning
+
+- A new `FounderAction` in **/actions** (priority `medium`) summarising
+  the run: postcodes scanned, agents surfaced, top 5 new firms by
+  listing volume.
+- Refreshed Contacts in **/contacts** filtered to type `estate_agent`.
+  New firms tagged `status:not_yet_contacted`.
+- An optional summary email to `AGENT_PROSPECTING_REPORT_EMAIL`.
+
+### Cost
+
+~3 credits per postcode. At 16 postcodes that's ~48 credits/week =
+~200/month. Comfortably inside the 5k plan.
+
+### Manual trigger (for testing)
+
+```sh
+curl -X POST https://bellwood-api.vercel.app/cron/agent-prospecting \
+  -H "Authorization: Bearer $CRON_SECRET"
+```
+
+---
+
+## 5. Credit budget (5k plan = £48/mo)
 
 Cap: 5,000 credits/month. Estimated usage at current volume:
 
