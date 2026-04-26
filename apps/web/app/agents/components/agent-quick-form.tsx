@@ -76,6 +76,7 @@ export function AgentQuickForm({ defaultTriggerLabel }: AgentQuickFormProperties
   const [firmName, setFirmName] = useState('');
   const [contactName, setContactName] = useState('');
   const [contactEmail, setContactEmail] = useState('');
+  const [contactPhone, setContactPhone] = useState('');
   const [state, setState] = useState<SubmitState>({ kind: 'idle' });
 
   const handleSubmit = async (event: React.FormEvent) => {
@@ -109,6 +110,7 @@ export function AgentQuickForm({ defaultTriggerLabel }: AgentQuickFormProperties
           urgencyDays: trigger.api === 'chain_break' ? 14 : 21,
           contactName: contactName.trim(),
           contactEmail: contactEmail.trim(),
+          contactPhone: contactPhone.trim() || undefined,
           submissionSource: 'agent_quick_form',
         }),
       });
@@ -222,6 +224,18 @@ export function AgentQuickForm({ defaultTriggerLabel }: AgentQuickFormProperties
             type="email"
             value={contactEmail}
             onChange={(e) => setContactEmail(e.target.value)}
+            className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-[#C6A664]"
+          />
+        </label>
+        <label className="block md:col-span-2">
+          <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-slate-500">
+            Work mobile <span className="text-slate-400 normal-case tracking-normal">(WhatsApp · optional but faster)</span>
+          </span>
+          <input
+            type="tel"
+            value={contactPhone}
+            onChange={(e) => setContactPhone(e.target.value)}
+            placeholder="07700 900000"
             className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-[#C6A664]"
           />
         </label>
@@ -382,8 +396,8 @@ function VendorShareCard({
       'Best,',
     ].join('\n'),
   );
-  const smsBody = encodeURIComponent(
-    `Hi - I have a cash offer of ${figure} for the property. ${completionDays}-day completion, no fees. Full details + methodology: ${trackUrl}`,
+  const whatsAppBody = encodeURIComponent(
+    `Hi — I have a cash offer of ${figure} for the property. ${completionDays}-day completion, no fees, no chain. Full details + methodology here: ${trackUrl}`,
   );
 
   return (
@@ -393,22 +407,24 @@ function VendorShareCard({
       </p>
       <p className="mt-2 text-[14px] leading-relaxed text-slate-600">
         One link, no login. Your vendor sees the offer, our methodology, and
-        the walk-away cover.
+        the walk-away cover. Most agents send via WhatsApp.
       </p>
       <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <a
+          href={`https://api.whatsapp.com/send?text=${whatsAppBody}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center justify-center gap-2 rounded-xl border-2 border-[#C6A664] bg-[#FAF6EA] px-4 py-3 text-sm font-medium text-[#0A1020] transition hover:bg-[#f5edd7]"
+        >
+          <span aria-hidden>📱</span>
+          WhatsApp vendor
+        </a>
         <a
           href={`mailto:?subject=${emailSubject}&body=${emailBody}`}
           className="flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-[#0A1020] transition hover:border-[#C6A664] hover:bg-[#FAF6EA]"
         >
           <span aria-hidden>✉</span>
           Email vendor
-        </a>
-        <a
-          href={`sms:?&body=${smsBody}`}
-          className="flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-[#0A1020] transition hover:border-[#C6A664] hover:bg-[#FAF6EA]"
-        >
-          <span aria-hidden>💬</span>
-          Text vendor
         </a>
         <CopyButton value={trackUrl} label="Copy link" copiedLabel="Copied ✓" />
       </div>

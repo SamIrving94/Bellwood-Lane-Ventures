@@ -74,9 +74,9 @@ export default function SaveTheSalePage() {
             </h1>
             <p className="mt-7 max-w-md text-lg leading-relaxed text-slate-600">
               Buyer pulled out, mortgage refused, survey down-valued, chain
-              broken. Whatever&rsquo;s collapsed, we step in with a real cash
-              figure on screen in 60 seconds and a signed binding offer in 4
-              working hours.
+              broken. Whatever&rsquo;s collapsed, we step in with an
+              indicative figure on screen in 60 seconds (drawn from HM Land
+              Registry comps) and a signed binding offer in 4 working hours.
             </p>
             <ul className="mt-8 space-y-3 text-[14px] text-slate-700">
               <li className="flex items-start gap-3">
@@ -107,9 +107,10 @@ export default function SaveTheSalePage() {
               <li className="flex items-start gap-3">
                 <span className="mt-1 inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-[#C6A664]" />
                 <span>
-                  <strong className="text-[#0A1020]">Shareable vendor link.</strong>{' '}
-                  After you submit, you get a link you can text the vendor
-                  directly. No PDF download, no login.
+                  <strong className="text-[#0A1020]">WhatsApp-able vendor link.</strong>{' '}
+                  After you submit, you get a link you can WhatsApp the
+                  vendor in two taps. No PDF download, no login on their
+                  end.
                 </span>
               </li>
             </ul>

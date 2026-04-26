@@ -331,6 +331,9 @@ export async function POST(request: Request) {
       // separately within 4 working hours - this is just acknowledgement.
       try {
         const offerGbp = Math.round(offer.offerPence / 100).toLocaleString('en-GB');
+        const followUpLine = input.contactPhone
+          ? "We'll also drop you a WhatsApp on the number you gave us when the signed offer is ready."
+          : 'If you share a work mobile on reply, we can WhatsApp you the moment the signed offer is ready.';
         await sendEmail({
           to: input.contactEmail,
           subject: `Your indicative offer for ${input.address}`,
@@ -343,6 +346,7 @@ export async function POST(request: Request) {
             `Suggested completion: ${offer.completionDays} days.`,
             '',
             'A signed binding offer document, with the comparables we used and our methodology, will be in your inbox within 4 working hours.',
+            followUpLine,
             '',
             "If your client decides the open market is the better route, we'll still pay you the introducer fee for trusting us first - reply to this email and we'll instruct on standard terms.",
             '',
