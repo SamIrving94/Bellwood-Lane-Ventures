@@ -353,3 +353,119 @@ export async function getAgentsByPostcode(postcode: string) {
     schema: AgentsSchema,
   });
 }
+
+// ---------------------------------------------------------------------------
+// Endpoint: /account/credits — budget visibility
+// ---------------------------------------------------------------------------
+
+const CreditsSchema = z.object({
+  status: z.string().optional(),
+  result: z
+    .object({
+      credits_used: z.number().optional(),
+      credits_remaining: z.number().optional(),
+      credits_total: z.number().optional(),
+      plan: z.string().optional(),
+      reset_date: z.string().optional(),
+    })
+    .partial()
+    .optional(),
+});
+
+/**
+ * Account credit balance. Free to call (PropertyData doesn't bill for this).
+ * Refreshed every 60s in the dashboard so the credit panel stays accurate
+ * without thrashing the endpoint.
+ */
+export async function getAccountCredits() {
+  return fetchPropertyData('/account/credits', {}, {
+    ttlMs: 60 * 1000, // 1 minute
+    estimatedCredits: 0,
+    schema: CreditsSchema,
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Endpoint: /george — PropertyData's AI research assistant (POST)
+// ---------------------------------------------------------------------------
+
+const GeorgeSchema = z.object({
+  status: z.string().optional(),
+  result: z
+    .object({
+      answer: z.string().optional(),
+      conversation_id: z.string().optional(),
+      sources: z.array(z.unknown()).optional(),
+    })
+    .partial()
+    .optional(),
+});
+
+export type GeorgeMessage = { role: 'user' | 'assistant'; content: string };
+
+/**
+ * Ask George — PropertyData's hosted AI. Wraps the /george POST endpoint.
+ * Used by the Bellwoods Concierge in the co-founder dashboard. Conversation
+ * is preserved by the caller (we pass history with each call).
+ *
+ * NOT cached — every question is unique and questions can be follow-ups
+ * that need fresh state.
+ */
+export async function askGeorge(input: {
+  question: string;
+  conversation?: GeorgeMessage[];
+  context?: string;
+}) {
+  const apiKey = env.PROPERTYDATA_API_KEY;
+  if (!apiKey) {
+    return { answer: null, error: 'no_api_key' as const };
+  }
+
+  const url = `${API_BASE}/george`;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 30_000);
+
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      signal: controller.signal,
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+        'X-API-Key': apiKey,
+      },
+      body: JSON.stringify({
+        question: input.question,
+        conversation: input.conversation ?? [],
+        context: input.context ?? undefined,
+      }),
+    });
+    if (!res.ok) {
+      const text = await res.text().catch(() => res.statusText);
+      console.warn(`[propertydata] /george ${res.status}: ${text}`);
+      return { answer: null, error: 'request_failed' as const };
+    }
+    const json = await res.json();
+    const parsed = GeorgeSchema.safeParse(json);
+    if (!parsed.success) {
+      console.warn('[propertydata] /george response schema invalid');
+      return { answer: null, error: 'invalid_response' as const };
+    }
+    creditsThisProcess += 5; // /george is roughly 5 credits per call
+    console.info(`[propertydata] /george +5 credits (process total: ${creditsThisProcess})`);
+    return {
+      answer: parsed.data.result?.answer ?? null,
+      conversationId: parsed.data.result?.conversation_id,
+      error: null as null,
+    };
+  } catch (error) {
+    if ((error as { name?: string })?.name === 'AbortError') {
+      console.warn('[propertydata] /george timed out');
+      return { answer: null, error: 'timeout' as const };
+    }
+    console.warn('[propertydata] /george failed', error);
+    return { answer: null, error: 'unexpected' as const };
+  } finally {
+    clearTimeout(timer);
+  }
+}

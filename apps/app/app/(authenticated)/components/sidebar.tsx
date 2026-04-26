@@ -70,6 +70,11 @@ const data = {
       icon: FileTextIcon,
     },
     {
+      title: 'Research',
+      url: '/research',
+      icon: BotIcon,
+    },
+    {
       title: 'Leads',
       url: '/leads',
       icon: SearchIcon,
