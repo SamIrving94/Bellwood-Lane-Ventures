@@ -106,6 +106,9 @@ importers:
       react-dom:
         specifier: 19.0.0
         version: 19.0.0(react@19.0.0)
+      svix:
+        specifier: ^1.61.2
+        version: 1.61.2
       zod:
         specifier: ^3.24.2
         version: 3.24.2
