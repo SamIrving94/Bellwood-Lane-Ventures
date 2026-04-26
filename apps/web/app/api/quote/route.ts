@@ -8,6 +8,7 @@ import {
 import type { PropertyType } from '@repo/valuation';
 import { generateReferralCode } from '@/app/partners/_lib/auth';
 import { recordDealUpdate } from '@repo/deal-updates';
+import { sendEmail } from '@repo/email';
 
 // Simple in-memory rate limit: 10 requests per IP per hour
 const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
@@ -55,6 +56,10 @@ const InputSchema = z.object({
   contactEmail: z.string().email(),
   contactPhone: z.string().optional(),
   referralCode: z.string().optional(),
+  /** UI label of the trigger chip the agent picked. Persisted to notes. */
+  triggerLabel: z.string().optional(),
+  /** Origin of the submission, e.g. "agent_quick_form" from /save-the-sale. */
+  submissionSource: z.string().optional(),
 });
 
 function mapPropertyType(
@@ -109,9 +114,27 @@ export async function POST(request: Request) {
   let quoteRequest;
   let autoCreatedAgent: { referralCode: string; contactName: string; firmName: string } | null = null;
   try {
+    // Compose a notes string preserving the trigger chip + submission source.
+    // Sam reads this in the dashboard intake view to triage faster.
+    const notesLines: string[] = [];
+    if (input.triggerLabel) notesLines.push(`Trigger: ${input.triggerLabel}`);
+    if (input.submissionSource) notesLines.push(`Source: ${input.submissionSource}`);
+    const notes = notesLines.length ? notesLines.join('\n') : undefined;
+
+    // Source taxonomy for the dashboard:
+    //   agent_quick_form  - new panic-mode form on /save-the-sale
+    //   agent_portal      - logged-in agent via referral code
+    //   public_web        - seller intake or unattributed
+    const source =
+      input.submissionSource === 'agent_quick_form'
+        ? 'agent_quick_form'
+        : input.referralCode
+          ? 'agent_portal'
+          : 'public_web';
+
     quoteRequest = await database.quoteRequest.create({
       data: {
-        source: input.referralCode ? 'agent_portal' : 'public_web',
+        source,
         referralCode: input.referralCode ? input.referralCode.toUpperCase() : undefined,
         contactName: input.contactName,
         contactEmail: input.contactEmail,
@@ -126,6 +149,7 @@ export async function POST(request: Request) {
         askingPricePence: input.askingPricePence,
         sellerSituation: input.situation,
         urgencyDays: input.urgencyDays,
+        notes,
         status: 'processing',
       },
     });
@@ -266,6 +290,68 @@ export async function POST(request: Request) {
         });
       } catch (err) {
         console.warn('[quote] founder-action create failed (non-fatal)', err);
+      }
+    }
+
+    // For every agent quick-form submission, raise a Founder Action so the
+    // submission lands in Sam's queue regardless of whether the offer
+    // requires review. The 4-working-hour signed-PDF SLA is enforced
+    // operationally - this is the trigger for that workflow.
+    if (input.submissionSource === 'agent_quick_form') {
+      try {
+        const offerGbp = Math.round(offer.offerPence / 100).toLocaleString('en-GB');
+        const slaDeadline = new Date(Date.now() + 4 * 60 * 60 * 1000);
+        await database.founderAction.create({
+          data: {
+            type: 'ceo_escalation',
+            priority: 'high',
+            status: 'pending',
+            agent: 'appraiser',
+            title: `Send signed offer: ${input.address}, ${input.postcode}`,
+            description: `${input.firmName ?? 'Agent'} submitted via /save-the-sale. Trigger: ${input.triggerLabel ?? 'unspecified'}. Indicative offer £${offerGbp} (${Math.round(offer.offerPercentOfAvm * 100)}% of AVM). Signed PDF promised within 4 working hours.`,
+            expiresAt: slaDeadline,
+            metadata: {
+              quoteRequestId: quoteRequest.id,
+              offerPence: offer.offerPence,
+              offerPercentOfAvm: offer.offerPercentOfAvm,
+              triggerLabel: input.triggerLabel,
+              firmName: input.firmName,
+              contactName: input.contactName,
+              contactEmail: input.contactEmail,
+              slaHours: 4,
+              link: `/quotes/${quoteRequest.id}`,
+            },
+          },
+        });
+      } catch (err) {
+        console.warn('[quote] founder-action (agent SLA) create failed', err);
+      }
+
+      // Confirmation email to the agent. The signed PDF will arrive
+      // separately within 4 working hours - this is just acknowledgement.
+      try {
+        const offerGbp = Math.round(offer.offerPence / 100).toLocaleString('en-GB');
+        await sendEmail({
+          to: input.contactEmail,
+          subject: `Your indicative offer for ${input.address}`,
+          text: [
+            `Hi ${input.contactName.split(' ')[0]},`,
+            '',
+            `Thanks for sending us ${input.address}, ${input.postcode}.`,
+            '',
+            `Indicative cash offer: £${offerGbp} (${Math.round(offer.offerPercentOfAvm * 100)}% of AVM mid).`,
+            `Suggested completion: ${offer.completionDays} days.`,
+            '',
+            'A signed binding offer document, with the comparables we used and our methodology, will be in your inbox within 4 working hours.',
+            '',
+            "If your client decides the open market is the better route, we'll still pay you the introducer fee for trusting us first - reply to this email and we'll instruct on standard terms.",
+            '',
+            'Bellwoods Lane',
+            'hello@bellwoodslane.co.uk',
+          ].join('\n'),
+        });
+      } catch (err) {
+        console.warn('[quote] agent confirmation email failed', err);
       }
     }
 

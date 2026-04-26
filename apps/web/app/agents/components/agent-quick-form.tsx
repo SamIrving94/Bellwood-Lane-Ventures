@@ -97,17 +97,19 @@ export function AgentQuickForm({ defaultTriggerLabel }: AgentQuickFormProperties
         body: JSON.stringify({
           address: address.trim(),
           postcode: postcode.trim().toUpperCase(),
+          // Property type / bedrooms / condition are intentionally omitted -
+          // the agent quick-form is for panic-mode submission. The dashboard
+          // shows 'unknown' and the founder fills them in during follow-up,
+          // rather than us polluting data with fake defaults.
           propertyType: 'other',
-          bedrooms: 3,
           role: 'agent',
           firmName: firmName.trim(),
           situation: trigger.api,
           triggerLabel: trigger.ui,
-          condition: 5,
           urgencyDays: trigger.api === 'chain_break' ? 14 : 21,
           contactName: contactName.trim(),
           contactEmail: contactEmail.trim(),
-          source: 'agent_quick_form',
+          submissionSource: 'agent_quick_form',
         }),
       });
       const data = await res.json().catch(() => ({}));
@@ -331,23 +333,11 @@ function SuccessView({
       </div>
 
       {trackUrl && (
-        <div className="rounded-2xl border border-slate-200 bg-white p-6">
-          <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-[#C6A664]">
-            Share with your vendor
-          </p>
-          <p className="mt-2 text-[14px] leading-relaxed text-slate-600">
-            One link, no login. Your vendor sees the offer, our methodology,
-            and the walk-away cover. Text or email it directly.
-          </p>
-          <div className="mt-4 flex flex-col gap-2 sm:flex-row">
-            <input
-              readOnly
-              value={trackUrl}
-              className="flex-1 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 font-mono text-xs text-[#0A2540]"
-            />
-            <CopyButton value={trackUrl} />
-          </div>
-        </div>
+        <VendorShareCard
+          trackUrl={trackUrl}
+          offerPence={offer.offerPence}
+          completionDays={offer.completionDays ?? 21}
+        />
       )}
 
       {offer.agentAccount?.referralCode && (
@@ -363,7 +353,84 @@ function SuccessView({
   );
 }
 
-function CopyButton({ value }: { value: string }) {
+function VendorShareCard({
+  trackUrl,
+  offerPence,
+  completionDays,
+}: {
+  trackUrl: string;
+  offerPence?: number;
+  completionDays: number;
+}) {
+  const figure = formatGBP(offerPence);
+  const emailSubject = encodeURIComponent('A cash offer for your property');
+  const emailBody = encodeURIComponent(
+    [
+      'Hi,',
+      '',
+      `Following our conversation, I have a cash offer for the property:`,
+      '',
+      `Indicative cash price: ${figure}`,
+      `Completion: as fast as ${completionDays} days, or paced to suit you.`,
+      `No fees, no chain.`,
+      '',
+      `You can see the offer document, the methodology, and the walk-away cover here:`,
+      trackUrl,
+      '',
+      'Have a read - happy to walk you through it on a call when you have a moment.',
+      '',
+      'Best,',
+    ].join('\n'),
+  );
+  const smsBody = encodeURIComponent(
+    `Hi - I have a cash offer of ${figure} for the property. ${completionDays}-day completion, no fees. Full details + methodology: ${trackUrl}`,
+  );
+
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-white p-6">
+      <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-[#C6A664]">
+        Share with your vendor
+      </p>
+      <p className="mt-2 text-[14px] leading-relaxed text-slate-600">
+        One link, no login. Your vendor sees the offer, our methodology, and
+        the walk-away cover.
+      </p>
+      <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <a
+          href={`mailto:?subject=${emailSubject}&body=${emailBody}`}
+          className="flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-[#0A1020] transition hover:border-[#C6A664] hover:bg-[#FAF6EA]"
+        >
+          <span aria-hidden>✉</span>
+          Email vendor
+        </a>
+        <a
+          href={`sms:?&body=${smsBody}`}
+          className="flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-[#0A1020] transition hover:border-[#C6A664] hover:bg-[#FAF6EA]"
+        >
+          <span aria-hidden>💬</span>
+          Text vendor
+        </a>
+        <CopyButton value={trackUrl} label="Copy link" copiedLabel="Copied ✓" />
+      </div>
+      <details className="mt-4 text-xs text-slate-500">
+        <summary className="cursor-pointer">Show the raw link</summary>
+        <p className="mt-2 break-all font-mono text-[11px] text-slate-600">
+          {trackUrl}
+        </p>
+      </details>
+    </div>
+  );
+}
+
+function CopyButton({
+  value,
+  label = 'Copy link',
+  copiedLabel = 'Copied \u2713',
+}: {
+  value: string;
+  label?: string;
+  copiedLabel?: string;
+}) {
   const [copied, setCopied] = useState(false);
   const handleCopy = async () => {
     try {
@@ -378,9 +445,10 @@ function CopyButton({ value }: { value: string }) {
     <button
       type="button"
       onClick={handleCopy}
-      className="rounded-lg bg-[#0A2540] px-4 py-2 text-xs font-medium text-white transition hover:bg-[#13365c]"
+      className="flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-[#0A1020] transition hover:border-[#C6A664] hover:bg-[#FAF6EA]"
     >
-      {copied ? 'Copied \u2713' : 'Copy link'}
+      <span aria-hidden>🔗</span>
+      {copied ? copiedLabel : label}
     </button>
   );
 }
