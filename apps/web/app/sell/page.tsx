@@ -127,14 +127,17 @@ export default function SellPage() {
             <br />
             On your timeline.
             <br />
-            <span className="italic text-[#C6A664]">No fees. No chain. No re-trade.</span>
+            <span className="italic text-[#C6A664]">No fees. No chain. No surprises.</span>
           </h1>
           <p className="mt-8 max-w-2xl text-lg leading-relaxed text-slate-600 md:mt-10">
             We buy UK residential property directly with our own capital.
-            A written, binding offer back the same day. Completion when
-            it suits you — fast if you need it, paced if you don&rsquo;t.
-            No agents to pay. No buyer to lose. The price you accept is
-            the price you complete at.
+            A written, binding offer back the same day.{' '}
+            <strong className="font-semibold text-[#0A1020]">
+              Completion as fast as 14 days
+            </strong>
+            {' '}if you need it — or paced to suit a probate grant or onward
+            move if you don&rsquo;t. The price you accept is the price you
+            complete at.
           </p>
 
           <div className="mt-10 flex flex-col items-start gap-3 sm:flex-row sm:items-center">
