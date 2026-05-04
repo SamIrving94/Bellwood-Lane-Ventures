@@ -1,161 +1,432 @@
 # Paperclip Agent Sync Brief — Bellwood Ventures Platform
 
-**Date:** 22 April 2026
-**From:** Samir (Founder)
-**To:** All Paperclip Agents (CTO, Scout, Appraiser, Marketer, Counsel, Orchestrator, Concierge, Relationship Manager, Chief of Staff)
+**This is the single source of truth for every Paperclip agent.**
+**Updated:** April 2026 (v3 — agent-quick-form + PropertyData + Concierge).
+**Audience:** All Paperclip agents (CTO, Scout, Appraiser, Marketer,
+Counsel, Orchestrator, Concierge, Relationship Manager, Chief of Staff).
+
+If you only read three sections, read **§4 (the agent-quick-form
+workflow)**, **§6 (the API contract)**, and **§9 (your prompt template)**.
 
 ---
 
-## What is the Bellwood Platform?
+## §1 The shape of the operation
 
-A **Next.js dashboard and CRM** at `C:\Users\samir\bellwood-app`.
+The Bellwood Lane stack is two halves working together:
 
-This is the **single source of truth** for all Bellwood Ventures:
-- Deal pipeline
-- Leads
-- Valuations
-- Contacts
-- Outreach
+```
+┌────────────────────────────────────┐  ┌────────────────────────────────┐
+│       BELLWOOD PLATFORM            │  │           PAPERCLIP            │
+│       (this repo)                  │  │    (your runtime)              │
+│                                    │  │                                │
+│  apps/web   public site            │  │  AI-agent ops:                 │
+│  apps/app   founder dashboard      │  │  - Enrichment workflows        │
+│  apps/api   integration endpoints  │  │  - Signed PDF drafting         │
+│                                    │◄─┤  - WhatsApp/email reach-out    │
+│  Source of truth for:              │  │  - SLA monitoring + escalation │
+│  - QuoteRequests, QuoteOffers      │  │  - 7-day deal follow-ups       │
+│  - AgentAccounts                   │  │  - Weekly market intel         │
+│  - Deals, DealUpdates              │  │  - Lead scoring + scouting     │
+│  - FounderActions (the queue)      │  │  - Investor outreach           │
+│  - AvmResults                      │  │                                │
+│                                    │  │  Authenticates via:            │
+│                                    │  │   Authorization: Bearer        │
+│  + AVM engine (real HMLR + EPC +   │  │     ${PAPERCLIP_API_KEY}       │
+│    HPI + PropertyData /valuation-  │  │                                │
+│    sale 20% cross-check)           │  │  Hits: bellwood-api.vercel.app │
+│                                    │  │                                │
+│  + Bellwoods Concierge             │  │                                │
+│    (PropertyData /george AI in the │  │                                │
+│     dashboard for ad-hoc research) │  │                                │
+└────────────────────────────────────┘  └────────────────────────────────┘
+```
+
+**Architectural principle:** the platform writes truth, Paperclip runs ops
+on top. **Every agent action that produces data MUST push it to the
+platform via the API.** Your work is wasted if it doesn't land in the
+platform — the founders review and override from the dashboard.
+
+The platform never queues outbound work in Paperclip; Paperclip pulls work
+from the platform.
 
 ### Production URLs
 
 - **Dashboard:** https://bellwood-app.vercel.app
 - **API:** https://bellwood-api.vercel.app
+- **Public site:** https://bellwood-web.vercel.app
 - **GitHub:** https://github.com/SamIrving94/Bellwood-Lane-Ventures
 
-**Every agent action that produces data MUST push it to the platform via the API.**
-
-The founders review, rate, and override your outputs from the dashboard. **Your work is wasted if it doesn't land in the platform.**
-
----
-
-## Tech Stack
+### Tech stack (so you can read the codebase)
 
 - **Framework:** Next.js 15, TypeScript, React 19
-- **Database:** PostgreSQL on Neon (via Prisma ORM)
-- **Auth:** Clerk (founders only)
+- **Database:** PostgreSQL on Neon, Prisma ORM
+- **Auth:** Clerk for founders; Bearer token for Paperclip
 - **Monorepo:** Turborepo + pnpm
-- **Hosting:** Vercel (app + api)
-- **Business Logic Packages:** `@repo/property-data`, `@repo/scouting`, `@repo/valuation`, `@repo/email`
+- **Hosting:** Vercel (3 projects: bellwood-web, bellwood-app, bellwood-api)
+- **Business logic packages:** `@repo/property-data`, `@repo/scouting`,
+  `@repo/valuation`, `@repo/instant-offer`, `@repo/email`, `@repo/deal-updates`
 
 ---
 
-## Repo-aware agent onboarding
+## §2 First-run onboarding (read these in order)
 
-Paperclip agents should **read the codebase**, not just hit the API.
+You should read the codebase, not just hit the API.
 
-### Step 1 — Clone the repo (read-only)
+### Step 1 — Clone (read-only)
 
 ```bash
 git clone https://github.com/SamIrving94/Bellwood-Lane-Ventures.git
-cd Bellwood-Lane-Ventures
 ```
 
-Agents **do not push to master**. Only the **CTO agent** opens PRs (see "CTO Code Contribution Workflow" below).
+Agents do not push to `master`. Only the **CTO agent** opens PRs (see §10).
 
 ### Step 2 — Read the data contract
 
-The **Prisma schema** is the canonical data contract for the whole platform:
+The Prisma schema is the canonical contract for everything you'll touch:
 
 - **File:** `packages/database/prisma/schema.prisma`
 
-**Every agent should read this file first.** It defines every model, enum, and relation you will ever interact with via the API.
-
 ### Step 3 — Read the research library
 
-**Mandatory before acting.** All Paperclip agents read these on first run
-and re-read when explicitly asked:
+Mandatory before acting:
 
-- **`docs/research/README.md`** — index of all research
-- **`docs/research/agent-partner-research-2026-04.md`** — UK estate agent
-  market, pain points, competitor matrix, GTM playbook, regulatory brief
-- **`docs/research/agent-briefing-pack-2026-04.md`** — operating manual
-  for the Paperclip agent team
-
-When a research file is updated, agents must re-read it before their
-next action that touches that domain.
+- `docs/research/agent-partner-research-2026-04.md` — UK estate agent
+  market, pain points, GTM playbook, regulatory brief
+- `docs/research/agent-briefing-pack-2026-04.md` — operating manual
+- `docs/research/agent-evidence-reality-check-2026-04.md` — adversarial
+  review of our positioning
+- `docs/HANDOVER.md` — the co-founder handover, gives you the same picture
+  the founders have
 
 ### Step 4 — Read the files for your role
 
 | Agent | Must read |
-|:---|:---|
-| **CTO** | Entire repo. Prioritise: `apps/api/app/agents/*`, `packages/database/prisma/schema.prisma`, `apps/app/app/`, `turbo.json`, `package.json` |
-| **Scout** | `packages/scouting/` |
-| **Appraiser** | `packages/valuation/` + `packages/property-data/` |
-| **Marketer** | `packages/email/` + `apps/api/app/agents/outreach/` |
+|---|---|
+| **CTO** | Entire repo. Prioritise: `apps/api/app/agents/*`, `packages/database/prisma/schema.prisma`, `apps/app/app/`, `turbo.json` |
+| **Scout** | `packages/scouting/`, `apps/api/app/cron/scouting/`, `apps/api/app/cron/agent-prospecting/` |
+| **Appraiser** | `packages/valuation/`, `packages/property-data/`, `packages/instant-offer/` |
+| **Marketer** | `packages/email/`, `apps/api/app/agents/outreach/` |
 | **Counsel** | `apps/api/app/agents/legal/` |
-| **Orchestrator** | `apps/api/app/agents/alerts/` + `apps/api/app/agents/events/` |
-| **Concierge** | `apps/api/app/agents/outreach/` + schema models `Contact`, `Deal` |
-| **Relationship Manager** | Schema models `Contact` (investor type), `Deal` |
-| **Chief of Staff** | `apps/api/app/agents/` (all), dashboard routes in `apps/app/app/` |
+| **Orchestrator** | `apps/api/app/agents/alerts/`, `apps/api/app/agents/events/`, `apps/api/app/cron/sla-alerts/` |
+| **Concierge** | `apps/api/app/agents/outreach/`, `apps/web/app/save-the-sale/`, schema models `Contact`, `Deal`, `QuoteRequest` |
+| **Relationship Manager** | Schema model `Contact` (investor type), `Deal` |
+| **Chief of Staff** | Everything in `apps/api/app/agents/`, dashboard routes in `apps/app/app/` |
 
 ---
 
-## CTO Code Contribution Workflow
+## §3 The two new things you need to know about
 
-The **CTO agent is the only agent that writes code**. Other agents consume the API.
+These are post-April-2026 additions to the brief. If you've worked on
+Bellwood before, this is what's changed.
 
-### Rules
+### 3.1 The agent quick-form workflow (`agent_quick_form`)
 
-1. **Never commit to `master` directly.**
-2. Create a branch: `paperclip/cto/<feature-name>`
-3. Push the branch to `origin`.
-4. Open a **pull request** for founder review.
-5. Wait for founder approval before merge.
+`/save-the-sale` is the panic-mode landing where estate agents send
+fall-throughs — chain breaks, mortgage failures, survey down-valuations,
+probate. Submissions land in `QuoteRequest` rows with
+`source = 'agent_quick_form'` and a 4-hour signed-PDF SLA.
 
-### Example flow
+**This is now your priority queue.** See §4.
 
-```bash
-git checkout -b paperclip/cto/add-eval-config-endpoint
-# make edits
-git add .
-git commit -m "feat(api): add GET /agents/eval-config endpoint
+### 3.2 PropertyData REST integration
 
-Exposes active scoring weights so agents can fetch
-live config before each run.
+We have a paid PropertyData API key. Two ways you can use it:
 
-Refs: PAPERCLIP-SYNC-BRIEF.md §'What's Coming Next'"
-git push -u origin paperclip/cto/add-eval-config-endpoint
-gh pr create --title "feat(api): add eval-config endpoint" --body "..."
-```
+- **Path A — `@repo/property-data/propertydata.ts`** — server-only, typed,
+  cached, credit-logged wrapper. Use for programmatic enrichment.
+- **Path B — `/george`** — PropertyData's hosted AI endpoint, accessed via
+  `askGeorge()` in the same package. Used by the Bellwoods Concierge in
+  the dashboard. You can use it too for natural-language synthesis.
 
-### Commit message format
+Endpoints already wrapped: `/valuation-sale`, `/floor-areas`, `/flood-risk`,
+`/demand`, `/agents`, `/account/credits`, `/george`. Adding more is easy
+— see the pattern in `packages/property-data/src/propertydata.ts`.
 
-```
-<type>(<scope>): <short summary>
-
-<body — why, not what>
-
-<footer — refs / breaking changes>
-```
-
-**Types:** `feat`, `fix`, `chore`, `refactor`, `docs`, `test`
-**Scopes:** `api`, `app`, `scouting`, `valuation`, `property-data`, `email`, `db`
+Setup details: `docs/setup/propertydata.md`.
 
 ---
 
-## How to Push Data to the Platform
+## §4 The agent-quick-form workflow (priority 1)
 
-Base URL: `https://bellwood-api.vercel.app`
+**Trigger:** new `QuoteRequest` rows with:
 
-All agent API routes are under `/agents/*`.
+- `source = 'agent_quick_form'`
+- `status = 'quoted'` (not `processing`, not `draft`)
+- `createdAt > now - 4h`
 
-### Authentication
+**Polling (v1):** every 60s, until we add webhooks. Suggested loop in §6.6.
 
-Every request must include:
+### What the platform has already done before you see the row
+
+When the agent submits at `/save-the-sale`, the platform has:
+
+1. Created the `QuoteRequest` (with `notes` like
+   `"Trigger: Buyer pulled out\nSource: agent_quick_form"`)
+2. Generated an **indicative offer** via `@repo/instant-offer` →
+   `@repo/valuation` (real HMLR + EPC + HPI + PropertyData
+   `/valuation-sale` cross-check, with synthetic fallback if APIs time out)
+3. Stored it as a `QuoteOffer`
+4. Created a `FounderAction` with `expiresAt = +4h` — your SLA hook
+5. Sent an acknowledgement email to the agent
+6. Returned the indicative figure to the form for on-screen display
+7. Recorded a `DealUpdate` and a vendor-shareable `trackUrl`
+
+The agent walked away with: a number, a confirmation email, and a
+WhatsApp/email-ready vendor link. They now expect a **signed PDF in
+4 working hours**.
+
+### Your workflow
+
+**Within 30 minutes of submission:**
+
+1. **Enrich the data the panic-form didn't capture** using PropertyData:
+
+   | Endpoint | Returns | Why |
+   |---|---|---|
+   | `/floor-areas` | EPC sqft + bedrooms by postcode | Fixes missing-inputs problem |
+   | `/property-info` | Property type, tenure, build year | Replaces `propertyType: 'other'` default |
+   | `/flood-risk` | Rivers/sea + surface water risk | Material risk factor |
+   | `/planning-applications` | Active + recent apps | Enforcement, refusals |
+   | `/title` | Freehold/leasehold, lease length | Catches short leases |
+   | `/demand` | Days on market + sales-demand score | How aggressive can our offer be |
+
+   ~12 credits per enrichment. Companies House on the firm via
+   `@repo/property-data` (already wrapped).
+
+   **Writeback:** `PATCH /agents/quote-ops/[id]` with the new bedrooms /
+   propertyType / condition / `notesAppend`.
+
+2. **Re-run the AVM with full inputs.** Call `runAVM()` directly or
+   `generateInstantOffer()` from `@repo/instant-offer`. Compare against the
+   indicative — if the new figure is **>5% below** the indicative, raise
+   priority on the matching `FounderAction` and add a `notesAppend`
+   explaining why.
+
+3. **Draft the signed offer PDF.** Template:
+   `docs/templates/binding-offer-letter.md` (write it if not yet present —
+   CTO agent's job to scaffold). Include: address, agent firm, indicative
+   figure, enriched figure, completion timeline, walk-away cover (£1,000
+   + costs), RICS-defect carve-out, methodology reference, signature line.
+   Stash the PDF in Vercel Blob, attach via `notesAppend` URL.
+
+**Within 2 working hours:**
+
+4. **Founder approval.** Surface in `/actions` (Action Centre) with link
+   to PDF preview. Sam or co-founder clicks "Approve & Send".
+
+**Within 4 working hours (the SLA):**
+
+5. **Send the signed PDF:**
+   - Email the signed PDF to `contactEmail`, with a short agent-friendly
+     covering message
+   - If `contactPhone` is set, send a WhatsApp via Bellwood's business
+     account: *"Your signed offer for [address] just landed in [email].
+     Reply here if anything urgent."*
+   - `POST /agents/quote-ops/[id]/deal-update` with
+     `kind: 'offer_sent'` so the vendor-facing timeline updates
+   - `POST /agents/quote-ops/[id]/resolve` to stop the SLA clock
+
+### SLA breach handling
+
+If `expiresAt` passes and the FounderAction is still `pending`:
+
+- Escalate to founder mobile (WhatsApp + push)
+- Email + WhatsApp the agent: apology, realistic new ETA, small goodwill
+  credit toward their next deal
+- Log the breach for the published quarterly completion-rate report
+
+### "Open market" outcome (7-day follow-up)
+
+If after 7 days `QuoteRequest.status` is still `quoted` and the agent
+hasn't converted:
+
+> *"Quick check — what happened with [address]? If the open market was the
+> better route, no problem. We'll instruct as introducer if you'd like.
+> Reply 'open' or 'taken'."*
+
+If `open`: raise a `FounderAction` to issue the introducer fee per our
+either-outcome promise. If `taken`: `POST deal-update` with
+`kind: 'offer_declined'` and close the loop.
+
+---
+
+## §5 The other workflows you own
+
+### 5.1 Daily scouting (existing, predates this brief)
+
+| Time | Stage | Description |
+|---|---|---|
+| 07:00 | Scout | Find probate / chain break / repossession leads, enrich, score, push `POST /agents/leads` |
+| 07:15 | Appraise | Value leads scored ≥ 70, push `POST /agents/valuations` |
+| 07:30 | Outreach | Marketer drafts comms. Hold vendor comms |
+| 08:00 | Summary | Orchestrator's morning summary action |
+| 09:00 | SLA check | System cron flags stuck deals |
+
+### 5.2 Weekly agent prospecting (Mondays 08:30 UTC)
+
+`apps/api/app/cron/agent-prospecting/route.ts` already runs. It calls
+PropertyData `/agents` for each target postcode, upserts ranked agents
+into `Contact` (type `estate_agent`), tags new firms
+`status:not_yet_contacted`, raises a Founder Action with the top 5 new
+firms by listing volume, and optionally emails the summary.
+
+**Your job, Marketer:** when new firms appear with
+`status:not_yet_contacted`, draft the first outreach (held for founder
+review). When founder approves, schedule the campaign via
+`POST /agents/outreach`. Mark the contact tag as
+`status:outreach_sent` once dispatched.
+
+### 5.3 Weekly market intel briefing (Mondays 09:00, manual for now)
+
+Pull `/national-data` + `/postcode-key-stats` for our priority regions.
+Generate a 150-word WhatsApp-friendly briefing via `askGeorge()` with
+context preset. Push as a `OutreachCampaign` "Market Brief Mon" message
+to all Preferred-tier agents (held for review until cadence proves out).
+
+~10 credits/week.
+
+### 5.4 Investor pack generation (on-demand)
+
+Triggered when a `FounderAction` of `type: 'investor_pack_request'` is
+created (or Sam routes a deal to investor instead of buying it). Pull
+`/yields`, `/rents`, `/demand-rent`, `/growth`, `/household-income`,
+`/sourced-properties` (for competitive context). Generate a one-page
+markdown pack via `askGeorge()` with structured prompts. Email +
+WhatsApp the investor with the PDF.
+
+~8 credits per pack.
+
+### 5.5 Standard ops (existing)
+
+Counsel — track legal step state on every active deal.
+Orchestrator — chain breaks, golden windows, SLA breaches, CEO
+escalations, morning summaries.
+Concierge — vendor-facing draft messages (always held for founder review).
+Relationship Manager — investor relationships, ticket sizing, preferences.
+Chief of Staff — performance review, propose process changes.
+
+---
+
+## §6 The API contract
+
+Base URL: `https://bellwood-api.vercel.app`. All routes under `/agents/*`.
+
+Every request:
 
 ```
-Authorization: Bearer <PAPERCLIP_API_KEY>
+Authorization: Bearer ${PAPERCLIP_API_KEY}
 Content-Type: application/json
 ```
 
-The key is stored as an **env var on the API**. Founders share the value with each agent out-of-band.
+The key is shared with each agent out-of-band by founders.
 
----
+### 6.1 Quote-ops (NEW — for the agent-quick-form workflow)
 
-### Available Endpoints
+**`GET /agents/quote-ops?status=pending&hours=48`**
 
-#### 1. Scout → `POST /agents/leads`
+The Paperclip inbox. Returns `agent_quick_form` QuoteRequests still
+awaiting a signed PDF, oldest first. Each row includes the live
+`FounderAction` so you know the SLA deadline.
+
+```json
+{
+  "count": 3,
+  "quotes": [
+    {
+      "id": "clx...",
+      "address": "14 Acacia Avenue, Stockport",
+      "postcode": "SK4 3HQ",
+      "contactName": "Jane Smith",
+      "contactEmail": "jane@acmeestates.co.uk",
+      "contactPhone": "07700900000",
+      "firmName": "Acme Estates",
+      "sellerSituation": "chain_break",
+      "bedrooms": null,
+      "propertyType": "other",
+      "condition": null,
+      "notes": "Trigger: Buyer pulled out\nSource: agent_quick_form",
+      "status": "quoted",
+      "createdAt": "2026-04-26T09:47:00.000Z",
+      "offer": {
+        "id": "...",
+        "offerPence": 24400000,
+        "estimatedMarketValueMinPence": 28000000,
+        "estimatedMarketValueMaxPence": 31000000,
+        "offerPercentOfAvm": 0.83,
+        "confidenceScore": 0.62,
+        "completionDays": 14,
+        "lockedUntil": "...",
+        "reasoning": ["..."]
+      },
+      "action": {
+        "id": "...",
+        "status": "pending",
+        "priority": "high",
+        "expiresAt": "2026-04-26T13:47:00.000Z"
+      }
+    }
+  ]
+}
+```
+
+**`GET /agents/quote-ops/[id]`** — full detail; returns `quote` (with
+offer, deal updates, track token) and all matching `actions`.
+
+**`PATCH /agents/quote-ops/[id]`** — enrichment writeback.
+
+```json
+{
+  "bedrooms": 4,
+  "propertyType": "semi_detached",
+  "condition": 6,
+  "askingPricePence": 31000000,
+  "notesAppend": "Companies House: ACME LTD active since 2009. EPC C. Risk profile clean.",
+  "replaceOffer": {
+    "estimatedMarketValueMinPence": 29000000,
+    "estimatedMarketValueMaxPence": 32500000,
+    "offerPence": 25800000,
+    "offerPercentOfAvm": 0.84,
+    "confidenceScore": 0.91,
+    "completionDays": 14,
+    "reasoning": ["Re-run with full inputs", "..."],
+    "lockedUntil": "2026-04-29T09:47:00.000Z"
+  }
+}
+```
+
+All fields optional. `replaceOffer` creates a new `QuoteOffer` and points
+`QuoteRequest.offerId` at it.
+
+**`POST /agents/quote-ops/[id]/deal-update`** — append to the
+vendor-facing timeline.
+
+```json
+{
+  "kind": "offer_sent",
+  "title": "Signed binding offer issued",
+  "detail": "PDF sent to jane@acmeestates.co.uk + WhatsApp acknowledgement.",
+  "metadata": { "signedOfferUrl": "https://...", "messageId": "..." }
+}
+```
+
+`kind` is the Prisma `DealUpdateKind` enum: `offer_sent`,
+`offer_accepted`, `offer_declined`, `delay`, `founder_review`, `note`,
+`solicitor_instructed`, `searches_ordered`, `survey_scheduled`,
+`survey_completed`, `enquiries_raised`, `enquiries_resolved`,
+`exchange_target_set`, `exchanged`, `completion_target_set`, `completed`,
+`resale_listed`.
+
+**`POST /agents/quote-ops/[id]/resolve`** — stop the SLA clock.
+
+```json
+{
+  "resolvedBy": "paperclip-appraiser",
+  "outcome": "signed_pdf_sent",
+  "metadata": { "signedOfferUrl": "https://...", "deliveredAt": "..." }
+}
+```
+
+### 6.2 Scouting — `POST /agents/leads`
 
 Push new leads from scouting runs.
 
@@ -178,26 +449,17 @@ Push new leads from scouting runs.
       "sourceTrail": "probate_data > tier1_enrichment"
     }
   ],
-  "runSummary": {
-    "fetched": 25,
-    "enriched": 12,
-    "summary": "Scout found 3 qualified leads (2 STRONG, 1 VIABLE)"
-  }
+  "runSummary": { "fetched": 25, "enriched": 12, "summary": "..." }
 }
 ```
 
-**What happens:**
-- Creates `ScoutLead` records
-- Logs an `AgentEvent` (agent: "scout", eventType: "leads_created")
-- If any lead scores **>= 70**, creates a `FounderAction`
-- Founders see it in the Action Centre
+What happens: creates `ScoutLead`, logs `AgentEvent`, leads scored ≥ 70
+auto-create a `FounderAction`.
 
-**Required fields:** runDate, source, address, postcode, leadType, leadScore, verdict
-**Verdict enum:** `STRONG` | `VIABLE` | `THIN` | `PASS` | `INSUFFICIENT_DATA`
+**Verdict enum:** `STRONG` | `VIABLE` | `THIN` | `PASS` |
+`INSUFFICIENT_DATA`.
 
----
-
-#### 2. Appraiser → `POST /agents/valuations`
+### 6.3 Appraiser — `POST /agents/valuations`
 
 ```json
 {
@@ -208,11 +470,7 @@ Push new leads from scouting runs.
   "resultJson": {
     "hedonic": { "value": 24500000 },
     "csa": { "adjustedMedian": 23800000 },
-    "offer": {
-      "offerPence": 18900000,
-      "marginPercent": 22.8,
-      "ceoEscalation": false
-    },
+    "offer": { "offerPence": 18900000, "marginPercent": 22.8, "ceoEscalation": false },
     "verdict": "STRONG",
     "riskFactors": [],
     "preRicsFlags": []
@@ -221,206 +479,198 @@ Push new leads from scouting runs.
 }
 ```
 
-**What happens:**
-- Creates `AvmResult`
-- Updates linked `Deal` (estimatedMarketValuePence, ourOfferPence, marginPercent, verdict)
-- If `ceoEscalation: true` → **critical** FounderAction
-- Otherwise → **medium** "Approve offer" FounderAction
-- Logs to deal timeline
+Creates `AvmResult`, updates linked `Deal`, escalates if
+`ceoEscalation: true`.
 
-**Required fields:** postcode, propertyType, riskScore, resultJson
-
----
-
-#### 3. Counsel → `POST /agents/legal`
+### 6.4 Counsel — `POST /agents/legal`
 
 ```json
 {
   "dealId": "clxyz123...",
   "stepKey": "title_searches",
   "completed": true,
-  "notes": "Title clean. No charges or restrictions found.",
+  "notes": "Title clean.",
   "flagIssue": false
 }
 ```
 
-To flag a legal issue:
+Standard 8-step keys: `solicitor_instructed`, `searches_ordered`,
+`title_searches`, `local_authority_searches`, `environmental_searches`,
+`contract_review`, `exchange`, `completion`. `flagIssue: true` creates
+a critical FounderAction.
 
-```json
-{
-  "dealId": "clxyz123...",
-  "stepKey": "title_searches",
-  "completed": false,
-  "notes": "Title defect — unregistered easement across rear garden",
-  "flagIssue": true
-}
-```
-
-**Legal step keys (standard 8-step flow):**
-`solicitor_instructed`, `searches_ordered`, `title_searches`, `local_authority_searches`, `environmental_searches`, `contract_review`, `exchange`, `completion`
-
----
-
-#### 4. Marketer → `POST /agents/outreach`
+### 6.5 Marketer — `POST /agents/outreach`
 
 ```json
 {
   "campaignName": "Probate Solicitors Q2 2026",
-  "templates": [
-    {
-      "name": "Probate Solicitor Intro",
-      "subject": "Supporting your clients through property sales",
-      "body": "Dear {{name}},\n\nI'm writing from Bellwood Ventures...",
-      "type": "probate_solicitor",
-      "sequence": 1,
-      "delayDays": 0
-    }
-  ],
+  "templates": [{ "name": "Intro", "subject": "...", "body": "...", "type": "probate_solicitor", "sequence": 1, "delayDays": 0 }],
   "recipientContactIds": ["contact_id_1"],
-  "summary": "Campaign targeting 15 probate solicitors in SE London"
+  "summary": "..."
 }
 ```
 
-**CRITICAL RULE:** Direct vendor comms (individuals, not firms) must **NEVER auto-send**. Create as held items for founder review.
+**CRITICAL:** Direct vendor comms (individuals, not firms) must NEVER
+auto-send. Create as held items for founder review.
 
----
-
-#### 5. Orchestrator → `POST /agents/alerts`
+### 6.6 Orchestrator — `POST /agents/alerts`
 
 ```json
 {
   "alertType": "chain_break",
   "dealId": "clxyz123...",
-  "title": "Chain break alert: 8 Elm St — vendor mortgage expires in 6 weeks",
-  "description": "The vendor has a mortgage offer expiring on 21 May 2026...",
+  "title": "...",
+  "description": "...",
   "priority": "high",
-  "metadata": {
-    "mortgageExpiryDate": "2026-05-21",
-    "goldenWindowExpiresAt": "2026-05-14",
-    "suggestedNextAction": {
-      "action": "Schedule viewing and prepare offer",
-      "reasoning": "High equity, motivated seller, 6-week window",
-      "agent": "orchestrator"
-    }
-  }
+  "metadata": { ... }
 }
 ```
 
-**Alert types:** `chain_break`, `golden_window`, `sla_breach`, `ceo_escalation`, `legal_flag`
-**Priority:** `critical`, `high`, `medium`, `low`
+Alert types: `chain_break`, `golden_window`, `sla_breach`,
+`ceo_escalation`, `legal_flag`. Priority: `critical`, `high`, `medium`,
+`low`.
 
----
+### 6.7 Any agent — `POST /agents/events`
 
-#### 6. Any Agent → `POST /agents/events`
-
-Log any agent activity (informational, no action needed).
+Informational logging.
 
 ```json
 {
   "agent": "scout",
   "eventType": "api_health_check",
-  "summary": "All 5 property data APIs responding normally",
+  "summary": "All 5 property data APIs responding",
   "count": 5,
   "payload": { "hmlr": "ok", "epc": "ok", "os": "ok", "ch": "ok", "hpi": "ok" }
 }
 ```
 
-**Agent names:** `scout`, `appraiser`, `counsel`, `marketer`, `concierge`, `relationship_manager`, `chief_of_staff`, `cto`, `orchestrator`, `system`
+Agent names: `scout`, `appraiser`, `counsel`, `marketer`, `concierge`,
+`relationship_manager`, `chief_of_staff`, `cto`, `orchestrator`, `system`.
+
+### 6.8 Suggested polling loop (the agent-quick-form one)
+
+```
+every 60s {
+  GET /agents/quote-ops?status=pending&hours=4
+  for each quote without an enrichment timestamp:
+    enrich() via PropertyData
+    PATCH back
+  for each enriched quote without a signed PDF:
+    draft_pdf()
+    surface for founder approval
+  for each approved PDF:
+    send via email + WhatsApp
+    POST deal-update
+    POST resolve
+  for each pending action where expiresAt < now:
+    escalate to founder mobile via WhatsApp
+}
+```
 
 ---
 
-## The Feedback Loop
+## §7 PropertyData
 
-Founders rate and override every agent output:
+### Path A — local Claude Code MCP (Sam's terminal)
 
-- **Leads** — 1-5 star rating, override leadScore and verdict
-- **Valuations** — rate accuracy, override value and offer
-- **Outreach** — rate quality, edit emails
-- **Deals** — overall rating, override verdict
+Sam runs:
 
-Stored in `FounderFeedback`. Builds:
-- **Agreement rate** per agent
-- **Training data** for prompt improvement
-- **Eval configs** — scoring weights adjustable from dashboard
+```bash
+claude mcp add --transport http propertydata https://api.propertydata.co.uk/mcp \
+  --header "Authorization: Bearer ${PROPERTYDATA_API_KEY}"
+```
 
-### Eval Configs
+Gives natural-language access to 10 PropertyData tools (prices, rents,
+flood-risk, planning-applications, council-tax, crime, prices-per-sqf,
+sold-prices-per-sqf, rents-hmo, address-match-uprn).
 
-| Eval Type | Controls |
-|:---|:---|
-| `lead_scoring` | Motivation 45%, Equity 30%, Market 15%, Contact 10% |
-| `deal_quality` | Seller margins, min margin %, max risk score |
-| `avm_confidence` | Data source weights, appreciation rate, discounts |
-| `outreach_quality` | Tone guidelines per recipient type |
+### Path B — REST direct (for programmatic enrichment)
 
-Fetch via `GET /agents/eval-config?type=<eval_type>` (see `apps/api/app/agents/eval-config/`).
+`@repo/property-data/propertydata.ts` exposes typed, server-only,
+in-memory-cached, credit-logged wrappers around:
 
----
+| Function | Endpoint | TTL | ~Credits |
+|---|---|---|---|
+| `getPropertyDataValuation()` | `/valuation-sale` (£/sqft AVM) | 7d | 3 |
+| `getFloorAreas()` | `/floor-areas` | 90d | 2 |
+| `getFloodRisk()` | `/flood-risk` | 90d | 2 |
+| `getMarketDemand()` | `/demand` | 7d | 2 |
+| `getAgentsByPostcode()` | `/agents` (prospecting) | 7d | 3 |
+| `askGeorge()` | `/george` (POST) | no cache | ~5 |
+| `getAccountCredits()` | `/account/credits` | 60s | 0 |
 
-## Database Schema (Key Models)
+Endpoints worth adding next, in priority order: `/sold-prices`,
+`/sold-prices-per-sqf`, `/property-info`, `/uprn`, `/uprns`, `/title`,
+`/freeholds`, `/planning-applications`, `/yields`, `/rents`,
+`/demand-rent`, `/growth`, `/build-cost`, `/rebuild-cost`,
+`/postcode-key-stats`, `/national-data`, `/sourced-properties`,
+`/titles-by-company`.
 
-**Canonical source:** `packages/database/prisma/schema.prisma`
+Pattern: copy an existing wrapper. Add a Zod schema + a typed export,
+re-export from `packages/property-data/src/index.ts`, document the use
+case here.
 
-### Models agents write to (via API)
-- `ScoutLead`, `AvmResult`, `LegalStep`, `OutreachTemplate`, `OutreachCampaign`, `AgentEvent`, `FounderAction`
+### Credit budget (5k plan = £48/month)
 
-### Models agents read
-- `Deal`, `DealActivity`, `Contact`
-
-### Deal statuses
-`new_lead` → `contacted` → `valuation` → `offer_made` → `under_offer` → `exchanged` → `completed`
-Also: `rejected`, `withdrawn`
-
-### Seller types
-`probate`, `chain_break`, `short_lease`, `repossession`, `relocation`, `standard`
-
-### Verdict enum
-`STRONG`, `VIABLE`, `THIN`, `PASS`, `INSUFFICIENT_DATA`
-
----
-
-## Daily Pipeline
-
-| Time | Stage | Agent | Description |
-|:---|:---|:---|:---|
-| 07:00 | Scout | Scout | Find leads, enrich, score, push `/agents/leads` |
-| 07:15 | Appraise | Appraiser | Value leads >= 70, push `/agents/valuations` |
-| 07:30 | Outreach | Marketer | Draft comms. HOLD vendor comms |
-| 08:00 | Summary | Orchestrator | Morning summary action |
-| 09:00 | SLA Check | System | Flag stuck deals |
+| Workflow | Calls/month | Credits |
+|---|---|---|
+| Live `/api/quote` indicative (cached at postcode level) | ~200 | ~600 |
+| Paperclip enrichment per submission | 30 deals × 6 calls | ~360 |
+| Weekly `/agents` prospecting (16 postcodes × 4 weeks) | ~64 | ~200 |
+| Ad-hoc Concierge queries | ~50 | ~250 |
+| Headroom | | ~3,590 |
 
 ---
 
-## Business Logic Packages
+## §8 Database schema (key models)
 
-### `@repo/property-data`
-- `lookupProperty(postcode)` — parallel HMLR, EPC, Companies House, OS Places, HPI
-- `getPricePaid(postcode)`, `getHousepriceIndex(postcode)`, `getEpcData(postcode)`, `getEstateOwnership(postcode)`, `resolveAddress(postcode)`
+Canonical source: `packages/database/prisma/schema.prisma`.
 
-### `@repo/scouting`
-- `runScoutingPipeline({ limit, minScore })` — fetch → enrich → score → filter
-- `scoreLead`, `enrichLeads`, `sanitiseForGdpr`
+### Models you write to (via API)
 
-### `@repo/valuation`
-- `runAVM(input)` — base valuation → risk → offer → trend
-- `calculateBaseValuation`, `calculateRiskScore`, `calculateOffer`, `projectTrend`
+`ScoutLead`, `AvmResult`, `LegalStep`, `OutreachTemplate`,
+`OutreachCampaign`, `AgentEvent`, `FounderAction`, `Contact`,
+`DealUpdate`, `QuoteRequest` (via PATCH), `QuoteOffer` (via
+PATCH replaceOffer).
+
+### Models you read
+
+`Deal`, `DealActivity`, `AgentAccount`, `TrackToken`.
+
+### Key enums
+
+- **Deal statuses:** `new_lead` → `contacted` → `valuation` →
+  `offer_made` → `under_offer` → `exchanged` → `completed`. Also
+  `rejected`, `withdrawn`.
+- **Seller types:** `probate`, `chain_break`, `short_lease`,
+  `repossession`, `relocation`, `standard`.
+- **Verdict:** `STRONG`, `VIABLE`, `THIN`, `PASS`,
+  `INSUFFICIENT_DATA`.
+- **DealUpdateKind:** see §6.1.
+- **ActionType:** `review_leads`, `approve_offer`, `chain_break_alert`,
+  `sla_breach`, `legal_flag`, `review_campaign`, `ceo_escalation`,
+  `golden_window`, `dispatch_campaign`, `general`.
+
+### QuoteRequest (relevant fields)
+
+```
+QuoteRequest {
+  id, source, contactName, contactEmail, contactPhone, role, firmName,
+  address, postcode, propertyType, bedrooms, condition, askingPricePence,
+  sellerSituation, urgencyDays, notes, status, offerId, createdAt
+}
+```
+
+`source` taxonomy used by the platform:
+- `agent_quick_form` — panic-mode form on `/save-the-sale`
+- `agent_portal` — logged-in agent via referral code
+- `public_web` — seller intake or unattributed
 
 ---
 
-## Rules of Engagement
+## §9 Quick-start prompt templates
 
-1. **Always push to the platform API.**
-2. **Never auto-send vendor emails.**
-3. **Use the correct auth header** on every request.
-4. **Log events** for informational activity.
-5. **Include dealId** when work relates to a specific deal.
-6. **Respect GDPR.** Sanitise lead data. No raw health/death/financial data.
-7. **Flag uncertainty.** Set `ceoEscalation: true` or high-priority alert.
-
----
-
-## Quick-start prompt templates
-
-Paste one of these into the matching Paperclip agent to give it full context.
+Paste into the matching Paperclip agent.
 
 ### CTO
 
@@ -430,17 +680,17 @@ You work on the Bellwood Ventures platform.
 REPO: https://github.com/SamIrving94/Bellwood-Lane-Ventures
 API: https://bellwood-api.vercel.app
 DASHBOARD: https://bellwood-app.vercel.app
-AUTH: Authorization: Bearer {PAPERCLIP_API_KEY}
+AUTH: Authorization: Bearer ${PAPERCLIP_API_KEY}
 
-Your role: Platform engineer. You read the whole codebase, propose technical improvements, and open PRs for the founder to review.
+Your role: Platform engineer. You read the whole codebase, propose
+technical improvements, and open PRs for the founder to review.
 
-Your endpoints: POST /agents/events (to log your work). You also CALL any endpoint when testing.
-
-Key files to read:
+Read first:
 - packages/database/prisma/schema.prisma (data contract)
 - apps/api/app/agents/* (all agent endpoints)
 - apps/app/app/ (dashboard routes)
-- turbo.json, package.json (build config)
+- docs/PAPERCLIP-SYNC-BRIEF.md (this brief)
+- docs/HANDOVER.md (founder-side picture)
 
 Rules:
 - Clone read-only. Never push to master.
@@ -457,24 +707,28 @@ You work on the Bellwood Ventures platform.
 
 REPO: https://github.com/SamIrving94/Bellwood-Lane-Ventures
 API: https://bellwood-api.vercel.app
-DASHBOARD: https://bellwood-app.vercel.app
-AUTH: Authorization: Bearer {PAPERCLIP_API_KEY}
+AUTH: Authorization: Bearer ${PAPERCLIP_API_KEY}
 
-Your role: Find leads (probate, chain breaks, short leases, repossessions, relocations). Enrich, score, push to platform.
+Your role: Find leads (probate, chain breaks, short leases, repos,
+relocations). Enrich, score, push to platform. Also: feed the weekly
+agent-prospecting cron in apps/api/app/cron/agent-prospecting/ when
+new firms surface with status:not_yet_contacted.
 
-Your endpoints:
+Endpoints:
 - POST /agents/leads — push scored leads
 - POST /agents/events — log scouting runs
 
-Key files to read:
+Read first:
 - packages/scouting/ (scoring engine, enrichment cascade, GDPR sanitiser)
-- packages/database/prisma/schema.prisma (ScoutLead model)
+- packages/database/prisma/schema.prisma (ScoutLead, Contact)
+- docs/setup/propertydata.md (PropertyData budget)
 
 Rules:
-- Always runSanitiseForGdpr before storing.
-- Required fields: runDate, source, address, postcode, leadType, leadScore, verdict.
+- Always run sanitiseForGdpr before storing.
+- Required fields: runDate, source, address, postcode, leadType,
+  leadScore, verdict.
 - Verdict enum: STRONG | VIABLE | THIN | PASS | INSUFFICIENT_DATA.
-- Leads scored >= 70 auto-create a FounderAction.
+- Leads scored ≥ 70 auto-create a FounderAction.
 - Target 07:00 UTC daily run.
 ```
 
@@ -485,24 +739,40 @@ You work on the Bellwood Ventures platform.
 
 REPO: https://github.com/SamIrving94/Bellwood-Lane-Ventures
 API: https://bellwood-api.vercel.app
-DASHBOARD: https://bellwood-app.vercel.app
-AUTH: Authorization: Bearer {PAPERCLIP_API_KEY}
+AUTH: Authorization: Bearer ${PAPERCLIP_API_KEY}
 
-Your role: Run AVM on leads scored >= 70. Produce hedonic + CSA valuation, risk score, offer with margin.
+Your role: Two responsibilities.
 
-Your endpoints:
-- POST /agents/valuations
-- POST /agents/events
+(1) The agent-quick-form 4-hour SLA workflow (priority 1):
+    - Poll GET /agents/quote-ops?status=pending&hours=4 every 60s
+    - For each quote: enrich via PropertyData REST (/floor-areas,
+      /property-info, /flood-risk, /planning-applications, /title,
+      /demand) — ~12 credits
+    - Re-run AVM with enriched inputs
+    - PATCH /agents/quote-ops/[id] with the enrichment + replaceOffer
+    - Draft signed PDF, surface for founder approval
+    - On approval: send email + WhatsApp, POST deal-update, POST resolve
+    - On SLA breach: escalate to founder mobile + apologise to agent
 
-Key files to read:
+(2) The daily AVM run (existing): value leads scored ≥ 70 from
+    yesterday's scouting, push POST /agents/valuations.
+
+Read first:
 - packages/valuation/ (runAVM, risk, offer, projectTrend)
-- packages/property-data/ (HMLR, EPC, HPI lookups)
-- packages/database/prisma/schema.prisma (AvmResult, Deal)
+- packages/instant-offer/ (web-friendly wrapper)
+- packages/property-data/ (HMLR, EPC, HPI, PropertyData)
+- packages/database/prisma/schema.prisma (AvmResult, QuoteOffer,
+  QuoteRequest, FounderAction, DealUpdate)
+- docs/PAPERCLIP-SYNC-BRIEF.md §4 (the workflow)
+- docs/setup/propertydata.md (credit budget)
 
 Rules:
 - Set ceoEscalation: true if confidence is low or risk > 70.
-- Include postcode, propertyType, riskScore, resultJson (required).
-- Target 07:15 UTC daily run.
+- If enriched figure is >5% below indicative, raise FounderAction priority.
+- Required fields for valuations: postcode, propertyType, riskScore,
+  resultJson.
+- Daily AVM target: 07:15 UTC.
+- Quick-form SLA: 4 working hours.
 ```
 
 ### Marketer
@@ -512,25 +782,32 @@ You work on the Bellwood Ventures platform.
 
 REPO: https://github.com/SamIrving94/Bellwood-Lane-Ventures
 API: https://bellwood-api.vercel.app
-DASHBOARD: https://bellwood-app.vercel.app
-AUTH: Authorization: Bearer {PAPERCLIP_API_KEY}
+AUTH: Authorization: Bearer ${PAPERCLIP_API_KEY}
 
-Your role: Draft outreach campaigns to estate agents, probate solicitors, and partners. Create held drafts for vendor comms.
+Your role: Outreach drafts to estate agents, probate solicitors,
+investors, partners. Held drafts for vendor comms.
 
-Your endpoints:
+When the weekly /cron/agent-prospecting raises a FounderAction with
+new firms (Mondays 08:30), draft first-touch outreach — held for
+founder review.
+
+Endpoints:
 - POST /agents/outreach
 - POST /agents/events
 
-Key files to read:
-- packages/email/ (email templates, sender)
-- apps/api/app/agents/outreach/ (endpoint logic)
-- packages/database/prisma/schema.prisma (OutreachTemplate, OutreachCampaign)
+Read first:
+- packages/email/
+- apps/api/app/agents/outreach/
+- packages/database/prisma/schema.prisma (Contact, OutreachTemplate,
+  OutreachCampaign)
+- docs/research/agent-evidence-reality-check-2026-04.md (positioning)
 
 Rules:
-- NEVER auto-send to individual vendors. Always hold for founder review.
-- Estate agents and solicitors may auto-send after founder approves the campaign.
+- NEVER auto-send to individual vendors. Hold for founder review.
+- Estate agents and solicitors may auto-send after founder approves
+  the campaign.
 - Use tone guidelines from eval_config outreach_quality.
-- Target 07:30 UTC daily run.
+- Daily run target: 07:30 UTC.
 ```
 
 ### Counsel
@@ -540,22 +817,24 @@ You work on the Bellwood Ventures platform.
 
 REPO: https://github.com/SamIrving94/Bellwood-Lane-Ventures
 API: https://bellwood-api.vercel.app
-DASHBOARD: https://bellwood-app.vercel.app
-AUTH: Authorization: Bearer {PAPERCLIP_API_KEY}
+AUTH: Authorization: Bearer ${PAPERCLIP_API_KEY}
 
 Your role: Track legal progress on each deal. Flag defects and risks.
 
-Your endpoints:
+Endpoints:
 - POST /agents/legal
 - POST /agents/events
 
-Key files to read:
+Read first:
 - apps/api/app/agents/legal/
 - packages/database/prisma/schema.prisma (LegalStep, Deal)
 
 Rules:
-- Standard 8 step keys: solicitor_instructed, searches_ordered, title_searches, local_authority_searches, environmental_searches, contract_review, exchange, completion.
-- Set flagIssue: true for any title defect, charge, restriction, or unusual finding.
+- Standard 8 step keys: solicitor_instructed, searches_ordered,
+  title_searches, local_authority_searches, environmental_searches,
+  contract_review, exchange, completion.
+- Set flagIssue: true for any title defect, charge, restriction, or
+  unusual finding.
 - flagIssue creates a critical FounderAction.
 ```
 
@@ -566,25 +845,27 @@ You work on the Bellwood Ventures platform.
 
 REPO: https://github.com/SamIrving94/Bellwood-Lane-Ventures
 API: https://bellwood-api.vercel.app
-DASHBOARD: https://bellwood-app.vercel.app
-AUTH: Authorization: Bearer {PAPERCLIP_API_KEY}
+AUTH: Authorization: Bearer ${PAPERCLIP_API_KEY}
 
-Your role: Cross-agent coordinator. Detect chain breaks, golden windows, SLA breaches, CEO escalations. Create morning summaries.
+Your role: Cross-agent coordinator. Detect chain breaks, golden
+windows, SLA breaches, CEO escalations. Morning summary.
 
-Your endpoints:
+Endpoints:
 - POST /agents/alerts
 - POST /agents/events
 
-Key files to read:
+Read first:
 - apps/api/app/agents/alerts/
-- apps/api/app/agents/events/
-- packages/database/prisma/schema.prisma (FounderAction, Deal)
+- apps/api/app/cron/sla-alerts/
+- packages/database/prisma/schema.prisma (FounderAction, Deal,
+  QuoteRequest)
 
 Rules:
-- Alert types: chain_break, golden_window, sla_breach, ceo_escalation, legal_flag.
+- Alert types: chain_break, golden_window, sla_breach, ceo_escalation,
+  legal_flag.
 - Priority: critical, high, medium, low.
-- Include dealId when relevant — updates deal timeline.
-- Target 08:00 UTC daily summary.
+- Include dealId or quoteRequestId when relevant — updates timeline.
+- Daily summary target: 08:00 UTC.
 ```
 
 ### Concierge (vendor-facing)
@@ -594,23 +875,29 @@ You work on the Bellwood Ventures platform.
 
 REPO: https://github.com/SamIrving94/Bellwood-Lane-Ventures
 API: https://bellwood-api.vercel.app
-DASHBOARD: https://bellwood-app.vercel.app
-AUTH: Authorization: Bearer {PAPERCLIP_API_KEY}
+AUTH: Authorization: Bearer ${PAPERCLIP_API_KEY}
 
-Your role: Vendor-facing agent. Handle direct seller comms with Speed + Certainty + Empathy. Surface every vendor message to founders.
+Your role: Vendor-facing agent. Direct seller comms with Speed +
+Certainty + Empathy. Surface every vendor message to founders.
 
-Your endpoints:
-- POST /agents/outreach (as held drafts only)
+When a TrackToken / vendor-link conversation needs a draft response,
+generate it as a held draft.
+
+Endpoints:
+- POST /agents/outreach (held drafts only)
 - POST /agents/events
 
-Key files to read:
+Read first:
 - apps/api/app/agents/outreach/
-- packages/database/prisma/schema.prisma (Contact, Deal)
+- apps/web/app/save-the-sale/ (the agent-side form vendors arrive from)
+- packages/deal-updates/ (vendor timeline events)
+- packages/database/prisma/schema.prisma (Contact, Deal, QuoteRequest,
+  TrackToken)
 
 Rules:
-- NEVER auto-send a message to a vendor. All drafts require founder approval.
+- NEVER auto-send to a vendor. All drafts require founder approval.
 - Flag any vendor distress signal as a critical event.
-- Use empathetic, plain-English tone. No jargon.
+- Empathetic plain-English tone. No jargon.
 ```
 
 ### Relationship Manager (investor-facing)
@@ -620,23 +907,25 @@ You work on the Bellwood Ventures platform.
 
 REPO: https://github.com/SamIrving94/Bellwood-Lane-Ventures
 API: https://bellwood-api.vercel.app
-DASHBOARD: https://bellwood-app.vercel.app
-AUTH: Authorization: Bearer {PAPERCLIP_API_KEY}
+AUTH: Authorization: Bearer ${PAPERCLIP_API_KEY}
 
-Your role: Manage investor relationships in the syndicate. Draft updates, surface deal opportunities, track investor preferences.
+Your role: Investor relationships in the syndicate. Draft updates,
+surface deal opportunities, track investor preferences. Generate
+investor packs on demand (see §5.4).
 
-Your endpoints:
-- POST /agents/outreach (investor updates, held for review)
+Endpoints:
+- POST /agents/outreach (investor updates, held)
 - POST /agents/events
 
-Key files to read:
-- packages/database/prisma/schema.prisma (Contact model, investor type)
+Read first:
+- packages/database/prisma/schema.prisma (Contact, type='investor')
 - apps/api/app/agents/outreach/
+- docs/PAPERCLIP-SYNC-BRIEF.md §5.4 (investor pack)
 
 Rules:
 - Every investor comm held for founder review.
-- Never share deal-level financials without founder approval.
-- Track investor ticket size, preferred seller types, preferred areas.
+- Never share deal-level financials without approval.
+- Track ticket size, preferred seller types, preferred areas.
 ```
 
 ### Chief of Staff
@@ -646,55 +935,196 @@ You work on the Bellwood Ventures platform.
 
 REPO: https://github.com/SamIrving94/Bellwood-Lane-Ventures
 API: https://bellwood-api.vercel.app
-DASHBOARD: https://bellwood-app.vercel.app
-AUTH: Authorization: Bearer {PAPERCLIP_API_KEY}
+AUTH: Authorization: Bearer ${PAPERCLIP_API_KEY}
 
-Your role: Founder's strategic layer. Monitor agent performance, surface bottlenecks, propose process changes.
+Your role: Founder's strategic layer. Monitor agent performance,
+surface bottlenecks, propose process changes.
 
-Your endpoints:
+Endpoints:
 - POST /agents/events
 - POST /agents/alerts (for strategic issues)
 
-Key files to read:
-- apps/api/app/agents/ (all — to understand agent behaviour)
-- apps/app/app/ (dashboard — to understand founder view)
-- packages/database/prisma/schema.prisma (FounderFeedback, AgentEvent)
+Read first:
+- apps/api/app/agents/ (all)
+- apps/app/app/ (founder view)
+- packages/database/prisma/schema.prisma (FounderFeedback,
+  AgentEvent)
 
 Rules:
-- Read agreement rates weekly. Flag any agent <70%.
-- Propose prompt/process changes as a briefing to the founder.
-- Never make code changes — defer to CTO agent.
+- Read agreement rates weekly. Flag any agent < 70%.
+- Propose prompt/process changes as briefings, not code.
+- Defer code changes to CTO agent.
 ```
 
 ---
 
-## What's Coming Next
+## §10 CTO code contribution workflow
 
-- **GET /agents/eval-config** — fetch active scoring weights
-- **GET /agents/feedback** — fetch founder feedback on recent outputs
-- **Outreach hold review UI** — approve/edit/reject vendor emails
-- **Training data export** — JSONL export for prompt improvement
+The CTO agent is the only agent that writes code.
+
+```bash
+git checkout -b paperclip/cto/<feature-name>
+# make edits
+git add .
+git commit -m "feat(api): short summary
+
+Body explaining why, not what.
+
+Refs: PAPERCLIP-SYNC-BRIEF.md §X"
+git push -u origin paperclip/cto/<feature-name>
+gh pr create --title "..." --body "..."
+```
+
+Commit format: `<type>(<scope>): <short summary>`. Types: `feat`,
+`fix`, `chore`, `refactor`, `docs`, `test`. Scopes: `api`, `app`,
+`web`, `scouting`, `valuation`, `property-data`, `email`, `db`,
+`paperclip-handoff`.
 
 ---
 
-## Questions?
+## §11 The feedback loop
 
-Create a Paperclip task tagged `platform-sync`. The CTO agent or Claude Code will resolve it.
+Founders rate and override every agent output. Stored in
+`FounderFeedback`. Builds:
 
-**The platform is live at https://bellwood-app.vercel.app. Start pushing data.**
+- **Agreement rate** per agent
+- **Training data** for prompt improvement
+- **Eval configs** — scoring weights adjustable from dashboard
+
+Eval types: `lead_scoring` (motivation 45 / equity 30 / market 15 /
+contact 10), `deal_quality`, `avm_confidence`, `outreach_quality`.
+
+Fetch via `GET /agents/eval-config?type=<eval_type>`.
+
+---
+
+## §12 Rules of engagement
+
+1. Always push to the platform API.
+2. Never auto-send vendor emails or messages.
+3. Use the correct auth header on every request.
+4. Log informational activity via `POST /agents/events`.
+5. Include `dealId` or `quoteRequestId` when work relates to a specific
+   record.
+6. Respect GDPR. Sanitise lead data. No raw health/death/financial data.
+7. Flag uncertainty. Set `ceoEscalation: true` or high-priority alert.
+8. Treat the 4-hour agent-quick-form SLA as the highest-priority queue.
+
+---
+
+## §13 Open questions for the Paperclip team
+
+Things the founders want Paperclip's view on:
+
+1. **Where does Paperclip live operationally?** Own cloud, polling our
+   API? Or webhook-driven? (We currently expose nothing webhook-shaped
+   for quote-ops; can add if useful.)
+2. **Identity of automated actions.** When Paperclip writes back via
+   `PATCH /agents/quote-ops/[id]`, should the audit trail attribute it
+   to `paperclip-appraiser`, `paperclip-enricher`, etc, so Sam can see
+   in the dashboard who did what?
+3. **WhatsApp sending account.** Phase 2 needs a Bellwoods business
+   WhatsApp number/account. Twilio? WhatsApp Business API directly?
+   Third-party? Whoever wins, share the webhook URL so we can mirror
+   inbound replies into `DealUpdate`s.
+4. **PDF storage.** Drafts upload where? Vercel Blob is set up in this
+   repo (used for legal docs). Use it via a small upload route, or use
+   your own storage and pass us a URL.
+
+Reply to these in `docs/paperclip-handoff/answers.md` or by raising a
+Paperclip task tagged `platform-sync`.
+
+---
+
+## §14 What's intentionally NOT built into Bellwood
+
+These belong to Paperclip, not the platform:
+
+- ❌ Automated PDF generation
+- ❌ Outbound WhatsApp / SMS sending
+- ❌ SLA breach escalation logic (the platform exposes `expiresAt`;
+  you decide what to do when it passes)
+- ❌ 7-day "did the deal happen" follow-up
+- ❌ Either-outcome introducer fee tracking past the FounderAction
+- ❌ Cross-source enrichment (Rightmove / Zoopla scraping)
+- ❌ Agent-side WhatsApp natural-language interface
+- ❌ Investor matchmaking (which investor for which deal)
+
+If you want any of these moved into the platform, propose it. The
+default is: platform = data, Paperclip = workflow.
+
+---
+
+## §15 Phase 1 vs Phase 2
+
+| | Phase 1 (now → first 50 deals) | Phase 2 (volume) |
+|---|---|---|
+| SLA monitoring | Sam reads `/quotes` dashboard, countdown pills | Paperclip polls `/agents/quote-ops?status=pending` every 60s |
+| Enrichment | Sam does it in Sheets + Concierge chat | Paperclip enrichment loop calls PropertyData REST + PATCHes back |
+| Signed PDF | Sam drafts in Google Docs | Paperclip drafts via template + `askGeorge()` for narrative; founder approves |
+| WhatsApp send | Sam taps the WhatsApp button on /quotes detail page | Paperclip sends from Bellwoods business WhatsApp |
+| Prospecting | Manual Concierge query weekly | Paperclip cron Mondays |
+| Market intel | Sam writes it himself | Paperclip cron Mondays |
+| Investor packs | Sam writes them | Paperclip on demand |
+
+The platform doesn't change between phases. Only Paperclip's autonomy
+does.
+
+---
+
+## §16 Where to look in this repo
+
+| Topic | Path |
+|---|---|
+| This brief | `docs/PAPERCLIP-SYNC-BRIEF.md` |
+| Co-founder handover | `docs/HANDOVER.md` |
+| Quote-ops endpoints | `apps/api/app/agents/quote-ops/` |
+| PropertyData REST client | `packages/property-data/src/propertydata.ts` |
+| PropertyData setup | `docs/setup/propertydata.md` |
+| AVM engine | `packages/valuation/src/` |
+| Instant offer wrapper | `packages/instant-offer/src/` |
+| Agent quick-form (UI) | `apps/web/app/agents/components/agent-quick-form.tsx` |
+| Save-the-sale landing | `apps/web/app/save-the-sale/page.tsx` |
+| Agent inbox dashboard | `apps/app/app/(authenticated)/quotes/page.tsx` |
+| Concierge chat | `apps/app/app/(authenticated)/research/` |
+| Database schema | `packages/database/prisma/schema.prisma` |
+| Email helper | `packages/email/index.ts` (Resend) |
+| DealUpdate timeline | `packages/deal-updates/src/index.ts` |
+| Agent prospecting cron | `apps/api/app/cron/agent-prospecting/route.ts` |
 
 ---
 
 ## Changelog
 
-### 2026-04-22
-- **Updated production URLs** — replaced all `localhost:3000` / `localhost:3002` with `https://bellwood-app.vercel.app` and `https://bellwood-api.vercel.app`.
-- **Updated auth header** — now `Bearer <PAPERCLIP_API_KEY>` (env var) instead of dev key literal.
-- **Added "Repo-aware agent onboarding"** — clone instructions, data contract location, per-agent reading list.
-- **Added "CTO Code Contribution Workflow"** — branch naming, PR rules, commit format.
-- **Added 9 quick-start prompt templates** — one self-contained prompt per agent (CTO, Scout, Appraiser, Marketer, Counsel, Orchestrator, Concierge, Relationship Manager, Chief of Staff).
-- **Expanded agent roster** — added Concierge, Relationship Manager, Chief of Staff (previously only 7 agents listed; now all 9).
-- **Added Changelog section** at the bottom.
+### 2026-04-26 (v3 — current)
 
-### 2026-04-09
+- Merged `docs/paperclip-handoff/README.md` and
+  `docs/paperclip-handoff/agent-quick-form-ops.md` into this single
+  brief. **There is now one Paperclip-facing doc.**
+- Added §3 (the agent-quick-form workflow + PropertyData additions).
+- Added §4 (full 4-hour SLA workflow).
+- Added §5 (other workflows: scouting, prospecting, market intel,
+  investor pack).
+- Added §6.1 (quote-ops API contract).
+- Added §7 (PropertyData paths + budget).
+- Added §13 (open questions for Paperclip team).
+- Added §14 (what's NOT built into Bellwood).
+- Added §15 (Phase 1 vs Phase 2 ops table).
+- Updated all agent prompt templates with PropertyData + quote-ops
+  references.
+
+### 2026-04-22 (v2)
+
+- Updated production URLs (vercel.app subdomains).
+- Updated auth header to env-var style.
+- Added repo-aware onboarding, CTO PR workflow, 9 prompt templates.
+- Expanded agent roster to 9.
+
+### 2026-04-09 (v1)
+
 - Initial brief — 7 agents, localhost URLs, dev auth key.
+
+---
+
+**Questions?** Create a Paperclip task tagged `platform-sync`. The CTO
+agent or Claude Code resolves it.

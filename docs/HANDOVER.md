@@ -99,8 +99,7 @@ We have **three apps** + **one ops layer**:
 | Doc | What it covers |
 |---|---|
 | `docs/HANDOVER.md` | This file |
-| `docs/paperclip-handoff/README.md` | What Paperclip does for us |
-| `docs/paperclip-handoff/agent-quick-form-ops.md` | The 4-hour SLA workflow in detail |
+| `docs/PAPERCLIP-SYNC-BRIEF.md` | Single source of truth for the Paperclip team — what they do, the API contract, the 4-hour SLA workflow |
 | `docs/setup/propertydata.md` | PropertyData API key + cron + budget |
 
 ---
