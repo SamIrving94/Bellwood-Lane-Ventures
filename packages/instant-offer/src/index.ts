@@ -177,10 +177,16 @@ export async function generateInstantOffer(
     r.confidenceLevel,
   );
 
+  // The underlying AVM (HMLR Price Paid + hedonic + offer-calc) works in
+  // POUNDS (HMLR returns price as integer pounds). The web payload labels
+  // these fields *Pence and the UI divides by 100 for display, so we must
+  // multiply by 100 here to convert pounds -> pence and keep the contract
+  // honest. Without this, every figure was 100x too small (offer of £305k
+  // displayed as £3,051).
   return {
-    estimatedMarketValueMinPence: r.avmLow,
-    estimatedMarketValueMaxPence: r.avmHigh,
-    offerPence: r.finalOffer,
+    estimatedMarketValueMinPence: Math.round(r.avmLow * 100),
+    estimatedMarketValueMaxPence: Math.round(r.avmHigh * 100),
+    offerPence: Math.round(r.finalOffer * 100),
     offerPercentOfAvm: Math.round((r.finalOffer / r.avmPointEstimate) * 1000) / 1000,
     confidenceScore,
     completionDays,
