@@ -77,6 +77,12 @@ const PatchInput = z.object({
       lockedUntil: z.string().datetime(),
     })
     .optional(),
+  /**
+   * URL of the drafted signed-offer PDF (already uploaded to Vercel Blob
+   * by Paperclip). Writing this also surfaces an `approve_offer`
+   * FounderAction so the founders see it in /actions.
+   */
+  signedOfferUrl: z.string().url().optional(),
 });
 
 export const PATCH = async (
@@ -142,15 +148,62 @@ export const PATCH = async (
     updateData.offerId = newOffer.id;
   }
 
+  if (input.signedOfferUrl !== undefined) {
+    const targetOfferId = newOfferId ?? existing.offerId;
+    if (!targetOfferId) {
+      return NextResponse.json(
+        { error: 'Cannot set signedOfferUrl: quote has no offer yet' },
+        { status: 400 },
+      );
+    }
+    await database.quoteOffer.update({
+      where: { id: targetOfferId },
+      data: { pdfUrl: input.signedOfferUrl },
+    });
+  }
+
   const updated = await database.quoteRequest.update({
     where: { id },
     data: updateData,
     include: { offer: true },
   });
 
+  // When a signed offer URL is written, surface a founder approval action
+  // (idempotent — only create if no live approve_offer action exists).
+  let founderActionId: string | undefined;
+  if (input.signedOfferUrl) {
+    const existingAction = await database.founderAction.findFirst({
+      where: {
+        type: 'approve_offer',
+        status: { in: ['pending', 'in_progress'] },
+        metadata: { path: ['quoteRequestId'], equals: id },
+      },
+    });
+    if (!existingAction) {
+      const created = await database.founderAction.create({
+        data: {
+          type: 'approve_offer',
+          priority: 'high',
+          agent: 'appraiser',
+          title: `Approve signed offer for ${updated.address}`,
+          description: `Signed binding offer drafted for ${updated.address}, ${updated.postcode}. Review and approve before dispatch to ${updated.firmName ?? updated.contactName}.`,
+          metadata: {
+            quoteRequestId: id,
+            offerId: updated.offerId ?? null,
+            signedOfferUrl: input.signedOfferUrl,
+          },
+        },
+      });
+      founderActionId = created.id;
+    } else {
+      founderActionId = existingAction.id;
+    }
+  }
+
   return NextResponse.json({
     ok: true,
     quote: updated,
     newOfferId,
+    founderActionId,
   });
 };
