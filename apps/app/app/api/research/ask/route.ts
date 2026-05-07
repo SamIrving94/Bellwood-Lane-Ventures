@@ -50,15 +50,26 @@ export async function POST(request: Request) {
   });
 
   if (result.error || !result.answer) {
-    return NextResponse.json(
-      {
-        error:
-          result.error === 'no_api_key'
-            ? 'PropertyData not configured. Set PROPERTYDATA_API_KEY in Vercel.'
-            : 'Could not reach PropertyData. Try again in a moment.',
-      },
-      { status: 503 },
-    );
+    let errorMessage = 'Could not reach PropertyData. Try again in a moment.';
+    if (result.error === 'no_api_key') {
+      errorMessage = 'PropertyData not configured. Set PROPERTYDATA_API_KEY on the bellwood-app Vercel project.';
+    } else if (result.error === 'timeout') {
+      errorMessage = "George took longer than 30 seconds to answer. Try a simpler question or try again.";
+    } else if (result.error === 'no_answer_extracted') {
+      errorMessage = "PropertyData responded but we couldn't extract an answer. Engineer to investigate (check Vercel logs for the response shape).";
+    } else if (result.error === 'request_failed') {
+      const r = result as { upstreamStatus?: number; upstreamMessage?: string };
+      if (r.upstreamStatus === 401 || r.upstreamStatus === 403) {
+        errorMessage = `PropertyData rejected the API key (HTTP ${r.upstreamStatus}). Check the key is correct and the account is active.`;
+      } else if (r.upstreamStatus === 429) {
+        errorMessage = "PropertyData rate-limited us. Wait a minute and try again.";
+      } else if (r.upstreamStatus === 402) {
+        errorMessage = "PropertyData credits exhausted. Top up at propertydata.co.uk.";
+      } else if (r.upstreamStatus) {
+        errorMessage = `PropertyData returned HTTP ${r.upstreamStatus}: ${r.upstreamMessage ?? ''}`.slice(0, 300);
+      }
+    }
+    return NextResponse.json({ error: errorMessage }, { status: 503 });
   }
 
   return NextResponse.json({

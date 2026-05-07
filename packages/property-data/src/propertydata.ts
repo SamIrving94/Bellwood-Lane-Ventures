@@ -389,19 +389,42 @@ export async function getAccountCredits() {
 // Endpoint: /george — PropertyData's AI research assistant (POST)
 // ---------------------------------------------------------------------------
 
-const GeorgeSchema = z.object({
-  status: z.string().optional(),
-  result: z
-    .object({
-      answer: z.string().optional(),
-      conversation_id: z.string().optional(),
-      sources: z.array(z.unknown()).optional(),
-    })
-    .partial()
-    .optional(),
-});
-
 export type GeorgeMessage = { role: 'user' | 'assistant'; content: string };
+
+/**
+ * Pull a string answer out of whatever shape PropertyData /george returns.
+ * Their docs don't pin it down so we try the most likely paths in order.
+ * Falls back to JSON-stringifying the whole response if nothing matches —
+ * the user gets *something* useful while we discover the real shape.
+ */
+function extractGeorgeAnswer(json: unknown): { answer: string | null; conversationId?: string } {
+  if (!json || typeof json !== 'object') {
+    return { answer: typeof json === 'string' ? json : null };
+  }
+  const j = json as Record<string, unknown>;
+  // Try the most likely paths.
+  const candidates: Array<unknown> = [
+    j.answer,
+    j.response,
+    j.message,
+    j.text,
+    j.content,
+    (j.result as Record<string, unknown> | undefined)?.answer,
+    (j.result as Record<string, unknown> | undefined)?.response,
+    (j.result as Record<string, unknown> | undefined)?.text,
+    (j.data as Record<string, unknown> | undefined)?.answer,
+  ];
+  for (const c of candidates) {
+    if (typeof c === 'string' && c.trim().length > 0) {
+      const conversationId =
+        (j.conversation_id as string | undefined) ??
+        ((j.result as Record<string, unknown> | undefined)?.conversation_id as string | undefined);
+      return { answer: c, conversationId };
+    }
+  }
+  // Last resort — return the whole thing so we can see what came back.
+  return { answer: `(unexpected response shape — raw payload below)\n\n\`\`\`json\n${JSON.stringify(json, null, 2).slice(0, 1500)}\n\`\`\`` };
+}
 
 /**
  * Ask George — PropertyData's hosted AI. Wraps the /george POST endpoint.
@@ -410,6 +433,10 @@ export type GeorgeMessage = { role: 'user' | 'assistant'; content: string };
  *
  * NOT cached — every question is unique and questions can be follow-ups
  * that need fresh state.
+ *
+ * Permissive parsing — PropertyData's response shape isn't documented, so
+ * we try multiple field paths and fall back to surfacing the raw response
+ * if we can't find a clean answer string.
  */
 export async function askGeorge(input: {
   question: string;
@@ -442,25 +469,38 @@ export async function askGeorge(input: {
     });
     if (!res.ok) {
       const text = await res.text().catch(() => res.statusText);
-      console.warn(`[propertydata] /george ${res.status}: ${text}`);
-      return { answer: null, error: 'request_failed' as const };
+      console.warn(`[propertydata] /george ${res.status}: ${text.slice(0, 500)}`);
+      // Surface the upstream error message to the caller so the UI can show
+      // something useful rather than a generic "try again later".
+      return {
+        answer: null,
+        error: 'request_failed' as const,
+        upstreamStatus: res.status,
+        upstreamMessage: text.slice(0, 500),
+      };
     }
-    const json = await res.json();
-    const parsed = GeorgeSchema.safeParse(json);
-    if (!parsed.success) {
-      console.warn('[propertydata] /george response schema invalid');
+    const json = await res.json().catch(() => null);
+    if (!json) {
+      console.warn('[propertydata] /george returned non-JSON body');
       return { answer: null, error: 'invalid_response' as const };
     }
     creditsThisProcess += 5; // /george is roughly 5 credits per call
     console.info(`[propertydata] /george +5 credits (process total: ${creditsThisProcess})`);
-    return {
-      answer: parsed.data.result?.answer ?? null,
-      conversationId: parsed.data.result?.conversation_id,
-      error: null as null,
-    };
+    const { answer, conversationId } = extractGeorgeAnswer(json);
+    if (!answer) {
+      // Something came back but we couldn't extract a meaningful answer.
+      // Log the keys at the top level so we can debug without printing
+      // potentially sensitive content.
+      console.warn(
+        '[propertydata] /george response had no extractable answer. Top-level keys:',
+        Object.keys(json as Record<string, unknown>),
+      );
+      return { answer: null, error: 'no_answer_extracted' as const };
+    }
+    return { answer, conversationId, error: null as null };
   } catch (error) {
     if ((error as { name?: string })?.name === 'AbortError') {
-      console.warn('[propertydata] /george timed out');
+      console.warn('[propertydata] /george timed out after 30s');
       return { answer: null, error: 'timeout' as const };
     }
     console.warn('[propertydata] /george failed', error);
