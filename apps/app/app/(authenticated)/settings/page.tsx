@@ -1,5 +1,6 @@
 import { currentUser } from '@repo/auth/server';
 import type { Metadata } from 'next';
+import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { Header } from '../components/header';
 
@@ -68,6 +69,32 @@ const SettingsPage = async () => {
               Notification preferences coming soon.
             </p>
           </div>
+        </section>
+
+        <section className="flex flex-col gap-4">
+          <div>
+            <h2 className="text-base font-semibold">Advanced</h2>
+            <p className="text-sm text-muted-foreground">
+              Tuning and developer settings.
+            </p>
+          </div>
+          <ul className="divide-y rounded-xl border">
+            <li>
+              <Link
+                href="/settings/evals"
+                className="flex items-center justify-between p-5 transition hover:bg-accent"
+              >
+                <div>
+                  <p className="font-medium">Eval models</p>
+                  <p className="text-sm text-muted-foreground">
+                    Scoring weights for lead-scoring, deal-quality, AVM
+                    confidence and outreach quality.
+                  </p>
+                </div>
+                <span aria-hidden className="text-muted-foreground">→</span>
+              </Link>
+            </li>
+          </ul>
         </section>
       </div>
     </>

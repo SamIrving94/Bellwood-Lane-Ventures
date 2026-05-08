@@ -19,23 +19,11 @@ import {
 } from '@repo/design-system/components/ui/sidebar';
 // NotificationsTrigger removed (Knock not used)
 import {
-  BotIcon,
   BuildingIcon,
-  ContactIcon,
-  FileTextIcon,
-  GaugeIcon,
-  GavelIcon,
-  HandshakeIcon,
   InboxIcon,
   KanbanIcon,
   MailIcon,
-  MegaphoneIcon,
-  MessageSquareIcon,
-  ScaleIcon,
-  SearchIcon,
   Settings2Icon,
-  SlidersHorizontalIcon,
-  UsersIcon,
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -46,18 +34,20 @@ type GlobalSidebarProperties = {
   readonly pendingActionCount?: number;
 };
 
+/**
+ * 4-item nav. Everything else lives inside Today / Pipeline / Outreach
+ * via tabs, or is reachable via the Cmd+K Concierge overlay. Old routes
+ * (/actions, /quotes, /leads, /contacts, /partners, /campaigns,
+ * /intake, /valuations, /auctions, /agents) still render — they're just
+ * no longer in the visible nav.
+ */
 const data = {
   navMain: [
     {
-      title: 'Action Centre',
-      url: '/actions',
+      title: 'Today',
+      url: '/',
       icon: InboxIcon,
       hasBadge: true,
-    },
-    {
-      title: 'Dashboard',
-      url: '/',
-      icon: GaugeIcon,
     },
     {
       title: 'Pipeline',
@@ -65,67 +55,12 @@ const data = {
       icon: KanbanIcon,
     },
     {
-      title: 'Quotes',
-      url: '/quotes',
-      icon: FileTextIcon,
-    },
-    {
-      title: 'Research',
-      url: '/research',
-      icon: BotIcon,
-    },
-    {
-      title: 'Leads',
-      url: '/leads',
-      icon: SearchIcon,
-    },
-    {
-      title: 'Intake',
-      url: '/intake',
-      icon: MessageSquareIcon,
-    },
-    {
-      title: 'Valuations',
-      url: '/valuations',
-      icon: ScaleIcon,
-    },
-    {
-      title: 'Contacts',
-      url: '/contacts',
-      icon: UsersIcon,
-    },
-    {
       title: 'Outreach',
       url: '/outreach',
       icon: MailIcon,
     },
-    {
-      title: 'Campaigns',
-      url: '/campaigns',
-      icon: MegaphoneIcon,
-    },
-    {
-      title: 'Partners',
-      url: '/partners',
-      icon: HandshakeIcon,
-    },
-    {
-      title: 'Auctions',
-      url: '/auctions',
-      icon: GavelIcon,
-    },
-    {
-      title: 'Agents',
-      url: '/agents',
-      icon: BotIcon,
-    },
   ],
   navSecondary: [
-    {
-      title: 'Eval Models',
-      url: '/settings/evals',
-      icon: SlidersHorizontalIcon,
-    },
     {
       title: 'Settings',
       url: '/settings',
