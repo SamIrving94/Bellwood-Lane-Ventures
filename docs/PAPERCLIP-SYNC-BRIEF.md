@@ -31,7 +31,7 @@ The Bellwood Lane stack is two halves working together:
 │  - AvmResults                      │  │                                │
 │                                    │  │  Authenticates via:            │
 │                                    │  │   Authorization: Bearer        │
-│  + AVM engine (real HMLR + EPC +   │  │     ${PAPERCLIP_API_KEY}       │
+│  + AVM engine (real HMLR + EPC +   │  │     ${BELLWOOD_API_KEY}        │
 │    HPI + PropertyData /valuation-  │  │                                │
 │    sale 20% cross-check)           │  │  Hits: bellwood-api.vercel.app │
 │                                    │  │                                │
@@ -339,11 +339,19 @@ Base URL: `https://bellwood-api.vercel.app`. All routes under `/agents/*`.
 Every request:
 
 ```
-Authorization: Bearer ${PAPERCLIP_API_KEY}
+Authorization: Bearer ${BELLWOOD_API_KEY}
 Content-Type: application/json
 ```
 
-The key is shared with each agent out-of-band by founders.
+The key is shared with each agent out-of-band by founders. **Use
+`BELLWOOD_API_KEY` — not `PAPERCLIP_API_KEY`.** Paperclip auto-injects a
+short-lived run JWT into your runtime under the name `PAPERCLIP_API_KEY`,
+which is unrelated to the bellwood-api bearer token and will return 401
+against `bellwood-api.vercel.app`. The `BELLWOOD_API_KEY` value is
+provisioned per-agent by founders via Paperclip secrets and matches the
+static key configured on the bellwood-api Vercel deployment. The auth
+middleware accepts `PAPERCLIP_API_KEY` only as a transitional fallback
+on the server side; do not call it from agents.
 
 ### 6.1 Quote-ops (NEW — for the agent-quick-form workflow)
 
@@ -745,7 +753,7 @@ You are the Full Stack Engineer / AI Specialist for Bellwood Ventures.
 REPO: https://github.com/SamIrving94/Bellwood-Lane-Ventures
 API: https://bellwood-api.vercel.app
 DASHBOARD: https://bellwood-app.vercel.app
-AUTH: Authorization: Bearer ${PAPERCLIP_API_KEY}
+AUTH: Authorization: Bearer ${BELLWOOD_API_KEY}
 
 Your role: Build full-stack product features. Own AI-powered tooling
 (lead scoring, predictive analytics, intelligent comms drafts). Run
@@ -828,7 +836,7 @@ You work on the Bellwood Ventures platform.
 
 REPO: https://github.com/SamIrving94/Bellwood-Lane-Ventures
 API: https://bellwood-api.vercel.app
-AUTH: Authorization: Bearer ${PAPERCLIP_API_KEY}
+AUTH: Authorization: Bearer ${BELLWOOD_API_KEY}
 
 Your role: Two responsibilities.
 
@@ -871,7 +879,7 @@ You work on the Bellwood Ventures platform.
 
 REPO: https://github.com/SamIrving94/Bellwood-Lane-Ventures
 API: https://bellwood-api.vercel.app
-AUTH: Authorization: Bearer ${PAPERCLIP_API_KEY}
+AUTH: Authorization: Bearer ${BELLWOOD_API_KEY}
 
 Your role: Outreach drafts to estate agents, probate solicitors,
 investors, partners. Held drafts for vendor comms.
@@ -906,7 +914,7 @@ You work on the Bellwood Ventures platform.
 
 REPO: https://github.com/SamIrving94/Bellwood-Lane-Ventures
 API: https://bellwood-api.vercel.app
-AUTH: Authorization: Bearer ${PAPERCLIP_API_KEY}
+AUTH: Authorization: Bearer ${BELLWOOD_API_KEY}
 
 Your role: Track legal progress on each deal. Flag defects and risks.
 
@@ -934,7 +942,7 @@ You are the Liaison for Bellwood Ventures.
 
 REPO: https://github.com/SamIrving94/Bellwood-Lane-Ventures
 API: https://bellwood-api.vercel.app
-AUTH: Authorization: Bearer ${PAPERCLIP_API_KEY}
+AUTH: Authorization: Bearer ${BELLWOOD_API_KEY}
 
 Your role: All external communications. Three audiences:
 

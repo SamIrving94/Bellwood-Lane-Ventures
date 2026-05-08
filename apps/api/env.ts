@@ -20,7 +20,14 @@ export const env = createEnv({
   ],
   server: {
     CRON_SECRET: z.string().min(1),
-    PAPERCLIP_API_KEY: z.string().min(1),
+    // Bearer token Paperclip agents present to authenticate against
+    // /agents/* routes. Prefer BELLWOOD_API_KEY going forward; the legacy
+    // PAPERCLIP_API_KEY name is kept for backwards compatibility with the
+    // existing Vercel env config (see docs/PAPERCLIP-SYNC-BRIEF.md §6).
+    // Agents auto-receive a Paperclip JWT in their own PAPERCLIP_API_KEY
+    // env, so the new BELLWOOD_API_KEY name avoids that collision.
+    BELLWOOD_API_KEY: z.string().min(1).optional(),
+    PAPERCLIP_API_KEY: z.string().min(1).optional(),
     /** Comma-separated UK postcodes the prospecting cron should scan. */
     AGENT_PROSPECTING_POSTCODES: z.string().optional(),
     /** Email to receive the weekly prospecting summary (defaults to RESEND_FROM). */
@@ -29,6 +36,7 @@ export const env = createEnv({
   client: {},
   runtimeEnv: {
     CRON_SECRET: process.env.CRON_SECRET,
+    BELLWOOD_API_KEY: process.env.BELLWOOD_API_KEY,
     PAPERCLIP_API_KEY: process.env.PAPERCLIP_API_KEY,
     AGENT_PROSPECTING_POSTCODES: process.env.AGENT_PROSPECTING_POSTCODES,
     AGENT_PROSPECTING_REPORT_EMAIL: process.env.AGENT_PROSPECTING_REPORT_EMAIL,
