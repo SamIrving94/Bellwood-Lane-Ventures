@@ -34,6 +34,7 @@ export const POST = async (request: Request) => {
   // Surface what was found so the Today page knows.
   const highScoreLeads = result.leads.filter((l) => l.leadScore >= 70);
   const strongLeads = result.leads.filter((l) => l.verdict === 'STRONG');
+  const summaryText = `Daily scout cron found ${result.leads.length} leads (${strongLeads.length} STRONG, ${highScoreLeads.length} scored 70+)`;
 
   // AgentEvent for the run (informational; agent is the system cron itself).
   let eventId: string | undefined;
@@ -42,9 +43,7 @@ export const POST = async (request: Request) => {
       data: {
         agent: 'system',
         eventType: 'leads_created',
-        summary:
-          result.summary ??
-          `Daily scout cron found ${result.leads.length} leads (${strongLeads.length} STRONG, ${highScoreLeads.length} scored 70+)`,
+        summary: summaryText,
         count: result.leads.length,
         payload: {
           source: 'cron_scouting',
