@@ -348,8 +348,6 @@ export async function POST(request: Request) {
             'A signed binding offer document, with the comparables we used and our methodology, will be in your inbox within 4 working hours.',
             followUpLine,
             '',
-            "If your client decides the open market is the better route, we'll still pay you the introducer fee for trusting us first - reply to this email and we'll instruct on standard terms.",
-            '',
             'Bellwoods Lane',
             'hello@bellwoodslane.co.uk',
           ].join('\n'),

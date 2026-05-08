@@ -250,13 +250,16 @@ If `expiresAt` passes and the FounderAction is still `pending`:
 If after 7 days `QuoteRequest.status` is still `quoted` and the agent
 hasn't converted:
 
-> *"Quick check — what happened with [address]? If the open market was the
-> better route, no problem. We'll instruct as introducer if you'd like.
-> Reply 'open' or 'taken'."*
+> *"Quick check — what happened with [address]? If you've gone another
+> route, no problem at all. Reply 'open' or 'taken' so I can close
+> the loop."*
 
-If `open`: raise a `FounderAction` to issue the introducer fee per our
-either-outcome promise. If `taken`: `POST deal-update` with
-`kind: 'offer_declined'` and close the loop.
+If `open`: `POST deal-update` with `kind: 'offer_expired'` and close
+the loop. If `taken`: `POST deal-update` with `kind: 'offer_declined'`.
+
+**No introducer fee is owed for open-market outcomes.** That promise
+has been retracted as of 8 May 2026 — see the changelog. If an agent
+asks about it, say plainly that it was never made, or escalate to CEO.
 
 ---
 
@@ -1069,7 +1072,6 @@ These belong to Paperclip, not the platform:
 - ❌ SLA breach escalation logic (the platform exposes `expiresAt`;
   you decide what to do when it passes)
 - ❌ 7-day "did the deal happen" follow-up
-- ❌ Either-outcome introducer fee tracking past the FounderAction
 - ❌ Cross-source enrichment (Rightmove / Zoopla scraping)
 - ❌ Agent-side WhatsApp natural-language interface
 - ❌ Investor matchmaking (which investor for which deal)
@@ -1172,7 +1174,18 @@ queries. **Don't drop them** — existing AgentEvent rows reference them.
 
 ## Changelog
 
-### 2026-05-04 (v4 — current)
+### 2026-05-08 (v5 — current)
+
+- **Retracted the "either-outcome introducer fee" promise.** Removed
+  from `/agents` page (Two-options wedge body + FAQ), `/save-the-sale`
+  trust bullet, and the auto-generated agent confirmation email. The
+  Liaison's 7-day follow-up no longer offers a fee on open-market
+  outcomes; the script just closes the loop.
+- §4 "Open market outcome" rewritten to reflect the retraction.
+- §14 NOT-built list trimmed (no longer mentions either-outcome fee
+  tracking).
+
+### 2026-05-04 (v4)
 
 - **Reconciled with the live Paperclip instance.** v3 of the brief
   listed 9 imaginary agents; the actual BELA company has 7: CEO,

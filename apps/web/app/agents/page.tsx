@@ -31,7 +31,7 @@ const FAQ: Array<{ q: string; a: string }> = [
   },
   {
     q: 'What if my client decides to stay on the open market?',
-    a: 'You instruct the property as normal. We pay you a small introducer fee for the warm lead. No referral wasted, no awkward conversation. This is why you can send us a deal even before you start re-marketing \u2014 you risk nothing.',
+    a: 'No problem. You instruct the property as normal. There\u2019s no contract with us and nothing to unwind \u2014 you simply carry on, and we wish your client the best.',
   },
   {
     q: 'What about my AML obligations on the seller?',
@@ -257,12 +257,6 @@ export default function AgentsPage() {
             <h3 className="mt-3 font-serif text-3xl font-semibold leading-[1.1] md:text-4xl">
               Speed without re-trading. Full commission stack. Resale instruction back to you.
             </h3>
-            <p className="mt-5 max-w-2xl text-[15px] leading-relaxed text-white/80">
-              Send us the property <strong>before</strong> you relist. If your
-              client takes our offer, you earn up to 3% + VAT. If they decide
-              the open market is better, we still pay you the introducer fee
-              for trusting us first. It&rsquo;s a free shot.
-            </p>
             <p className="mt-6 font-mono text-[10px] leading-relaxed text-white/40">
               Sources: TwentyCi (2025 fall-through rate), Santander &laquo;Fixing the Broken Chain&raquo; (cost per
               fall-through), HomeOwners Alliance (UK quick-sale market norms).

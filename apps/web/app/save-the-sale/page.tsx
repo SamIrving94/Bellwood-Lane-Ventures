@@ -98,15 +98,6 @@ export default function SaveTheSalePage() {
               <li className="flex items-start gap-3">
                 <span className="mt-1 inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-[#C6A664]" />
                 <span>
-                  <strong className="text-[#0A1020]">Send before re-listing.</strong>{' '}
-                  No commitment to take our offer. If your client picks open
-                  market, we still pay you the introducer fee for trusting
-                  us first.
-                </span>
-              </li>
-              <li className="flex items-start gap-3">
-                <span className="mt-1 inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-[#C6A664]" />
-                <span>
                   <strong className="text-[#0A1020]">WhatsApp-able vendor link.</strong>{' '}
                   After you submit, you get a link you can WhatsApp the
                   vendor in two taps. No PDF download, no login on their
