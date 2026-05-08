@@ -330,6 +330,51 @@ WhatsApp the investor with the PDF.
   held messages for direct seller comms (Speed + Certainty + Empathy
   tone) and investor updates. Tracks investor ticket size + preferences.
 
+### 5.6 Marketing automation (dual-customer)
+
+**Canonical plan:** `docs/marketing/PLAN.md`. Read in full before any
+campaign work.
+
+Bellwood markets to **two distinct customers** — estate agents (repeat
+referrals) and vendors (direct submissions). Same brand, different
+channels, different tone. Marketer owns drafting, CEO approves
+everything, Liaison + founders handle posting/sending.
+
+**Four content streams:**
+
+| Stream | Audience | Channel | Cadence | Owner |
+|---|---|---|---|---|
+| 1. "Houses we've offered" | Mixed (lurking) | Instagram | Per offer | Marketer drafts → CEO → Liaison posts |
+| 2. "Houses we've sold" | Investors + agents + vendors | Instagram | Per completion | Marketer + Counsel → CEO → Liaison |
+| 3. LinkedIn agent education | Branch managers | LinkedIn | 5×/week target | Marketer drafts → CEO → Liaison or founder posts |
+| 4. Vendor SEO + paid | Distress searches | Google search, SEO blog | 2 SEO/week + paid | Marketer drafts → **Counsel reviews** → CEO → Liaison |
+
+**Iron rules:**
+
+- No public-facing content goes live without CEO approval
+- Vendor-facing content **always** held (extends the platform-wide vendor-comms rule)
+- Counsel reviews every vendor-side piece (CPR 2008, NTSELAT, ICO, AML)
+- Anonymisation: postcode area only (M14, not M14 5AB), no exterior photos
+  identifying the property, 30-day delay between completion and post,
+  no vendor names without written consent
+- Distress-segment ads must signpost StepChange + Citizens Advice
+
+**Anchor brand asset:** `/why-we-wont-buy-any-home` page. Every campaign
+must align with this stance — selectivity over volume. The page lists 6
+situations we DO buy and 5 we DON'T (with what we recommend instead).
+Don't drift from this list without CEO + Counsel sign-off.
+
+**Targets (Phase 1):**
+
+- Vendor: <£250 cost-per-form-submission, 30%+ form-to-offer, 80%+
+  offer-to-completion, <£1,500 all-in cost-per-deal
+- Agent: 15%+ outreach-to-reply on personalised LinkedIn, 5%+ on cold
+  email, 20%+ reply-to-deal, 50%+ deal-to-completion, <£500 cost-per-deal
+
+Marketer's weekly digest (Sun evenings) reports these 8 numbers to CEO.
+
+**Workflow ownership** detailed in `docs/marketing/PLAN.md` §6.
+
 ---
 
 ## §6 The API contract

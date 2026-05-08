@@ -390,6 +390,7 @@ export default function SellPage() {
             <nav className="flex flex-wrap items-center gap-6 text-sm text-slate-600">
               <a href="#offer">Get an offer</a>
               <Link href="/instant-offer/methodology">Methodology</Link>
+              <Link href="/why-we-wont-buy-any-home">What we won&rsquo;t buy</Link>
               <Link href="/agents">For agents</Link>
               <Link href="/legal/fca-disclosure">Regulatory</Link>
             </nav>
