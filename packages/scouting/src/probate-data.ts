@@ -199,7 +199,15 @@ async function fetchProbateGrantsLive(
 
 /**
  * Fetch recent probate grants.
- * Falls back to synthetic data when the API is unavailable or unconfigured.
+ *
+ * Returns real grants when HMCTS_PROBATE_API_KEY is configured AND the live
+ * API responds. Returns an empty array otherwise — we **never** synthesise
+ * leads in production. Synthetic data muddied 100+ rows in the DB before
+ * being purged on 8 May 2026.
+ *
+ * If you want synthetic data for local development, set
+ * `ALLOW_SYNTHETIC_LEADS=true` in your .env.local (it is silently ignored
+ * in any deployment with `NODE_ENV=production`).
  *
  * @param sinceDate - ISO date string (YYYY-MM-DD). Default: 90 days ago.
  * @param limit     - Maximum records to fetch. Default: 50.
@@ -216,9 +224,20 @@ export async function fetchProbateGrants(
   try {
     return await fetchProbateGrantsLive(since, limit);
   } catch (err) {
+    const allowSynthetic =
+      process.env.NODE_ENV !== 'production' &&
+      process.env.ALLOW_SYNTHETIC_LEADS === 'true';
+
+    if (allowSynthetic) {
+      console.warn(
+        `[scouting/probate-data] live fetch failed (${(err as Error).message}), using synthetic (dev only)`
+      );
+      return buildSyntheticBatch(limit);
+    }
+
     console.warn(
-      `[scouting/probate-data] live fetch failed (${(err as Error).message}), using synthetic`
+      `[scouting/probate-data] live fetch failed (${(err as Error).message}); returning empty (synthetic disabled in production). Configure HMCTS_PROBATE_API_KEY or use a different source — see docs/scouting-roadmap.md.`
     );
-    return buildSyntheticBatch(limit);
+    return [];
   }
 }
