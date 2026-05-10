@@ -14,8 +14,10 @@ import 'server-only';
 
 import { getPricePaid } from '@repo/property-data/src/hmlr';
 import { getHousepriceIndex } from '@repo/property-data/src/hmlr-hpi';
+import { getSourcedProperties } from '@repo/property-data/src/propertydata';
 
 import { fetchProbateGrants } from './probate-data';
+import { fetchGazetteProbateNotices } from './gazette';
 import { enrichLeads } from './enrichment';
 import { scoreLead } from './scorer';
 import { sanitisePayload, auditProtectedFields } from './rbac';
@@ -25,6 +27,7 @@ import { sanitisePayload, auditProtectedFields } from './rbac';
 // ---------------------------------------------------------------------------
 
 export { fetchProbateGrants } from './probate-data';
+export { fetchGazetteProbateNotices } from './gazette';
 export { enrichLeads } from './enrichment';
 export { scoreLead } from './scorer';
 export { sanitisePayload, auditProtectedFields } from './rbac';
@@ -68,6 +71,8 @@ export interface ScoutingPipelineOptions {
   minScore?: number;
   /** Whether to include raw payload in output. Default: true. */
   includeRawPayload?: boolean;
+  /** Postcodes to scan for PropertyData /sourced-properties. Optional. */
+  sourcedPropertyPostcodes?: string[];
 }
 
 export interface ScoutingPipelineResult {
@@ -110,13 +115,66 @@ export async function runScoutingPipeline(
     limit = 50,
     minScore = 30,
     includeRawPayload = true,
+    sourcedPropertyPostcodes = [],
   } = options;
 
   const runDate = new Date();
   const allGdprStripped: string[] = [];
 
-  // Step 1 — Fetch probate grants
-  const rawGrants = await fetchProbateGrants(sinceDate, limit);
+  // Step 1 — Fetch from all sources in parallel.
+  //
+  //   a) HMCTS probate-data placeholder (returns [] in production until wired
+  //      to a real provider — see docs/scouting-roadmap.md)
+  //   b) The Gazette probate notices (free, public, real-time)
+  //   c) PropertyData /sourced-properties for each target postcode (paid,
+  //      already-listed distressed properties)
+  const [hmctsGrants, gazetteGrants, sourcedFromPostcodes] = await Promise.all([
+    fetchProbateGrants(sinceDate, limit).catch((err) => {
+      console.warn('[scouting] HMCTS source failed', err);
+      return [];
+    }),
+    fetchGazetteProbateNotices(30, limit).catch((err) => {
+      console.warn('[scouting] Gazette source failed', err);
+      return [];
+    }),
+    Promise.all(
+      sourcedPropertyPostcodes.map(async (postcode) => {
+        try {
+          const properties = await getSourcedProperties(postcode);
+          // Map SourcedProperty → ProbateLead-shape so the pipeline can
+          // score them uniformly. Listing type informs leadType.
+          return properties.map((p) => ({
+            probateRef: `pd-${postcode}-${p.address.slice(0, 16).replace(/\s+/g, '_')}`,
+            address: p.address,
+            postcode: p.postcode,
+            grantDate: new Date().toISOString().slice(0, 10),
+            executorName: null,
+            solicitorFirm: null,
+            estateValuePence: p.estimatedValuePence ?? p.pricePence,
+            grantType: 'unknown' as const,
+            source: `propertydata_${p.listingType}`,
+            daysSinceGrant: p.daysOnMarket ?? 0,
+          }));
+        } catch (err) {
+          console.warn(`[scouting] /sourced-properties failed for ${postcode}`, err);
+          return [];
+        }
+      }),
+    ).then((arrays) => arrays.flat()),
+  ]);
+
+  // De-duplicate by address+postcode (case-insensitive).
+  const seen = new Set<string>();
+  const rawGrants = [...hmctsGrants, ...gazetteGrants, ...sourcedFromPostcodes].filter((g) => {
+    const key = `${g.address.toLowerCase()}|${g.postcode.toLowerCase()}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  }).slice(0, limit);
+
+  console.info(
+    `[scouting] sources: hmcts=${hmctsGrants.length} gazette=${gazetteGrants.length} propertydata=${sourcedFromPostcodes.length} (after dedupe: ${rawGrants.length})`,
+  );
 
   // Step 2 — GDPR sanitise raw payloads
   const sanitisedGrants = rawGrants.map((grant) => {

@@ -17,7 +17,18 @@ export const POST = async (request: Request) => {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const result = await runScoutingPipeline({ limit: 50, minScore: 30 });
+  // Re-use the agent-prospecting postcodes for /sourced-properties scans.
+  // Same target patch, single config knob.
+  const sourcedPropertyPostcodes = (env.AGENT_PROSPECTING_POSTCODES ?? '')
+    .split(',')
+    .map((p) => p.trim())
+    .filter(Boolean);
+
+  const result = await runScoutingPipeline({
+    limit: 50,
+    minScore: 30,
+    sourcedPropertyPostcodes,
+  });
 
   let createdCount = 0;
   if (result.leads.length > 0) {

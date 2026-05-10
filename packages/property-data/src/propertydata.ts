@@ -355,6 +355,108 @@ export async function getAgentsByPostcode(postcode: string) {
 }
 
 // ---------------------------------------------------------------------------
+// Endpoint: /sourced-properties — distressed listings (probate, repos, BMV)
+// ---------------------------------------------------------------------------
+
+const SourcedPropertiesSchema = z.object({
+  status: z.string().optional(),
+  result: z
+    .object({
+      properties: z
+        .array(
+          z
+            .object({
+              address: z.string().optional(),
+              postcode: z.string().optional(),
+              price: z.number().optional(),
+              bedrooms: z.number().optional(),
+              property_type: z.string().optional(),
+              listing_type: z.string().optional(), // probate / repossession / bmv / etc
+              listing_url: z.string().optional(),
+              days_on_market: z.number().optional(),
+              estimated_value: z.number().optional(),
+              discount_percentage: z.number().optional(),
+              source: z.string().optional(),
+            })
+            .partial(),
+        )
+        .optional(),
+    })
+    .partial()
+    .optional(),
+});
+
+export type SourcedProperty = {
+  address: string;
+  postcode: string;
+  pricePence: number | null;
+  bedrooms: number | null;
+  propertyType: string | null;
+  listingType: string;
+  listingUrl: string | null;
+  daysOnMarket: number | null;
+  estimatedValuePence: number | null;
+  discountPercent: number | null;
+  source: string;
+};
+
+/**
+ * Distressed property listings — probate, repossession, below-market-value.
+ * Postcode-scoped. ~3 credits per call. 1-day cache (listings churn fast).
+ *
+ * Used by the daily scouting cron as a real-time lead source alongside
+ * The Gazette's probate notices.
+ */
+export async function getSourcedProperties(
+  postcode: string,
+): Promise<SourcedProperty[]> {
+  const data = await fetchPropertyData(
+    '/sourced-properties',
+    { postcode: postcode.replace(/\s/g, '') },
+    {
+      ttlMs: 24 * 60 * 60 * 1000,
+      estimatedCredits: 3,
+      schema: SourcedPropertiesSchema,
+    },
+  );
+  const properties = (data as { result?: { properties?: unknown[] } } | null)
+    ?.result?.properties;
+  if (!Array.isArray(properties)) return [];
+
+  const normalised: SourcedProperty[] = [];
+  for (const raw of properties) {
+    const p = raw as Record<string, unknown>;
+    const address = typeof p.address === 'string' ? p.address.trim() : null;
+    const postcodeOut =
+      typeof p.postcode === 'string' ? p.postcode.toUpperCase().trim() : null;
+    if (!address || !postcodeOut) continue;
+    normalised.push({
+      address,
+      postcode: postcodeOut,
+      pricePence: typeof p.price === 'number' ? Math.round(p.price * 100) : null,
+      bedrooms: typeof p.bedrooms === 'number' ? p.bedrooms : null,
+      propertyType:
+        typeof p.property_type === 'string' ? p.property_type : null,
+      listingType:
+        typeof p.listing_type === 'string' ? p.listing_type : 'distressed',
+      listingUrl: typeof p.listing_url === 'string' ? p.listing_url : null,
+      daysOnMarket:
+        typeof p.days_on_market === 'number' ? p.days_on_market : null,
+      estimatedValuePence:
+        typeof p.estimated_value === 'number'
+          ? Math.round(p.estimated_value * 100)
+          : null,
+      discountPercent:
+        typeof p.discount_percentage === 'number'
+          ? p.discount_percentage
+          : null,
+      source: typeof p.source === 'string' ? p.source : 'propertydata',
+    });
+  }
+  return normalised;
+}
+
+// ---------------------------------------------------------------------------
 // Endpoint: /account/credits — budget visibility
 // ---------------------------------------------------------------------------
 
