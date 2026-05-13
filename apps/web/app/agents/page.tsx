@@ -187,7 +187,7 @@ export default function AgentsPage() {
             broken. We&rsquo;re the replacement buyer agents call{' '}
             <em>before</em> they relist &mdash; not after weeks of trying. A
             real cash figure on screen in 60 seconds, signed binding offer
-            in 4 working hours.
+            within 24 hours.
           </p>
           <div className="mt-10 flex flex-wrap items-center gap-4">
             <a
@@ -442,7 +442,7 @@ export default function AgentsPage() {
           <p className="mt-5 max-w-2xl text-[15px] leading-relaxed text-slate-600">
             Five fields. The indicative figure appears on screen as soon as
             you submit &mdash; pulled from HM Land Registry comps. The signed
-            binding offer document follows by email within 4 working hours.
+            binding offer document follows by email within 24 hours.
           </p>
           <div className="mt-10">
             <AgentQuickForm />

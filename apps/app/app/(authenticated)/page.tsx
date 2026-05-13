@@ -18,7 +18,7 @@ function formatGBP(pence?: number | null): string {
   return `£${Math.round(pence / 100).toLocaleString('en-GB')}`;
 }
 
-function slaCountdown(submittedAt: Date, slaHours = 4): {
+function slaCountdown(submittedAt: Date, slaHours = 24): {
   label: string;
   tone: 'fresh' | 'warning' | 'breach';
 } {
@@ -202,7 +202,7 @@ export default async function TodayPage() {
                     <div className="flex flex-wrap items-start justify-between gap-3">
                       <div className="min-w-0 flex-1">
                         <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-amber-700">
-                          Agent SLA · 4-hour signed PDF
+                          Agent SLA · 24-hour signed PDF
                         </p>
                         <p className="mt-2 font-medium">
                           {q.address}, {q.postcode}

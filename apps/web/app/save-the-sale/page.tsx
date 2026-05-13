@@ -19,11 +19,11 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: 'Sale fallen through? · Bellwoods Lane',
   description:
-    'Buyer pulled out, mortgage refused, survey down-valued or chain broken? An indicative cash figure on screen in 60 seconds. Signed binding offer in 4 working hours. For UK estate agents.',
+    'Buyer pulled out, mortgage refused, survey down-valued or chain broken? An indicative cash figure on screen in 60 seconds. Signed binding offer within 24 hours. For UK estate agents.',
   openGraph: {
     title: 'Sale fallen through? · Bellwoods Lane',
     description:
-      'Cash figure in 60 seconds, signed offer in 4 hours. For UK estate agents whose sale just collapsed.',
+      'Cash figure in 60 seconds, signed offer within 24 hours. For UK estate agents whose sale just collapsed.',
     type: 'website',
   },
 };
@@ -76,7 +76,7 @@ export default function SaveTheSalePage() {
               Buyer pulled out, mortgage refused, survey down-valued, chain
               broken. Whatever&rsquo;s collapsed, we step in with an
               indicative figure on screen in 60 seconds (drawn from HM Land
-              Registry comps) and a signed binding offer in 4 working hours.
+              Registry comps) and a signed binding offer within 24 hours.
             </p>
             <ul className="mt-8 space-y-3 text-[14px] text-slate-700">
               <li className="flex items-start gap-3">

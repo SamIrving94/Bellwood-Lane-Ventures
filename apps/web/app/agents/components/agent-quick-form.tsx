@@ -251,7 +251,7 @@ export function AgentQuickForm({ defaultTriggerLabel }: AgentQuickFormProperties
         <p className="text-xs text-slate-500">
           Indicative offer on screen in 60 seconds.
           <br />
-          Signed PDF in your inbox within 4 working hours.
+          Signed PDF in your inbox within 24 hours.
         </p>
         <button
           type="submit"
@@ -342,7 +342,7 @@ function SuccessView({
           This is the indicative figure from our AVM (HM Land Registry comps,
           last 24 months, adjusted for HPI). The signed binding offer
           document, with full reasoning, will be in{' '}
-          <strong>{vendorEmail}</strong> within 4 working hours.
+          <strong>{vendorEmail}</strong> within 24 hours.
         </p>
       </div>
 

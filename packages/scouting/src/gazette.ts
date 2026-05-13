@@ -3,20 +3,22 @@
  *
  * Probate notices over £5k estate value are legally required to be
  * published here under the Trustee Act 1925 (s.27). Every notice
- * includes the deceased's last address (a property!) plus solicitor
+ * includes the deceased's last address (a property) plus solicitor
  * details. Free public REST API.
  *
- * API: https://www.thegazette.co.uk/all-notices/notice/data.json
- * Coverage: England + Wales (service=1), Scotland (service=2),
- *           Northern Ireland (service=3)
- * Category 11 = Wills and Probate
+ * API discovery (13 May 2026):
+ *   List endpoint:    https://www.thegazette.co.uk/all-notices/notice/data.json
+ *                     ?noticetype=deceased-estates&results-page-size=N
+ *   Per-notice detail: https://www.thegazette.co.uk/notice/{id}/data.json
+ *                     ?view=linked-data
  *
- * Defensive parsing: the API's exact JSON shape isn't fully documented
- * and varies by notice type. We extract the minimum we need (deceased
- * name, last address, date of death, solicitor) and log the raw
- * payload when parsing fails so we can iterate.
+ * The list returns headers only — addresses live in the detail page.
+ * Each detail's `result.primaryTopic.isAbout` contains:
+ *   - `postcode[]`        structured array of postcode + lat/long
+ *   - `person.hasPersonDetails`  prose like "X NAME, of [address], lately of [address]"
+ *   - `type[]`            includes "deceased-estate" types for real probate
  *
- * Falls back to an empty array on failure — never synthesises data.
+ * Falls back to an empty array on failure. Never synthesises.
  */
 
 import 'server-only';
@@ -24,180 +26,190 @@ import 'server-only';
 import type { ProbateLead } from './probate-data';
 import { ProbateLeadSchema } from './probate-data';
 
-const GAZETTE_BASE = 'https://www.thegazette.co.uk/all-notices/notice/data.json';
+const GAZETTE_LIST_URL = 'https://www.thegazette.co.uk/all-notices/notice/data.json';
 const REQUEST_TIMEOUT_MS = 12_000;
+const PARALLEL_DETAIL_BATCH = 5;
 
 /**
  * Pull recent UK probate notices from The Gazette.
  *
- * @param sinceDays   How many days back to fetch (default 30)
- * @param limit       Max records (default 50; Gazette caps page size at 100)
- * @param service     1 = London (Eng/Wales), 2 = Edinburgh, 3 = Belfast
+ * @param sinceDays  How many days back to keep notices for (default 30)
+ * @param limit      Max records returned (default 50; list page-size cap is 100)
  */
 export async function fetchGazetteProbateNotices(
   sinceDays = 30,
   limit = 50,
-  service: 1 | 2 | 3 = 1,
 ): Promise<ProbateLead[]> {
-  const url = new URL(GAZETTE_BASE);
-  url.searchParams.set('categorycode-all', '11');
-  url.searchParams.set('service', String(service));
-  url.searchParams.set('results-page-size', String(Math.min(limit, 100)));
-  url.searchParams.set('sort-by', 'publish-date-desc');
+  // ---- 1. Fetch the list of recent deceased-estate notices ----
+  const listUrl = new URL(GAZETTE_LIST_URL);
+  listUrl.searchParams.set('noticetype', 'deceased-estates');
+  listUrl.searchParams.set('results-page-size', String(Math.min(limit, 100)));
 
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
-
+  let listJson: unknown;
   try {
-    const res = await fetch(url.toString(), {
+    const res = await timedFetch(listUrl.toString(), REQUEST_TIMEOUT_MS);
+    if (!res.ok) {
+      console.warn(`[scouting/gazette] list HTTP ${res.status}`);
+      return [];
+    }
+    listJson = await res.json().catch(() => null);
+  } catch (err) {
+    console.warn('[scouting/gazette] list fetch failed', err);
+    return [];
+  }
+  if (!listJson || typeof listJson !== 'object') return [];
+
+  const entries = (listJson as { entry?: unknown[] }).entry;
+  if (!Array.isArray(entries) || entries.length === 0) {
+    console.info('[scouting/gazette] zero list entries');
+    return [];
+  }
+
+  // ---- 2. Fetch each notice's detail in batches ----
+  const ids = entries
+    .map((e) => extractNoticeId((e as Record<string, unknown>).id))
+    .filter((id): id is string => !!id);
+
+  const details: unknown[] = [];
+  for (let i = 0; i < ids.length; i += PARALLEL_DETAIL_BATCH) {
+    const slice = ids.slice(i, i + PARALLEL_DETAIL_BATCH);
+    const batch = await Promise.all(
+      slice.map((id) => fetchNoticeDetail(id).catch(() => null)),
+    );
+    for (const d of batch) {
+      if (d) details.push(d);
+    }
+  }
+
+  // ---- 3. Parse each detail into a ProbateLead ----
+  const cutoffMs = Date.now() - sinceDays * 86_400_000;
+  const leads: ProbateLead[] = [];
+  for (const d of details) {
+    const lead = parseNoticeDetail(d);
+    if (!lead) continue;
+    const pubMs = new Date(lead.grantDate).getTime();
+    if (Number.isFinite(pubMs) && pubMs < cutoffMs) continue;
+    leads.push(lead);
+    if (leads.length >= limit) break;
+  }
+
+  console.info(
+    `[scouting/gazette] list=${entries.length} details=${details.length} parsed=${leads.length}`,
+  );
+  return leads;
+}
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+async function timedFetch(url: string, ms: number): Promise<Response> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), ms);
+  try {
+    return await fetch(url, {
       headers: { Accept: 'application/json' },
       signal: controller.signal,
     });
-    if (!res.ok) {
-      console.warn(
-        `[scouting/gazette] HTTP ${res.status} ${res.statusText} from ${url.pathname}`,
-      );
-      return [];
-    }
-    const json = (await res.json().catch(() => null)) as unknown;
-    if (!json || typeof json !== 'object') {
-      console.warn('[scouting/gazette] non-JSON response');
-      return [];
-    }
-
-    // The Gazette wraps notices in different shapes depending on the API
-    // surface used. Try the most common: { entry: [...] } and { items: [...] }.
-    const entries = extractEntries(json);
-    if (entries.length === 0) {
-      console.info('[scouting/gazette] zero notices returned');
-      return [];
-    }
-
-    const cutoff = Date.now() - sinceDays * 86_400_000;
-    const now = Date.now();
-
-    const leads: ProbateLead[] = [];
-    for (const entry of entries) {
-      const parsed = parseNotice(entry, now);
-      if (!parsed) continue;
-      // sinceDays filter — keep notices within the window
-      const noticeMs = new Date(parsed.grantDate).getTime();
-      if (Number.isFinite(noticeMs) && noticeMs < cutoff) continue;
-      leads.push(parsed);
-      if (leads.length >= limit) break;
-    }
-
-    console.info(
-      `[scouting/gazette] fetched ${entries.length} notices, parsed ${leads.length} probate leads`,
-    );
-    return leads;
-  } catch (error) {
-    if ((error as { name?: string })?.name === 'AbortError') {
-      console.warn('[scouting/gazette] timed out after 12s');
-    } else {
-      console.warn('[scouting/gazette] failed', error);
-    }
-    return [];
   } finally {
     clearTimeout(timer);
   }
 }
 
-// ---------------------------------------------------------------------------
-// Defensive payload parsing — Gazette response shape varies
-// ---------------------------------------------------------------------------
-
-function extractEntries(json: unknown): Record<string, unknown>[] {
-  const j = json as Record<string, unknown>;
-  if (Array.isArray(j.entry)) return j.entry as Record<string, unknown>[];
-  if (Array.isArray(j.items)) return j.items as Record<string, unknown>[];
-  if (Array.isArray(j.notices)) return j.notices as Record<string, unknown>[];
-  // Sometimes wrapped under a 'feed' or 'data' key
-  if (j.feed && typeof j.feed === 'object') {
-    const f = j.feed as Record<string, unknown>;
-    if (Array.isArray(f.entry)) return f.entry as Record<string, unknown>[];
-  }
-  return [];
+function extractNoticeId(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  const m = value.match(/\/notice\/(\d+)/);
+  return m?.[1] ?? null;
 }
 
-function parseNotice(
-  raw: Record<string, unknown>,
-  nowMs: number,
-): ProbateLead | null {
-  // Notice metadata
-  const noticeId = pickString(raw, ['notice-id', 'id', 'noticeId']);
-  const publishDate = pickString(raw, [
-    'publish-date',
-    'publication-date',
-    'publishDate',
-    'published',
-  ]);
+async function fetchNoticeDetail(id: string): Promise<unknown | null> {
+  const url = `https://www.thegazette.co.uk/notice/${id}/data.json?view=linked-data`;
+  const res = await timedFetch(url, REQUEST_TIMEOUT_MS);
+  if (!res.ok) return null;
+  return res.json().catch(() => null);
+}
 
-  // Deceased + estate fields. The Gazette publishes these inside
-  // structured "deceased" + "executor" objects in modern responses,
-  // and as free text in legacy ones. Try structured first.
-  const deceasedObj = (raw.deceased ?? raw['deceased-name']) as
+/**
+ * Parse The Gazette linked-data JSON for a single notice into a ProbateLead.
+ *
+ * Real shape:
+ *   result.primaryTopic
+ *     .type[]                  — must include a "deceased-estate" type to qualify
+ *     .hasNoticeID
+ *     .hasPublicationDate      — "Wednesday, 13-May-2026 19:20:09 UTC"
+ *     .isAbout
+ *       .type[]
+ *       .postcode[]            — [{ label: "CV6 1NJ", lat, long, ... }, ...]
+ *       .person
+ *         .name                — full name (e.g. "O'HANLON David William")
+ *         .familyName
+ *         .firstName
+ *         .hasPersonDetails    — prose: "NAME, of [addr], lately of [addr]..."
+ *       .hasOfficialReceiver / .administrator / .solicitor — varies
+ */
+function parseNoticeDetail(json: unknown): ProbateLead | null {
+  if (!json || typeof json !== 'object') return null;
+  const result = (json as Record<string, unknown>).result as
     | Record<string, unknown>
-    | string
     | undefined;
-  let deceasedName: string | null = null;
-  let deceasedAddress: string | null = null;
-  let dateOfDeath: string | null = null;
+  if (!result) return null;
+  const topic = result.primaryTopic as Record<string, unknown> | undefined;
+  if (!topic) return null;
 
-  if (typeof deceasedObj === 'object' && deceasedObj) {
-    deceasedName = pickString(deceasedObj, ['name', 'full-name']);
-    deceasedAddress = pickString(deceasedObj, [
-      'address',
-      'last-address',
-      'address-line',
-    ]);
-    dateOfDeath = pickString(deceasedObj, ['date-of-death', 'dateOfDeath']);
-  } else if (typeof deceasedObj === 'string') {
-    deceasedName = deceasedObj;
-  }
+  // ---- 1. Must be a deceased-estate notice (filter out insolvency) ----
+  const topLevelTypes = arrayOf(topic.type);
+  const isAbout = topic.isAbout as Record<string, unknown> | undefined;
+  const aboutTypes = arrayOf(isAbout?.type);
+  const allTypes = [...topLevelTypes, ...aboutTypes].map((t) => String(t).toLowerCase());
+  const isDeceasedEstate = allTypes.some((t) =>
+    t.includes('deceased') || t.includes('estate-of'),
+  );
+  if (!isDeceasedEstate) return null;
 
-  // Fallback — search the notice text for an address pattern.
-  const noticeText = pickString(raw, [
-    'text',
-    'notice-text',
-    'content',
-    'description',
-    'summary',
-  ]);
-  if (!deceasedAddress && noticeText) {
-    deceasedAddress = extractAddressFromText(noticeText);
-  }
-
-  // Required: address + postcode
-  if (!deceasedAddress) return null;
-  const { address, postcode } = splitAddressAndPostcode(deceasedAddress);
+  // ---- 2. Postcode (structured array preferred) ----
+  const postcodeArr = arrayOf(isAbout?.postcode);
+  const postcode = pickFirstPostcodeLabel(postcodeArr);
   if (!postcode) return null;
 
-  // Solicitor / executor details
-  const solicitorObj = raw.executor ?? raw.solicitor;
-  let solicitorFirm: string | null = null;
-  if (typeof solicitorObj === 'object' && solicitorObj) {
-    solicitorFirm = pickString(
-      solicitorObj as Record<string, unknown>,
-      ['firm', 'name', 'company-name'],
-    );
+  // ---- 3. Deceased name ----
+  const person = isAbout?.person as Record<string, unknown> | undefined;
+  let deceasedName: string | null = null;
+  if (person) {
+    deceasedName = stringOrNull(person.name);
+    if (!deceasedName) {
+      const first = stringOrNull(person.firstName);
+      const family = stringOrNull(person.familyName);
+      if (first || family) deceasedName = [first, family].filter(Boolean).join(' ');
+    }
   }
 
-  // Days since publication (used as Golden Window proxy in the absence
-  // of an actual grant date — Gazette publishes notice ~1-3 weeks after
-  // grant typically).
-  const noticeMs = publishDate ? Date.parse(publishDate) : nowMs;
-  const daysSince = Math.max(
-    0,
-    Math.floor((nowMs - (Number.isFinite(noticeMs) ? noticeMs : nowMs)) / 86_400_000),
-  );
+  // ---- 4. Address — extract from prose near the matching postcode ----
+  const prose = person ? stringOrNull(person.hasPersonDetails) : null;
+  const address = prose ? extractAddressForPostcode(prose, postcode) : null;
+  if (!address) return null;
+
+  // ---- 5. Publication date ----
+  const pubDate = parsePubDate(stringOrNull(topic.hasPublicationDate));
+  const grantDate = new Date(pubDate).toISOString().slice(0, 10);
+  const daysSince = Math.max(0, Math.floor((Date.now() - pubDate) / 86_400_000));
+
+  // ---- 6. Solicitor / administrator firm (best effort) ----
+  const administrator = (isAbout?.administrator ?? isAbout?.hasOfficialReceiver) as
+    | Record<string, unknown>
+    | undefined;
+  const solicitorFirm = administrator
+    ? stringOrNull((administrator.adr as Record<string, unknown> | undefined)?.extendedAddress) ??
+      stringOrNull(administrator.name)
+    : null;
+
+  const noticeId = stringOrNull(topic.hasNoticeID) ?? stringOrNull(topic.hasNoticeNumber);
 
   try {
     return ProbateLeadSchema.parse({
-      probateRef: noticeId ?? `gazette-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      probateRef: noticeId ? `gazette-${noticeId}` : `gazette-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
       address: address.trim(),
       postcode: postcode.toUpperCase(),
-      grantDate: dateOfDeath ?? publishDate ?? new Date().toISOString().slice(0, 10),
+      grantDate,
       executorName: deceasedName,
       solicitorFirm,
       estateValuePence: null,
@@ -206,53 +218,85 @@ function parseNotice(
       daysSinceGrant: daysSince,
     });
   } catch {
-    // Schema validation failed — skip silently rather than break the run
     return null;
   }
 }
 
-function pickString(
-  obj: Record<string, unknown>,
-  keys: string[],
-): string | null {
-  for (const k of keys) {
-    const v = obj[k];
-    if (typeof v === 'string' && v.trim().length > 0) return v.trim();
+// ---------------------------------------------------------------------------
+// Tiny helpers
+// ---------------------------------------------------------------------------
+
+function arrayOf(v: unknown): unknown[] {
+  if (Array.isArray(v)) return v;
+  if (v == null) return [];
+  return [v];
+}
+
+function stringOrNull(v: unknown): string | null {
+  return typeof v === 'string' && v.trim() ? v.trim() : null;
+}
+
+function pickFirstPostcodeLabel(arr: unknown[]): string | null {
+  for (const p of arr) {
+    if (typeof p === 'string') return p; // raw string fallback
+    if (p && typeof p === 'object') {
+      const label = (p as Record<string, unknown>).label;
+      if (typeof label === 'string') return label;
+    }
   }
   return null;
 }
 
 /**
- * UK postcode regex covers all standard formats (e.g. SW1A 1AA, M1 5AB, B33 8TH).
- * Used to split a flattened address string into address + postcode.
+ * "Wednesday, 13-May-2026 19:20:09 UTC" → epoch ms. Falls back to now.
  */
-const UK_POSTCODE_RE =
-  /\b([A-Z]{1,2}\d[A-Z\d]?)\s*(\d[A-Z]{2})\b/i;
-
-function splitAddressAndPostcode(full: string): {
-  address: string;
-  postcode: string | null;
-} {
-  const m = full.match(UK_POSTCODE_RE);
-  if (!m) return { address: full, postcode: null };
-  const postcode = `${m[1]?.toUpperCase()} ${m[2]?.toUpperCase()}`;
-  const address = full.slice(0, m.index).replace(/[,;\s]+$/, '').trim();
-  return { address, postcode };
+function parsePubDate(raw: string | null): number {
+  if (!raw) return Date.now();
+  const cleaned = raw.replace(/^[A-Za-z]+, /, '').replace(/-/g, ' ');
+  const ms = Date.parse(cleaned);
+  return Number.isFinite(ms) ? ms : Date.now();
 }
 
+const UK_POSTCODE_RE = /\b([A-Z]{1,2}\d[A-Z\d]?)\s*(\d[A-Z]{2})\b/i;
+
 /**
- * Heuristic: look for a UK address pattern in free-text notice prose.
- * Catches phrases like "lately of 14 Acacia Avenue, Stockport SK4 3HQ".
+ * Pull the street address that precedes the given postcode in the prose.
+ * Handles patterns like "DECEASED NAME, of 5 Hewitt Avenue, Counden,
+ * Coventry, CV6 1NJ, lately of 38 Parkville Highway, Coventry, CV6 4HZ".
+ *
+ * Walks back from the postcode position until we hit ", of " / ", lately of "
+ * or the start of the prose.
  */
-function extractAddressFromText(text: string): string | null {
-  // Find a postcode first; backtrack to grab the surrounding address chunk.
-  const m = text.match(UK_POSTCODE_RE);
-  if (!m || m.index === undefined) return null;
-  // Walk back up to ~120 chars or until the start of a sentence.
-  const start = Math.max(0, m.index - 120);
-  const slice = text.slice(start, m.index + m[0].length);
-  // Trim leading prose by cutting at the last "of " or sentence boundary.
-  const ofIdx = slice.toLowerCase().lastIndexOf(' of ');
-  const cleaned = ofIdx >= 0 ? slice.slice(ofIdx + 4) : slice;
-  return cleaned.replace(/^[,;\s]+/, '').trim();
+function extractAddressForPostcode(prose: string, postcode: string): string | null {
+  // Normalise postcode for searching (strip space).
+  const compact = postcode.replace(/\s/g, '').toUpperCase();
+  const propose = prose.toUpperCase();
+  // Find every UK postcode in prose; pick the one matching ours.
+  const re = /([A-Z]{1,2}\d[A-Z\d]?)\s*(\d[A-Z]{2})/g;
+  let match: RegExpExecArray | null;
+  let foundIdx = -1;
+  while ((match = re.exec(propose)) !== null) {
+    if (`${match[1]}${match[2]}` === compact) {
+      foundIdx = match.index;
+      break;
+    }
+  }
+  if (foundIdx < 0) {
+    // Try a relaxed match — any UK postcode in the prose.
+    const any = prose.match(UK_POSTCODE_RE);
+    if (!any || any.index === undefined) return null;
+    foundIdx = any.index;
+  }
+
+  const beforePostcode = prose.slice(0, foundIdx).trimEnd().replace(/,$/, '');
+  // Backtrack: find the last "of " marker.
+  const ofMatches = [...beforePostcode.matchAll(/\b(lately of|of)\s+/gi)];
+  if (ofMatches.length === 0) {
+    // No "of " — take up to 80 chars before the postcode as the address.
+    return beforePostcode.slice(-80).trim();
+  }
+  const last = ofMatches[ofMatches.length - 1];
+  if (!last || last.index === undefined) return null;
+  const start = last.index + last[0].length;
+  return beforePostcode.slice(start).trim();
 }

@@ -300,7 +300,7 @@ export async function POST(request: Request) {
     if (input.submissionSource === 'agent_quick_form') {
       try {
         const offerGbp = Math.round(offer.offerPence / 100).toLocaleString('en-GB');
-        const slaDeadline = new Date(Date.now() + 4 * 60 * 60 * 1000);
+        const slaDeadline = new Date(Date.now() + 24 * 60 * 60 * 1000);
         await database.founderAction.create({
           data: {
             type: 'ceo_escalation',
@@ -308,7 +308,7 @@ export async function POST(request: Request) {
             status: 'pending',
             agent: 'appraiser',
             title: `Send signed offer: ${input.address}, ${input.postcode}`,
-            description: `${input.firmName ?? 'Agent'} submitted via /save-the-sale. Trigger: ${input.triggerLabel ?? 'unspecified'}. Indicative offer £${offerGbp} (${Math.round(offer.offerPercentOfAvm * 100)}% of AVM). Signed PDF promised within 4 working hours.`,
+            description: `${input.firmName ?? 'Agent'} submitted via /save-the-sale. Trigger: ${input.triggerLabel ?? 'unspecified'}. Indicative offer £${offerGbp} (${Math.round(offer.offerPercentOfAvm * 100)}% of AVM). Signed PDF promised within 24 hours.`,
             expiresAt: slaDeadline,
             metadata: {
               quoteRequestId: quoteRequest.id,
@@ -318,7 +318,7 @@ export async function POST(request: Request) {
               firmName: input.firmName,
               contactName: input.contactName,
               contactEmail: input.contactEmail,
-              slaHours: 4,
+              slaHours: 24,
               link: `/quotes/${quoteRequest.id}`,
             },
           },
@@ -328,7 +328,7 @@ export async function POST(request: Request) {
       }
 
       // Confirmation email to the agent. The signed PDF will arrive
-      // separately within 4 working hours - this is just acknowledgement.
+      // separately within 24 hours - this is just acknowledgement.
       try {
         const offerGbp = Math.round(offer.offerPence / 100).toLocaleString('en-GB');
         const followUpLine = input.contactPhone
@@ -345,7 +345,7 @@ export async function POST(request: Request) {
             `Indicative cash offer: £${offerGbp} (${Math.round(offer.offerPercentOfAvm * 100)}% of AVM mid).`,
             `Suggested completion: ${offer.completionDays} days.`,
             '',
-            'A signed binding offer document, with the comparables we used and our methodology, will be in your inbox within 4 working hours.',
+            'A signed binding offer document, with the comparables we used and our methodology, will be in your inbox within 24 hours.',
             followUpLine,
             '',
             'Bellwoods Lane',

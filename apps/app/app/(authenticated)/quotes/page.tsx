@@ -51,7 +51,7 @@ function extractTrigger(notes?: string | null): string | undefined {
  * Render an SLA-deadline countdown for the agent inbox. Returns the
  * remaining time + a tone hint for styling.
  */
-function slaCountdown(submittedAt: Date, slaHours = 4): {
+function slaCountdown(submittedAt: Date, slaHours = 24): {
   label: string;
   tone: 'fresh' | 'warning' | 'breach';
 } {
@@ -150,7 +150,7 @@ export default async function QuotesPage() {
             <div className="mb-4 flex items-center justify-between">
               <div>
                 <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-amber-700">
-                  Agent inbox · 4-hour signed-PDF SLA
+                  Agent inbox · 24-hour signed-PDF SLA
                 </p>
                 <h2 className="mt-1 font-semibold text-lg">
                   {agentInbox.length} agent submission{agentInbox.length === 1 ? '' : 's'} awaiting signed PDF
