@@ -73,12 +73,27 @@ const SettingsPage = async () => {
 
         <section className="flex flex-col gap-4">
           <div>
-            <h2 className="text-base font-semibold">Advanced</h2>
+            <h2 className="text-base font-semibold">Operations</h2>
             <p className="text-sm text-muted-foreground">
-              Tuning and developer settings.
+              Settings that change how the platform sources and processes leads.
             </p>
           </div>
           <ul className="divide-y rounded-xl border">
+            <li>
+              <Link
+                href="/settings/scouting"
+                className="flex items-center justify-between p-5 transition hover:bg-accent"
+              >
+                <div>
+                  <p className="font-medium">Scouting · Target postcodes</p>
+                  <p className="text-sm text-muted-foreground">
+                    The postcodes the daily scouting cron pulls distressed
+                    listings from. Add or remove without a code deploy.
+                  </p>
+                </div>
+                <span aria-hidden className="text-muted-foreground">→</span>
+              </Link>
+            </li>
             <li>
               <Link
                 href="/settings/evals"

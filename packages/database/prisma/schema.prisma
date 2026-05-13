@@ -682,3 +682,23 @@ model EstateAgentContact {
   @@index([postcode])
   @@index([referralCode])
 }
+
+// ---------------------------------------------------------------------------
+// Setting — generic founder-managed app config (key/value JSON)
+// ---------------------------------------------------------------------------
+// Used today for:
+//   - `scouting.targetPostcodes` (array of UK postcode districts)
+//   - room to grow: `slas.signedPdfHours`, `outreach.holdByDefault`, etc.
+// Managed via /settings/scouting in the dashboard. No code deploy needed
+// to change values.
+
+model Setting {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  value     Json
+  updatedBy String?  // Clerk userId
+  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now())
+
+  @@index([key])
+}

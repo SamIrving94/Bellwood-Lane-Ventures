@@ -17,12 +17,28 @@ export const POST = async (request: Request) => {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  // Re-use the agent-prospecting postcodes for /sourced-properties scans.
-  // Same target patch, single config knob.
-  const sourcedPropertyPostcodes = (env.AGENT_PROSPECTING_POSTCODES ?? '')
-    .split(',')
-    .map((p) => p.trim())
-    .filter(Boolean);
+  // Read target postcodes from the DB-backed Setting (founder-managed via
+  // /settings/scouting in the dashboard). Falls back to the legacy
+  // AGENT_PROSPECTING_POSTCODES env var if no setting is configured.
+  let sourcedPropertyPostcodes: string[] = [];
+  try {
+    const setting = await database.setting.findUnique({
+      where: { key: 'scouting.targetPostcodes' },
+    });
+    if (setting && Array.isArray(setting.value)) {
+      sourcedPropertyPostcodes = (setting.value as unknown[]).filter(
+        (v): v is string => typeof v === 'string' && v.trim().length > 0,
+      );
+    }
+  } catch (err) {
+    console.warn('[cron/scouting] failed to read postcodes from DB, falling back to env', err);
+  }
+  if (sourcedPropertyPostcodes.length === 0) {
+    sourcedPropertyPostcodes = (env.AGENT_PROSPECTING_POSTCODES ?? '')
+      .split(',')
+      .map((p) => p.trim())
+      .filter(Boolean);
+  }
 
   const result = await runScoutingPipeline({
     limit: 50,

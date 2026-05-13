@@ -48,7 +48,26 @@ const FALLBACK_POSTCODES = [
 
 const SOURCE_TAG = 'source:propertydata';
 
-function targetPostcodes(): string[] {
+/**
+ * Resolve target postcodes in this order:
+ *   1. DB setting `scouting.targetPostcodes` (founder-managed via dashboard)
+ *   2. AGENT_PROSPECTING_POSTCODES env var (legacy)
+ *   3. Hardcoded FALLBACK_POSTCODES (sensible default for first launch)
+ */
+async function targetPostcodes(): Promise<string[]> {
+  try {
+    const setting = await database.setting.findUnique({
+      where: { key: 'scouting.targetPostcodes' },
+    });
+    if (setting && Array.isArray(setting.value)) {
+      const list = (setting.value as unknown[])
+        .filter((v): v is string => typeof v === 'string' && v.trim().length > 0)
+        .map((p) => p.trim().toUpperCase());
+      if (list.length > 0) return list;
+    }
+  } catch (err) {
+    console.warn('[cron/agent-prospecting] failed to read postcodes from DB', err);
+  }
   const fromEnv = env.AGENT_PROSPECTING_POSTCODES;
   if (fromEnv) {
     return fromEnv
@@ -75,7 +94,7 @@ export const POST = async (request: Request) => {
   }
 
   const startedAt = new Date();
-  const postcodes = targetPostcodes();
+  const postcodes = await targetPostcodes();
   const surfaced: ProspectAgent[] = [];
 
   for (const postcode of postcodes) {
