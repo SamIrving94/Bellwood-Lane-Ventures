@@ -5,6 +5,7 @@ import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import type { Metadata } from 'next';
 import { database } from '@repo/database';
+import { VendorReplyForm } from './vendor-reply-form';
 
 export const dynamic = 'force-dynamic';
 
@@ -232,9 +233,11 @@ export default async function TrackPage({
               className="text-[#0A2540] underline"
             >
               anthony@bellwoodslane.co.uk
-            </a>
-            .
+            </a>{' '}
+            — or use the form below.
           </p>
+
+          <VendorReplyForm token={token} />
         </section>
 
         <p className="mt-12 font-mono text-[10px] uppercase tracking-[0.22em] text-slate-400">

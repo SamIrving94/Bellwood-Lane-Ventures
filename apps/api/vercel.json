@@ -31,6 +31,10 @@
     {
       "path": "/cron/agent-prospecting",
       "schedule": "30 8 * * 1"
+    },
+    {
+      "path": "/cron/weekly-patterns",
+      "schedule": "0 18 * * 0"
     }
   ]
 }
