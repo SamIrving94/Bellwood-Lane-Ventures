@@ -83,7 +83,7 @@ export async function diagnoseSourcedProperties(postcode: string): Promise<{
 
   const result = await getSourcedPropertiesRaw(postcode);
   if (!result.ok) {
-    return { ok: false, postcode, ...result };
+    return { postcode, ok: false, status: result.status, error: result.error };
   }
   const body = result.body as Record<string, unknown> | null;
   const props =
@@ -99,7 +99,13 @@ export async function diagnoseSourcedProperties(postcode: string): Promise<{
   } else {
     summary = `Properties field is not an array`;
   }
-  return { ok: true, postcode, ...result, summary };
+  return {
+    postcode,
+    ok: true,
+    status: result.status,
+    body: result.body,
+    summary,
+  };
 }
 
 export async function triggerScoutingCron(): Promise<{
