@@ -126,5 +126,7 @@ export const POST = async (request: Request) => {
     strongLeads: strongLeads.length,
     summary: result.summary,
     gdprFieldsStripped: result.gdprStripped.length,
+    sources: result.sources,
+    sourceErrors: result.sourceErrors,
   });
 };

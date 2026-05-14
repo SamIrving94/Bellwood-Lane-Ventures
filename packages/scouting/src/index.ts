@@ -91,6 +91,20 @@ export interface ScoutingPipelineResult {
   };
   /** GDPR audit: list of protected fields stripped from any payload */
   gdprStripped: string[];
+  /** Per-source breakdown so we can debug which source produced what. */
+  sources: {
+    hmcts: number;
+    gazette: number;
+    propertydata: number;
+    afterDedupe: number;
+    postcodesScanned: number;
+  };
+  /** Per-source errors (truncated) for diagnostic surfacing. */
+  sourceErrors: {
+    hmcts?: string;
+    gazette?: string;
+    propertydata?: string;
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -121,19 +135,19 @@ export async function runScoutingPipeline(
   const runDate = new Date();
   const allGdprStripped: string[] = [];
 
-  // Step 1 — Fetch from all sources in parallel.
-  //
-  //   a) HMCTS probate-data placeholder (returns [] in production until wired
-  //      to a real provider — see docs/scouting-roadmap.md)
-  //   b) The Gazette probate notices (free, public, real-time)
-  //   c) PropertyData /sourced-properties for each target postcode (paid,
-  //      already-listed distressed properties)
+  // Step 1 — Fetch from all sources in parallel. Capture errors per source.
+  const sourceErrors: { hmcts?: string; gazette?: string; propertydata?: string } = {};
+
   const [hmctsGrants, gazetteGrants, sourcedFromPostcodes] = await Promise.all([
     fetchProbateGrants(sinceDate, limit).catch((err) => {
+      const msg = (err as Error)?.message ?? String(err);
+      sourceErrors.hmcts = msg.slice(0, 200);
       console.warn('[scouting] HMCTS source failed', err);
       return [];
     }),
     fetchGazetteProbateNotices(30, limit).catch((err) => {
+      const msg = (err as Error)?.message ?? String(err);
+      sourceErrors.gazette = msg.slice(0, 200);
       console.warn('[scouting] Gazette source failed', err);
       return [];
     }),
@@ -141,8 +155,6 @@ export async function runScoutingPipeline(
       sourcedPropertyPostcodes.map(async (postcode) => {
         try {
           const properties = await getSourcedProperties(postcode);
-          // Map SourcedProperty → ProbateLead-shape so the pipeline can
-          // score them uniformly. Listing type informs leadType.
           return properties.map((p) => ({
             probateRef: `pd-${postcode}-${p.address.slice(0, 16).replace(/\s+/g, '_')}`,
             address: p.address,
@@ -156,12 +168,19 @@ export async function runScoutingPipeline(
             daysSinceGrant: p.daysOnMarket ?? 0,
           }));
         } catch (err) {
+          const msg = (err as Error)?.message ?? String(err);
+          if (!sourceErrors.propertydata) sourceErrors.propertydata = `${postcode}: ${msg.slice(0, 150)}`;
           console.warn(`[scouting] /sourced-properties failed for ${postcode}`, err);
           return [];
         }
       }),
     ).then((arrays) => arrays.flat()),
   ]);
+
+  // If propertydata postcode list is empty, flag it as a config issue.
+  if (sourcedPropertyPostcodes.length === 0 && !sourceErrors.propertydata) {
+    sourceErrors.propertydata = 'no postcodes configured — set in /settings/scouting';
+  }
 
   // De-duplicate by address+postcode (case-insensitive).
   const seen = new Set<string>();
@@ -246,5 +265,13 @@ export async function runScoutingPipeline(
     leads: qualified,
     summary,
     gdprStripped: allGdprStripped,
+    sources: {
+      hmcts: hmctsGrants.length,
+      gazette: gazetteGrants.length,
+      propertydata: sourcedFromPostcodes.length,
+      afterDedupe: rawGrants.length,
+      postcodesScanned: sourcedPropertyPostcodes.length,
+    },
+    sourceErrors,
   };
 }
