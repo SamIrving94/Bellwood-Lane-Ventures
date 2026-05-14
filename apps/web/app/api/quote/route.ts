@@ -301,28 +301,51 @@ export async function POST(request: Request) {
       try {
         const offerGbp = Math.round(offer.offerPence / 100).toLocaleString('en-GB');
         const slaDeadline = new Date(Date.now() + 24 * 60 * 60 * 1000);
+
+        // Shared metadata for the trio of actions this creates
+        const commonMeta = {
+          quoteRequestId: quoteRequest.id,
+          offerPence: offer.offerPence,
+          offerPercentOfAvm: offer.offerPercentOfAvm,
+          triggerLabel: input.triggerLabel,
+          firmName: input.firmName,
+          contactName: input.contactName,
+          contactEmail: input.contactEmail,
+          contactPhone: input.contactPhone,
+          slaHours: 24,
+          link: `/quotes/${quoteRequest.id}`,
+        } as const;
+
+        // 1) Board-facing SLA tracking action
         await database.founderAction.create({
           data: {
             type: 'ceo_escalation',
             priority: 'high',
             status: 'pending',
-            agent: 'appraiser',
-            title: `Send signed offer: ${input.address}, ${input.postcode}`,
-            description: `${input.firmName ?? 'Agent'} submitted via /save-the-sale. Trigger: ${input.triggerLabel ?? 'unspecified'}. Indicative offer £${offerGbp} (${Math.round(offer.offerPercentOfAvm * 100)}% of AVM). Signed PDF promised within 24 hours.`,
+            agent: 'system',
+            title: `Sign + send offer: ${input.address}, ${input.postcode}`,
+            description: `${input.firmName ?? 'Agent'} submitted via /save-the-sale. Trigger: ${input.triggerLabel ?? 'unspecified'}. Indicative offer £${offerGbp} (${Math.round(offer.offerPercentOfAvm * 100)}% of AVM). Signed PDF promised within 24h.`,
             expiresAt: slaDeadline,
-            metadata: {
-              quoteRequestId: quoteRequest.id,
-              offerPence: offer.offerPence,
-              offerPercentOfAvm: offer.offerPercentOfAvm,
-              triggerLabel: input.triggerLabel,
-              firmName: input.firmName,
-              contactName: input.contactName,
-              contactEmail: input.contactEmail,
-              slaHours: 24,
-              link: `/quotes/${quoteRequest.id}`,
-            },
+            metadata: { ...commonMeta, assignedToAgent: 'board' },
           },
         });
+
+        // 2) Appraiser draft action (Paperclip picks up on next heartbeat)
+        await database.founderAction.create({
+          data: {
+            type: 'approve_offer',
+            priority: 'high',
+            status: 'pending',
+            agent: 'appraiser',
+            title: `Draft signed offer PDF: ${input.address}`,
+            description: `Enrich + draft a signed binding offer for ${input.address}, ${input.postcode}. Indicative figure: £${offerGbp}. Use docs/templates/binding-offer-letter.md. PATCH /agents/quote-ops/${quoteRequest.id} with signedOfferUrl when done — that auto-creates a Liaison send action.`,
+            expiresAt: new Date(Date.now() + 4 * 60 * 60 * 1000),
+            metadata: { ...commonMeta, assignedToAgent: 'appraiser', workflow: 'draft_signed_pdf' },
+          },
+        });
+
+        // (The Liaison send action gets created later — when Appraiser
+        // PATCHes the signedOfferUrl. See apps/api/.../quote-ops/[id]/route.ts.)
       } catch (err) {
         console.warn('[quote] founder-action (agent SLA) create failed', err);
       }

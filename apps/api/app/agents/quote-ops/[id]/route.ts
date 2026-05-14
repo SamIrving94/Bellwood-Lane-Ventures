@@ -168,18 +168,30 @@ export const PATCH = async (
     include: { offer: true },
   });
 
-  // When a signed offer URL is written, surface a founder approval action
-  // (idempotent — only create if no live approve_offer action exists).
+  // When a signed offer URL is written, create two follow-on actions:
+  //   - Board approval action (so founder eyeballs the PDF before send)
+  //   - Liaison send action (Paperclip picks up after board approves)
+  // Idempotent — only create if no live equivalent exists.
   let founderActionId: string | undefined;
   if (input.signedOfferUrl) {
-    const existingAction = await database.founderAction.findFirst({
+    const meta = {
+      quoteRequestId: id,
+      offerId: updated.offerId ?? null,
+      signedOfferUrl: input.signedOfferUrl,
+      contactEmail: updated.contactEmail,
+      contactPhone: updated.contactPhone,
+      firmName: updated.firmName,
+      contactName: updated.contactName,
+    };
+
+    const existingBoardAction = await database.founderAction.findFirst({
       where: {
         type: 'approve_offer',
         status: { in: ['pending', 'in_progress'] },
         metadata: { path: ['quoteRequestId'], equals: id },
       },
     });
-    if (!existingAction) {
+    if (!existingBoardAction) {
       const created = await database.founderAction.create({
         data: {
           type: 'approve_offer',
@@ -187,16 +199,35 @@ export const PATCH = async (
           agent: 'appraiser',
           title: `Approve signed offer for ${updated.address}`,
           description: `Signed binding offer drafted for ${updated.address}, ${updated.postcode}. Review and approve before dispatch to ${updated.firmName ?? updated.contactName}.`,
-          metadata: {
-            quoteRequestId: id,
-            offerId: updated.offerId ?? null,
-            signedOfferUrl: input.signedOfferUrl,
-          },
+          metadata: { ...meta, assignedToAgent: 'board', workflow: 'approve_signed_pdf' },
         },
       });
       founderActionId = created.id;
     } else {
-      founderActionId = existingAction.id;
+      founderActionId = existingBoardAction.id;
+    }
+
+    // Liaison send action — gets actioned once the board flips
+    // approve_signed_pdf to completed. Liaison polls its inbox and
+    // sees this is blocked-on-approval, then sends.
+    const existingLiaisonAction = await database.founderAction.findFirst({
+      where: {
+        type: 'dispatch_campaign',
+        status: { in: ['pending', 'in_progress'] },
+        metadata: { path: ['quoteRequestId'], equals: id },
+      },
+    });
+    if (!existingLiaisonAction) {
+      await database.founderAction.create({
+        data: {
+          type: 'dispatch_campaign',
+          priority: 'high',
+          agent: 'liaison',
+          title: `Send signed offer to ${updated.firmName ?? updated.contactName}`,
+          description: `After board approves the signed PDF for ${updated.address}, email it + WhatsApp the agent. Then POST /agents/quote-ops/${id}/deal-update (kind: offer_sent) and /agents/quote-ops/${id}/resolve.`,
+          metadata: { ...meta, assignedToAgent: 'liaison', workflow: 'send_signed_pdf', blockedOnBoardApproval: true },
+        },
+      });
     }
   }
 

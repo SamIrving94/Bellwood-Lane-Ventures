@@ -88,10 +88,20 @@ export const POST = async (request: Request) => {
     console.warn('[cron/scouting] agent-event create failed', err);
   }
 
-  // Founder Action surfaces high-scoring leads in /actions and Today.
-  // Best-effort — never blocks the cron response.
+  // High-scoring leads create TWO actions:
+  //   1) review_leads for the board (founder triage)
+  //   2) dispatch_campaign for Paperclip Marketer (draft outreach)
+  //
+  // The metadata.assignedToAgent field signals which Paperclip agent should
+  // pick up the action on its next heartbeat. The board sees both in
+  // /actions; Marketer's polling query filters to its own.
   if (highScoreLeads.length > 0) {
+    const leadIds = result.leads
+      .filter((l) => l.leadScore >= 70)
+      .map((l, i) => `${i}:${l.address.slice(0, 40)}, ${l.postcode}`)
+      .slice(0, 10);
     try {
+      // Founder-facing review action
       await database.founderAction.create({
         data: {
           type: 'review_leads',
@@ -103,6 +113,30 @@ export const POST = async (request: Request) => {
           description: `Daily scout run found ${result.leads.length} qualified leads. ${strongLeads.length} STRONG, ${highScoreLeads.length} scored ≥ 70. Open Pipeline → Leads to review and convert the best to deals.`,
           metadata: {
             source: 'cron_scouting',
+            assignedToAgent: 'board',
+            leadCount: highScoreLeads.length,
+            strongCount: strongLeads.length,
+            runDate: result.runDate.toISOString(),
+            link: '/pipeline?tab=leads',
+            leadSample: leadIds,
+          },
+        },
+      });
+
+      // Marketer-facing draft action (Paperclip picks up on next heartbeat)
+      await database.founderAction.create({
+        data: {
+          type: 'dispatch_campaign',
+          priority: 'medium',
+          status: 'pending',
+          agent: 'marketer',
+          agentEventId: eventId,
+          title: `Draft outreach for ${highScoreLeads.length} new high-scoring lead${highScoreLeads.length === 1 ? '' : 's'}`,
+          description: `Scout cron found ${highScoreLeads.length} leads scored ≥ 70 (${strongLeads.length} STRONG). For each, draft a first-touch email to the executor/contact tailored to the lead type (probate / chain break / repos / problem property). Hold all drafts for board approval. Top examples: ${leadIds.slice(0, 3).join(' | ')}.`,
+          metadata: {
+            source: 'cron_scouting',
+            assignedToAgent: 'marketer',
+            workflow: 'draft_outreach_for_new_leads',
             leadCount: highScoreLeads.length,
             strongCount: strongLeads.length,
             runDate: result.runDate.toISOString(),
