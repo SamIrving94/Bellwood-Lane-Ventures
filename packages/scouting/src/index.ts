@@ -14,7 +14,7 @@ import 'server-only';
 
 import { getPricePaid } from '@repo/property-data/src/hmlr';
 import { getHousepriceIndex } from '@repo/property-data/src/hmlr-hpi';
-import { getSourcedProperties } from '@repo/property-data/src/propertydata';
+import { getSourcedProperties, getAccountCredits } from '@repo/property-data/src/propertydata';
 
 import { fetchProbateGrants } from './probate-data';
 import { fetchGazetteProbateNotices } from './gazette';
@@ -137,6 +137,24 @@ export async function runScoutingPipeline(
 
   // Step 1 — Fetch from all sources in parallel. Capture errors per source.
   const sourceErrors: { hmcts?: string; gazette?: string; propertydata?: string } = {};
+
+  // Pre-flight: if we have postcodes to scan, verify PropertyData is reachable
+  // by hitting the (free) /account/credits endpoint. This catches the most
+  // common silent failure: PROPERTYDATA_API_KEY missing on the API project.
+  if (sourcedPropertyPostcodes.length > 0) {
+    const credits = await getAccountCredits().catch((err) => {
+      sourceErrors.propertydata = `account-credits check failed: ${(err as Error)?.message ?? String(err)}`;
+      return null;
+    });
+    if (!credits) {
+      sourceErrors.propertydata = sourceErrors.propertydata ?? 'PROPERTYDATA_API_KEY missing or invalid on bellwood-api (account-credits returned null)';
+    } else if (credits.result) {
+      const remaining = (credits.result as { credits_remaining?: number }).credits_remaining;
+      if (typeof remaining === 'number' && remaining <= 0) {
+        sourceErrors.propertydata = `PropertyData credits exhausted (${remaining} remaining)`;
+      }
+    }
+  }
 
   const [hmctsGrants, gazetteGrants, sourcedFromPostcodes] = await Promise.all([
     fetchProbateGrants(sinceDate, limit).catch((err) => {
