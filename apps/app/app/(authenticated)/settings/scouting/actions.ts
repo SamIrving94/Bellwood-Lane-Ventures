@@ -2,6 +2,7 @@
 
 import { auth } from '@repo/auth/server';
 import { database } from '@repo/database';
+import { getSourcedPropertiesRaw } from '@repo/property-data/src/propertydata';
 import { revalidatePath } from 'next/cache';
 
 const POSTCODE_KEY = 'scouting.targetPostcodes';
@@ -62,6 +63,43 @@ export async function setTargetPostcodes(postcodesRaw: string[]): Promise<{
 
   revalidatePath('/settings/scouting');
   return { success: true, postcodes: accepted, rejected };
+}
+
+/**
+ * Diagnostic: hit PropertyData /sourced-properties for a single postcode and
+ * return the raw response. Helps founders see WHY a postcode produces 0 leads
+ * — too narrow? wrong format? no listings? rate limited?
+ */
+export async function diagnoseSourcedProperties(postcode: string): Promise<{
+  ok: boolean;
+  postcode: string;
+  status?: number;
+  body?: unknown;
+  error?: string;
+  summary?: string;
+}> {
+  const { userId } = await auth();
+  if (!userId) return { ok: false, postcode, error: 'Unauthorized' };
+
+  const result = await getSourcedPropertiesRaw(postcode);
+  if (!result.ok) {
+    return { ok: false, postcode, ...result };
+  }
+  const body = result.body as Record<string, unknown> | null;
+  const props =
+    (body?.result as { properties?: unknown[] } | undefined)?.properties ??
+    (body as { properties?: unknown[] })?.properties ??
+    null;
+  const status = (body as { status?: string } | null)?.status;
+  let summary: string;
+  if (Array.isArray(props)) {
+    summary = `Returned ${props.length} listings (HTTP ${result.status}, status=${status ?? '?'})`;
+  } else if (props === null) {
+    summary = `Response shape unexpected — keys: ${body ? Object.keys(body).join(', ') : '(empty)'}`;
+  } else {
+    summary = `Properties field is not an array`;
+  }
+  return { ok: true, postcode, ...result, summary };
 }
 
 export async function triggerScoutingCron(): Promise<{

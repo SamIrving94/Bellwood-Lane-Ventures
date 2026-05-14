@@ -401,6 +401,31 @@ export type SourcedProperty = {
 };
 
 /**
+ * Diagnostic: hit /sourced-properties RAW (bypass cache + schema). Returns
+ * whatever PropertyData actually returned, no transformation. Used by the
+ * /settings/scouting page to show founders why a postcode produced 0 leads.
+ */
+export async function getSourcedPropertiesRaw(postcode: string): Promise<{
+  ok: boolean;
+  status?: number;
+  body?: unknown;
+  error?: string;
+}> {
+  const apiKey = env.PROPERTYDATA_API_KEY;
+  if (!apiKey) return { ok: false, error: 'PROPERTYDATA_API_KEY not configured' };
+  const url = new URL(`${API_BASE}/sourced-properties`);
+  url.searchParams.set('key', apiKey);
+  url.searchParams.set('postcode', postcode.replace(/\s/g, ''));
+  try {
+    const res = await fetch(url.toString(), { headers: { Accept: 'application/json' } });
+    const body = await res.json().catch(() => null);
+    return { ok: res.ok, status: res.status, body };
+  } catch (err) {
+    return { ok: false, error: (err as Error).message };
+  }
+}
+
+/**
  * Distressed property listings — probate, repossession, below-market-value.
  * Postcode-scoped. ~3 credits per call. 1-day cache (listings churn fast).
  *

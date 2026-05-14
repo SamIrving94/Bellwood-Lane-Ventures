@@ -1,7 +1,11 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import { setTargetPostcodes, triggerScoutingCron } from './actions';
+import {
+  diagnoseSourcedProperties,
+  setTargetPostcodes,
+  triggerScoutingCron,
+} from './actions';
 
 type Props = {
   initialPostcodes: string[];
@@ -12,9 +16,11 @@ export function ScoutingPostcodesForm({ initialPostcodes }: Props) {
   const [input, setInput] = useState('');
   const [saving, startSaving] = useTransition();
   const [running, startRunning] = useTransition();
+  const [diagnosing, startDiagnosing] = useTransition();
   const [status, setStatus] = useState<{
-    kind: 'idle' | 'saved' | 'error' | 'cron';
+    kind: 'idle' | 'saved' | 'error' | 'cron' | 'diag';
     message?: string;
+    detail?: unknown;
   }>({ kind: 'idle' });
 
   const handleAdd = () => {
@@ -57,14 +63,38 @@ export function ScoutingPostcodesForm({ initialPostcodes }: Props) {
           qualified?: number;
           highScoreLeads?: number;
           strongLeads?: number;
+          sources?: Record<string, number>;
+          sourceErrors?: Record<string, string>;
         };
+        const errBits = r.sourceErrors
+          ? Object.entries(r.sourceErrors)
+              .filter(([, v]) => v)
+              .map(([k, v]) => `${k}: ${v}`)
+              .join(' · ')
+          : '';
+        const srcBits = r.sources
+          ? `(hmcts:${r.sources.hmcts} gazette:${r.sources.gazette} propertydata:${r.sources.propertydata} pcs:${r.sources.postcodesScanned})`
+          : '';
         setStatus({
           kind: 'cron',
-          message: `Run complete. Fetched ${r.fetched ?? 0}, qualified ${r.qualified ?? 0}, ${r.highScoreLeads ?? 0} scored ≥70 (${r.strongLeads ?? 0} STRONG).`,
+          message: `Run complete. Fetched ${r.fetched ?? 0}, qualified ${r.qualified ?? 0}, ${r.highScoreLeads ?? 0} scored ≥70. ${srcBits}${errBits ? ' Errors: ' + errBits : ''}`,
+          detail: r,
         });
       } else {
         setStatus({ kind: 'error', message: result.error ?? 'Cron failed.' });
       }
+    });
+  };
+
+  const handleDiagnose = (pc: string) => {
+    startDiagnosing(async () => {
+      setStatus({ kind: 'idle' });
+      const result = await diagnoseSourcedProperties(pc);
+      setStatus({
+        kind: 'diag',
+        message: result.summary ?? (result.error ? `Error: ${result.error}` : 'No summary'),
+        detail: result,
+      });
     });
   };
 
@@ -138,6 +168,15 @@ export function ScoutingPostcodesForm({ initialPostcodes }: Props) {
       <div className="flex flex-col items-stretch gap-2 sm:flex-row sm:items-center sm:justify-end">
         <button
           type="button"
+          onClick={() => postcodes[0] && handleDiagnose(postcodes[0])}
+          disabled={diagnosing || running || saving || postcodes.length === 0}
+          className="rounded-xl border border-slate-300 bg-white px-5 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
+          title="Hits PropertyData for the first postcode and shows the raw response"
+        >
+          {diagnosing ? 'Testing…' : `Test ${postcodes[0] ?? 'first'} on PropertyData`}
+        </button>
+        <button
+          type="button"
           onClick={handleRunNow}
           disabled={running || saving}
           className="rounded-xl border border-slate-300 bg-white px-5 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
@@ -160,12 +199,22 @@ export function ScoutingPostcodesForm({ initialPostcodes }: Props) {
           className={`rounded-xl border px-4 py-3 text-sm ${
             status.kind === 'error'
               ? 'border-rose-200 bg-rose-50 text-rose-800'
-              : status.kind === 'cron'
+              : status.kind === 'cron' || status.kind === 'saved'
                 ? 'border-emerald-200 bg-emerald-50 text-emerald-900'
-                : 'border-emerald-200 bg-emerald-50 text-emerald-900'
+                : 'border-amber-200 bg-amber-50 text-amber-900'
           }`}
         >
-          {status.message}
+          <p>{status.message}</p>
+          {status.detail !== undefined && (
+            <details className="mt-2">
+              <summary className="cursor-pointer text-xs opacity-60">
+                Raw response
+              </summary>
+              <pre className="mt-2 max-h-64 overflow-auto rounded bg-black/5 p-3 font-mono text-[11px]">
+                {JSON.stringify(status.detail, null, 2)}
+              </pre>
+            </details>
+          )}
         </div>
       )}
     </div>
