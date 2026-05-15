@@ -83,7 +83,23 @@ export async function diagnoseSourcedProperties(postcode: string): Promise<{
 
   const result = await getSourcedPropertiesRaw(postcode);
   if (!result.ok) {
-    return { postcode, ok: false, status: result.status, error: result.error };
+    // Surface the body too — PropertyData's 4xx responses carry the real reason
+    // (e.g. "postcode parameter must be a full postcode") and without it the
+    // founder is blind.
+    const body = result.body as Record<string, unknown> | null;
+    const bodyMsg =
+      (body?.error as string | undefined) ??
+      (body?.message as string | undefined) ??
+      (body?.status as string | undefined) ??
+      (body ? JSON.stringify(body).slice(0, 200) : null);
+    return {
+      postcode,
+      ok: false,
+      status: result.status,
+      body: result.body,
+      error: result.error,
+      summary: `HTTP ${result.status} from PropertyData${bodyMsg ? ` — ${bodyMsg}` : ''}`,
+    };
   }
   const body = result.body as Record<string, unknown> | null;
   const props =
