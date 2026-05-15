@@ -22,5 +22,12 @@ export function validateAgentAuth(request: Request): boolean {
 }
 
 export function unauthorizedResponse() {
-  return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  return NextResponse.json(
+    {
+      error: 'Unauthorized',
+      hint: 'Use the static Authorization: Bearer ${BELLWOOD_API_KEY} header. The Paperclip runtime auto-injects PAPERCLIP_API_KEY as a JWT which does NOT match this endpoint. If BELLWOOD_API_KEY is missing from your env, ask the founder to set it in ~/.paperclip/instances/<instance>/.env.',
+      docs: 'https://github.com/SamIrving94/Bellwood-Lane-Ventures/blob/master/apps/api/app/agents/_lib/auth.ts',
+    },
+    { status: 401 },
+  );
 }
