@@ -73,7 +73,7 @@ export function ScoutingPostcodesForm({ initialPostcodes }: Props) {
               .join(' · ')
           : '';
         const srcBits = r.sources
-          ? `(hmcts:${r.sources.hmcts} gazette:${r.sources.gazette} propertydata:${r.sources.propertydata} pcs:${r.sources.postcodesScanned})`
+          ? `(hmcts:${(r.sources as Record<string, number>).hmcts ?? 0} gazette:${(r.sources as Record<string, number>).gazette ?? 0} propertydata:${(r.sources as Record<string, number>).propertydata ?? 0} stale:${(r.sources as Record<string, number>).staleListings ?? 0} pcs:${(r.sources as Record<string, number>).postcodesScanned ?? 0})`
           : '';
         setStatus({
           kind: 'cron',

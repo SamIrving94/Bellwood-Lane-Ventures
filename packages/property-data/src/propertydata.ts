@@ -495,6 +495,525 @@ export async function getSourcedProperties(
 }
 
 // ---------------------------------------------------------------------------
+// Endpoint: /energy-efficiency (EPC ratings) — RICE B
+// ---------------------------------------------------------------------------
+
+const EpcSchema = z.object({
+  status: z.string().optional(),
+  result: z
+    .object({
+      properties: z
+        .array(
+          z
+            .object({
+              address: z.string().optional(),
+              current_energy_rating: z.string().optional(),
+              current_energy_efficiency: z.number().optional(),
+              potential_energy_rating: z.string().optional(),
+              property_type: z.string().optional(),
+              total_floor_area: z.number().optional(),
+              inspection_date: z.string().optional(),
+            })
+            .partial(),
+        )
+        .optional(),
+      average_rating: z.string().optional(),
+    })
+    .partial()
+    .optional(),
+});
+
+export type EpcReading = {
+  address: string;
+  rating: string | null; // A-G
+  efficiency: number | null; // 0-100
+  potentialRating: string | null;
+  propertyType: string | null;
+  inspectionDate: string | null;
+};
+
+/**
+ * EPC ratings by postcode (from the public Energy Performance Certificate
+ * register). ~2 credits, 90-day cache (EPCs are valid 10 years).
+ *
+ * Returns every certified property in the postcode. The caller is expected
+ * to match by address fuzzy-string.
+ */
+export async function getEpcByPostcode(postcode: string): Promise<EpcReading[]> {
+  const data = await fetchPropertyData(
+    '/energy-efficiency',
+    { postcode: postcode.replace(/\s/g, '') },
+    {
+      ttlMs: 90 * 24 * 60 * 60 * 1000,
+      estimatedCredits: 2,
+      schema: EpcSchema,
+    },
+  );
+  const rows = (data as { result?: { properties?: unknown[] } } | null)?.result
+    ?.properties;
+  if (!Array.isArray(rows)) return [];
+  const out: EpcReading[] = [];
+  for (const raw of rows) {
+    const p = raw as Record<string, unknown>;
+    const address = typeof p.address === 'string' ? p.address : null;
+    if (!address) continue;
+    out.push({
+      address,
+      rating:
+        typeof p.current_energy_rating === 'string'
+          ? p.current_energy_rating.toUpperCase()
+          : null,
+      efficiency:
+        typeof p.current_energy_efficiency === 'number'
+          ? p.current_energy_efficiency
+          : null,
+      potentialRating:
+        typeof p.potential_energy_rating === 'string'
+          ? p.potential_energy_rating.toUpperCase()
+          : null,
+      propertyType:
+        typeof p.property_type === 'string' ? p.property_type : null,
+      inspectionDate:
+        typeof p.inspection_date === 'string' ? p.inspection_date : null,
+    });
+  }
+  return out;
+}
+
+// ---------------------------------------------------------------------------
+// Endpoint: /freeholds (tenure detection) — RICE B
+// ---------------------------------------------------------------------------
+
+const FreeholdsSchema = z.object({
+  status: z.string().optional(),
+  result: z
+    .object({
+      properties: z
+        .array(
+          z
+            .object({
+              address: z.string().optional(),
+              tenure: z.string().optional(),
+              lease_remaining_years: z.number().optional(),
+              ground_rent: z.number().optional(),
+              service_charge: z.number().optional(),
+            })
+            .partial(),
+        )
+        .optional(),
+    })
+    .partial()
+    .optional(),
+});
+
+export type TenureReading = {
+  address: string;
+  tenure: 'freehold' | 'leasehold' | 'unknown';
+  remainingLeaseYears: number | null;
+  groundRentPerYear: number | null;
+  serviceChargePerYear: number | null;
+};
+
+/**
+ * Tenure data per address in a postcode. Identifies leaseholds and surfaces
+ * remaining lease years — critical for offer accuracy and avoiding nasty
+ * post-survey surprises. ~3 credits, 30-day cache.
+ */
+export async function getTenureByPostcode(
+  postcode: string,
+): Promise<TenureReading[]> {
+  const data = await fetchPropertyData(
+    '/freeholds',
+    { postcode: postcode.replace(/\s/g, '') },
+    {
+      ttlMs: 30 * 24 * 60 * 60 * 1000,
+      estimatedCredits: 3,
+      schema: FreeholdsSchema,
+    },
+  );
+  const rows = (data as { result?: { properties?: unknown[] } } | null)?.result
+    ?.properties;
+  if (!Array.isArray(rows)) return [];
+  const out: TenureReading[] = [];
+  for (const raw of rows) {
+    const p = raw as Record<string, unknown>;
+    const address = typeof p.address === 'string' ? p.address : null;
+    if (!address) continue;
+    const rawTenure =
+      typeof p.tenure === 'string' ? p.tenure.toLowerCase() : 'unknown';
+    const tenure: TenureReading['tenure'] =
+      rawTenure.includes('lease') ? 'leasehold'
+      : rawTenure.includes('free') ? 'freehold'
+      : 'unknown';
+    out.push({
+      address,
+      tenure,
+      remainingLeaseYears:
+        typeof p.lease_remaining_years === 'number'
+          ? p.lease_remaining_years
+          : null,
+      groundRentPerYear:
+        typeof p.ground_rent === 'number' ? p.ground_rent : null,
+      serviceChargePerYear:
+        typeof p.service_charge === 'number' ? p.service_charge : null,
+    });
+  }
+  return out;
+}
+
+// ---------------------------------------------------------------------------
+// Endpoint: /listings — active Rightmove-style listings — RICE A
+// ---------------------------------------------------------------------------
+
+const ListingsSchema = z.object({
+  status: z.string().optional(),
+  result: z
+    .object({
+      properties: z
+        .array(
+          z
+            .object({
+              address: z.string().optional(),
+              postcode: z.string().optional(),
+              price: z.number().optional(),
+              bedrooms: z.number().optional(),
+              property_type: z.string().optional(),
+              listing_url: z.string().optional(),
+              days_on_market: z.number().optional(),
+              price_changes: z.number().optional(),
+              agent_name: z.string().optional(),
+              agent_phone: z.string().optional(),
+            })
+            .partial(),
+        )
+        .optional(),
+    })
+    .partial()
+    .optional(),
+});
+
+export type ActiveListing = {
+  address: string;
+  postcode: string;
+  pricePence: number | null;
+  bedrooms: number | null;
+  propertyType: string | null;
+  listingUrl: string | null;
+  daysOnMarket: number | null;
+  priceChangeCount: number | null;
+  agentName: string | null;
+  agentPhone: string | null;
+};
+
+/**
+ * Active sales listings in an area. We use this for the stale-listing
+ * harvester — properties that have been on market >60 days without selling
+ * are motivated-seller territory. ~3 credits, 1-day cache.
+ */
+export async function getActiveListings(
+  postcode: string,
+  opts?: { radiusMiles?: number; minDaysOnMarket?: number },
+): Promise<ActiveListing[]> {
+  const params: Record<string, string | number> = {
+    postcode: postcode.replace(/\s/g, ''),
+  };
+  if (typeof opts?.radiusMiles === 'number') params.radius = opts.radiusMiles;
+
+  const data = await fetchPropertyData(
+    '/listings',
+    params,
+    {
+      ttlMs: 24 * 60 * 60 * 1000,
+      estimatedCredits: 3,
+      schema: ListingsSchema,
+    },
+  );
+  const rows = (data as { result?: { properties?: unknown[] } } | null)?.result
+    ?.properties;
+  if (!Array.isArray(rows)) return [];
+  const minDays = opts?.minDaysOnMarket ?? 0;
+  const out: ActiveListing[] = [];
+  for (const raw of rows) {
+    const p = raw as Record<string, unknown>;
+    const address = typeof p.address === 'string' ? p.address.trim() : null;
+    const postcodeOut =
+      typeof p.postcode === 'string' ? p.postcode.toUpperCase().trim() : null;
+    if (!address || !postcodeOut) continue;
+    const dom = typeof p.days_on_market === 'number' ? p.days_on_market : null;
+    if (dom !== null && dom < minDays) continue;
+    out.push({
+      address,
+      postcode: postcodeOut,
+      pricePence:
+        typeof p.price === 'number' ? Math.round(p.price * 100) : null,
+      bedrooms: typeof p.bedrooms === 'number' ? p.bedrooms : null,
+      propertyType:
+        typeof p.property_type === 'string' ? p.property_type : null,
+      listingUrl: typeof p.listing_url === 'string' ? p.listing_url : null,
+      daysOnMarket: dom,
+      priceChangeCount:
+        typeof p.price_changes === 'number' ? p.price_changes : null,
+      agentName: typeof p.agent_name === 'string' ? p.agent_name : null,
+      agentPhone: typeof p.agent_phone === 'string' ? p.agent_phone : null,
+    });
+  }
+  return out;
+}
+
+// ---------------------------------------------------------------------------
+// Endpoint: /growth (price growth + forecast) — RICE C
+// ---------------------------------------------------------------------------
+
+const GrowthSchema = z.object({
+  status: z.string().optional(),
+  result: z
+    .object({
+      annual_growth: z.number().optional(),
+      five_year_growth: z.number().optional(),
+      ten_year_growth: z.number().optional(),
+      forecast_growth: z.number().optional(),
+      forecast_period_months: z.number().optional(),
+    })
+    .partial()
+    .optional(),
+});
+
+export type GrowthReading = {
+  annualGrowthPct: number | null;
+  fiveYearGrowthPct: number | null;
+  forecastGrowthPct: number | null;
+  forecastPeriodMonths: number | null;
+};
+
+/**
+ * Local price growth + forward forecast. Used by Appraiser to adjust
+ * offer % of AVM based on market trajectory. ~2 credits, 30-day cache.
+ */
+export async function getGrowth(postcode: string): Promise<GrowthReading | null> {
+  const data = await fetchPropertyData(
+    '/growth',
+    { postcode: postcode.replace(/\s/g, '') },
+    {
+      ttlMs: 30 * 24 * 60 * 60 * 1000,
+      estimatedCredits: 2,
+      schema: GrowthSchema,
+    },
+  );
+  const r = (data as { result?: Record<string, unknown> } | null)?.result;
+  if (!r) return null;
+  return {
+    annualGrowthPct: typeof r.annual_growth === 'number' ? r.annual_growth : null,
+    fiveYearGrowthPct: typeof r.five_year_growth === 'number' ? r.five_year_growth : null,
+    forecastGrowthPct: typeof r.forecast_growth === 'number' ? r.forecast_growth : null,
+    forecastPeriodMonths:
+      typeof r.forecast_period_months === 'number' ? r.forecast_period_months : null,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Preflight checks — combine EPC + tenure + market temperature
+// Used by the quote API path for every new submission. Cached endpoints so
+// repeat hits on the same postcode are cheap. ~7 credits net per first-time
+// postcode, 0 thereafter for the cache window.
+// ---------------------------------------------------------------------------
+
+export type PreflightChecks = {
+  postcode: string;
+  address?: string;
+  epc: {
+    rating: string | null;
+    isLowEpc: boolean; // E/F/G — meaningful renovation discount
+    matchedAddress: string | null;
+  };
+  tenure: {
+    tenure: 'freehold' | 'leasehold' | 'unknown';
+    remainingLeaseYears: number | null;
+    isShortLease: boolean; // <80 years — surveyor-level concern
+    matchedAddress: string | null;
+  };
+  marketTemperature: {
+    demandScore: number | null; // 0-100 from /demand
+    daysOnMarketAvg: number | null;
+    annualGrowthPct: number | null;
+    forecastGrowthPct: number | null;
+    /** Single-number heat index combining demand + growth, range -1..+1 */
+    temperatureIndex: number | null;
+    /** 'hot' | 'warm' | 'neutral' | 'cool' | 'cold' */
+    band: 'hot' | 'warm' | 'neutral' | 'cool' | 'cold' | null;
+  };
+  /** Lines suitable to append to a reasoning array */
+  reasoning: string[];
+  /** Suggested offer multiplier adjustment (-0.05 to +0.03) on AVM% */
+  offerAdjustment: number;
+};
+
+function fuzzyMatchAddress<T extends { address: string }>(
+  rows: T[],
+  needle?: string,
+): T | null {
+  if (!needle || rows.length === 0) return null;
+  const n = needle.toLowerCase().replace(/[^a-z0-9]/g, '');
+  let best: { row: T; score: number } | null = null;
+  for (const row of rows) {
+    const h = row.address.toLowerCase().replace(/[^a-z0-9]/g, '');
+    let score = 0;
+    if (h === n) score = 100;
+    else if (h.startsWith(n) || n.startsWith(h)) score = 80;
+    else if (h.includes(n) || n.includes(h)) score = 60;
+    else continue;
+    if (!best || score > best.score) best = { row, score };
+  }
+  return best?.row ?? null;
+}
+
+function temperatureBand(
+  index: number | null,
+): PreflightChecks['marketTemperature']['band'] {
+  if (index === null) return null;
+  if (index >= 0.5) return 'hot';
+  if (index >= 0.2) return 'warm';
+  if (index >= -0.2) return 'neutral';
+  if (index >= -0.5) return 'cool';
+  return 'cold';
+}
+
+export async function runPreflightChecks(input: {
+  postcode: string;
+  address?: string;
+}): Promise<PreflightChecks> {
+  const { postcode, address } = input;
+  const [epcs, tenures, demand, growth] = await Promise.all([
+    getEpcByPostcode(postcode).catch(() => [] as EpcReading[]),
+    getTenureByPostcode(postcode).catch(() => [] as TenureReading[]),
+    getMarketDemand(postcode).catch(() => null),
+    getGrowth(postcode).catch(() => null),
+  ]);
+
+  const matchedEpc = fuzzyMatchAddress(epcs, address);
+  const matchedTenure = fuzzyMatchAddress(tenures, address);
+
+  const epcRating = matchedEpc?.rating ?? null;
+  const isLowEpc =
+    !!epcRating && ['E', 'F', 'G'].includes(epcRating.toUpperCase());
+
+  const tenure = matchedTenure?.tenure ?? 'unknown';
+  const remainingLeaseYears = matchedTenure?.remainingLeaseYears ?? null;
+  const isShortLease =
+    tenure === 'leasehold' &&
+    typeof remainingLeaseYears === 'number' &&
+    remainingLeaseYears < 80;
+
+  const demandResult = (demand as { result?: Record<string, unknown> } | null)
+    ?.result;
+  const demandScore =
+    typeof demandResult?.sales_demand_score === 'number'
+      ? demandResult.sales_demand_score
+      : null;
+  const daysOnMarketAvg =
+    typeof demandResult?.days_on_market_average === 'number'
+      ? demandResult.days_on_market_average
+      : null;
+
+  const annualGrowthPct = growth?.annualGrowthPct ?? null;
+  const forecastGrowthPct = growth?.forecastGrowthPct ?? null;
+
+  // Combined temperature index. Weights chosen so that:
+  //   strong demand (score 80+) + positive forecast → +0.5+ (hot)
+  //   neutral both → 0
+  //   weak demand + falling forecast → -0.5+ (cold)
+  let temperatureIndex: number | null = null;
+  const components: number[] = [];
+  if (typeof demandScore === 'number') {
+    // demandScore is 0-100; normalise to -1..+1 around midpoint 50
+    components.push((demandScore - 50) / 50);
+  }
+  if (typeof forecastGrowthPct === 'number') {
+    // forecastGrowthPct typical range -10..+10 — normalise
+    components.push(Math.max(-1, Math.min(1, forecastGrowthPct / 10)));
+  } else if (typeof annualGrowthPct === 'number') {
+    components.push(Math.max(-1, Math.min(1, annualGrowthPct / 10)));
+  }
+  if (components.length > 0) {
+    temperatureIndex =
+      Math.round(
+        (components.reduce((s, x) => s + x, 0) / components.length) * 100,
+      ) / 100;
+  }
+
+  const band = temperatureBand(temperatureIndex);
+
+  // Offer adjustment:
+  //   Hot market →  +0.02 (we can pay closer to AVM and still win)
+  //   Warm       →  +0.01
+  //   Neutral    →   0
+  //   Cool       →  -0.02
+  //   Cold       →  -0.04
+  const tempAdj =
+    band === 'hot' ? 0.02
+    : band === 'warm' ? 0.01
+    : band === 'cool' ? -0.02
+    : band === 'cold' ? -0.04
+    : 0;
+
+  // Low EPC: -0.01 (Appraiser already discounts in AVM but we surface it
+  // again at the offer% layer for transparency).
+  const epcAdj = isLowEpc ? -0.01 : 0;
+
+  // Short lease: surface only — actual discount handled by lease curve in
+  // the offer-calc layer. We don't double-count.
+  const offerAdjustment = Math.round((tempAdj + epcAdj) * 1000) / 1000;
+
+  const reasoning: string[] = [];
+  if (matchedEpc) {
+    reasoning.push(
+      `EPC ${epcRating ?? '?'} from register (${matchedEpc.address})${isLowEpc ? ' — meaningful renovation cost expected' : ''}`,
+    );
+  } else {
+    reasoning.push('EPC: no certificate matched on this address');
+  }
+  if (matchedTenure) {
+    if (tenure === 'leasehold') {
+      reasoning.push(
+        `Tenure: leasehold${remainingLeaseYears ? `, ${remainingLeaseYears} years remaining` : ''}${isShortLease ? ' — SHORT LEASE FLAG' : ''}`,
+      );
+    } else if (tenure === 'freehold') {
+      reasoning.push('Tenure: freehold');
+    }
+  }
+  if (band) {
+    reasoning.push(
+      `Market: ${band}${typeof demandScore === 'number' ? ` (demand ${demandScore}/100)` : ''}${typeof forecastGrowthPct === 'number' ? `, forecast ${forecastGrowthPct > 0 ? '+' : ''}${forecastGrowthPct.toFixed(1)}%` : ''} — offer adjusted ${tempAdj > 0 ? '+' : ''}${(tempAdj * 100).toFixed(1)}%`,
+    );
+  }
+
+  return {
+    postcode,
+    address,
+    epc: {
+      rating: epcRating,
+      isLowEpc,
+      matchedAddress: matchedEpc?.address ?? null,
+    },
+    tenure: {
+      tenure,
+      remainingLeaseYears,
+      isShortLease,
+      matchedAddress: matchedTenure?.address ?? null,
+    },
+    marketTemperature: {
+      demandScore,
+      daysOnMarketAvg,
+      annualGrowthPct,
+      forecastGrowthPct,
+      temperatureIndex,
+      band,
+    },
+    reasoning,
+    offerAdjustment,
+  };
+}
+
+// ---------------------------------------------------------------------------
 // Endpoint: /account/credits — budget visibility
 // ---------------------------------------------------------------------------
 

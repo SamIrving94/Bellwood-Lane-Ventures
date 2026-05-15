@@ -14,7 +14,11 @@ import 'server-only';
 
 import { getPricePaid } from '@repo/property-data/src/hmlr';
 import { getHousepriceIndex } from '@repo/property-data/src/hmlr-hpi';
-import { getSourcedProperties, getAccountCredits } from '@repo/property-data/src/propertydata';
+import {
+  getSourcedProperties,
+  getAccountCredits,
+  getActiveListings,
+} from '@repo/property-data/src/propertydata';
 
 import { fetchProbateGrants } from './probate-data';
 import { fetchGazetteProbateNotices } from './gazette';
@@ -106,6 +110,7 @@ export interface ScoutingPipelineResult {
     hmcts: number;
     gazette: number;
     propertydata: number;
+    staleListings: number;
     afterDedupe: number;
     postcodesScanned: number;
   };
@@ -114,6 +119,7 @@ export interface ScoutingPipelineResult {
     hmcts?: string;
     gazette?: string;
     propertydata?: string;
+    staleListings?: string;
   };
 }
 
@@ -147,7 +153,12 @@ export async function runScoutingPipeline(
   const allGdprStripped: string[] = [];
 
   // Step 1 — Fetch from all sources in parallel. Capture errors per source.
-  const sourceErrors: { hmcts?: string; gazette?: string; propertydata?: string } = {};
+  const sourceErrors: {
+    hmcts?: string;
+    gazette?: string;
+    propertydata?: string;
+    staleListings?: string;
+  } = {};
 
   // Pre-flight: if we have postcodes to scan, verify PropertyData is reachable
   // by hitting the (free) /account/credits endpoint. This catches the most
@@ -178,7 +189,7 @@ export async function runScoutingPipeline(
     })),
   ];
 
-  const [hmctsGrants, gazetteGrants, sourcedFromPostcodes] = await Promise.all([
+  const [hmctsGrants, gazetteGrants, sourcedFromPostcodes, staleListings] = await Promise.all([
     fetchProbateGrants(sinceDate, limit).catch((err) => {
       const msg = (err as Error)?.message ?? String(err);
       sourceErrors.hmcts = msg.slice(0, 200);
@@ -220,6 +231,37 @@ export async function runScoutingPipeline(
         }
       }),
     ).then((arrays) => arrays.flat()),
+    // Stale-listing harvester — RICE A. For each scan seed, pull active
+    // /listings filtered to days_on_market >= 60. Motivated-seller territory.
+    Promise.all(
+      allSeeds.map(async (seed) => {
+        try {
+          const listings = await getActiveListings(seed.postcode, {
+            radiusMiles: seed.radiusMiles,
+            minDaysOnMarket: 60,
+          });
+          return listings.map((l) => ({
+            probateRef: `stale-${seed.label}-${l.address.slice(0, 16).replace(/\s+/g, '_')}`,
+            address: l.address,
+            postcode: l.postcode,
+            grantDate: new Date().toISOString().slice(0, 10),
+            executorName: null,
+            solicitorFirm: l.agentName,
+            estateValuePence: l.pricePence,
+            grantType: 'unknown' as const,
+            source: `propertydata_stale_${l.daysOnMarket ?? '?'}d`,
+            daysSinceGrant: l.daysOnMarket ?? 60,
+          }));
+        } catch (err) {
+          const msg = (err as Error)?.message ?? String(err);
+          if (!sourceErrors.staleListings) {
+            sourceErrors.staleListings = `${seed.label}: ${msg.slice(0, 150)}`;
+          }
+          console.warn(`[scouting] /listings stale failed for ${seed.label}`, err);
+          return [];
+        }
+      }),
+    ).then((arrays) => arrays.flat()),
   ]);
 
   // If we have no seeds at all, flag it as a config issue.
@@ -229,7 +271,12 @@ export async function runScoutingPipeline(
 
   // De-duplicate by address+postcode (case-insensitive).
   const seen = new Set<string>();
-  const rawGrants = [...hmctsGrants, ...gazetteGrants, ...sourcedFromPostcodes].filter((g) => {
+  const rawGrants = [
+    ...hmctsGrants,
+    ...gazetteGrants,
+    ...sourcedFromPostcodes,
+    ...staleListings,
+  ].filter((g) => {
     const key = `${g.address.toLowerCase()}|${g.postcode.toLowerCase()}`;
     if (seen.has(key)) return false;
     seen.add(key);
@@ -237,7 +284,7 @@ export async function runScoutingPipeline(
   }).slice(0, limit);
 
   console.info(
-    `[scouting] sources: hmcts=${hmctsGrants.length} gazette=${gazetteGrants.length} propertydata=${sourcedFromPostcodes.length} (after dedupe: ${rawGrants.length})`,
+    `[scouting] sources: hmcts=${hmctsGrants.length} gazette=${gazetteGrants.length} propertydata=${sourcedFromPostcodes.length} stale=${staleListings.length} (after dedupe: ${rawGrants.length})`,
   );
 
   // Step 2 — GDPR sanitise raw payloads
@@ -314,6 +361,7 @@ export async function runScoutingPipeline(
       hmcts: hmctsGrants.length,
       gazette: gazetteGrants.length,
       propertydata: sourcedFromPostcodes.length,
+      staleListings: staleListings.length,
       afterDedupe: rawGrants.length,
       postcodesScanned: allSeeds.length,
     },

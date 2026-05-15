@@ -9,6 +9,7 @@ import type { PropertyType } from '@repo/valuation';
 import { generateReferralCode } from '@/app/partners/_lib/auth';
 import { recordDealUpdate } from '@repo/deal-updates';
 import { sendEmail } from '@repo/email';
+import { runPreflightChecks } from '@repo/property-data/src/propertydata';
 
 // Simple in-memory rate limit: 10 requests per IP per hour
 const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
@@ -228,18 +229,64 @@ export async function POST(request: Request) {
     );
   }
 
-  // Generate offer
+  // Generate offer + run PropertyData preflight (EPC + tenure + market
+  // temperature) in parallel. Preflight findings are merged into the offer
+  // reasoning, and a small ±% adjustment is applied to the headline offer.
   try {
-    const offer = await generateInstantOffer({
-      postcode: input.postcode,
-      address: input.address,
-      propertyType: mapPropertyType(input.propertyType),
-      bedrooms: input.bedrooms,
-      condition: input.condition,
-      situation: input.situation as InstantOfferSituation,
-      urgencyDays: input.urgencyDays,
-      askingPricePence: input.askingPricePence,
-    });
+    const [offerBase, preflight] = await Promise.all([
+      generateInstantOffer({
+        postcode: input.postcode,
+        address: input.address,
+        propertyType: mapPropertyType(input.propertyType),
+        bedrooms: input.bedrooms,
+        condition: input.condition,
+        situation: input.situation as InstantOfferSituation,
+        urgencyDays: input.urgencyDays,
+        askingPricePence: input.askingPricePence,
+      }),
+      runPreflightChecks({
+        postcode: input.postcode,
+        address: input.address,
+      }).catch((err) => {
+        console.warn('[quote] preflight failed (non-fatal)', err);
+        return null;
+      }),
+    ]);
+
+    // Apply preflight adjustment to the offer. Bounded to ±5% total
+    // adjustment to prevent compounding edge cases.
+    const adjPct = Math.max(-0.05, Math.min(0.05, preflight?.offerAdjustment ?? 0));
+    const adjustedOfferPence =
+      adjPct === 0
+        ? offerBase.offerPence
+        : Math.round(offerBase.offerPence * (1 + adjPct));
+    const avmMidPence =
+      (offerBase.estimatedMarketValueMinPence +
+        offerBase.estimatedMarketValueMaxPence) /
+      2;
+    const adjustedOfferPercentOfAvm =
+      avmMidPence > 0
+        ? Math.round((adjustedOfferPence / avmMidPence) * 1000) / 1000
+        : offerBase.offerPercentOfAvm;
+
+    const offer = {
+      ...offerBase,
+      offerPence: adjustedOfferPence,
+      offerPercentOfAvm: adjustedOfferPercentOfAvm,
+      reasoning: [
+        ...offerBase.reasoning,
+        ...(preflight?.reasoning ?? []),
+        ...(preflight?.tenure.isShortLease
+          ? [
+              `⚠ SHORT LEASE: ${preflight.tenure.remainingLeaseYears ?? '?'} years remaining — Appraiser must confirm before binding offer.`,
+            ]
+          : []),
+      ],
+      // Force review if preflight surfaced a short-lease leasehold — we
+      // don't auto-commit to those without founder eyeballs.
+      requiresReview:
+        offerBase.requiresReview || !!preflight?.tenure.isShortLease,
+    };
 
     // Persist offer
     const offerRow = await database.quoteOffer.create({
