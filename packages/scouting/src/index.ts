@@ -71,8 +71,18 @@ export interface ScoutingPipelineOptions {
   minScore?: number;
   /** Whether to include raw payload in output. Default: true. */
   includeRawPayload?: boolean;
-  /** Postcodes to scan for PropertyData /sourced-properties. Optional. */
+  /**
+   * Legacy: postcode districts. PropertyData rejects districts on
+   * /sourced-properties, so prefer `scanSeeds` instead. Kept for
+   * backward compat with older callers.
+   */
   sourcedPropertyPostcodes?: string[];
+  /**
+   * Scan seeds for PropertyData /sourced-properties. Each seed is a
+   * full UK postcode (e.g. "M14 5LL") plus a radius in miles. The cron
+   * fires one /sourced-properties call per seed.
+   */
+  scanSeeds?: Array<{ label?: string; postcode: string; radiusMiles: number }>;
 }
 
 export interface ScoutingPipelineResult {
@@ -130,6 +140,7 @@ export async function runScoutingPipeline(
     minScore = 30,
     includeRawPayload = true,
     sourcedPropertyPostcodes = [],
+    scanSeeds = [],
   } = options;
 
   const runDate = new Date();
@@ -141,7 +152,7 @@ export async function runScoutingPipeline(
   // Pre-flight: if we have postcodes to scan, verify PropertyData is reachable
   // by hitting the (free) /account/credits endpoint. This catches the most
   // common silent failure: PROPERTYDATA_API_KEY missing on the API project.
-  if (sourcedPropertyPostcodes.length > 0) {
+  if (sourcedPropertyPostcodes.length > 0 || scanSeeds.length > 0) {
     const credits = await getAccountCredits().catch((err) => {
       sourceErrors.propertydata = `account-credits check failed: ${(err as Error)?.message ?? String(err)}`;
       return null;
@@ -155,6 +166,17 @@ export async function runScoutingPipeline(
       }
     }
   }
+
+  // Combine legacy districts (best-effort) + new scan seeds (proper).
+  type SeedCall = { label: string; postcode: string; radiusMiles?: number };
+  const allSeeds: SeedCall[] = [
+    ...sourcedPropertyPostcodes.map((pc) => ({ label: pc, postcode: pc })),
+    ...scanSeeds.map((s) => ({
+      label: s.label ?? s.postcode,
+      postcode: s.postcode,
+      radiusMiles: s.radiusMiles,
+    })),
+  ];
 
   const [hmctsGrants, gazetteGrants, sourcedFromPostcodes] = await Promise.all([
     fetchProbateGrants(sinceDate, limit).catch((err) => {
@@ -170,11 +192,14 @@ export async function runScoutingPipeline(
       return [];
     }),
     Promise.all(
-      sourcedPropertyPostcodes.map(async (postcode) => {
+      allSeeds.map(async (seed) => {
         try {
-          const properties = await getSourcedProperties(postcode);
+          const properties = await getSourcedProperties(
+            seed.postcode,
+            seed.radiusMiles ? { radiusMiles: seed.radiusMiles } : undefined,
+          );
           return properties.map((p) => ({
-            probateRef: `pd-${postcode}-${p.address.slice(0, 16).replace(/\s+/g, '_')}`,
+            probateRef: `pd-${seed.label}-${p.address.slice(0, 16).replace(/\s+/g, '_')}`,
             address: p.address,
             postcode: p.postcode,
             grantDate: new Date().toISOString().slice(0, 10),
@@ -187,17 +212,19 @@ export async function runScoutingPipeline(
           }));
         } catch (err) {
           const msg = (err as Error)?.message ?? String(err);
-          if (!sourceErrors.propertydata) sourceErrors.propertydata = `${postcode}: ${msg.slice(0, 150)}`;
-          console.warn(`[scouting] /sourced-properties failed for ${postcode}`, err);
+          if (!sourceErrors.propertydata) {
+            sourceErrors.propertydata = `${seed.label}: ${msg.slice(0, 150)}`;
+          }
+          console.warn(`[scouting] /sourced-properties failed for ${seed.label}`, err);
           return [];
         }
       }),
     ).then((arrays) => arrays.flat()),
   ]);
 
-  // If propertydata postcode list is empty, flag it as a config issue.
-  if (sourcedPropertyPostcodes.length === 0 && !sourceErrors.propertydata) {
-    sourceErrors.propertydata = 'no postcodes configured — set in /settings/scouting';
+  // If we have no seeds at all, flag it as a config issue.
+  if (allSeeds.length === 0 && !sourceErrors.propertydata) {
+    sourceErrors.propertydata = 'no scan seeds configured — add full-postcode seeds in /settings/scouting';
   }
 
   // De-duplicate by address+postcode (case-insensitive).
@@ -288,7 +315,7 @@ export async function runScoutingPipeline(
       gazette: gazetteGrants.length,
       propertydata: sourcedFromPostcodes.length,
       afterDedupe: rawGrants.length,
-      postcodesScanned: sourcedPropertyPostcodes.length,
+      postcodesScanned: allSeeds.length,
     },
     sourceErrors,
   };

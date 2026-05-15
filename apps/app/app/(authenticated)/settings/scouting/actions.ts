@@ -2,10 +2,31 @@
 
 import { auth } from '@repo/auth/server';
 import { database } from '@repo/database';
-import { getSourcedPropertiesRaw } from '@repo/property-data/src/propertydata';
+import {
+  getSourcedPropertiesRaw,
+} from '@repo/property-data/src/propertydata';
 import { revalidatePath } from 'next/cache';
 
 const POSTCODE_KEY = 'scouting.targetPostcodes';
+const SCAN_SEEDS_KEY = 'scouting.scanSeeds';
+
+// Full UK postcode (with or without internal space): e.g. M14 5LL, SK4 4QR.
+// Stricter than the district regex — required because PropertyData
+// rejects districts on /sourced-properties.
+const FULL_POSTCODE_RE = /^[A-Z]{1,2}\d{1,2}[A-Z]?\s?\d[A-Z]{2}$/;
+
+export type ScanSeed = {
+  label?: string;
+  postcode: string;
+  radiusMiles: number;
+};
+
+function normaliseFullPostcode(raw: string): string | null {
+  const trimmed = raw.trim().toUpperCase().replace(/\s+/g, '');
+  if (!FULL_POSTCODE_RE.test(trimmed)) return null;
+  // Re-insert the canonical space before the last 3 chars (outward + inward).
+  return `${trimmed.slice(0, -3)} ${trimmed.slice(-3)}`;
+}
 
 // UK postcode-district pattern: 1-2 letters + 1-2 digits + optional letter.
 // (We store districts like 'M14', not full postcodes like 'M14 5AB'.)
@@ -70,7 +91,10 @@ export async function setTargetPostcodes(postcodesRaw: string[]): Promise<{
  * return the raw response. Helps founders see WHY a postcode produces 0 leads
  * — too narrow? wrong format? no listings? rate limited?
  */
-export async function diagnoseSourcedProperties(postcode: string): Promise<{
+export async function diagnoseSourcedProperties(
+  postcode: string,
+  opts?: { radiusMiles?: number },
+): Promise<{
   ok: boolean;
   postcode: string;
   status?: number;
@@ -81,7 +105,7 @@ export async function diagnoseSourcedProperties(postcode: string): Promise<{
   const { userId } = await auth();
   if (!userId) return { ok: false, postcode, error: 'Unauthorized' };
 
-  const result = await getSourcedPropertiesRaw(postcode);
+  const result = await getSourcedPropertiesRaw(postcode, opts);
   if (!result.ok) {
     // Surface the body too — PropertyData's 4xx responses carry the real reason
     // (e.g. "postcode parameter must be a full postcode") and without it the
@@ -123,6 +147,68 @@ export async function diagnoseSourcedProperties(postcode: string): Promise<{
     summary,
   };
 }
+
+// ─── Scan Seeds (full postcode + radius) ─────────────────────────────────
+
+export async function getScanSeeds(): Promise<ScanSeed[]> {
+  const setting = await database.setting.findUnique({
+    where: { key: SCAN_SEEDS_KEY },
+  });
+  if (!setting || !Array.isArray(setting.value)) return [];
+  return (setting.value as unknown[]).flatMap((raw) => {
+    if (!raw || typeof raw !== 'object') return [];
+    const s = raw as Record<string, unknown>;
+    const postcode = typeof s.postcode === 'string' ? s.postcode : null;
+    const radiusMiles = typeof s.radiusMiles === 'number' ? s.radiusMiles : 1;
+    const label = typeof s.label === 'string' ? s.label : undefined;
+    return postcode ? [{ postcode, radiusMiles, label }] : [];
+  });
+}
+
+export async function setScanSeeds(seeds: ScanSeed[]): Promise<{
+  success: boolean;
+  seeds?: ScanSeed[];
+  rejected?: Array<{ postcode: string; reason: string }>;
+  error?: string;
+}> {
+  const { userId } = await auth();
+  if (!userId) return { success: false, error: 'Unauthorized' };
+
+  const seen = new Set<string>();
+  const accepted: ScanSeed[] = [];
+  const rejected: Array<{ postcode: string; reason: string }> = [];
+
+  for (const seed of seeds) {
+    if (!seed || !seed.postcode) continue;
+    const norm = normaliseFullPostcode(seed.postcode);
+    if (!norm) {
+      rejected.push({ postcode: seed.postcode, reason: 'not a full UK postcode (e.g. M14 5LL)' });
+      continue;
+    }
+    const radius =
+      typeof seed.radiusMiles === 'number' && seed.radiusMiles > 0 && seed.radiusMiles <= 20
+        ? seed.radiusMiles
+        : 1;
+    if (seen.has(norm)) continue;
+    seen.add(norm);
+    accepted.push({
+      label: seed.label?.trim() || undefined,
+      postcode: norm,
+      radiusMiles: radius,
+    });
+  }
+
+  await database.setting.upsert({
+    where: { key: SCAN_SEEDS_KEY },
+    create: { key: SCAN_SEEDS_KEY, value: accepted, updatedBy: userId },
+    update: { value: accepted, updatedBy: userId },
+  });
+
+  revalidatePath('/settings/scouting');
+  return { success: true, seeds: accepted, rejected };
+}
+
+// ─────────────────────────────────────────────────────────────────────────
 
 export async function triggerScoutingCron(): Promise<{
   success: boolean;

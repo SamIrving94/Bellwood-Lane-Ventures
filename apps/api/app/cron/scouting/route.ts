@@ -40,10 +40,33 @@ export const POST = async (request: Request) => {
       .filter(Boolean);
   }
 
+  // Scan seeds — full UK postcodes with a radius. PropertyData's
+  // /sourced-properties needs these (it rejects bare districts).
+  type ScanSeed = { label?: string; postcode: string; radiusMiles: number };
+  let scanSeeds: ScanSeed[] = [];
+  try {
+    const seedsSetting = await database.setting.findUnique({
+      where: { key: 'scouting.scanSeeds' },
+    });
+    if (seedsSetting && Array.isArray(seedsSetting.value)) {
+      scanSeeds = (seedsSetting.value as unknown[]).flatMap((raw) => {
+        if (!raw || typeof raw !== 'object') return [];
+        const s = raw as Record<string, unknown>;
+        const postcode = typeof s.postcode === 'string' ? s.postcode : null;
+        const radiusMiles = typeof s.radiusMiles === 'number' ? s.radiusMiles : 1;
+        const label = typeof s.label === 'string' ? s.label : undefined;
+        return postcode ? [{ postcode, radiusMiles, label }] : [];
+      });
+    }
+  } catch (err) {
+    console.warn('[cron/scouting] failed to read scan seeds from DB', err);
+  }
+
   const result = await runScoutingPipeline({
     limit: 50,
     minScore: 30,
     sourcedPropertyPostcodes,
+    scanSeeds,
   });
 
   let createdCount = 0;

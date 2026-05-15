@@ -5,6 +5,8 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { Header } from '../../components/header';
 import { ScoutingPostcodesForm } from './scouting-postcodes-form';
+import { ScanSeedsForm } from './scan-seeds-form';
+import { getScanSeeds } from './actions';
 
 export const metadata: Metadata = {
   title: 'Scouting · Settings — Bellwoods Lane',
@@ -34,6 +36,8 @@ export default async function ScoutingSettingsPage() {
     where: { createdAt: { gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) } },
   });
 
+  const scanSeeds = await getScanSeeds();
+
   return (
     <>
       <Header
@@ -58,6 +62,24 @@ export default async function ScoutingSettingsPage() {
 
         {/* The form */}
         <ScoutingPostcodesForm initialPostcodes={postcodes} />
+
+        {/* Scan seeds (full postcode + radius) — the proper PropertyData input */}
+        <div>
+          <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
+            Scan seeds · PropertyData
+          </p>
+          <h2 className="mt-1 font-semibold text-xl tracking-tight">
+            Scan seeds (full postcode + radius)
+          </h2>
+          <p className="mt-2 max-w-2xl text-muted-foreground text-sm">
+            PropertyData rejects district codes (M14) on the sourced-properties
+            endpoint. To pull listings you need a full postcode and a search
+            radius. Add one or more seeds per area you want to cover —
+            typically one central seed per district at 1 mile, or 2-3 seeds
+            for larger towns.
+          </p>
+        </div>
+        <ScanSeedsForm initialSeeds={scanSeeds} />
 
         {/* Status card */}
         <div className="rounded-2xl border bg-card p-5">

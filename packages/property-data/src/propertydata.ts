@@ -405,7 +405,10 @@ export type SourcedProperty = {
  * whatever PropertyData actually returned, no transformation. Used by the
  * /settings/scouting page to show founders why a postcode produced 0 leads.
  */
-export async function getSourcedPropertiesRaw(postcode: string): Promise<{
+export async function getSourcedPropertiesRaw(
+  postcode: string,
+  opts?: { radiusMiles?: number },
+): Promise<{
   ok: boolean;
   status?: number;
   body?: unknown;
@@ -416,6 +419,9 @@ export async function getSourcedPropertiesRaw(postcode: string): Promise<{
   const url = new URL(`${API_BASE}/sourced-properties`);
   url.searchParams.set('key', apiKey);
   url.searchParams.set('postcode', postcode.replace(/\s/g, ''));
+  if (typeof opts?.radiusMiles === 'number') {
+    url.searchParams.set('radius', String(opts.radiusMiles));
+  }
   try {
     const res = await fetch(url.toString(), { headers: { Accept: 'application/json' } });
     const body = await res.json().catch(() => null);
@@ -434,10 +440,17 @@ export async function getSourcedPropertiesRaw(postcode: string): Promise<{
  */
 export async function getSourcedProperties(
   postcode: string,
+  opts?: { radiusMiles?: number },
 ): Promise<SourcedProperty[]> {
+  const params: Record<string, string | number> = {
+    postcode: postcode.replace(/\s/g, ''),
+  };
+  if (typeof opts?.radiusMiles === 'number') {
+    params.radius = opts.radiusMiles;
+  }
   const data = await fetchPropertyData(
     '/sourced-properties',
-    { postcode: postcode.replace(/\s/g, '') },
+    params,
     {
       ttlMs: 24 * 60 * 60 * 1000,
       estimatedCredits: 3,
