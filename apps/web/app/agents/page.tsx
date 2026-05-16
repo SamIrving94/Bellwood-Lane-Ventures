@@ -142,6 +142,9 @@ export default function AgentsPage() {
             </span>
           </Link>
           <nav className="hidden items-center gap-6 text-[13px] text-slate-600 md:flex">
+            <Link href="/agents/score" className="hover:text-[#0A2540]">
+              Bellwood Score
+            </Link>
             <a href="#how" className="hover:text-[#0A2540]">
               How it works
             </a>
