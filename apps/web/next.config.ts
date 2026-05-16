@@ -52,6 +52,15 @@ nextConfig.outputFileTracingExcludes = {
 if (process.env.NODE_ENV === 'production') {
   const redirects: NextConfig['redirects'] = async () => [
     {
+      // Bare root → English homepage. Without this, the Vercel-internal URL
+      // (bellwood-web.vercel.app/) 404s because everything lives under
+      // /[locale]/. Canonical bellwoodslane.co.uk works fine; this is just
+      // for the .vercel.app preview/prod URL.
+      source: '/',
+      destination: '/en',
+      statusCode: 307,
+    },
+    {
       source: '/legal',
       destination: '/legal/privacy',
       statusCode: 301,
