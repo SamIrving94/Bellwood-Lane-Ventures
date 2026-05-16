@@ -47,15 +47,15 @@ const FAQ: Array<{ q: string; a: string }> = [
   },
   {
     q: 'How quickly can you complete?',
-    a: 'As fast as 14 days, or paced to suit a probate grant or onward move. We instruct solicitors within 24 hours of acceptance and share proof of funds the same day.',
+    a: 'In weeks rather than months, paced to suit a probate grant or onward move. We instruct solicitors within 24 hours of acceptance and share proof of funds the same day.',
   },
   {
     q: 'Can the offer change later?',
-    a: 'Only if a RICS survey reveals a material issue you did not disclose (e.g. structural movement, hidden damp). We tell you within 48 hours and you can walk away free of charge.',
+    a: 'The price we confirm in writing is the price we complete at. There are only three exceptions, all documented in writing: (1) a structural survey reveals a material defect that was not visible or disclosed at viewing, (2) a title issue emerges during conveyancing that materially affects value, or (3) information provided about the property turns out to be materially incorrect. None of those apply? The price does not change.',
   },
   {
     q: 'Are you regulated?',
-    a: 'Cash property buying is unregulated by the FCA. We voluntarily follow The Property Ombudsman code and are members of the National Association of Property Buyers (NAPB). We are HMRC-registered for AML supervision.',
+    a: 'Cash property buying is unregulated by the FCA. We are members of the Property Redress Scheme (PRS) — a government-approved independent redress body — voluntarily follow The Property Ombudsman code, are HMRC-registered for AML supervision, and ICO-registered as a data controller.',
   },
 ];
 
@@ -117,13 +117,13 @@ export default function SellPage() {
           </h1>
           <p className="mt-8 max-w-2xl text-lg leading-relaxed text-slate-600 md:mt-10">
             We buy UK residential property directly with our own capital.
-            A written, binding offer back the same day.{' '}
+            An indicative offer back within 4 business hours, a confirmed
+            price within 24 hours of viewing.{' '}
             <strong className="font-semibold text-[#0A1020]">
-              Completion as fast as 14 days
+              Completion in weeks not months
             </strong>
-            {' '}if you need it — or paced to suit a probate grant or onward
-            move if you don&rsquo;t. The price you accept is the price you
-            complete at.
+            {' '}— paced to suit a probate grant or onward move. The price we
+            confirm in writing is the price we complete at.
           </p>
 
           <div className="mt-10 flex flex-col items-start gap-3 sm:flex-row sm:items-center">
@@ -143,7 +143,7 @@ export default function SellPage() {
           </div>
 
           <p className="mt-10 font-mono text-[11px] uppercase tracking-[0.18em] text-slate-500">
-            HMRC AML supervised · NAPB · TPO redress scheme · Zero fees
+            Property Redress Scheme (PRS) · HMRC AML supervised · ICO registered · Zero fees
           </p>
         </div>
       </section>
@@ -334,7 +334,7 @@ export default function SellPage() {
               Are you an estate agent?
             </p>
             <p className="mt-1 font-serif text-xl">
-              Earn up to 3% + VAT per referral.
+              Partner fee agreed per deal, in writing.
             </p>
           </div>
           <Link

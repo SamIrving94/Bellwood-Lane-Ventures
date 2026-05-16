@@ -241,7 +241,7 @@ export default async function TrackPage({
         </section>
 
         <p className="mt-12 font-mono text-[10px] uppercase tracking-[0.22em] text-slate-400">
-          Bellwoods Lane Ltd · NAPB · TPO · HMRC AML supervised
+          Bellwoods Lane Ltd · Property Redress Scheme (PRS) · HMRC AML supervised · ICO registered
         </p>
       </div>
     </main>

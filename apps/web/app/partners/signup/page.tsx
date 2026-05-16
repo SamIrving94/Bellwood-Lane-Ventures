@@ -22,10 +22,10 @@ export default function SignupPage() {
           Grab your referral code early.
         </h1>
         <p className="mt-4 text-slate-600">
-          You don&apos;t have to sign up to use our instant-offer tool — we
+          You don&apos;t have to sign up to use our indicative-offer tool — we
           auto-create your code when you submit your first property. But if
-          you want a code ready to share right now, pre-register here. Up to{' '}
-          <strong>3% + VAT</strong> per referral.
+          you want a code ready to share right now, pre-register here.{' '}
+          <strong>Partner fee agreed in writing per deal.</strong>
         </p>
       </div>
 

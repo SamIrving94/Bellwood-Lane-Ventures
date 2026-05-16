@@ -252,9 +252,9 @@ export default function SellerDisclosurePage() {
       </section>
 
       <footer className="mt-12 border-t border-slate-200 pt-6 text-xs text-slate-500">
-        Bellwoods Lane Ltd · NAPB member · TPO redress scheme member · HMRC
-        AML supervised · Disclosure compliant with CPR 2008, DMCC 2024, NTS
-        referral-fee guidance.
+        Bellwoods Lane Ltd · Property Redress Scheme (PRS) · HMRC AML
+        supervised · ICO registered · Disclosure compliant with CPR 2008,
+        DMCC Act 2025, NTSELAT referral-fee guidance.
       </footer>
     </div>
   );

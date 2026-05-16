@@ -72,13 +72,16 @@ const SECTIONS: Array<{
       <>
         <p>
           Although cash property buyers are not FCA-regulated, there are
-          voluntary industry bodies that publish codes of practice. We
-          follow the standards of The Property Ombudsman (for
-          seller-facing communications) and the National Association of
-          Property Buyers (NAPB) code. These commit us to, among other
-          things: never making an offer we cannot honour, never reducing
-          an offer after survey without a disclosed material defect, and
-          giving you clear written terms before you commit.
+          voluntary industry bodies and statutory frameworks that govern
+          how we operate. We are members of the Property Redress Scheme
+          (PRS) — a government-approved independent redress body — and
+          voluntarily follow The Property Ombudsman code for seller-facing
+          communications. We are HMRC-registered for AML supervision under
+          the Money Laundering Regulations 2017 and ICO-registered as a
+          data controller. These commit us to, among other things: never
+          making an offer we cannot honour, never reducing the price we
+          confirm without one of three documented exceptions, and giving
+          you clear written terms before you commit.
         </p>
       </>
     ),
@@ -112,10 +115,14 @@ const SECTIONS: Array<{
     body: (
       <>
         <p>
-          Our instant offers are <em>legally binding upon us</em> for 72
-          hours from the issue time-stamp. During that window, we may not
-          withdraw the offer without cause. If we do, we will reimburse
-          your documented costs plus a fixed sum of £1,000.
+          Our <em>confirmed</em> offers (issued in writing after a physical
+          viewing) are legally binding upon us for 72 hours from the issue
+          time-stamp. Our <em>indicative</em> offers (issued before viewing,
+          based on public data and comparables) are our honest starting
+          point — a price we intend to confirm at, subject only to viewing
+          and the three documented exceptions. During the 72-hour confirmed
+          window, we may not withdraw without cause. If we do, we will
+          reimburse your documented costs plus a fixed sum of £1,000.
         </p>
         <p>
           The offer is <em>not</em> binding upon you until you sign
@@ -193,7 +200,7 @@ export default function FCADisclosurePage() {
           href="/instant-offer"
           className="inline-flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.2em] text-slate-500 transition hover:text-[#0A2540]"
         >
-          <span aria-hidden>←</span> Back to instant offer
+          <span aria-hidden>←</span> Back to indicative offer
         </Link>
 
         <p className="mt-12 font-mono text-[11px] uppercase tracking-[0.22em] text-[#C6A664]">

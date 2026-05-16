@@ -251,7 +251,7 @@ export function AgentQuickForm({ defaultTriggerLabel }: AgentQuickFormProperties
         <p className="text-xs text-slate-500">
           Indicative offer on screen in 60 seconds.
           <br />
-          Signed PDF in your inbox within 24 hours.
+          Confirmed price in writing within 24 hours of viewing.
         </p>
         <button
           type="submit"
@@ -340,9 +340,10 @@ function SuccessView({
         </div>
         <p className="mt-6 rounded-xl bg-[#FAF6EA] px-5 py-4 text-[13px] leading-relaxed text-slate-700">
           This is the indicative figure from our AVM (HM Land Registry comps,
-          last 24 months, adjusted for HPI). The signed binding offer
-          document, with full reasoning, will be in{' '}
-          <strong>{vendorEmail}</strong> within 24 hours.
+          last 24 months, adjusted for HPI). We'll acknowledge within 4
+          business hours, arrange a viewing, then send the confirmed price
+          in writing to <strong>{vendorEmail}</strong> within 24 hours of
+          the viewing. The price we confirm is the price we complete at.
         </p>
       </div>
 

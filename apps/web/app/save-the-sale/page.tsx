@@ -90,9 +90,10 @@ export default function SaveTheSalePage() {
               <li className="flex items-start gap-3">
                 <span className="mt-1 inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-[#C6A664]" />
                 <span>
-                  <strong className="text-[#0A1020]">Up to 3% + VAT to you.</strong>{' '}
+                  <strong className="text-[#0A1020]">Partner fee, agreed per deal.</strong>{' '}
                   Sale fee, introducer fee, plus the resale instruction when
-                  we sell back through the market.
+                  we sell back through the market — figures confirmed in writing
+                  before the deal proceeds.
                 </span>
               </li>
               <li className="flex items-start gap-3">
@@ -113,7 +114,7 @@ export default function SaveTheSalePage() {
               >
                 hello@bellwoodslane.co.uk
               </a>
-              {' '}&mdash; same 4-hour turnaround.
+              {' '}&mdash; same 4-business-hour acknowledgement.
             </p>
           </div>
           <div>
@@ -126,7 +127,7 @@ export default function SaveTheSalePage() {
       <footer className="border-t border-slate-200/60 bg-white px-6 py-10 md:px-12">
         <div className="mx-auto flex max-w-5xl flex-col items-start justify-between gap-4 md:flex-row md:items-center">
           <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-slate-500">
-            HMRC AML supervised &middot; NAPB &middot; TPO redress
+            Property Redress Scheme (PRS) &middot; HMRC AML supervised &middot; ICO registered
           </p>
           <nav className="flex flex-wrap items-center gap-6 text-[13px] text-slate-600">
             <Link href="/agents">Partner programme</Link>

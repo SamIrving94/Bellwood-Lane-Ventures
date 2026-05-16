@@ -30,7 +30,7 @@ export const metadata: Metadata = {
 const SITUATIONS_WE_BUY: Array<{ k: string; b: string }> = [
   {
     k: 'Chain break',
-    b: "Buyer pulled out at exchange. You've spent months getting there. We complete in 14 days so the chain holds and the vendor's onward purchase survives.",
+    b: "Buyer pulled out at exchange. You've spent months getting there. We complete in weeks rather than months so the chain holds and the vendor's onward purchase survives.",
   },
   {
     k: 'Mortgage refused',

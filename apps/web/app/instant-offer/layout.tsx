@@ -16,13 +16,13 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: 'Get an instant cash offer · Bellwoods Lane',
+  title: 'Get an indicative cash offer · Bellwoods Lane',
   description:
-    'Legally binding cash property offer in 60 seconds. Completion in 14–28 days. No fees. No fall-throughs.',
+    'Indicative cash property offer in 4 business hours, confirmed in writing within 24 hours of viewing. Completion in weeks not months. No fees.',
   openGraph: {
-    title: 'Sell in 18 days. Cash. Guaranteed. · Bellwoods Lane',
+    title: 'Sell your home. On your timeline. No surprises. · Bellwoods Lane',
     description:
-      'Legally binding cash property offer in 60 seconds. Completion in 14–28 days.',
+      'Indicative cash offer in 4 business hours. Confirmed in writing after viewing. The price we confirm is the price we complete at.',
     type: 'website',
   },
 };

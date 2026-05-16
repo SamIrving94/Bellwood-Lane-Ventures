@@ -11,7 +11,7 @@ const FAQ: Array<{ q: string; a: string }> = [
   },
   {
     q: 'My buyer\u2019s mortgage was just refused. Can you replace them at the same price?',
-    a: 'Almost certainly not at the original asking price \u2014 our offer is below open-market by a published margin in exchange for cash and certainty. But for a vendor whose buyer just collapsed, that trade-off is often worth it: complete in 14 days at 75\u201387% of market value, instead of 4\u20138 months of re-marketing with no guarantee.',
+    a: 'Almost certainly not at the original asking price \u2014 our offer is below open-market by a published margin in exchange for cash and certainty. But for a vendor whose buyer just collapsed, that trade-off is often worth it: a quick completion at 75\u201387% of market value, instead of 4\u20138 months of re-marketing with no guarantee.',
   },
   {
     q: 'The survey came back and the buyer wants a £15k reduction. What now?',
@@ -19,11 +19,11 @@ const FAQ: Array<{ q: string; a: string }> = [
   },
   {
     q: 'When and how do I get paid?',
-    a: 'On completion of our purchase from your client. We pay your standard sale fee, plus 1% + VAT introducer fee. When we resell through you, that\u2019s another 1% + VAT. All disclosed to the seller in writing per NTSELAT guidance.',
+    a: 'On completion of our purchase from your client. Your partner fee is agreed in writing per deal \u2014 typically your standard sale fee plus an introducer fee, with a separate sale instruction when we resell. All disclosed to the seller in writing per NTSELAT guidance.',
   },
   {
     q: 'How are you different from other cash buyers?',
-    a: 'Three ways. (1) We pay you up to 3% + VAT \u2014 most national cash buyers cut the agent out entirely. (2) Our offer is contractually fixed in the seller\u2019s offer document; if we walk without cause, we pay you \u00a31,000 plus your costs. (3) When we resell the property, we instruct you. National cash buyers flip through their own channels and the property never comes back to you.',
+    a: 'Three ways. (1) Your partner fee is agreed in writing per deal \u2014 most national cash buyers cut the agent out entirely. (2) The price we confirm is the price we complete at; if we walk without cause, we pay you \u00a31,000 plus your costs. (3) When we resell the property, we instruct you. National cash buyers flip through their own channels and the property never comes back to you.',
   },
   {
     q: 'What if you re-trade my client at exchange?',
@@ -39,7 +39,7 @@ const FAQ: Array<{ q: string; a: string }> = [
   },
   {
     q: 'Are you regulated?',
-    a: 'Cash property buying is unregulated by the FCA. We voluntarily follow The Property Ombudsman code and are NAPB members. See our regulatory disclosure for full detail.',
+    a: 'Cash property buying is unregulated by the FCA. We are members of the Property Redress Scheme (PRS) — a government-approved independent redress body — voluntarily follow The Property Ombudsman code, are HMRC-registered for AML supervision, and ICO-registered as a data controller. See our regulatory disclosure for full detail.',
   },
 ];
 
@@ -84,7 +84,7 @@ function SampleOfferDocument() {
       <dl className="mt-5 space-y-2 text-[12px]">
         <div className="flex justify-between">
           <dt className="text-slate-500">Completion</dt>
-          <dd className="font-medium text-slate-700">21 days</dd>
+          <dd className="font-medium text-slate-700">Weeks not months</dd>
         </div>
         <div className="flex justify-between">
           <dt className="text-slate-500">Survey adjustment</dt>
@@ -98,7 +98,7 @@ function SampleOfferDocument() {
         </div>
         <div className="flex justify-between">
           <dt className="text-slate-500">Introducer (your firm)</dt>
-          <dd className="font-medium text-slate-700">2% + VAT</dd>
+          <dd className="font-medium text-slate-700">Agreed per deal</dd>
         </div>
       </dl>
 
@@ -536,7 +536,7 @@ export default function AgentsPage() {
             </nav>
           </div>
           <p className="mt-10 font-mono text-[10px] uppercase tracking-[0.18em] text-slate-500">
-            HMRC AML supervised &middot; NAPB &middot; TPO redress
+            Property Redress Scheme (PRS) &middot; HMRC AML supervised &middot; ICO registered
           </p>
           <p className="mt-6 font-mono text-[11px] leading-relaxed text-slate-500">
             Bellwoods Lane Ltd is a UK cash property buyer, not an

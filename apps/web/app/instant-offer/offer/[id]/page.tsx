@@ -231,9 +231,9 @@ export default async function OfferCertificatePage({
 
       <footer className="mt-12 border-t border-slate-200 pt-6 font-mono text-[10px] leading-relaxed text-slate-500">
         <p>
-          Bellwoods Lane Ltd · Registered in England &amp; Wales · NAPB
-          member · TPO redress scheme · HMRC AML supervised. Bellwoods Lane
-          is a cash property buyer, not an FCA-authorised firm. This offer
+          Bellwoods Lane Ltd · Registered in England &amp; Wales · Property
+          Redress Scheme (PRS) · HMRC AML supervised · ICO registered.
+          Bellwoods Lane is a cash property buyer, not an FCA-authorised firm. This offer
           does not constitute financial or legal advice. The seller is
           encouraged to seek independent legal advice. Full regulatory
           disclosure: bellwoodslane.co.uk/legal/fca-disclosure

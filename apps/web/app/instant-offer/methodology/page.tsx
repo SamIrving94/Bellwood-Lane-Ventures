@@ -172,7 +172,7 @@ export default function MethodologyPage() {
             href="/instant-offer#chat"
             className="mt-6 inline-flex items-center gap-2 rounded-full bg-[#C6A664] px-8 py-3 text-sm font-medium text-[#0A1020] transition hover:bg-[#b08f52]"
           >
-            Get an instant offer →
+            Get an indicative offer →
           </Link>
         </div>
       </article>

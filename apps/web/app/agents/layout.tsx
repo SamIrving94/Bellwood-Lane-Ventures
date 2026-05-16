@@ -19,11 +19,11 @@ export const metadata: Metadata = {
   title:
     'For estate agents · Save the deal. Keep the commission. · Bellwoods Lane',
   description:
-    'When a chain breaks, probate stalls, or a buyer walks — Bellwoods Lane buys in 18 days. You earn up to 3% + VAT. Your client thinks you’re a hero.',
+    'When a chain breaks, probate stalls, or a buyer walks — Bellwoods Lane is the cash buyer who steps in and keeps your commission intact. Partner fee agreed in writing per deal.',
   openGraph: {
     title: 'Save the deal. Keep the commission. · Bellwoods Lane',
     description:
-      'For UK estate agents. Cash buyer with binding 72h offers, no re-trade, AML cover, up to 3% + VAT per referral.',
+      'For UK estate agents. Cash buyer. The price we confirm is the price we complete at — no last-minute surprises. Partner fee agreed in writing per deal.',
     type: 'website',
   },
 };

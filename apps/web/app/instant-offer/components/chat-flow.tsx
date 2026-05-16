@@ -79,8 +79,8 @@ const SITUATIONS = [
 ];
 
 const URGENCIES = [
-  { label: 'ASAP (< 14 days)', value: 10 },
-  { label: '2–4 weeks', value: 21 },
+  { label: 'ASAP — chain at risk', value: 10 },
+  { label: 'A few weeks', value: 21 },
   { label: 'Flexible', value: 45 },
 ];
 
@@ -807,12 +807,12 @@ function AgentReferralCard({
         <div className="mt-0.5 text-2xl">🎁</div>
         <div className="flex-1">
           <p className="font-serif text-lg font-semibold text-[#0A1020]">
-            You just earned commission on this referral.
+            Your referral is logged.
           </p>
           <p className="mt-1 text-sm text-slate-700">
             Every seller you send to the link below is credited to{' '}
-            <strong>{account.firmName}</strong> automatically. No signup.
-            Just bookmark and share.
+            <strong>{account.firmName}</strong> automatically. Partner fee
+            agreed in writing per deal. No signup. Just bookmark and share.
           </p>
         </div>
       </div>
@@ -848,7 +848,7 @@ function AgentReferralCard({
         className="mt-4 inline-block text-xs text-slate-600 underline underline-offset-4 hover:text-[#C6A664]"
       >
         Want a full dashboard of your referrals, deal stages, and
-        commissions? Claim your account →
+        partner-fee status? Claim your account →
       </a>
     </div>
   );
