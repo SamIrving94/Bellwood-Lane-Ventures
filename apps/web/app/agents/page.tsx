@@ -380,12 +380,17 @@ export default function AgentsPage() {
             </div>
             <div className="grid grid-cols-1 gap-2 py-6 sm:grid-cols-[260px_1fr] sm:gap-12">
               <dt className="font-mono text-[11px] uppercase tracking-[0.18em] text-slate-500">
-                The one exception
+                The only three exceptions
               </dt>
               <dd className="text-[15px] leading-relaxed text-slate-700">
-                The offer is adjustable only if a RICS survey reveals a
-                material defect your client did not disclose. In which case
-                they get 48 hours to walk away free of charge.
+                The confirmed price can only change for three documented
+                reasons: (1) a structural survey reveals a material defect
+                that was not visible or disclosed at viewing; (2) a title
+                issue emerges during conveyancing that materially affects
+                value; (3) information provided about the property turns
+                out to be materially incorrect. Anything else? Price holds.
+                If we adjust, your client gets 48 hours to walk free of
+                charge and we share the survey report or title note in full.
               </dd>
             </div>
             <div className="grid grid-cols-1 gap-2 py-6 sm:grid-cols-[260px_1fr] sm:gap-12">
@@ -402,6 +407,84 @@ export default function AgentsPage() {
         </div>
       </section>
 
+      {/* ————— THE 5-STEP PROCESS ————— */}
+      <section
+        id="process"
+        className="border-b border-slate-200/60 bg-white px-6 py-24 md:px-12 md:py-28"
+      >
+        <div className="mx-auto max-w-5xl">
+          <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-[#C6A664]">
+            How the process actually runs
+          </p>
+          <h2 className="mt-3 font-serif text-4xl font-semibold leading-[1.05] tracking-[-0.02em] md:text-5xl">
+            Five steps. Published timelines.
+            <br />
+            <span className="italic text-[#C6A664]">Honest about what each one means.</span>
+          </h2>
+          <p className="mt-6 max-w-2xl text-[15px] leading-relaxed text-slate-600">
+            We never describe our offers as &ldquo;instant&rdquo; or
+            &ldquo;guaranteed&rdquo; at enquiry &mdash; the indicative
+            offer is a starting point, the confirmed offer comes after
+            we&rsquo;ve viewed. Here&rsquo;s exactly what happens, in
+            order, with the SLAs we commit to.
+          </p>
+          <ol className="mt-12 space-y-5">
+            {[
+              {
+                n: '01',
+                t: 'Acknowledgement',
+                sla: '4 business hours',
+                d: 'Seller or agent submits the property. We acknowledge receipt and may ask clarifying questions. Where we can pull from public records (Land Registry, EPC register, planning portal), we do — we only ask the seller for what we genuinely need.',
+              },
+              {
+                n: '02',
+                t: 'Indicative offer',
+                sla: 'After desk research',
+                d: 'We send an indicative offer range based on comparable sales, PropertyData valuation, and public property records. Clearly labelled INDICATIVE. Our honest starting point — not a number we intend to change, but one that must be confirmed after viewing.',
+              },
+              {
+                n: '03',
+                t: 'Property viewing',
+                sla: 'Required before confirmed offer',
+                d: 'We physically view every property before issuing a confirmed offer. We assess overall condition, visible defects, and anything not clear from public records. We tell the seller in advance what we are looking for.',
+              },
+              {
+                n: '04',
+                t: 'Confirmed offer in writing',
+                sla: 'Within 24 hours of viewing',
+                d: 'After viewing, we issue our confirmed purchase price in writing. This is the price we complete at. We share the survey notes that informed it. Locked for 72 hours, walk-away cover £1,000 + costs.',
+              },
+              {
+                n: '05',
+                t: 'Conveyancing and completion',
+                sla: 'Weeks not months',
+                d: 'We instruct our solicitors same day. The seller instructs theirs (their choice — we never require a specific firm). We provide regular updates through to exchange and completion, surfaced on the live timeline page the seller can share with anyone.',
+              },
+            ].map((s) => (
+              <li
+                key={s.n}
+                className="grid grid-cols-[60px_1fr] items-start gap-6 rounded-2xl border border-slate-200 bg-[#FAF6EA] p-7 md:grid-cols-[80px_1fr_220px] md:gap-8"
+              >
+                <span className="font-serif text-[28px] italic text-[#C6A664]">
+                  {s.n}
+                </span>
+                <div>
+                  <h3 className="font-serif text-xl font-semibold md:text-2xl">
+                    {s.t}
+                  </h3>
+                  <p className="mt-2 text-[14px] leading-relaxed text-slate-600">
+                    {s.d}
+                  </p>
+                </div>
+                <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-[#C6A664] md:text-right">
+                  {s.sla}
+                </p>
+              </li>
+            ))}
+          </ol>
+        </div>
+      </section>
+
       {/* ————— THE PROOF ————— */}
       <section className="border-b border-slate-200/60 bg-[#0A2540] px-6 py-24 text-white md:px-12 md:py-28">
         <div className="mx-auto grid max-w-6xl grid-cols-1 items-center gap-16 lg:grid-cols-[1fr_1fr]">
@@ -415,10 +498,11 @@ export default function AgentsPage() {
               Not a phone call.
             </h2>
             <p className="mt-6 max-w-md text-[15px] leading-relaxed text-white/70">
-              Within 24 hours of you sending us the address, you and your
-              client both receive a PDF offer document. Reference number,
-              binding amount, completion timeline, walk-away cover. No
-              ambiguity. No verbal commitments to remember.
+              After viewing, within 24 hours you and your client both receive
+              a PDF offer document. Reference number, confirmed amount,
+              completion timeline, walk-away cover. The price we confirm is
+              the price we complete at. No ambiguity. No verbal commitments
+              to remember.
             </p>
           </div>
           <div>

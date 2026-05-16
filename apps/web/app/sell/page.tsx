@@ -159,46 +159,65 @@ export default function SellPage() {
               How it works
             </p>
             <h2 className="mt-3 font-serif text-4xl font-semibold leading-[1] tracking-[-0.02em] md:text-6xl">
-              Three steps.
+              Five steps.
               <br />
               No surprises.
             </h2>
             <p className="mt-6 text-[15px] leading-relaxed text-slate-600">
               Every offer is generated from real comparable sales. The
-              maths are published. Nothing hidden.
+              maths are published. Nothing hidden. The price we confirm
+              in writing is the price we complete at.
             </p>
           </div>
-          <div className="space-y-5">
+          <div className="space-y-4">
             {[
               {
                 n: '01',
-                t: 'Tell us about your home',
-                d: 'A short conversation — address, situation. No personal information needed for the offer itself.',
+                t: 'You get in touch',
+                sla: '4 business hours',
+                d: 'Tell us the address and a little about your situation. We acknowledge receipt within 4 business hours and pull what we can from public records — Land Registry, EPC, planning — before bothering you for anything else.',
               },
               {
                 n: '02',
-                t: 'See the offer in writing',
-                d: 'A real binding price, locked for 72 hours. Includes the comparables we used, the risk score, and our methodology — so you can compare it against any other valuation.',
+                t: 'Indicative offer',
+                sla: 'After desk research',
+                d: 'We send an indicative offer range based on comparable sales, PropertyData valuation, and the public records we found. Clearly labelled INDICATIVE — our honest starting point, subject only to viewing.',
               },
               {
                 n: '03',
-                t: 'Complete on your timeline',
-                d: 'Accept, and we instruct solicitors the same day. We pay all legal costs. The amount in the offer is the amount in your account on completion.',
+                t: 'We come and view the property',
+                sla: 'At your convenience',
+                d: 'We physically view every property before we confirm a price. We assess condition and anything not clear from the records. We tell you in advance what we are looking for.',
+              },
+              {
+                n: '04',
+                t: 'Confirmed price in writing',
+                sla: 'Within 24 hours of viewing',
+                d: 'The price we send is the price we complete at. We share the survey notes that informed it. Locked for 72 hours so you can take advice. Walk-away cover £1,000 + costs.',
+              },
+              {
+                n: '05',
+                t: 'Conveyancing and completion',
+                sla: 'Paced to suit you',
+                d: 'You instruct your own solicitor (your choice — we never require ours). We instruct ours same-day. Regular updates on a live timeline you can share with anyone. We pay all our legal costs.',
               },
             ].map((s) => (
               <div
                 key={s.n}
-                className="grid grid-cols-[60px_1fr] items-start gap-6 rounded-2xl border border-slate-200 bg-white p-7"
+                className="grid grid-cols-[44px_1fr] items-start gap-4 rounded-2xl border border-slate-200 bg-white p-6 md:grid-cols-[44px_1fr_160px] md:gap-6"
               >
-                <span className="font-serif text-[28px] italic text-[#C6A664]">
+                <span className="font-serif text-[22px] italic text-[#C6A664]">
                   {s.n}
                 </span>
                 <div>
-                  <h3 className="font-serif text-2xl font-semibold">{s.t}</h3>
+                  <h3 className="font-serif text-lg font-semibold md:text-xl">{s.t}</h3>
                   <p className="mt-2 text-[14px] leading-relaxed text-slate-600">
                     {s.d}
                   </p>
                 </div>
+                <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-[#C6A664] md:text-right">
+                  {s.sla}
+                </p>
               </div>
             ))}
           </div>
@@ -323,6 +342,69 @@ export default function SellPage() {
               </details>
             ))}
           </div>
+        </div>
+      </section>
+
+      {/* ————— WHEN NOT TO USE BELLWOOD ————— */}
+      <section className="border-b border-slate-200/60 bg-[#FAF6EA] px-6 py-20 md:px-12 md:py-24">
+        <div className="mx-auto max-w-4xl">
+          <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-[#C6A664]">
+            The honest version
+          </p>
+          <h2 className="mt-3 font-serif text-3xl font-semibold leading-tight tracking-[-0.02em] md:text-5xl">
+            When we&rsquo;re probably <span className="italic text-[#C6A664]">not</span> the right answer
+          </h2>
+          <p className="mt-5 max-w-2xl text-[15px] leading-relaxed text-slate-700">
+            We buy at 65&ndash;75% of open market value. That trade is right
+            for some sellers and wrong for others. We&rsquo;d rather tell
+            you so up front than waste your time.
+          </p>
+          <ul className="mt-8 space-y-4">
+            <li className="flex items-start gap-3 rounded-xl border border-slate-200 bg-white p-5">
+              <span className="mt-1 inline-block h-2 w-2 shrink-0 rounded-full bg-slate-400" />
+              <div>
+                <p className="font-serif text-[17px] font-semibold text-[#0A1020]">
+                  You have plenty of time and no pressure to sell.
+                </p>
+                <p className="mt-1 text-[14px] leading-relaxed text-slate-600">
+                  If you can wait 4&ndash;8 months for the right buyer, the
+                  open market will almost certainly get you a better price.
+                  Speed is the trade you&rsquo;re paying for with us.
+                </p>
+              </div>
+            </li>
+            <li className="flex items-start gap-3 rounded-xl border border-slate-200 bg-white p-5">
+              <span className="mt-1 inline-block h-2 w-2 shrink-0 rounded-full bg-slate-400" />
+              <div>
+                <p className="font-serif text-[17px] font-semibold text-[#0A1020]">
+                  Your property is in excellent condition and high demand.
+                </p>
+                <p className="mt-1 text-[14px] leading-relaxed text-slate-600">
+                  Family homes in popular streets, with no chain issues,
+                  usually sell fast at full market value through a good
+                  high-street agent. That&rsquo;s their wedge, not ours.
+                </p>
+              </div>
+            </li>
+            <li className="flex items-start gap-3 rounded-xl border border-slate-200 bg-white p-5">
+              <span className="mt-1 inline-block h-2 w-2 shrink-0 rounded-full bg-slate-400" />
+              <div>
+                <p className="font-serif text-[17px] font-semibold text-[#0A1020]">
+                  You want to maximise every pound of sale price.
+                </p>
+                <p className="mt-1 text-[14px] leading-relaxed text-slate-600">
+                  Our offer is below open-market value by design — a speed
+                  premium for cash, certainty, and no chain. If maximising
+                  is the goal, this isn&rsquo;t the route.
+                </p>
+              </div>
+            </li>
+          </ul>
+          <p className="mt-8 max-w-2xl text-[14px] leading-relaxed text-slate-600">
+            If you read those and one of them describes you, we&rsquo;d
+            genuinely suggest calling a local agent first. We&rsquo;d
+            rather you sold well than sold to us.
+          </p>
         </div>
       </section>
 
