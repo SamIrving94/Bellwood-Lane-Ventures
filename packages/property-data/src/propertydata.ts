@@ -405,9 +405,29 @@ export type SourcedProperty = {
  * whatever PropertyData actually returned, no transformation. Used by the
  * /settings/scouting page to show founders why a postcode produced 0 leads.
  */
+/**
+ * PropertyData /sourced-properties `list` types. The endpoint MUST receive
+ * one of these (or comma-separated) — bare postcode requests get 400.
+ * Mapped to lead types our scoring engine understands.
+ *
+ * Source: PropertyData docs error code 1101 = "Missing input: list".
+ */
+export const SOURCED_LIST_TYPES = [
+  'repossession',
+  'bmv', // below market value
+  'auction',
+  'probate',
+  'cashbuyer',
+  'unmodernised',
+] as const;
+
+export type SourcedListType = (typeof SOURCED_LIST_TYPES)[number];
+
+const DEFAULT_LIST = 'repossession,bmv,auction,probate,unmodernised';
+
 export async function getSourcedPropertiesRaw(
   postcode: string,
-  opts?: { radiusMiles?: number },
+  opts?: { radiusMiles?: number; list?: string },
 ): Promise<{
   ok: boolean;
   status?: number;
@@ -419,6 +439,7 @@ export async function getSourcedPropertiesRaw(
   const url = new URL(`${API_BASE}/sourced-properties`);
   url.searchParams.set('key', apiKey);
   url.searchParams.set('postcode', postcode.replace(/\s/g, ''));
+  url.searchParams.set('list', opts?.list ?? DEFAULT_LIST);
   if (typeof opts?.radiusMiles === 'number') {
     url.searchParams.set('radius', String(opts.radiusMiles));
   }
@@ -440,10 +461,11 @@ export async function getSourcedPropertiesRaw(
  */
 export async function getSourcedProperties(
   postcode: string,
-  opts?: { radiusMiles?: number },
+  opts?: { radiusMiles?: number; list?: string },
 ): Promise<SourcedProperty[]> {
   const params: Record<string, string | number> = {
     postcode: postcode.replace(/\s/g, ''),
+    list: opts?.list ?? DEFAULT_LIST,
   };
   if (typeof opts?.radiusMiles === 'number') {
     params.radius = opts.radiusMiles;

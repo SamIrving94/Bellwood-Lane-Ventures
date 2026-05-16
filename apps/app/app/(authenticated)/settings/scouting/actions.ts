@@ -93,7 +93,7 @@ export async function setTargetPostcodes(postcodesRaw: string[]): Promise<{
  */
 export async function diagnoseSourcedProperties(
   postcode: string,
-  opts?: { radiusMiles?: number },
+  opts?: { radiusMiles?: number; list?: string },
 ): Promise<{
   ok: boolean;
   postcode: string;
