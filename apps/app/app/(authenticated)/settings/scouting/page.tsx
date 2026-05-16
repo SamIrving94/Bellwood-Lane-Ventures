@@ -113,12 +113,12 @@ export default async function ScoutingSettingsPage() {
 
         {/* Info card */}
         <div className="rounded-2xl border border-dashed bg-slate-50/50 p-5 text-sm">
-          <p className="font-medium">How this works</p>
+          <p className="font-medium">How the two lists work together</p>
           <ul className="mt-2 space-y-1.5 text-muted-foreground">
-            <li>· Add postcodes by their <strong>district</strong> (e.g. <code className="rounded bg-white px-1">M14</code>, <code className="rounded bg-white px-1">SK4</code>, <code className="rounded bg-white px-1">LS17</code>) — not full postcodes.</li>
-            <li>· One PropertyData credit call per postcode per day = ~3 credits each.</li>
-            <li>· Recommended size: 10–30 postcodes (covers a city patch without burning credits).</li>
-            <li>· The Monday agent-prospecting cron uses the same list.</li>
+            <li>· <strong>Target postcodes (districts above)</strong> drive HMCTS probate filtering, The Gazette parsing, and the Monday agent-prospecting cron. Format: <code className="rounded bg-white px-1">M14</code>, <code className="rounded bg-white px-1">SK4</code>.</li>
+            <li>· <strong>Scan seeds (full postcodes below)</strong> drive PropertyData <code className="rounded bg-white px-1">/sourced-properties</code> and <code className="rounded bg-white px-1">/listings</code> — both reject districts. Format: <code className="rounded bg-white px-1">M14 5LL</code> + radius.</li>
+            <li>· <strong>For full coverage you need both.</strong> One scan seed per district, 1 mile radius is a good default.</li>
+            <li>· ~6 PropertyData credits per seed per daily run (3 sourced + 3 listings).</li>
           </ul>
         </div>
 
