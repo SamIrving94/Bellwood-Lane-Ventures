@@ -155,6 +155,37 @@ async function lookupByAddressLive(address: string): Promise<OsPlace[]> {
 // ---------------------------------------------------------------------------
 
 /**
+ * Free-text search returning up to N OsPlace suggestions. Used by
+ * typeahead UIs where the user types a town, area, or partial postcode
+ * and we want a ranked list of matches.
+ *
+ * Returns [] (not synthetic) on failure so the UI can fall back to its
+ * own resolver or show "no suggestions".
+ */
+export async function findPlaces(
+  query: string,
+  limit = 8,
+): Promise<OsPlace[]> {
+  const apiKey = process.env.OS_PLACES_API_KEY ?? '';
+  if (!apiKey || !query.trim()) return [];
+  try {
+    const data = (await osGet('/find', {
+      query,
+      maxresults: limit,
+      dataset: 'DPA',
+    })) as Record<string, unknown>;
+    const results =
+      (data.results as Record<string, unknown>[] | undefined) ?? [];
+    return results.map(parseResult).filter((r) => !!r.postcode);
+  } catch (err) {
+    console.warn(
+      `[property-data/os-places] findPlaces failed: ${(err as Error).message}`,
+    );
+    return [];
+  }
+}
+
+/**
  * Look up all residential addresses within a postcode, returning their UPRNs.
  */
 export async function lookupByPostcode(postcode: string): Promise<OsPlace[]> {

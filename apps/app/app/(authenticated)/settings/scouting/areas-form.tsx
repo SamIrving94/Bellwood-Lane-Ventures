@@ -3,21 +3,27 @@
 import { useState, useTransition } from 'react';
 import {
   addArea,
+  addAreaFromSuggestion,
   removeArea,
   reProbeArea,
   triggerScoutNow,
   widenArea,
   type Area,
+  type AreaLeadStats,
+  type Suggestion,
 } from './areas-actions';
+import { AreaTypeahead } from './area-typeahead';
 
 type Props = {
   initial: Area[];
+  leadStats: Record<string, AreaLeadStats>;
 };
 
-type Status = {
-  kind: 'idle' | 'error' | 'info' | 'success';
-  message?: string;
-};
+type Toast = {
+  kind: 'success' | 'error' | 'info';
+  message: string;
+  undo?: () => void;
+} | null;
 
 function StatusDot({ count, error }: { count: number; error: string | null }) {
   if (error) return <span className="text-rose-500">●</span>;
@@ -37,92 +43,233 @@ function formatRelative(iso: string): string {
   return `${days}d ago`;
 }
 
-export function AreasForm({ initial }: Props) {
+/**
+ * Inline SVG sparkline of the listing-count history. Renders nothing if
+ * fewer than 2 datapoints.
+ */
+function Sparkline({
+  history,
+  width = 80,
+  height = 24,
+}: {
+  history: Area['history'];
+  width?: number;
+  height?: number;
+}) {
+  if (!history || history.length < 2) {
+    return <span className="text-[10px] text-slate-300">no history yet</span>;
+  }
+  const values = history.map((h) => h.count);
+  const max = Math.max(...values, 1);
+  const min = 0;
+  const range = max - min || 1;
+  const step = width / (history.length - 1);
+  const points = history
+    .map((h, i) => {
+      const x = i * step;
+      const y = height - ((h.count - min) / range) * height;
+      return `${x.toFixed(1)},${y.toFixed(1)}`;
+    })
+    .join(' ');
+  const last = values[values.length - 1] ?? 0;
+  const stroke =
+    last === 0 ? '#cbd5e1' : last < 5 ? '#f59e0b' : '#10b981';
+
+  return (
+    <svg
+      width={width}
+      height={height}
+      viewBox={`0 0 ${width} ${height}`}
+      className="overflow-visible"
+      aria-label={`Sparkline showing ${history.length} days of listings`}
+    >
+      <polyline
+        fill="none"
+        stroke={stroke}
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        points={points}
+      />
+    </svg>
+  );
+}
+
+function LeadBreakdown({ stats }: { stats: AreaLeadStats | undefined }) {
+  if (!stats || stats.total7d === 0) return null;
+  const { byType, total7d, strong7d } = stats;
+  return (
+    <p className="text-[11px] text-emerald-700">
+      <span className="font-semibold">
+        {total7d} lead{total7d === 1 ? '' : 's'} in last 7d
+      </span>
+      {strong7d > 0 && (
+        <span className="ml-1 rounded-full bg-emerald-100 px-1.5 py-0.5 text-[10px] font-medium text-emerald-900">
+          {strong7d} STRONG
+        </span>
+      )}
+      <span className="ml-2 text-[10px] text-slate-500">
+        {Object.entries(byType)
+          .filter(([, v]) => v > 0)
+          .map(([k, v]) => `${k}:${v}`)
+          .join(' · ')}
+      </span>
+    </p>
+  );
+}
+
+export function AreasForm({ initial, leadStats }: Props) {
   const [areas, setAreas] = useState<Area[]>(initial);
   const [input, setInput] = useState('');
   const [pendingAdd, startAdd] = useTransition();
   const [pendingAction, startAction] = useTransition();
   const [pendingScout, startScout] = useTransition();
-  const [status, setStatus] = useState<Status>({ kind: 'idle' });
-  const [runResult, setRunResult] = useState<unknown>(null);
+  const [toast, setToast] = useState<Toast>(null);
+  /**
+   * Optimistic row tracking — when we kick off an add, we insert a
+   * placeholder row immediately, then replace it once the server responds.
+   */
+  const [pendingRows, setPendingRows] = useState<
+    Array<{ tempId: string; label: string }>
+  >([]);
 
-  const handleAdd = () => {
-    if (!input.trim()) return;
-    setStatus({ kind: 'idle' });
+  function showToast(t: Toast, ms = 5000) {
+    setToast(t);
+    if (t && ms > 0) setTimeout(() => setToast(null), ms);
+  }
+
+  function commitAdd(picked?: Suggestion) {
+    const tempId = `tmp_${Date.now()}`;
+    const optimisticLabel =
+      picked?.label || input.trim() || 'Adding area…';
+    setPendingRows((cur) => [...cur, { tempId, label: optimisticLabel }]);
+    setInput('');
+
     startAdd(async () => {
-      const r = await addArea(input.trim());
+      const r = picked
+        ? await addAreaFromSuggestion({
+            label: picked.label,
+            seedPostcode: picked.seedPostcode,
+            district: picked.district,
+          })
+        : await addArea(optimisticLabel);
+
+      setPendingRows((cur) => cur.filter((p) => p.tempId !== tempId));
+
       if (r.ok) {
         setAreas((cur) => [...cur, r.area]);
-        setInput('');
         const c = r.area.lastProbe?.listingCount ?? 0;
-        setStatus({
+        showToast({
           kind: c > 0 ? 'success' : 'info',
           message:
             c > 0
-              ? `Added ${r.area.label} — ${c} listings.`
-              : `Added ${r.area.label}. No listings yet — try widening the radius.`,
+              ? `✓ ${r.area.label} added — ${c} listings found.`
+              : `${r.area.label} added. No listings yet — try widening the radius.`,
         });
       } else {
-        setStatus({ kind: 'error', message: r.error });
+        showToast({ kind: 'error', message: r.error });
       }
     });
-  };
+  }
 
-  const handleRemove = (id: string) => {
+  function handleAdd() {
+    if (!input.trim()) return;
+    commitAdd();
+  }
+
+  function handlePick(s: Suggestion) {
+    commitAdd(s);
+  }
+
+  function handleRemove(area: Area) {
+    const idx = areas.findIndex((a) => a.id === area.id);
+    if (idx === -1) return;
+
+    const removed = area;
+    const previous = areas;
+    setAreas((cur) => cur.filter((a) => a.id !== area.id));
+
+    const undo = () => {
+      setAreas(previous);
+      setToast(null);
+    };
+
+    showToast(
+      {
+        kind: 'info',
+        message: `Removed ${area.label}.`,
+        undo,
+      },
+      6000,
+    );
+
     startAction(async () => {
-      await removeArea(id);
-      setAreas((cur) => cur.filter((a) => a.id !== id));
+      await removeArea(removed.id);
     });
-  };
+  }
 
-  const handleWiden = (id: string) => {
+  function handleWiden(id: string) {
     startAction(async () => {
       const r = await widenArea(id);
       if (r.ok) {
-        setAreas((cur) =>
-          cur.map((a) => (a.id === id ? r.area : a)),
-        );
+        setAreas((cur) => cur.map((a) => (a.id === id ? r.area : a)));
+        const c = r.area.lastProbe?.listingCount ?? 0;
+        showToast({
+          kind: c > 0 ? 'success' : 'info',
+          message:
+            c > 0
+              ? `✓ Widened to ${r.area.radiusMiles}mi — ${c} listings now.`
+              : `Widened to ${r.area.radiusMiles}mi. Still no listings.`,
+        });
       } else {
-        setStatus({ kind: 'error', message: r.error });
+        showToast({ kind: 'error', message: r.error });
       }
     });
-  };
+  }
 
-  const handleReProbe = (id: string) => {
+  function handleReProbe(id: string) {
     startAction(async () => {
       const r = await reProbeArea(id);
       if (r.ok) {
-        setAreas((cur) =>
-          cur.map((a) => (a.id === id ? r.area : a)),
-        );
-      } else {
-        setStatus({ kind: 'error', message: r.error });
+        setAreas((cur) => cur.map((a) => (a.id === id ? r.area : a)));
+        const c = r.area.lastProbe?.listingCount ?? 0;
+        showToast({
+          kind: 'info',
+          message: `Re-checked ${r.area.label} — ${c} listings.`,
+        });
       }
     });
-  };
+  }
 
-  const handleScout = () => {
-    setRunResult(null);
-    setStatus({ kind: 'idle' });
+  function handleScout() {
+    showToast(null, 0);
     startScout(async () => {
       const r = await triggerScoutNow();
       if (r.ok && r.result) {
         const res = r.result as {
           qualified?: number;
           highScoreLeads?: number;
+          strongLeads?: number;
           fetched?: number;
-          sources?: Record<string, number>;
         };
-        setRunResult(res);
-        setStatus({
-          kind: 'success',
-          message: `Scout complete — fetched ${res.fetched ?? 0}, qualified ${res.qualified ?? 0}, ${res.highScoreLeads ?? 0} scored ≥70.`,
-        });
+        const found = res.qualified ?? 0;
+        const strong = res.strongLeads ?? 0;
+        const high = res.highScoreLeads ?? 0;
+        showToast(
+          {
+            kind: found > 0 ? 'success' : 'info',
+            message:
+              found > 0
+                ? `✓ Scout complete — ${found} leads (${strong} STRONG, ${high} scored ≥70). View them on Today →`
+                : `Scout complete. No new leads this run.`,
+          },
+          8000,
+        );
       } else {
-        setStatus({ kind: 'error', message: r.error ?? 'Scout failed.' });
+        showToast({ kind: 'error', message: r.error ?? 'Scout failed.' });
       }
     });
-  };
+  }
 
   const totalListings = areas.reduce(
     (s, a) => s + (a.lastProbe?.listingCount ?? 0),
@@ -140,22 +287,15 @@ export function AreasForm({ initial }: Props) {
           Add an area
         </h2>
         <p className="mt-2 max-w-2xl text-muted-foreground text-sm">
-          Type a UK town, a postcode district, or a full postcode. We&rsquo;ll
-          check PropertyData for listings in that area right now.
+          Type a UK town, district, or postcode. We&rsquo;ll suggest as you
+          type, then check PropertyData for live listings the moment you add.
         </p>
         <div className="mt-4 flex flex-col gap-2 sm:flex-row">
-          <input
-            type="text"
+          <AreaTypeahead
             value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                e.preventDefault();
-                handleAdd();
-              }
-            }}
-            placeholder="e.g. Manchester · M14 · SK4 4QR · Leeds"
-            className="flex-1 rounded-xl border border-slate-300 bg-white px-4 py-3 text-[15px] outline-none focus:border-amber-400"
+            onChange={setInput}
+            onPick={handlePick}
+            onSubmit={handleAdd}
             disabled={pendingAdd}
           />
           <button
@@ -164,24 +304,34 @@ export function AreasForm({ initial }: Props) {
             disabled={pendingAdd || !input.trim()}
             className="rounded-xl bg-slate-900 px-6 py-3 text-sm font-medium text-white transition hover:bg-slate-800 disabled:opacity-50"
           >
-            {pendingAdd ? 'Checking…' : '+ Add area'}
+            + Add area
           </button>
         </div>
-
-        {status.kind !== 'idle' && status.message && (
-          <div
-            className={`mt-4 rounded-xl border px-4 py-3 text-sm ${
-              status.kind === 'error'
-                ? 'border-rose-200 bg-rose-50 text-rose-800'
-                : status.kind === 'success'
-                  ? 'border-emerald-200 bg-emerald-50 text-emerald-900'
-                  : 'border-amber-200 bg-amber-50 text-amber-900'
-            }`}
-          >
-            {status.message}
-          </div>
-        )}
       </div>
+
+      {/* Toast */}
+      {toast && (
+        <div
+          className={`flex items-center justify-between gap-4 rounded-xl border px-4 py-3 text-sm ${
+            toast.kind === 'error'
+              ? 'border-rose-200 bg-rose-50 text-rose-800'
+              : toast.kind === 'success'
+                ? 'border-emerald-200 bg-emerald-50 text-emerald-900'
+                : 'border-amber-200 bg-amber-50 text-amber-900'
+          }`}
+        >
+          <p className="flex-1">{toast.message}</p>
+          {toast.undo && (
+            <button
+              type="button"
+              onClick={toast.undo}
+              className="rounded-lg border border-current/30 bg-white/40 px-3 py-1 text-xs font-medium hover:bg-white"
+            >
+              Undo
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Areas list */}
       <div className="rounded-2xl border bg-card p-6">
@@ -191,7 +341,7 @@ export function AreasForm({ initial }: Props) {
               Your areas
             </p>
             <h2 className="mt-1 font-semibold text-xl tracking-tight">
-              {areas.length === 0
+              {areas.length === 0 && pendingRows.length === 0
                 ? 'No areas yet'
                 : `${areas.length} area${areas.length === 1 ? '' : 's'} · ${totalListings} listings`}
             </h2>
@@ -208,10 +358,11 @@ export function AreasForm({ initial }: Props) {
           )}
         </div>
 
-        {areas.length === 0 ? (
+        {areas.length === 0 && pendingRows.length === 0 ? (
           <p className="mt-6 rounded-xl border border-dashed border-slate-300 bg-slate-50 p-6 text-center text-muted-foreground text-sm">
-            Add your first area above. Type a town like &ldquo;Manchester&rdquo;
-            and we&rsquo;ll do the rest.
+            Add your first area above. Most founders start with 3&ndash;5
+            cities. Try &ldquo;Manchester&rdquo;, &ldquo;Stockport&rdquo;,
+            &ldquo;Leeds&rdquo;.
           </p>
         ) : (
           <ul className="mt-4 divide-y divide-slate-200 rounded-xl border border-slate-200">
@@ -219,6 +370,7 @@ export function AreasForm({ initial }: Props) {
               const count = a.lastProbe?.listingCount ?? 0;
               const error = a.lastProbe?.error ?? null;
               const checked = a.lastProbe?.checkedAt;
+              const stats = leadStats[a.district];
               return (
                 <li
                   key={a.id}
@@ -241,9 +393,11 @@ export function AreasForm({ initial }: Props) {
                         ? `Error: ${error.slice(0, 80)}`
                         : `${count} listing${count === 1 ? '' : 's'}${checked ? ` · checked ${formatRelative(checked)}` : ''}`}
                     </div>
+                    <LeadBreakdown stats={stats} />
                   </div>
+                  <Sparkline history={a.history} />
                   <div className="flex items-center gap-1">
-                    {count === 0 && !error && a.radiusMiles < 10 && (
+                    {!error && a.radiusMiles < 10 && (
                       <button
                         type="button"
                         onClick={() => handleWiden(a.id)}
@@ -264,7 +418,7 @@ export function AreasForm({ initial }: Props) {
                     </button>
                     <button
                       type="button"
-                      onClick={() => handleRemove(a.id)}
+                      onClick={() => handleRemove(a)}
                       disabled={pendingAction}
                       className="rounded-lg border border-transparent px-2 py-1 text-rose-600 hover:bg-rose-50 disabled:opacity-50"
                       aria-label={`Remove ${a.label}`}
@@ -275,24 +429,46 @@ export function AreasForm({ initial }: Props) {
                 </li>
               );
             })}
+            {/* Optimistic placeholder rows for areas being added */}
+            {pendingRows.map((p) => (
+              <li
+                key={p.tempId}
+                className="flex items-center gap-3 px-4 py-3 text-sm opacity-70"
+              >
+                <span className="inline-block h-3 w-3 animate-pulse rounded-full bg-amber-300" />
+                <div className="flex-1">
+                  <span className="font-semibold text-slate-900">
+                    {p.label}
+                  </span>
+                  <span className="ml-2 font-mono text-[11px] text-slate-500">
+                    Checking listings…
+                  </span>
+                </div>
+              </li>
+            ))}
           </ul>
         )}
 
         <p className="mt-4 text-[12px] text-muted-foreground">
-          Scout runs automatically every morning at 07:00 UTC. High-scoring
-          leads land on the Today page.
+          Scout runs automatically every morning at 07:00 UTC (
+          {new Date().toLocaleString('en-GB', {
+            hour: '2-digit',
+            minute: '2-digit',
+            timeZone: 'Europe/London',
+            timeZoneName: 'short',
+          })
+            .split(' ')
+            .pop() ?? 'UK'}{' '}
+          time:{' '}
+          {new Date(
+            new Date().setUTCHours(7, 0, 0, 0),
+          ).toLocaleString('en-GB', {
+            hour: '2-digit',
+            minute: '2-digit',
+            timeZone: 'Europe/London',
+          })}
+          ). High-scoring leads land on the Today page.
         </p>
-
-        {runResult !== null && (
-          <details className="mt-4">
-            <summary className="cursor-pointer text-xs text-muted-foreground">
-              Last manual run details
-            </summary>
-            <pre className="mt-2 max-h-48 overflow-auto rounded bg-black/5 p-3 font-mono text-[11px]">
-              {JSON.stringify(runResult, null, 2)}
-            </pre>
-          </details>
-        )}
       </div>
     </div>
   );

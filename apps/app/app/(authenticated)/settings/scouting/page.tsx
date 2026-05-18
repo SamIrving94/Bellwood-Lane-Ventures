@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { Header } from '../../components/header';
 import { AreasForm } from './areas-form';
-import { getAreas } from './areas-actions';
+import { getAreaLeadStats, getAreas } from './areas-actions';
 
 export const metadata: Metadata = {
   title: 'Scouting · Settings — Bellwoods Lane',
@@ -18,8 +18,9 @@ export default async function ScoutingSettingsPage() {
   const { userId } = await auth();
   if (!userId) redirect('/sign-in');
 
-  const [areas, lastRun, recentLeadCount] = await Promise.all([
+  const [areas, leadStats, lastRun, recentLeadCount] = await Promise.all([
     getAreas(),
+    getAreaLeadStats(),
     database.agentEvent.findFirst({
       where: { eventType: 'leads_created' },
       orderBy: { createdAt: 'desc' },
@@ -53,7 +54,7 @@ export default async function ScoutingSettingsPage() {
           </p>
         </div>
 
-        <AreasForm initial={areas} />
+        <AreasForm initial={areas} leadStats={leadStats} />
 
         {/* Recent run snapshot */}
         <div className="rounded-2xl border bg-card p-5">

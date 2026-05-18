@@ -6,6 +6,7 @@ import {
   getActiveListings,
   getSourcedProperties,
 } from '@repo/property-data/src/propertydata';
+import { findPlaces } from '@repo/property-data/src/os-places';
 import { revalidatePath } from 'next/cache';
 
 const AREAS_KEY = 'scouting.areas';
@@ -26,7 +27,22 @@ export type Area = {
     checkedAt: string;
     error: string | null;
   } | null;
+  /** Rolling 30-day listing-count history for the sparkline. */
+  history?: Array<{ date: string; count: number }>;
 };
+
+function appendHistory(
+  current: Area['history'] | undefined,
+  count: number,
+): Array<{ date: string; count: number }> {
+  const today = new Date().toISOString().slice(0, 10);
+  const prev = current ?? [];
+  // If we already have today's entry, replace it; otherwise append.
+  const withoutToday = prev.filter((h) => h.date !== today);
+  const next = [...withoutToday, { date: today, count }];
+  // Keep last 30 days
+  return next.slice(-30);
+}
 
 // ───────────────────────────────────────────────────────────────────────
 // Input resolver
@@ -269,6 +285,9 @@ async function loadAreas(): Promise<Area[]> {
           a.lastProbe && typeof a.lastProbe === 'object'
             ? (a.lastProbe as Area['lastProbe'])
             : null,
+        history: Array.isArray(a.history)
+          ? (a.history as Array<{ date: string; count: number }>)
+          : [],
       },
     ];
   });
@@ -361,6 +380,89 @@ async function migrateLegacyIfNeeded(userId: string): Promise<Area[]> {
 // Public actions
 // ───────────────────────────────────────────────────────────────────────
 
+// ───────────────────────────────────────────────────────────────────────
+// Typeahead — search via OS Places, dedupe by district
+// ───────────────────────────────────────────────────────────────────────
+
+export type Suggestion = {
+  label: string;
+  seedPostcode: string;
+  district: string;
+  source: 'os-places' | 'builtin';
+};
+
+export async function searchAreaSuggestions(
+  query: string,
+): Promise<Suggestion[]> {
+  const { userId } = await auth();
+  if (!userId || !query.trim() || query.trim().length < 2) return [];
+
+  const trimmed = query.trim();
+  const out: Suggestion[] = [];
+  const seen = new Set<string>();
+
+  // 1. Built-in town/district map first — instant, no network
+  const lower = trimmed.toLowerCase();
+  for (const [town, postcode] of Object.entries(TOWN_SAMPLES)) {
+    if (town.startsWith(lower) && out.length < 5) {
+      const district = districtFromPostcode(postcode);
+      if (!seen.has(district)) {
+        seen.add(district);
+        out.push({
+          label: titleCase(town),
+          seedPostcode: postcode,
+          district,
+          source: 'builtin',
+        });
+      }
+    }
+  }
+  const upper = trimmed.toUpperCase().replace(/\s/g, '');
+  for (const [district, postcode] of Object.entries(DISTRICT_SAMPLES)) {
+    if (district.startsWith(upper) && out.length < 8) {
+      if (!seen.has(district)) {
+        seen.add(district);
+        out.push({
+          label: district,
+          seedPostcode: postcode,
+          district,
+          source: 'builtin',
+        });
+      }
+    }
+  }
+
+  // 2. OS Places live search for anything else (towns we don't have,
+  //    specific street names, full postcodes)
+  if (out.length < 8) {
+    try {
+      const places = await findPlaces(trimmed, 8);
+      for (const p of places) {
+        if (out.length >= 8) break;
+        if (!p.postcode) continue;
+        const district = districtFromPostcode(p.postcode);
+        if (seen.has(district)) continue;
+        seen.add(district);
+        // Use the OS address as the label, fall back to postcode + town
+        const label = p.address
+          ? p.address.split(',').slice(-3, -1).join(',').trim() ||
+            p.postcode
+          : p.postcode;
+        out.push({
+          label: label.length > 60 ? label.slice(0, 60) + '…' : label,
+          seedPostcode: p.postcode,
+          district,
+          source: 'os-places',
+        });
+      }
+    } catch {
+      // Silent — built-in results are still useful
+    }
+  }
+
+  return out;
+}
+
 export async function getAreas(): Promise<Area[]> {
   const { userId } = await auth();
   if (!userId) return [];
@@ -375,7 +477,43 @@ export async function addArea(
 
   const resolved = resolveInput(input);
   if (!resolved.ok) return { ok: false, error: resolved.error };
+  return addResolvedArea(userId, {
+    label: resolved.label,
+    seedPostcode: resolved.seedPostcode,
+    district: resolved.district,
+    radiusMiles: resolved.radiusMiles,
+  });
+}
 
+/**
+ * Add directly from a typeahead suggestion — skips the input parser since
+ * we already have a resolved postcode + district.
+ */
+export async function addAreaFromSuggestion(suggestion: {
+  label: string;
+  seedPostcode: string;
+  district: string;
+}): Promise<{ ok: true; area: Area } | { ok: false; error: string }> {
+  const { userId } = await auth();
+  if (!userId) return { ok: false, error: 'Unauthorized' };
+
+  return addResolvedArea(userId, {
+    label: suggestion.label,
+    seedPostcode: suggestion.seedPostcode,
+    district: suggestion.district,
+    radiusMiles: 1.5,
+  });
+}
+
+async function addResolvedArea(
+  userId: string,
+  resolved: {
+    label: string;
+    seedPostcode: string;
+    district: string;
+    radiusMiles: number;
+  },
+): Promise<{ ok: true; area: Area } | { ok: false; error: string }> {
   const existing = await migrateLegacyIfNeeded(userId);
   if (existing.some((a) => a.district === resolved.district)) {
     return {
@@ -397,6 +535,7 @@ export async function addArea(
       checkedAt: new Date().toISOString(),
       error: probe.error,
     },
+    history: appendHistory([], probe.listingCount),
   };
 
   const updated = [...existing, newArea];
@@ -436,6 +575,7 @@ export async function widenArea(
       checkedAt: new Date().toISOString(),
       error: probe.error,
     },
+    history: appendHistory(current.history, probe.listingCount),
   };
 
   const next = [...existing];
@@ -463,6 +603,7 @@ export async function reProbeArea(
       checkedAt: new Date().toISOString(),
       error: probe.error,
     },
+    history: appendHistory(current.history, probe.listingCount),
   };
 
   const next = [...existing];
@@ -470,6 +611,64 @@ export async function reProbeArea(
   await saveAreas(next, userId);
   revalidatePath('/settings/scouting');
   return { ok: true, area: updated };
+}
+
+// ───────────────────────────────────────────────────────────────────────
+// Per-area lead breakdown — group ScoutLeads by district from postcode
+// ───────────────────────────────────────────────────────────────────────
+
+export type AreaLeadStats = {
+  district: string;
+  total7d: number;
+  strong7d: number;
+  byType: {
+    probate: number;
+    repossession: number;
+    bmv: number;
+    auction: number;
+    stale: number;
+    other: number;
+  };
+};
+
+export async function getAreaLeadStats(): Promise<Record<string, AreaLeadStats>> {
+  const { userId } = await auth();
+  if (!userId) return {};
+  const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+  const leads = await database.scoutLead.findMany({
+    where: { createdAt: { gte: since } },
+    select: { postcode: true, source: true, verdict: true },
+  });
+  const out: Record<string, AreaLeadStats> = {};
+  for (const lead of leads) {
+    const district = districtFromPostcode(lead.postcode);
+    if (!out[district]) {
+      out[district] = {
+        district,
+        total7d: 0,
+        strong7d: 0,
+        byType: {
+          probate: 0,
+          repossession: 0,
+          bmv: 0,
+          auction: 0,
+          stale: 0,
+          other: 0,
+        },
+      };
+    }
+    const row = out[district]!;
+    row.total7d += 1;
+    if (lead.verdict === 'STRONG') row.strong7d += 1;
+    const src = (lead.source ?? '').toLowerCase();
+    if (src.includes('probate')) row.byType.probate += 1;
+    else if (src.includes('repos')) row.byType.repossession += 1;
+    else if (src.includes('bmv')) row.byType.bmv += 1;
+    else if (src.includes('auction')) row.byType.auction += 1;
+    else if (src.includes('stale')) row.byType.stale += 1;
+    else row.byType.other += 1;
+  }
+  return out;
 }
 
 export async function triggerScoutNow(): Promise<{
