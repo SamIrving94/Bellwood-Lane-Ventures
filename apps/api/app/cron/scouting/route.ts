@@ -17,49 +17,80 @@ export const POST = async (request: Request) => {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  // Read target postcodes from the DB-backed Setting (founder-managed via
-  // /settings/scouting in the dashboard). Falls back to the legacy
-  // AGENT_PROSPECTING_POSTCODES env var if no setting is configured.
+  // ── Read scouting.areas (the new single source) ─────────────────────
+  // Each Area = { label, seedPostcode, district, radiusMiles, lastProbe }
+  // Derive both: districts[] for HMCTS/Gazette/agent-prospecting AND
+  // scanSeeds[] for PropertyData /sourced-properties + /listings.
+  type ScanSeed = { label?: string; postcode: string; radiusMiles: number };
+  let scanSeeds: ScanSeed[] = [];
   let sourcedPropertyPostcodes: string[] = [];
+
   try {
-    const setting = await database.setting.findUnique({
-      where: { key: 'scouting.targetPostcodes' },
+    const areasSetting = await database.setting.findUnique({
+      where: { key: 'scouting.areas' },
     });
-    if (setting && Array.isArray(setting.value)) {
-      sourcedPropertyPostcodes = (setting.value as unknown[]).filter(
-        (v): v is string => typeof v === 'string' && v.trim().length > 0,
+    if (areasSetting && Array.isArray(areasSetting.value)) {
+      const areas = (areasSetting.value as unknown[]).flatMap((raw) => {
+        if (!raw || typeof raw !== 'object') return [];
+        const a = raw as Record<string, unknown>;
+        const seedPostcode =
+          typeof a.seedPostcode === 'string' ? a.seedPostcode : null;
+        const district = typeof a.district === 'string' ? a.district : null;
+        const radiusMiles =
+          typeof a.radiusMiles === 'number' ? a.radiusMiles : 1.5;
+        const label = typeof a.label === 'string' ? a.label : undefined;
+        if (!seedPostcode || !district) return [];
+        return [{ seedPostcode, district, radiusMiles, label }];
+      });
+      scanSeeds = areas.map((a) => ({
+        label: a.label,
+        postcode: a.seedPostcode,
+        radiusMiles: a.radiusMiles,
+      }));
+      sourcedPropertyPostcodes = Array.from(
+        new Set(areas.map((a) => a.district)),
       );
     }
   } catch (err) {
-    console.warn('[cron/scouting] failed to read postcodes from DB, falling back to env', err);
-  }
-  if (sourcedPropertyPostcodes.length === 0) {
-    sourcedPropertyPostcodes = (env.AGENT_PROSPECTING_POSTCODES ?? '')
-      .split(',')
-      .map((p) => p.trim())
-      .filter(Boolean);
+    console.warn('[cron/scouting] failed to read scouting.areas', err);
   }
 
-  // Scan seeds — full UK postcodes with a radius. PropertyData's
-  // /sourced-properties needs these (it rejects bare districts).
-  type ScanSeed = { label?: string; postcode: string; radiusMiles: number };
-  let scanSeeds: ScanSeed[] = [];
-  try {
-    const seedsSetting = await database.setting.findUnique({
-      where: { key: 'scouting.scanSeeds' },
-    });
-    if (seedsSetting && Array.isArray(seedsSetting.value)) {
-      scanSeeds = (seedsSetting.value as unknown[]).flatMap((raw) => {
-        if (!raw || typeof raw !== 'object') return [];
-        const s = raw as Record<string, unknown>;
-        const postcode = typeof s.postcode === 'string' ? s.postcode : null;
-        const radiusMiles = typeof s.radiusMiles === 'number' ? s.radiusMiles : 1;
-        const label = typeof s.label === 'string' ? s.label : undefined;
-        return postcode ? [{ postcode, radiusMiles, label }] : [];
+  // ── Legacy fallback ─────────────────────────────────────────────────
+  // If scouting.areas is empty, fall back to the old keys so existing
+  // configs keep working through the migration window.
+  if (scanSeeds.length === 0 && sourcedPropertyPostcodes.length === 0) {
+    try {
+      const districtsRow = await database.setting.findUnique({
+        where: { key: 'scouting.targetPostcodes' },
       });
+      if (districtsRow && Array.isArray(districtsRow.value)) {
+        sourcedPropertyPostcodes = (districtsRow.value as unknown[]).filter(
+          (v): v is string => typeof v === 'string' && v.trim().length > 0,
+        );
+      }
+      const seedsRow = await database.setting.findUnique({
+        where: { key: 'scouting.scanSeeds' },
+      });
+      if (seedsRow && Array.isArray(seedsRow.value)) {
+        scanSeeds = (seedsRow.value as unknown[]).flatMap((raw) => {
+          if (!raw || typeof raw !== 'object') return [];
+          const s = raw as Record<string, unknown>;
+          const postcode = typeof s.postcode === 'string' ? s.postcode : null;
+          const radiusMiles =
+            typeof s.radiusMiles === 'number' ? s.radiusMiles : 1;
+          const label = typeof s.label === 'string' ? s.label : undefined;
+          return postcode ? [{ postcode, radiusMiles, label }] : [];
+        });
+      }
+    } catch (err) {
+      console.warn('[cron/scouting] legacy fallback read failed', err);
     }
-  } catch (err) {
-    console.warn('[cron/scouting] failed to read scan seeds from DB', err);
+    if (sourcedPropertyPostcodes.length === 0) {
+      sourcedPropertyPostcodes = (env.AGENT_PROSPECTING_POSTCODES ?? '')
+        .split(',')
+        .map((p) => p.trim())
+        .filter(Boolean);
+    }
   }
 
   const result = await runScoutingPipeline({
