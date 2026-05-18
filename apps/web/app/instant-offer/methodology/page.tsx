@@ -157,7 +157,7 @@ export default function MethodologyPage() {
                   </span>
                 </div>
                 <p className="mt-3 text-xs text-slate-500">
-                  (78.3% of AVM mid, completion target 18 days)
+                  (78.3% of AVM mid, completion in weeks not months)
                 </p>
               </div>
             }

@@ -4,15 +4,15 @@
 // Fed by static seed data for now. Could be wired to live API later.
 
 const TICKER_ITEMS: Array<{ kind: 'deal' | 'stat'; text: string }> = [
-  { kind: 'stat', text: 'Median time-to-completion · 18 days' },
-  { kind: 'deal', text: 'M14.PRB.0419 · Manchester probate · £142,000 · 19d' },
-  { kind: 'deal', text: 'BR3.CHN.0402 · Bromley chain break · £318,000 · 14d' },
-  { kind: 'stat', text: 'Re-trades since launch · 0' },
-  { kind: 'deal', text: 'LS6.SHL.0328 · Leeds short lease · £89,500 · 23d' },
+  { kind: 'stat', text: 'Typical completion · weeks not months' },
+  { kind: 'deal', text: 'M14.PRB.0419 · Manchester probate · £142,000' },
+  { kind: 'deal', text: 'BR3.CHN.0402 · Bromley chain break · £318,000' },
+  { kind: 'stat', text: 'Price changes since launch · 0 (outside the 3 documented exceptions)' },
+  { kind: 'deal', text: 'LS6.SHL.0328 · Leeds short lease · £89,500' },
   { kind: 'stat', text: 'Avg comps used per offer · 47' },
-  { kind: 'deal', text: 'B15.RPS.0316 · Birmingham repossession · £164,200 · 16d' },
+  { kind: 'deal', text: 'B15.RPS.0316 · Birmingham repossession · £164,200' },
   { kind: 'stat', text: 'Founder review on offers under 70% AVM · always' },
-  { kind: 'deal', text: 'BS5.PRB.0303 · Bristol probate · £228,800 · 22d' },
+  { kind: 'deal', text: 'BS5.PRB.0303 · Bristol probate · £228,800' },
   { kind: 'stat', text: 'Engine median latency · 91ms' },
 ];
 
