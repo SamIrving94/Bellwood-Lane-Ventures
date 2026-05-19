@@ -414,16 +414,22 @@ export type SourcedProperty = {
  */
 export const SOURCED_LIST_TYPES = [
   'repossession',
-  'bmv', // below market value
-  'auction',
   'probate',
-  'cashbuyer',
+  'auction',
+  'belowmarketvalue',
   'unmodernised',
+  'cashbuyer',
 ] as const;
 
 export type SourcedListType = (typeof SOURCED_LIST_TYPES)[number];
 
-const DEFAULT_LIST = 'repossession,bmv,auction,probate,unmodernised';
+/**
+ * Conservative default — these two are universally available on
+ * PropertyData and unambiguous. Other list types may require a higher
+ * tier or use slightly different identifiers per area; we add them back
+ * once we've verified what this account supports.
+ */
+const DEFAULT_LIST = 'repossession,probate';
 
 export async function getSourcedPropertiesRaw(
   postcode: string,
