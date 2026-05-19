@@ -402,7 +402,6 @@ export function ChatFlow({ defaultRole }: ChatFlowProps = {}) {
         {step === 'address' && (
           <form onSubmit={handleAddressSubmit} className="space-y-2 pl-11">
             <input
-              autoFocus
               type="text"
               placeholder="Street address"
               value={addressInput}
