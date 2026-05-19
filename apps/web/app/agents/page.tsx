@@ -314,17 +314,6 @@ export default function AgentsPage() {
               </div>
               <div className="flex items-baseline justify-between gap-6 border-b border-slate-100 pb-4">
                 <dt>
-                  <p className="font-serif text-[17px]">Introducer fee</p>
-                  <p className="text-[12px] text-slate-500">
-                    Same day as the sale fee
-                  </p>
-                </dt>
-                <dd className="font-serif text-2xl font-semibold text-[#0A1020]">
-                  £2,800
-                </dd>
-              </div>
-              <div className="flex items-baseline justify-between gap-6 border-b border-slate-100 pb-4">
-                <dt>
                   <p className="font-serif text-[17px]">Resale instruction</p>
                   <p className="text-[12px] text-slate-500">
                     Paid on resale &mdash; conditional
@@ -341,7 +330,7 @@ export default function AgentsPage() {
                   </p>
                 </dt>
                 <dd className="font-serif text-3xl font-semibold text-[#C6A664]">
-                  Up to £10,080
+                  Up to £7,280
                 </dd>
               </div>
             </dl>
