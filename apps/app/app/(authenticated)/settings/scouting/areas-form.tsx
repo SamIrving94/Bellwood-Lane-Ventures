@@ -450,24 +450,17 @@ export function AreasForm({ initial, leadStats }: Props) {
         )}
 
         <p className="mt-4 text-[12px] text-muted-foreground">
-          Scout runs automatically every morning at 07:00 UTC (
-          {new Date().toLocaleString('en-GB', {
-            hour: '2-digit',
-            minute: '2-digit',
-            timeZone: 'Europe/London',
-            timeZoneName: 'short',
-          })
-            .split(' ')
-            .pop() ?? 'UK'}{' '}
-          time:{' '}
-          {new Date(
-            new Date().setUTCHours(7, 0, 0, 0),
-          ).toLocaleString('en-GB', {
-            hour: '2-digit',
-            minute: '2-digit',
-            timeZone: 'Europe/London',
-          })}
-          ). High-scoring leads land on the Today page.
+          Scout runs automatically every morning at{' '}
+          {new Date(new Date().setUTCHours(7, 0, 0, 0)).toLocaleString(
+            'en-GB',
+            {
+              hour: '2-digit',
+              minute: '2-digit',
+              timeZone: 'Europe/London',
+              timeZoneName: 'short',
+            },
+          )}{' '}
+          (UK time). High-scoring leads land on the Today page.
         </p>
       </div>
     </div>

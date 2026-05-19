@@ -48,9 +48,9 @@ export default async function ScoutingSettingsPage() {
           </h1>
           <p className="mt-2 max-w-2xl text-muted-foreground text-sm">
             Tell the platform which UK areas to look for distressed property
-            leads in. Every morning at 07:00 UTC we pull probate, repos, BMV,
-            auction and stale-listing data from PropertyData for each area,
-            score the results, and surface high-scoring leads on Today.
+            leads in. Early each morning (UK time) we pull probate, repos,
+            BMV, auction and stale-listing data from PropertyData for each
+            area, score the results, and surface high-scoring leads on Today.
           </p>
         </div>
 
