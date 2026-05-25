@@ -3,11 +3,18 @@
  *
  * Produces a 1–100 composite score and a Verdict for each raw lead.
  *
- * Scoring model (designed in BELA-11):
- *   Motivation      45 pts  — urgency signals: lead type, Golden Window, seller pressure
- *   Equity          30 pts  — estimated equity vs area average; bigger equity = better margin
- *   Market Trend    15 pts  — HPI trend for postcode region (rising / stable / declining)
+ * Scoring model:
+ *   Motivation      40 pts  — urgency signals: lead type, Golden Window,
+ *                              velocity, pre-probate area boost
+ *   Equity          25 pts  — estimated equity vs area average
+ *   Market Trend    15 pts  — HPI trend for postcode region
  *   Contact Quality 10 pts  — completeness of contact details
+ *   Risk           +10 / -10 — flood + EPC band + short lease + planning
+ *                              enforcement. SUBTRACTS for distressed-area
+ *                              risks we don't want to acquire, ADDS for
+ *                              clean-title low-risk picks.
+ *
+ *   Total caps at 100.
  *
  * Verdicts:
  *   STRONG           ≥ 70
@@ -28,13 +35,16 @@ import type { EnrichedLead } from './enrichment';
 export type Verdict = 'STRONG' | 'VIABLE' | 'THIN' | 'PASS' | 'INSUFFICIENT_DATA';
 
 export interface ScoreBreakdown {
-  motivation: number;   // 0–45
-  equity: number;       // 0–30
+  motivation: number;   // 0–40
+  equity: number;       // 0–25
   marketTrend: number;  // 0–15
   contactQuality: number; // 0–10
-  total: number;        // 0–100
+  risk: number;         // -10 to +10 (penalty when negative)
+  total: number;        // 0–100 (clamped)
   verdict: Verdict;
   marketTrendLabel: string;
+  /** Human-readable risk reasons, e.g. ['flood: high', 'EPC F', 'lease 62y']. */
+  riskFlags: string[];
 }
 
 /**
@@ -55,6 +65,17 @@ export interface LeadSignals {
   percentOver65?: number | null;
   /** % of postcode population aged 75+. Stronger pre-probate signal. */
   percentOver75?: number | null;
+  // ── Risk inputs ──────────────────────────────────────────────────────
+  /** EA flood band: 'very low' | 'low' | 'medium' | 'high'. */
+  floodRisk?: string | null;
+  /** Property's EPC rating: A B C D E F G. F/G is a penalty. */
+  epcRating?: string | null;
+  /** Remaining lease years. <80 is a soft penalty, <60 is a hard one. */
+  remainingLeaseYears?: number | null;
+  /** Tenure: 'freehold' is +1, 'leasehold' triggers the lease check. */
+  tenure?: 'freehold' | 'leasehold' | 'unknown' | null;
+  /** Count of planning enforcement notices / refusals in the area. */
+  planningRefusalCount?: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -133,7 +154,73 @@ function scoreMotivation(
     score += 2;
   }
 
-  return Math.min(45, score);
+  return Math.min(40, score);
+}
+
+/**
+ * Risk score (-10 to +10).
+ *
+ * Heavy penalty: high flood risk, F/G EPC, very-short lease (<60 yr).
+ * Mild penalty: medium flood, E EPC, short lease (<80 yr), planning
+ * enforcement.
+ * Bonus: freehold tenure, A-C EPC, lease >100 yr, no risk flags = clean
+ * acquisition.
+ */
+function scoreRisk(signals?: LeadSignals): {
+  score: number;
+  flags: string[];
+} {
+  let score = 0;
+  const flags: string[] = [];
+  if (!signals) return { score: 0, flags: [] };
+
+  // Flood risk
+  const flood = (signals.floodRisk ?? '').toLowerCase();
+  if (flood.includes('high')) {
+    score -= 6;
+    flags.push(`flood: high`);
+  } else if (flood.includes('medium')) {
+    score -= 3;
+    flags.push(`flood: medium`);
+  } else if (flood.includes('low') || flood.includes('very low')) {
+    score += 1;
+  }
+
+  // EPC
+  const epc = (signals.epcRating ?? '').toUpperCase();
+  if (epc === 'F' || epc === 'G') {
+    score -= 4;
+    flags.push(`EPC ${epc}`);
+  } else if (epc === 'E') {
+    score -= 2;
+    flags.push(`EPC E`);
+  } else if (epc === 'A' || epc === 'B' || epc === 'C') {
+    score += 2;
+  }
+
+  // Lease
+  if (signals.tenure === 'leasehold' && typeof signals.remainingLeaseYears === 'number') {
+    if (signals.remainingLeaseYears < 60) {
+      score -= 6;
+      flags.push(`lease ${signals.remainingLeaseYears}y`);
+    } else if (signals.remainingLeaseYears < 80) {
+      score -= 3;
+      flags.push(`lease ${signals.remainingLeaseYears}y`);
+    } else if (signals.remainingLeaseYears > 125) {
+      score += 1;
+    }
+  } else if (signals.tenure === 'freehold') {
+    score += 2;
+  }
+
+  // Planning refusals (proxy for area-level enforcement risk)
+  if (signals.planningRefusalCount && signals.planningRefusalCount >= 3) {
+    score -= 2;
+    flags.push(`${signals.planningRefusalCount} planning refusals nearby`);
+  }
+
+  // Clamp to ±10
+  return { score: Math.max(-10, Math.min(10, score)), flags };
 }
 
 /**
@@ -154,17 +241,17 @@ function scoreEquity(
 
   if (!avgAreaPricePence) {
     // No comparables — give minimal credit for having an estate value
-    return 8;
+    return 6;
   }
 
   const equityRatio = lead.estateValuePence / avgAreaPricePence;
 
-  // Score bands based on LTV headroom
-  if (equityRatio >= 1.5) return 30; // Strong equity — significant BMV room
-  if (equityRatio >= 1.2) return 24;
-  if (equityRatio >= 1.0) return 18;
-  if (equityRatio >= 0.75) return 12; // Borderline — thin margins
-  if (equityRatio >= 0.5) return 6;   // Low equity — likely mortgaged
+  // Score bands based on LTV headroom (scaled to 25-point cap)
+  if (equityRatio >= 1.5) return 25; // Strong equity — significant BMV room
+  if (equityRatio >= 1.2) return 20;
+  if (equityRatio >= 1.0) return 15;
+  if (equityRatio >= 0.75) return 10; // Borderline — thin margins
+  if (equityRatio >= 0.5) return 5;   // Low equity — likely mortgaged
   return 2;                            // Very low equity
 }
 
@@ -241,8 +328,12 @@ export function scoreLead(
   const equity = scoreEquity(lead, pricePaid);
   const { score: marketTrend, label: marketTrendLabel } = scoreMarketTrend(hpi);
   const contactQuality = scoreContactQuality(lead);
+  const { score: risk, flags: riskFlags } = scoreRisk(signals);
 
-  const total = motivation + equity + marketTrend + contactQuality;
+  const total = Math.max(
+    0,
+    Math.min(100, motivation + equity + marketTrend + contactQuality + risk),
+  );
   const verdict = verdictFromScore(total, hasCriticalData);
 
   return {
@@ -250,8 +341,10 @@ export function scoreLead(
     equity,
     marketTrend,
     contactQuality,
+    risk,
     total,
     verdict,
     marketTrendLabel,
+    riskFlags,
   };
 }

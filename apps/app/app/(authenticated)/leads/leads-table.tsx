@@ -37,6 +37,7 @@ type Lead = {
   hmoLicenceExpiry: string | null;
   dissolvedCompanyName: string | null;
   dissolvedAt: string | null;
+  riskFlags: string[];
 };
 
 type Props = {
@@ -334,6 +335,15 @@ function LeadCard({
                     Licence: {lead.hmoLicenceExpiry}
                   </span>
                 )}
+                {lead.riskFlags.slice(0, 3).map((flag) => (
+                  <span
+                    key={flag}
+                    className="inline-flex rounded-full border border-rose-200 bg-rose-50 px-2 py-0.5 text-[11px] font-medium text-rose-700"
+                    title="Risk penalty applied to score"
+                  >
+                    ⚠ {flag}
+                  </span>
+                ))}
               </div>
 
               {/* Key facts row */}

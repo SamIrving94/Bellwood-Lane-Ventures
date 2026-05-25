@@ -68,6 +68,10 @@ const LeadDetailPage = async ({
   const pd = raw.propertyData as Record<string, unknown> | undefined;
   const planning = raw.planning as Record<string, unknown> | undefined;
   const hmo = raw.hmo as Record<string, unknown> | undefined;
+  const riskFlags = (raw.riskFlags as string[] | undefined) ?? [];
+  const scoreBreakdown = raw.scoreBreakdown as
+    | Record<string, number>
+    | undefined;
 
   const isPropertyData = lead.source.startsWith('propertydata_');
   const isPlanning = lead.source.startsWith('planning_');
@@ -289,6 +293,80 @@ const LeadDetailPage = async ({
               {summary ?? planningProposal}
             </p>
           </div>
+        )}
+
+        {/* Risk flags */}
+        {riskFlags.length > 0 && (
+          <div className="rounded-xl border border-rose-200 bg-rose-50/50 p-5">
+            <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-rose-700">
+              Risk flags
+            </p>
+            <p className="mt-1 text-xs text-rose-700">
+              These reduce the lead score. Acquire with eyes open.
+            </p>
+            <ul className="mt-3 space-y-1 text-sm text-rose-900">
+              {riskFlags.map((flag) => (
+                <li key={flag} className="flex items-center gap-2">
+                  <span aria-hidden>⚠</span>
+                  <span>{flag}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {/* Score breakdown — collapsible */}
+        {scoreBreakdown && (
+          <details className="rounded-xl border bg-card p-5">
+            <summary className="cursor-pointer font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+              Score breakdown
+            </summary>
+            <div className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
+              <div className="flex justify-between border-b pb-1">
+                <span className="text-muted-foreground">Motivation</span>
+                <span className="font-mono">
+                  {scoreBreakdown.motivation} / 40
+                </span>
+              </div>
+              <div className="flex justify-between border-b pb-1">
+                <span className="text-muted-foreground">Equity</span>
+                <span className="font-mono">
+                  {scoreBreakdown.equity} / 25
+                </span>
+              </div>
+              <div className="flex justify-between border-b pb-1">
+                <span className="text-muted-foreground">Market trend</span>
+                <span className="font-mono">
+                  {scoreBreakdown.marketTrend} / 15
+                </span>
+              </div>
+              <div className="flex justify-between border-b pb-1">
+                <span className="text-muted-foreground">Contact quality</span>
+                <span className="font-mono">
+                  {scoreBreakdown.contactQuality} / 10
+                </span>
+              </div>
+              <div className="flex justify-between border-b pb-1">
+                <span className="text-muted-foreground">Risk adjustment</span>
+                <span
+                  className={`font-mono ${
+                    scoreBreakdown.risk < 0
+                      ? 'text-rose-700'
+                      : scoreBreakdown.risk > 0
+                        ? 'text-emerald-700'
+                        : ''
+                  }`}
+                >
+                  {scoreBreakdown.risk > 0 ? '+' : ''}
+                  {scoreBreakdown.risk}
+                </span>
+              </div>
+              <div className="flex justify-between font-semibold sm:col-span-2">
+                <span>Total</span>
+                <span className="font-mono">{scoreBreakdown.total} / 100</span>
+              </div>
+            </div>
+          </details>
         )}
 
         {/* Planning details */}

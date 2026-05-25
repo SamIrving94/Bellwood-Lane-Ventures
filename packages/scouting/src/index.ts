@@ -20,6 +20,9 @@ import {
   getPlanningApplications,
   getHmoRegister,
   getDemographics,
+  getFloodRisk,
+  getEpcByPostcode,
+  getTenureByPostcode,
 } from '@repo/property-data/src/propertydata';
 import {
   searchDissolvedPropertyCompanies,
@@ -31,6 +34,22 @@ import { fetchGazetteProbateNotices } from './gazette';
 import { enrichLeads } from './enrichment';
 import { scoreLead } from './scorer';
 import { sanitisePayload, auditProtectedFields } from './rbac';
+
+/** Return the most-frequent value in an array (first wins on tie). */
+function mostCommon<T extends string>(items: T[]): T | null {
+  if (items.length === 0) return null;
+  const counts = new Map<T, number>();
+  for (const v of items) counts.set(v, (counts.get(v) ?? 0) + 1);
+  let best: T | null = null;
+  let bestCount = 0;
+  for (const [v, c] of counts) {
+    if (c > bestCount) {
+      best = v;
+      bestCount = c;
+    }
+  }
+  return best;
+}
 
 // ---------------------------------------------------------------------------
 // Re-exports (public API surface)
@@ -570,27 +589,75 @@ export async function runScoutingPipeline(
   // Step 3 — Enrich via tier cascade
   const enriched = await enrichLeads(rawGrants);
 
-  // Pre-fetch demographics ONCE per unique postcode district to save credits
-  // (each call cached 90 days anyway). The demographics drive the pre-probate
-  // area-level scoring boost.
+  // Pre-fetch per-postcode enrichment ONCE per unique postcode to save
+  // credits (each call cached). These drive the demographic boost
+  // (pre-probate) and the risk dimension (flood/EPC/lease).
   const uniquePostcodes = Array.from(
     new Set(enriched.map((l) => l.postcode).filter(Boolean)),
   );
-  const demographicsByPostcode = new Map<
+  const enrichmentByPostcode = new Map<
     string,
-    { percentOver65: number | null; percentOver75: number | null }
+    {
+      percentOver65: number | null;
+      percentOver75: number | null;
+      floodRisk: string | null;
+      epcRating: string | null;
+      tenure: 'freehold' | 'leasehold' | 'unknown';
+      remainingLeaseYears: number | null;
+    }
   >();
   for (const pc of uniquePostcodes) {
     try {
-      const demo = await getDemographics(pc);
-      if (demo) {
-        demographicsByPostcode.set(pc, {
-          percentOver65: demo.percentOver65,
-          percentOver75: demo.percentOver75,
-        });
+      const [demo, flood, epcs, tenures] = await Promise.all([
+        getDemographics(pc).catch(() => null),
+        getFloodRisk(pc).catch(() => null),
+        getEpcByPostcode(pc).catch(() => []),
+        getTenureByPostcode(pc).catch(() => []),
+      ]);
+
+      const floodResult = (flood as { result?: Record<string, string> } | null)
+        ?.result;
+      const floodBand =
+        floodResult?.rivers_and_sea ?? floodResult?.surface_water ?? null;
+
+      // Average EPC rating across known records in this postcode.
+      const epcRatings = epcs
+        .map((e) => e.rating)
+        .filter((r): r is string => !!r);
+      const dominantEpc = epcRatings.length
+        ? mostCommon(epcRatings)
+        : null;
+
+      // Most common tenure + min remaining lease years.
+      const tenureCounts = { freehold: 0, leasehold: 0 };
+      let minLeaseYears: number | null = null;
+      for (const t of tenures) {
+        if (t.tenure === 'freehold') tenureCounts.freehold++;
+        else if (t.tenure === 'leasehold') tenureCounts.leasehold++;
+        if (
+          t.remainingLeaseYears !== null &&
+          (minLeaseYears === null || t.remainingLeaseYears < minLeaseYears)
+        ) {
+          minLeaseYears = t.remainingLeaseYears;
+        }
       }
+      const tenure: 'freehold' | 'leasehold' | 'unknown' =
+        tenureCounts.freehold > tenureCounts.leasehold
+          ? 'freehold'
+          : tenureCounts.leasehold > 0
+            ? 'leasehold'
+            : 'unknown';
+
+      enrichmentByPostcode.set(pc, {
+        percentOver65: demo?.percentOver65 ?? null,
+        percentOver75: demo?.percentOver75 ?? null,
+        floodRisk: floodBand,
+        epcRating: dominantEpc,
+        tenure,
+        remainingLeaseYears: minLeaseYears,
+      });
     } catch {
-      // Silent — demographics is a bonus signal, not a hard requirement
+      // Silent — risk enrichment is additive, not required
     }
   }
 
@@ -603,13 +670,35 @@ export async function runScoutingPipeline(
       ]);
 
       const baseSignals = signalsByRef.get(lead.probateRef) ?? {};
-      const demo = demographicsByPostcode.get(lead.postcode);
+      const pc = enrichmentByPostcode.get(lead.postcode);
       const signals = {
         ...baseSignals,
-        percentOver65: demo?.percentOver65 ?? null,
-        percentOver75: demo?.percentOver75 ?? null,
+        percentOver65: pc?.percentOver65 ?? null,
+        percentOver75: pc?.percentOver75 ?? null,
+        floodRisk: pc?.floodRisk ?? null,
+        epcRating: pc?.epcRating ?? null,
+        tenure: pc?.tenure ?? null,
+        remainingLeaseYears: pc?.remainingLeaseYears ?? null,
       };
       const breakdown = scoreLead(lead, pricePaid, hpi, signals);
+
+      // Stamp risk flags + score breakdown onto rawPayload so the UI can
+      // surface 'why this lead scored what it scored'.
+      let enrichedRaw = sanitisedGrants[i] ?? null;
+      if (includeRawPayload && enrichedRaw) {
+        enrichedRaw = {
+          ...enrichedRaw,
+          riskFlags: breakdown.riskFlags,
+          scoreBreakdown: {
+            motivation: breakdown.motivation,
+            equity: breakdown.equity,
+            marketTrend: breakdown.marketTrend,
+            contactQuality: breakdown.contactQuality,
+            risk: breakdown.risk,
+            total: breakdown.total,
+          },
+        };
+      }
 
       const scoutLead: ScoutLead = {
         runDate,
@@ -625,7 +714,7 @@ export async function runScoutingPipeline(
         verdict: breakdown.verdict,
         marketTrend: breakdown.marketTrendLabel,
         sourceTrail: lead.sourceTrail,
-        rawPayload: includeRawPayload ? (sanitisedGrants[i] ?? null) : null,
+        rawPayload: enrichedRaw,
         status: 'new',
       };
 

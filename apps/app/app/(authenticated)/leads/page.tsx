@@ -107,6 +107,10 @@ const LeadsPage = async ({
                 (dissolved?.companyName as string | undefined) ?? null,
               dissolvedAt:
                 (dissolved?.dissolvedAt as string | undefined) ?? null,
+              // Risk flags (computed scorer-side, stored on lead.rawPayload.riskFlags
+              // by future cron passes; pull defensively for now)
+              riskFlags:
+                (raw.riskFlags as string[] | undefined) ?? [],
             };
           })}
           unratedCount={unratedCount}
