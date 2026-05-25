@@ -51,6 +51,10 @@ export interface LeadSignals {
   discountPercent?: number | null;
   /** Source slug, e.g. 'repossessed-properties' — for type-specific boosts. */
   listingType?: string;
+  /** % of postcode population aged 65+. Used as a pre-probate proxy. */
+  percentOver65?: number | null;
+  /** % of postcode population aged 75+. Stronger pre-probate signal. */
+  percentOver75?: number | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -115,6 +119,17 @@ function scoreMotivation(
   ) {
     score += 4;
   } else if (signals?.daysOnMarket && signals.daysOnMarket >= 60) {
+    score += 2;
+  }
+
+  // ── Pre-probate area boost (0–5) ─────────────────────────────────────
+  // Areas with high over-75 population have more probate grants in the
+  // coming years. Modest boost — area-level proxy, not property-level.
+  if (signals?.percentOver75 && signals.percentOver75 >= 15) {
+    score += 5;
+  } else if (signals?.percentOver75 && signals.percentOver75 >= 10) {
+    score += 3;
+  } else if (signals?.percentOver65 && signals.percentOver65 >= 25) {
     score += 2;
   }
 

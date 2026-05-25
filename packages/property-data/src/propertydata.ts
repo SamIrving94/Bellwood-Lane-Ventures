@@ -1555,6 +1555,88 @@ export async function getHmoRegister(
 }
 
 // ---------------------------------------------------------------------------
+// Endpoint: /demographics — local age + household composition
+// Used for pre-probate signal: postcodes with high >65 population are
+// where probate grants will land in the coming years.
+// ---------------------------------------------------------------------------
+
+const DemographicsSchema = z.object({
+  status: z.string().optional(),
+  // Permissive — different plans return different keys
+  data: z.record(z.string(), z.unknown()).optional(),
+  result: z.record(z.string(), z.unknown()).optional(),
+  age_bands: z.record(z.string(), z.unknown()).optional(),
+});
+
+export type DemographicsReading = {
+  /** Estimated % of population aged 65+. Null when unavailable. */
+  percentOver65: number | null;
+  /** Estimated % aged 75+. Null when unavailable. */
+  percentOver75: number | null;
+  raw: Record<string, unknown> | null;
+};
+
+/**
+ * Demographics for a postcode area. ~2 credits, 90-day cache (census
+ * data updates rarely).
+ *
+ * We're permissive about response shape since PropertyData has been
+ * known to vary the keys by plan. We walk the response looking for
+ * any "age" / "65" / "75" markers.
+ */
+export async function getDemographics(
+  postcode: string,
+): Promise<DemographicsReading | null> {
+  const data = await fetchPropertyData(
+    '/demographics',
+    { postcode: postcode.replace(/\s/g, '') },
+    {
+      ttlMs: 90 * 24 * 60 * 60 * 1000,
+      estimatedCredits: 2,
+      schema: DemographicsSchema,
+    },
+  );
+  if (!data) return null;
+  const raw = (data as Record<string, unknown>) ?? null;
+
+  // Walk the tree looking for numeric percentages under age-65/75 keys.
+  let percentOver65: number | null = null;
+  let percentOver75: number | null = null;
+  const walk = (v: unknown, path: string): void => {
+    if (v === null || v === undefined) return;
+    if (typeof v === 'number') {
+      const k = path.toLowerCase();
+      if (
+        percentOver65 === null &&
+        /(65|over_?65|ages?_65|65\+|sixty_?five)/.test(k)
+      ) {
+        percentOver65 = v;
+      }
+      if (
+        percentOver75 === null &&
+        /(75|over_?75|ages?_75|75\+|seventy_?five)/.test(k)
+      ) {
+        percentOver75 = v;
+      }
+      return;
+    }
+    if (typeof v === 'object') {
+      for (const [k, child] of Object.entries(v as Record<string, unknown>)) {
+        walk(child, `${path}.${k}`);
+      }
+    }
+  };
+  walk(raw, '');
+
+  // Heuristic: many endpoints return age share as fractions (0-1). Normalise
+  // to percentages.
+  if (percentOver65 !== null && percentOver65 <= 1) percentOver65 *= 100;
+  if (percentOver75 !== null && percentOver75 <= 1) percentOver75 *= 100;
+
+  return { percentOver65, percentOver75, raw };
+}
+
+// ---------------------------------------------------------------------------
 // Endpoint: /george — PropertyData's AI research assistant (POST)
 // ---------------------------------------------------------------------------
 

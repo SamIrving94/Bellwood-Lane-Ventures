@@ -19,6 +19,7 @@ import {
   getAccountCredits,
   getPlanningApplications,
   getHmoRegister,
+  getDemographics,
 } from '@repo/property-data/src/propertydata';
 import {
   searchDissolvedPropertyCompanies,
@@ -569,6 +570,30 @@ export async function runScoutingPipeline(
   // Step 3 — Enrich via tier cascade
   const enriched = await enrichLeads(rawGrants);
 
+  // Pre-fetch demographics ONCE per unique postcode district to save credits
+  // (each call cached 90 days anyway). The demographics drive the pre-probate
+  // area-level scoring boost.
+  const uniquePostcodes = Array.from(
+    new Set(enriched.map((l) => l.postcode).filter(Boolean)),
+  );
+  const demographicsByPostcode = new Map<
+    string,
+    { percentOver65: number | null; percentOver75: number | null }
+  >();
+  for (const pc of uniquePostcodes) {
+    try {
+      const demo = await getDemographics(pc);
+      if (demo) {
+        demographicsByPostcode.set(pc, {
+          percentOver65: demo.percentOver65,
+          percentOver75: demo.percentOver75,
+        });
+      }
+    } catch {
+      // Silent — demographics is a bonus signal, not a hard requirement
+    }
+  }
+
   // Step 4 — Score leads (fan-out postcode lookups)
   const scored = await Promise.all(
     enriched.map(async (lead, i) => {
@@ -577,7 +602,13 @@ export async function runScoutingPipeline(
         getHousepriceIndex(lead.postcode).catch(() => null),
       ]);
 
-      const signals = signalsByRef.get(lead.probateRef);
+      const baseSignals = signalsByRef.get(lead.probateRef) ?? {};
+      const demo = demographicsByPostcode.get(lead.postcode);
+      const signals = {
+        ...baseSignals,
+        percentOver65: demo?.percentOver65 ?? null,
+        percentOver75: demo?.percentOver75 ?? null,
+      };
       const breakdown = scoreLead(lead, pricePaid, hpi, signals);
 
       const scoutLead: ScoutLead = {
