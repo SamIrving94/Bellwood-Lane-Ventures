@@ -242,6 +242,146 @@ export async function searchOfficer(name: string): Promise<Officer | null> {
   return syntheticOfficer(name);
 }
 
+// ---------------------------------------------------------------------------
+// Dissolved property companies — distress-signal source for scouting
+// ---------------------------------------------------------------------------
+
+/**
+ * SIC codes for residential property holding. Directors of companies
+ * dissolved with these codes are frequently motivated sellers of the
+ * underlying property assets.
+ *  68100 — Buying and selling of own real estate
+ *  68201 — Renting and operating of Housing Association real estate
+ *  68209 — Other letting and operating of own or leased real estate
+ *  68310 — Real estate agencies
+ *  68320 — Management of real estate
+ */
+export const PROPERTY_SIC_CODES = [
+  '68100',
+  '68201',
+  '68209',
+  '68310',
+  '68320',
+] as const;
+
+export type DissolvedPropertyCompany = {
+  companyNumber: string;
+  companyName: string;
+  dissolvedAt: string | null;
+  incorporatedAt: string | null;
+  sicCodes: string[];
+  registeredAddress: string | null;
+  registeredPostcode: string | null;
+};
+
+/**
+ * Search dissolved property companies via Companies House advanced search.
+ * Returns [] silently if COMPANIES_HOUSE_API_KEY is missing — keeps the
+ * scouting pipeline alive without this enrichment.
+ */
+export async function searchDissolvedPropertyCompanies(opts?: {
+  sinceDate?: string;
+  sicCodes?: readonly string[];
+  limit?: number;
+}): Promise<DissolvedPropertyCompany[]> {
+  const apiKey = process.env.COMPANIES_HOUSE_API_KEY ?? '';
+  if (!apiKey) {
+    console.info(
+      '[companies-house] no API key — skipping dissolved-company scan',
+    );
+    return [];
+  }
+  const sinceDate =
+    opts?.sinceDate ??
+    new Date(Date.now() - 90 * 24 * 60 * 60 * 1000)
+      .toISOString()
+      .slice(0, 10);
+  const sicCodes = opts?.sicCodes ?? PROPERTY_SIC_CODES;
+  const limit = opts?.limit ?? 50;
+
+  const out: DissolvedPropertyCompany[] = [];
+  const seen = new Set<string>();
+
+  // Companies House advanced-search filters one SIC per call. Iterate
+  // sequentially — well under the 600/5min rate limit.
+  for (const sic of sicCodes) {
+    if (out.length >= limit) break;
+    try {
+      const data = (await chGet('/advanced-search/companies', {
+        company_status: 'dissolved',
+        sic_codes: sic,
+        dissolved_from: sinceDate,
+        size: 50,
+      })) as Record<string, unknown> | null;
+      const items = (data?.items as Record<string, unknown>[] | undefined) ?? [];
+      for (const item of items) {
+        if (out.length >= limit) break;
+        const number =
+          typeof item.company_number === 'string'
+            ? item.company_number
+            : null;
+        if (!number || seen.has(number)) continue;
+        seen.add(number);
+
+        const addr = item.registered_office_address as
+          | Record<string, string | undefined>
+          | undefined;
+        const parts = addr
+          ? [
+              addr.address_line_1,
+              addr.address_line_2,
+              addr.locality,
+              addr.postal_code,
+            ].filter(Boolean)
+          : [];
+
+        out.push({
+          companyNumber: number,
+          companyName:
+            typeof item.company_name === 'string'
+              ? item.company_name
+              : '(unknown)',
+          dissolvedAt:
+            typeof item.date_of_cessation === 'string'
+              ? item.date_of_cessation
+              : null,
+          incorporatedAt:
+            typeof item.date_of_creation === 'string'
+              ? item.date_of_creation
+              : null,
+          sicCodes:
+            (item.sic_codes as string[] | undefined) ?? [],
+          registeredAddress: parts.length > 0 ? parts.join(', ') : null,
+          registeredPostcode: addr?.postal_code ?? null,
+        });
+      }
+    } catch (err) {
+      console.warn(
+        `[companies-house] dissolved search SIC ${sic} failed`,
+        err,
+      );
+    }
+  }
+  return out;
+}
+
+/**
+ * Filter dissolved companies by postcode-district prefix.
+ * E.g. ['M14', 'SK4'] keeps only companies registered in those districts.
+ */
+export function filterCompaniesByDistrict(
+  companies: DissolvedPropertyCompany[],
+  districts: readonly string[],
+): DissolvedPropertyCompany[] {
+  if (districts.length === 0) return companies;
+  const upper = districts.map((d) => d.toUpperCase().replace(/\s+/g, ''));
+  return companies.filter((c) => {
+    if (!c.registeredPostcode) return false;
+    const pc = c.registeredPostcode.toUpperCase().replace(/\s+/g, '');
+    return upper.some((d) => pc.startsWith(d));
+  });
+}
+
 /**
  * Enrich a probate lead with Companies House data.
  * Searches for the solicitor firm and checks if the contact is a director/officer.

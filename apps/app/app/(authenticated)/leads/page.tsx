@@ -55,6 +55,9 @@ const LeadsPage = async ({
             const pd = raw.propertyData as Record<string, unknown> | undefined;
             const planning = raw.planning as Record<string, unknown> | undefined;
             const hmo = raw.hmo as Record<string, unknown> | undefined;
+            const dissolved = raw.dissolvedCompany as
+              | Record<string, unknown>
+              | undefined;
             return {
               id: l.id,
               address: l.address,
@@ -99,6 +102,11 @@ const LeadsPage = async ({
                 (hmo?.licenceExpiringSoon as boolean | undefined) ?? false,
               hmoLicenceExpiry:
                 (hmo?.licenceExpiry as string | undefined) ?? null,
+              // Dissolved company
+              dissolvedCompanyName:
+                (dissolved?.companyName as string | undefined) ?? null,
+              dissolvedAt:
+                (dissolved?.dissolvedAt as string | undefined) ?? null,
             };
           })}
           unratedCount={unratedCount}

@@ -20,6 +20,10 @@ import {
   getPlanningApplications,
   getHmoRegister,
 } from '@repo/property-data/src/propertydata';
+import {
+  searchDissolvedPropertyCompanies,
+  filterCompaniesByDistrict,
+} from '@repo/property-data/src/companies-house';
 
 import { fetchProbateGrants } from './probate-data';
 import { fetchGazetteProbateNotices } from './gazette';
@@ -113,6 +117,7 @@ export interface ScoutingPipelineResult {
     propertydata: number;
     planning: number;
     hmo: number;
+    dissolved: number;
     staleListings: number;
     afterDedupe: number;
     postcodesScanned: number;
@@ -124,6 +129,7 @@ export interface ScoutingPipelineResult {
     propertydata?: string;
     planning?: string;
     hmo?: string;
+    dissolved?: string;
     staleListings?: string;
   };
 }
@@ -164,6 +170,7 @@ export async function runScoutingPipeline(
     propertydata?: string;
     planning?: string;
     hmo?: string;
+    dissolved?: string;
     staleListings?: string;
   } = {};
 
@@ -328,6 +335,14 @@ export async function runScoutingPipeline(
       licenceExpiry: string | null;
       licenceExpiringSoon: boolean;
     };
+    /** Rich dissolved-company fields when source = dissolved_company */
+    dissolvedCompany?: {
+      companyNumber: string;
+      companyName: string;
+      dissolvedAt: string | null;
+      sicCodes: string[];
+      registeredAddress: string | null;
+    };
   };
 
   // Throttle between PropertyData calls to stay within rate limit.
@@ -425,6 +440,57 @@ export async function runScoutingPipeline(
     }
   }
 
+  // ── Companies House — dissolved property companies in our districts ─
+  // Distinct rate-limit pool from PropertyData (different API), runs in
+  // parallel with HMO loop safely. No-ops if COMPANIES_HOUSE_API_KEY unset.
+  const dissolvedGrants: RawGrant[] = [];
+  try {
+    const targetDistricts = Array.from(
+      new Set(
+        allSeeds.map((s) => {
+          const norm = s.postcode.toUpperCase().replace(/\s+/g, '');
+          const m = norm.match(/^([A-Z]{1,2}\d{1,2}[A-Z]?)/);
+          return m?.[1] ?? norm;
+        }),
+      ),
+    );
+    const all = await searchDissolvedPropertyCompanies({ limit: 100 });
+    const inArea = filterCompaniesByDistrict(all, targetDistricts);
+    for (const c of inArea) {
+      if (!c.registeredAddress || !c.registeredPostcode) continue;
+      dissolvedGrants.push({
+        probateRef: `dis-${c.companyNumber}`,
+        address: c.registeredAddress,
+        postcode: c.registeredPostcode,
+        grantDate: c.dissolvedAt ?? new Date().toISOString().slice(0, 10),
+        executorName: null,
+        solicitorFirm: c.companyName,
+        estateValuePence: null,
+        grantType: 'unknown' as const,
+        source: 'companies_house_dissolved',
+        daysSinceGrant: c.dissolvedAt
+          ? Math.max(
+              0,
+              Math.floor(
+                (Date.now() - new Date(c.dissolvedAt).getTime()) /
+                  (1000 * 60 * 60 * 24),
+              ),
+            )
+          : 0,
+        dissolvedCompany: {
+          companyNumber: c.companyNumber,
+          companyName: c.companyName,
+          dissolvedAt: c.dissolvedAt,
+          sicCodes: c.sicCodes,
+          registeredAddress: c.registeredAddress,
+        },
+      });
+    }
+  } catch (err) {
+    const msg = (err as Error)?.message ?? String(err);
+    sourceErrors.dissolved = msg.slice(0, 200);
+  }
+
   // If we have no seeds at all, flag it as a config issue.
   if (allSeeds.length === 0 && !sourceErrors.propertydata) {
     sourceErrors.propertydata = 'no scan seeds configured — add full-postcode seeds in /settings/scouting';
@@ -438,6 +504,7 @@ export async function runScoutingPipeline(
     ...sourcedFromPostcodes,
     ...planningGrants,
     ...hmoGrants,
+    ...dissolvedGrants,
   ].filter((g) => {
     const key = `${g.address.toLowerCase()}|${g.postcode.toLowerCase()}`;
     if (seen.has(key)) return false;
@@ -566,6 +633,7 @@ export async function runScoutingPipeline(
       propertydata: sourcedFromPostcodes.length,
       planning: planningGrants.length,
       hmo: hmoGrants.length,
+      dissolved: dissolvedGrants.length,
       staleListings: 0,
       afterDedupe: rawGrants.length,
       postcodesScanned: allSeeds.length,

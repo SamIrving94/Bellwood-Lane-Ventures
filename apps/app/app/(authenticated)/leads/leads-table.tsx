@@ -35,6 +35,8 @@ type Lead = {
   planningUrl: string | null;
   hmoExpiringSoon: boolean;
   hmoLicenceExpiry: string | null;
+  dissolvedCompanyName: string | null;
+  dissolvedAt: string | null;
 };
 
 type Props = {
@@ -83,7 +85,8 @@ type FilterKey =
   | 'THIN'
   | 'propertydata'
   | 'planning'
-  | 'hmo';
+  | 'hmo'
+  | 'dissolved';
 
 export function LeadsTable({ leads, unratedCount, initialFilter }: Props) {
   const [activeFilter, setActiveFilter] = useState<FilterKey>(
@@ -115,6 +118,8 @@ export function LeadsTable({ leads, unratedCount, initialFilter }: Props) {
         return lead.source.startsWith('planning_');
       case 'hmo':
         return lead.source.startsWith('hmo_');
+      case 'dissolved':
+        return lead.source === 'companies_house_dissolved';
       default:
         return true;
     }
@@ -158,6 +163,12 @@ export function LeadsTable({ leads, unratedCount, initialFilter }: Props) {
       key: 'hmo',
       label: 'HMO',
       count: leads.filter((l) => l.source.startsWith('hmo_')).length,
+    },
+    {
+      key: 'dissolved',
+      label: 'Dissolved Co.',
+      count: leads.filter((l) => l.source === 'companies_house_dissolved')
+        .length,
     },
   ];
 
@@ -221,6 +232,7 @@ function LeadCard({
   const isPropertyData = lead.source.startsWith('propertydata_');
   const isPlanning = lead.source.startsWith('planning_');
   const isHmo = lead.source.startsWith('hmo_');
+  const isDissolved = lead.source === 'companies_house_dissolved';
 
   const sourceBadge = isPropertyData
     ? (lead.listingType
@@ -232,7 +244,9 @@ function LeadCard({
         ? lead.hmoExpiringSoon
           ? 'HMO · licence expiring'
           : 'HMO register'
-        : lead.source;
+        : isDissolved
+          ? 'Dissolved company'
+          : lead.source;
 
   const sourceBadgeColor = isPropertyData
     ? 'bg-purple-100 text-purple-800 border-purple-200'
@@ -242,7 +256,9 @@ function LeadCard({
         : 'bg-sky-100 text-sky-800 border-sky-200'
       : isHmo
         ? 'bg-teal-100 text-teal-800 border-teal-200'
-        : 'bg-slate-100 text-slate-700 border-slate-200';
+        : isDissolved
+          ? 'bg-indigo-100 text-indigo-800 border-indigo-200'
+          : 'bg-slate-100 text-slate-700 border-slate-200';
 
   const externalUrl = lead.listingUrl ?? lead.planningUrl ?? null;
 
