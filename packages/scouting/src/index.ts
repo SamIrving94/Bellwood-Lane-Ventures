@@ -196,13 +196,11 @@ export async function runScoutingPipeline(
     })),
   ];
 
-  const [
-    hmctsGrants,
-    gazetteGrants,
-    sourcedFromPostcodes,
-    planningGrants,
-    hmoGrants,
-  ] = await Promise.all([
+  // We split sources by rate-limit dependency:
+  //  - HMCTS + Gazette are external (no PropertyData rate limit) → parallel
+  //  - PropertyData sources (sourced/planning/HMO) → serial to stay under
+  //    the "4 calls / 10s" rate limit
+  const [hmctsGrants, gazetteGrants] = await Promise.all([
     fetchProbateGrants(sinceDate, limit).catch((err) => {
       const msg = (err as Error)?.message ?? String(err);
       sourceErrors.hmcts = msg.slice(0, 200);
@@ -215,10 +213,10 @@ export async function runScoutingPipeline(
       console.warn('[scouting] Gazette source failed', err);
       return [];
     }),
-    // PropertyData /sourced-properties — iterate the 6 high-signal lists
-    // per seed. getSourcedPropertiesMulti handles throttling internally.
-    // Seeds run sequentially to avoid global rate-limit collisions.
-    (async () => {
+  ]);
+
+  // ── PropertyData sources — serial (rate-limit constrained) ─────────
+  const sourcedFromPostcodes = await (async () => {
       const all: Array<{
         probateRef: string;
         address: string;
@@ -259,106 +257,92 @@ export async function runScoutingPipeline(
         }
       }
       return all;
-    })(),
-    // /planning-applications — properties with recent planning activity
-    // (especially negative decisions = stuck owner = motivated)
-    (async () => {
-      const all: Array<{
-        probateRef: string;
-        address: string;
-        postcode: string;
-        grantDate: string;
-        executorName: null;
-        solicitorFirm: null;
-        estateValuePence: number | null;
-        grantType: 'unknown';
-        source: string;
-        daysSinceGrant: number;
-      }> = [];
-      for (const seed of allSeeds) {
-        try {
-          const apps = await getPlanningApplications(seed.postcode, {
-            radiusMiles: seed.radiusMiles,
-          });
-          // Include applications with at least some seller signal. The
-          // downstream scorer will weight further; we just don't want to
-          // filter so hard that we starve the pipeline.
-          for (const app of apps) {
-            if (app.sellerSignalScore < 45) continue;
-            const pc = app.postcode ?? seed.postcode.split(' ')[0]!;
-            all.push({
-              probateRef: `pln-${seed.label}-${app.reference.slice(0, 24).replace(/\s+/g, '_')}`,
-              address: app.address,
-              postcode: pc,
-              grantDate: app.decidedAt ?? new Date().toISOString().slice(0, 10),
-              executorName: null,
-              solicitorFirm: null,
-              estateValuePence: null,
-              grantType: 'unknown' as const,
-              source: `planning_${app.decisionRating ?? 'pending'}`,
-              daysSinceGrant: 0,
-            });
-          }
-        } catch (err) {
-          const msg = (err as Error)?.message ?? String(err);
-          if (!sourceErrors.planning) {
-            sourceErrors.planning = `${seed.label}: ${msg.slice(0, 150)}`;
-          }
-        }
+  })();
+
+  // Helper for the planning + HMO source shape (matches probateRef contract)
+  type RawGrant = {
+    probateRef: string;
+    address: string;
+    postcode: string;
+    grantDate: string;
+    executorName: null;
+    solicitorFirm: null;
+    estateValuePence: number | null;
+    grantType: 'unknown';
+    source: string;
+    daysSinceGrant: number;
+  };
+
+  // Throttle between PropertyData calls to stay within rate limit.
+  const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+  // ── /planning-applications — serial after sourced ───────────────────
+  const planningGrants: RawGrant[] = [];
+  for (const seed of allSeeds) {
+    await sleep(2700);
+    try {
+      const apps = await getPlanningApplications(seed.postcode, {
+        radiusMiles: seed.radiusMiles,
+      });
+      for (const app of apps) {
+        if (app.sellerSignalScore < 45) continue;
+        const pc = app.postcode ?? seed.postcode.split(' ')[0]!;
+        planningGrants.push({
+          probateRef: `pln-${seed.label}-${app.reference.slice(0, 24).replace(/\s+/g, '_')}`,
+          address: app.address,
+          postcode: pc,
+          grantDate: app.decidedAt ?? new Date().toISOString().slice(0, 10),
+          executorName: null,
+          solicitorFirm: null,
+          estateValuePence: null,
+          grantType: 'unknown' as const,
+          source: `planning_${app.decisionRating ?? 'pending'}`,
+          daysSinceGrant: 0,
+        });
       }
-      return all;
-    })(),
-    // /national-hmo-register — HMOs in the area; ones with licences expiring
-    // within 12 months are higher-signal (often sold around licence renewal)
-    (async () => {
-      const all: Array<{
-        probateRef: string;
-        address: string;
-        postcode: string;
-        grantDate: string;
-        executorName: null;
-        solicitorFirm: null;
-        estateValuePence: number | null;
-        grantType: 'unknown';
-        source: string;
-        daysSinceGrant: number;
-      }> = [];
-      for (const seed of allSeeds) {
-        try {
-          const hmos = await getHmoRegister(seed.postcode, {
-            radiusMiles: seed.radiusMiles,
-          });
-          // Include all HMOs as context leads. Expiring-licence ones flag
-          // higher; the scorer downstream can prioritise. Without this we
-          // miss too many — most licences are >12mo out at any moment.
-          for (const hmo of hmos) {
-            const pcMatch = hmo.address.match(/[A-Z]{1,2}\d{1,2}[A-Z]?\s?\d[A-Z]{2}/);
-            const pc = pcMatch ? pcMatch[0] : seed.postcode.split(' ')[0]!;
-            all.push({
-              probateRef: `hmo-${seed.label}-${hmo.reference.slice(0, 24).replace(/\s+/g, '_')}`,
-              address: hmo.address,
-              postcode: pc,
-              grantDate: new Date().toISOString().slice(0, 10),
-              executorName: null,
-              solicitorFirm: null,
-              estateValuePence: null,
-              grantType: 'unknown' as const,
-              source: hmo.licenceExpiringSoon
-                ? 'hmo_licence_expiring'
-                : 'hmo_register',
-              daysSinceGrant: 0,
-            });
-          }
-        } catch (err) {
-          const msg = (err as Error)?.message ?? String(err);
-          if (!sourceErrors.hmo) {
-            sourceErrors.hmo = `${seed.label}: ${msg.slice(0, 150)}`;
-          }
-        }
+    } catch (err) {
+      const msg = (err as Error)?.message ?? String(err);
+      if (!sourceErrors.planning) {
+        sourceErrors.planning = `${seed.label}: ${msg.slice(0, 150)}`;
       }
-      return all;
-    })(),
-  ]);
+    }
+  }
+
+  // ── /national-hmo-register — serial after planning ──────────────────
+  const hmoGrants: RawGrant[] = [];
+  for (const seed of allSeeds) {
+    await sleep(2700);
+    try {
+      const hmos = await getHmoRegister(seed.postcode, {
+        radiusMiles: seed.radiusMiles,
+      });
+      for (const hmo of hmos) {
+        const pcMatch = hmo.address.match(
+          /[A-Z]{1,2}\d{1,2}[A-Z]?\s?\d[A-Z]{2}/,
+        );
+        const pc = pcMatch ? pcMatch[0] : seed.postcode.split(' ')[0]!;
+        hmoGrants.push({
+          probateRef: `hmo-${seed.label}-${hmo.reference.slice(0, 24).replace(/\s+/g, '_')}`,
+          address: hmo.address,
+          postcode: pc,
+          grantDate: new Date().toISOString().slice(0, 10),
+          executorName: null,
+          solicitorFirm: null,
+          estateValuePence: null,
+          grantType: 'unknown' as const,
+          source: hmo.licenceExpiringSoon
+            ? 'hmo_licence_expiring'
+            : 'hmo_register',
+          daysSinceGrant: 0,
+        });
+      }
+    } catch (err) {
+      const msg = (err as Error)?.message ?? String(err);
+      if (!sourceErrors.hmo) {
+        sourceErrors.hmo = `${seed.label}: ${msg.slice(0, 150)}`;
+      }
+    }
+  }
 
   // If we have no seeds at all, flag it as a config issue.
   if (allSeeds.length === 0 && !sourceErrors.propertydata) {
