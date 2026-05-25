@@ -419,18 +419,37 @@ export type SourcedProperty = {
  * PropertyData 422s the whole call if any single value is invalid for
  * the account.
  */
+/**
+ * PropertyData's documented sourcing-list slugs that map to Bellwood's
+ * distressed-buyer wedge. These are the EXACT slugs from PropertyData's
+ * /source-on-market page — earlier (incorrect) values like 'repossession'
+ * returned 422 because the real slug is 'repossessed-properties'.
+ *
+ * PropertyData docs list 39 strategies; these 12 are the ones directly
+ * relevant to a cash-buyer-of-distressed-stock business.
+ */
 export const SOURCED_LIST_TYPES = [
-  'repossession',
-  'belowmarketvalue',
-  'probate',
-  'auction',
-  'unmodernised',
-  'cashbuyer',
+  'repossessed-properties',
+  'quick-sale-properties',
+  'reduced-properties',
+  'slow-to-sell-properties',
+  'derelict-properties',
+  'unmodernised-properties',
+  'back-on-market',
+  'properties-with-no-chain',
+  'cash-buyers-only-properties',
+  'auction-properties',
+  'short-lease-properties',
+  'poor-epc-score',
 ] as const;
 
 export type SourcedListType = (typeof SOURCED_LIST_TYPES)[number];
 
-const DEFAULT_LIST = 'repossession';
+/**
+ * Default — the six strongest distress signals. PropertyData accepts
+ * comma-separated list values, returning properties matching ANY.
+ */
+const DEFAULT_LIST = SOURCED_LIST_TYPES.slice(0, 6).join(',');
 
 /**
  * Per-list-type probe — call /sourced-properties once per list type,

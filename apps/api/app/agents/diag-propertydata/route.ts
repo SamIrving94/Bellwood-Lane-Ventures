@@ -47,18 +47,12 @@ async function probe(apiKey: string, list: string, postcode: string, radius: str
       http: res.status,
       apiCode: (body?.code as string | undefined) ?? null,
       apiMsg: (body?.message as string | undefined) ?? null,
-      count: Array.isArray(properties) ? properties.length : null,
-      sample: Array.isArray(properties)
-        ? properties.slice(0, 2).map((p) => {
-            const pp = p as Record<string, unknown>;
-            return {
-              address: pp.address,
-              postcode: pp.postcode,
-              price: pp.price,
-              days_on_market: pp.days_on_market ?? pp.daysOnMarket,
-            };
-          })
-        : null,
+      resultKeys: result ? Object.keys(result) : null,
+      // Try multiple shapes — properties[] is one guess. Could be data[], rows[], items[].
+      shapeProbe: {
+        propertiesLen: Array.isArray(properties) ? properties.length : null,
+        rawResultPreview: result ? JSON.stringify(result).slice(0, 400) : null,
+      },
     };
   } catch (err) {
     return {
@@ -87,17 +81,8 @@ export const GET = async (request: Request) => {
   const radius = url.searchParams.get('radius') ?? '3';
 
   const results = [];
-  for (const list of BELLWOOD_LISTS) {
-    results.push(await probe(apiKey, list, postcode, radius));
-    await sleep(2700); // PropertyData: max 4 calls / 10s
-  }
-
-  const total = results.reduce((s, r) => s + (r.count ?? 0), 0);
-  return NextResponse.json({
-    ok: true,
-    postcode,
-    radius,
-    totalListings: total,
-    perList: results,
-  });
+  // Only probe one list value so we can see the full response shape clearly.
+  const list = url.searchParams.get('list') ?? 'repossessed-properties';
+  const result = await probe(apiKey, list, postcode, radius);
+  return NextResponse.json({ ok: true, postcode, radius, list, result });
 };
