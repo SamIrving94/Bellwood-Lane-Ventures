@@ -45,14 +45,8 @@ async function probe(apiKey: string, list: string, postcode: string, radius: str
     return {
       list,
       http: res.status,
-      apiCode: (body?.code as string | undefined) ?? null,
-      apiMsg: (body?.message as string | undefined) ?? null,
-      resultKeys: result ? Object.keys(result) : null,
-      // Try multiple shapes — properties[] is one guess. Could be data[], rows[], items[].
-      shapeProbe: {
-        propertiesLen: Array.isArray(properties) ? properties.length : null,
-        rawResultPreview: result ? JSON.stringify(result).slice(0, 400) : null,
-      },
+      bodyKeys: body ? Object.keys(body) : null,
+      fullBody: body,
     };
   } catch (err) {
     return {
