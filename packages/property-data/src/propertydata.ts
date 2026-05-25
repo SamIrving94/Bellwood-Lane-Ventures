@@ -1600,23 +1600,25 @@ export async function getDemographics(
   const raw = (data as Record<string, unknown>) ?? null;
 
   // Walk the tree looking for numeric percentages under age-65/75 keys.
-  let percentOver65: number | null = null;
-  let percentOver75: number | null = null;
+  // We store in single-element arrays so closure-mutation doesn't confuse
+  // TypeScript's narrowing (it would otherwise infer `never` after assignment).
+  const over65: number[] = [];
+  const over75: number[] = [];
   const walk = (v: unknown, path: string): void => {
     if (v === null || v === undefined) return;
     if (typeof v === 'number') {
       const k = path.toLowerCase();
       if (
-        percentOver65 === null &&
+        over65.length === 0 &&
         /(65|over_?65|ages?_65|65\+|sixty_?five)/.test(k)
       ) {
-        percentOver65 = v;
+        over65.push(v);
       }
       if (
-        percentOver75 === null &&
+        over75.length === 0 &&
         /(75|over_?75|ages?_75|75\+|seventy_?five)/.test(k)
       ) {
-        percentOver75 = v;
+        over75.push(v);
       }
       return;
     }
@@ -1630,8 +1632,11 @@ export async function getDemographics(
 
   // Heuristic: many endpoints return age share as fractions (0-1). Normalise
   // to percentages.
-  if (percentOver65 !== null && percentOver65 <= 1) percentOver65 *= 100;
-  if (percentOver75 !== null && percentOver75 <= 1) percentOver75 *= 100;
+  const normalise = (v: number): number => (v <= 1 ? v * 100 : v);
+  const percentOver65 =
+    over65.length > 0 ? normalise(over65[0]!) : null;
+  const percentOver75 =
+    over75.length > 0 ? normalise(over75[0]!) : null;
 
   return { percentOver65, percentOver75, raw };
 }
