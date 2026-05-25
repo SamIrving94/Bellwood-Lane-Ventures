@@ -35,13 +35,46 @@ export const GET = async (request: Request) => {
           headers: { Accept: 'application/json' },
         });
         const body = await res.json().catch(() => null);
+        // Walk the body to find array fields and report their names + lengths
+        const arrays: Record<string, number> = {};
+        const walk = (val: unknown, path: string) => {
+          if (Array.isArray(val)) {
+            arrays[path] = val.length;
+            if (val.length > 0 && val[0] && typeof val[0] === 'object') {
+              // Report keys of first array item
+              arrays[`${path}[0].keys`] = Object.keys(
+                val[0] as Record<string, unknown>,
+              ).length;
+            }
+            return;
+          }
+          if (val && typeof val === 'object' && !Array.isArray(val)) {
+            for (const [k, v] of Object.entries(val)) {
+              walk(v, path ? `${path}.${k}` : k);
+            }
+          }
+        };
+        if (body) walk(body, '');
+        // Capture first item from any array for shape understanding
+        const firstItem: Record<string, unknown> = {};
+        const captureFirst = (val: unknown, path: string) => {
+          if (Array.isArray(val) && val.length > 0 && typeof val[0] === 'object') {
+            firstItem[path] = val[0];
+          } else if (val && typeof val === 'object') {
+            for (const [k, v] of Object.entries(val)) {
+              captureFirst(v, path ? `${path}.${k}` : k);
+            }
+          }
+        };
+        if (body) captureFirst(body, '');
         return {
           ep,
           http: res.status,
           bodyKeys: body ? Object.keys(body) : null,
-          sampleBody: body
-            ? JSON.parse(JSON.stringify(body).slice(0, 1500))
-            : null,
+          arrays,
+          firstItemSample: firstItem,
+          status: (body as { status?: string } | null)?.status,
+          apiMessage: (body as { message?: string } | null)?.message,
         };
       } catch (err) {
         return { ep, http: null, err: (err as Error).message };
