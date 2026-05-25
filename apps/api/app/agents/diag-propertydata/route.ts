@@ -115,40 +115,43 @@ export const GET = async (request: Request) => {
   results.push(await probe(apiKey, '/account/credits', {}));
   await sleep(DELAY);
 
-  // 2. /sourced-properties with various list values
-  for (const list of ['repossession', 'belowmarketvalue', 'auction', 'probate']) {
+  // 2. /sourced-properties — try several value formats to find what works
+  // (Spec docs may use different casing or different identifiers per tier.)
+  const sourcedAttempts: Array<Record<string, string>> = [
+    { list: 'repos' },
+    { list: 'repo' },
+    { list: 'auction-listings' },
+    { list: 'sale-listings' },
+    { list: 'distressed' },
+    { list: 'all' },
+  ];
+  for (const extra of sourcedAttempts) {
     results.push(
       await probe(apiKey, '/sourced-properties', {
         postcode: compact,
-        list,
+        ...extra,
         radius,
       }),
     );
     await sleep(DELAY);
   }
 
-  // 3. Plural variants of the endpoint name
-  results.push(
-    await probe(apiKey, '/properties-listed', { postcode: compact, radius }),
-  );
-  await sleep(DELAY);
-  results.push(
-    await probe(apiKey, '/properties-for-sale', { postcode: compact, radius }),
-  );
-  await sleep(DELAY);
-  results.push(
-    await probe(apiKey, '/listings', { postcode: compact, radius }),
-  );
-  await sleep(DELAY);
-
-  // 4. Other endpoints we know work — sanity checks
-  results.push(
-    await probe(apiKey, '/prices', { postcode: compact }),
-  );
-  await sleep(DELAY);
-  results.push(
-    await probe(apiKey, '/demand', { postcode: compact }),
-  );
+  // 3. Other endpoint name candidates
+  for (const ep of [
+    '/sourced-property',
+    '/property-list',
+    '/property-listings',
+    '/residential-properties',
+    '/properties-sold',
+    '/sold-prices',
+    '/auction-listings',
+    '/sale-listings',
+    '/distressed-properties',
+    '/property-info',
+  ]) {
+    results.push(await probe(apiKey, ep, { postcode: compact }));
+    await sleep(DELAY);
+  }
 
   return NextResponse.json({
     ok: true,
