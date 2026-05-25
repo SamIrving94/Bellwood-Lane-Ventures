@@ -4,6 +4,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { Header } from '../components/header';
+import { presentLead } from '../leads/lead-payload';
 import { LeadsTable } from '../leads/leads-table';
 import { AddDealDialog } from './components/add-deal-dialog';
 import { PipelineBoard } from './components/pipeline-board';
@@ -23,7 +24,9 @@ const TABS: Array<{ id: Tab; label: string }> = [
 ];
 
 function formatGBP(pence?: number | null): string {
-  if (pence == null) return '—';
+  if (pence == null) {
+    return '—';
+  }
   return `£${Math.round(pence / 100).toLocaleString('en-GB')}`;
 }
 
@@ -33,10 +36,14 @@ const PipelinePage = async ({
   searchParams: Promise<{ tab?: string; filter?: string }>;
 }) => {
   const { userId } = await auth();
-  if (!userId) redirect('/sign-in');
+  if (!userId) {
+    redirect('/sign-in');
+  }
 
   const { tab: rawTab, filter } = await searchParams;
-  const tab: Tab = (TABS.some((t) => t.id === rawTab) ? rawTab : 'deals') as Tab;
+  const tab: Tab = (
+    TABS.some((t) => t.id === rawTab) ? rawTab : 'deals'
+  ) as Tab;
 
   const [activeDealCount, newLeadCount, archivedDealCount] = await Promise.all([
     database.deal.count({
@@ -90,7 +97,7 @@ const PipelinePage = async ({
                   {count}
                 </span>
                 {isActive && (
-                  <span className="absolute bottom-[-1px] left-0 right-0 h-[2px] bg-foreground" />
+                  <span className="absolute right-0 bottom-[-1px] left-0 h-[2px] bg-foreground" />
                 )}
               </Link>
             );
@@ -127,25 +134,36 @@ async function LeadsTabContent({ filter }: { filter?: string }) {
     select: { targetId: true, rating: true },
   });
   const feedbackByLeadId = Object.fromEntries(
-    feedbackRecords.map((f) => [f.targetId, f.rating]),
+    feedbackRecords.map((f) => [f.targetId, f.rating])
   );
   const unratedCount = leads.filter(
-    (l) => l.status === 'new' && !feedbackByLeadId[l.id],
+    (l) => l.status === 'new' && !feedbackByLeadId[l.id]
   ).length;
+  // Normalise each lead (typed columns + free-form rawPayload) into a flat,
+  // serialisable view the client table renders directly. See lead-payload.ts.
+  const views = leads.map((l) =>
+    presentLead({
+      id: l.id,
+      address: l.address,
+      postcode: l.postcode,
+      leadType: l.leadType,
+      leadScore: l.leadScore,
+      verdict: l.verdict,
+      status: l.status,
+      source: l.source,
+      sourceTrail: l.sourceTrail,
+      marketTrend: l.marketTrend,
+      estimatedEquityPence: l.estimatedEquityPence,
+      contactName: l.contactName,
+      contactPhone: l.contactPhone,
+      contactEmail: l.contactEmail,
+      rawPayload: l.rawPayload,
+      existingRating: feedbackByLeadId[l.id] ?? 0,
+    })
+  );
   return (
     <LeadsTable
-      leads={leads.map((l) => ({
-        id: l.id,
-        address: l.address,
-        postcode: l.postcode,
-        leadType: l.leadType,
-        leadScore: l.leadScore,
-        verdict: l.verdict,
-        estimatedEquityPence: l.estimatedEquityPence,
-        marketTrend: l.marketTrend,
-        status: l.status,
-        existingRating: feedbackByLeadId[l.id] ?? 0,
-      }))}
+      leads={views}
       unratedCount={unratedCount}
       initialFilter={filter ?? 'all'}
     />
@@ -160,8 +178,10 @@ async function ArchiveTabContent() {
   });
   if (archived.length === 0) {
     return (
-      <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/50 p-12 text-center">
-        <p className="font-serif text-2xl text-slate-700">Nothing archived yet.</p>
+      <div className="rounded-2xl border border-slate-200 border-dashed bg-slate-50/50 p-12 text-center">
+        <p className="font-serif text-2xl text-slate-700">
+          Nothing archived yet.
+        </p>
         <p className="mt-2 text-muted-foreground text-sm">
           Completed, rejected and withdrawn deals appear here for retros.
         </p>

@@ -3,6 +3,7 @@ import { database } from '@repo/database';
 import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 import { Header } from '../components/header';
+import { presentLead } from './lead-payload';
 import { LeadsTable } from './leads-table';
 
 export const metadata: Metadata = {
@@ -45,23 +46,33 @@ const LeadsPage = async ({
     (l) => l.status === 'new' && !feedbackByLeadId[l.id]
   ).length;
 
+  const views = leads.map((l) =>
+    presentLead({
+      id: l.id,
+      address: l.address,
+      postcode: l.postcode,
+      leadType: l.leadType,
+      leadScore: l.leadScore,
+      verdict: l.verdict,
+      status: l.status,
+      source: l.source,
+      sourceTrail: l.sourceTrail,
+      marketTrend: l.marketTrend,
+      estimatedEquityPence: l.estimatedEquityPence,
+      contactName: l.contactName,
+      contactPhone: l.contactPhone,
+      contactEmail: l.contactEmail,
+      rawPayload: l.rawPayload,
+      existingRating: feedbackByLeadId[l.id] ?? 0,
+    })
+  );
+
   return (
     <>
       <Header pages={[]} page="Leads" />
       <div className="flex flex-1 flex-col gap-4 p-6">
         <LeadsTable
-          leads={leads.map((l) => ({
-            id: l.id,
-            address: l.address,
-            postcode: l.postcode,
-            leadType: l.leadType,
-            leadScore: l.leadScore,
-            verdict: l.verdict,
-            estimatedEquityPence: l.estimatedEquityPence,
-            marketTrend: l.marketTrend,
-            status: l.status,
-            existingRating: feedbackByLeadId[l.id] ?? 0,
-          }))}
+          leads={views}
           unratedCount={unratedCount}
           initialFilter={filter ?? 'all'}
         />
