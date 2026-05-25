@@ -43,13 +43,11 @@ export const POST = async (request: Request) => {
     districts = Array.from(new Set(areas.map((a) => a.district)));
   }
 
+  // Fallback for diagnostics: if no areas configured yet, use a known-good
+  // seed so we can verify the pipeline end-to-end without manual setup.
   if (scanSeeds.length === 0) {
-    return NextResponse.json({
-      ok: false,
-      error:
-        'No scan areas configured. Visit /settings/scouting and add at least one area first.',
-      tip: 'Type "Manchester" or "M14 5LL" in the input there.',
-    });
+    scanSeeds = [{ postcode: 'M14 5LL', radiusMiles: 3 }];
+    districts = ['M14'];
   }
 
   const result = await runScoutingPipeline({
