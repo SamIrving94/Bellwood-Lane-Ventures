@@ -2,11 +2,7 @@
 
 import { auth } from '@repo/auth/server';
 import { database } from '@repo/database';
-import {
-  getActiveListings,
-  probeSourcedByType,
-  type ListTypeBreakdown,
-} from '@repo/property-data/src/propertydata';
+import { getSourcedProperties } from '@repo/property-data/src/propertydata';
 import { findPlaces } from '@repo/property-data/src/os-places';
 import { revalidatePath } from 'next/cache';
 
@@ -27,10 +23,6 @@ export type Area = {
     listingCount: number;
     checkedAt: string;
     error: string | null;
-    /** Per-list-type breakdown: which PropertyData list types work, which don't. */
-    sourcedBreakdown?: ListTypeBreakdown;
-    /** Active listings from /listings filtered to days_on_market >= 60. */
-    staleListingCount?: number;
   } | null;
   /** Rolling 30-day listing-count history for the sparkline. */
   history?: Array<{ date: string; count: number }>;
@@ -238,12 +230,13 @@ function resolveInput(raw: string): Resolved {
 // ───────────────────────────────────────────────────────────────────────
 
 /**
- * Probe an area honestly:
- *  - Hit /sourced-properties once PER LIST TYPE, surface breakdown
- *  - Hit /listings (active stale) once
- *  - Total = sum of working types + stale listings
- *  - If everything 422s/errors, surface that — don't pretend a 0-count
- *    "0 listings" when really we got no answer
+ * Probe an area — fast, single-call.
+ *
+ * We hit /sourced-properties ONCE with `auction-properties` as the list
+ * type. This is verified-working on this PropertyData account and acts
+ * as a strong distress signal. The full cron run (07:00 UTC) iterates
+ * all 6 default list types with throttling — the inline probe is just
+ * to confirm the area returns SOMETHING before saving it.
  */
 async function probeArea(
   seedPostcode: string,
@@ -251,40 +244,19 @@ async function probeArea(
 ): Promise<{
   listingCount: number;
   error: string | null;
-  sourcedBreakdown: ListTypeBreakdown;
-  staleListingCount: number;
 }> {
-  const [sourcedBreakdown, stale] = await Promise.all([
-    probeSourcedByType(seedPostcode, { radiusMiles }),
-    getActiveListings(seedPostcode, {
+  try {
+    const properties = await getSourcedProperties(seedPostcode, {
       radiusMiles,
-      minDaysOnMarket: 60,
-    }).catch(() => []),
-  ]);
-
-  const sourcedTotal = Object.values(sourcedBreakdown).reduce(
-    (s, b) => s + b.count,
-    0,
-  );
-
-  // Did every list type fail with the SAME error? If so, surface it as
-  // the area-level error so the user understands their plan/auth issue.
-  const errors = Object.values(sourcedBreakdown)
-    .map((b) => b.error)
-    .filter((e): e is string => !!e);
-  const allFailed =
-    errors.length === Object.keys(sourcedBreakdown).length &&
-    stale.length === 0;
-  const commonError = allFailed
-    ? (errors[0] ?? 'All PropertyData probes failed')
-    : null;
-
-  return {
-    listingCount: sourcedTotal + stale.length,
-    error: commonError,
-    sourcedBreakdown,
-    staleListingCount: stale.length,
-  };
+      list: 'auction-properties',
+    });
+    return { listingCount: properties.length, error: null };
+  } catch (err) {
+    return {
+      listingCount: 0,
+      error: (err as Error)?.message ?? 'Probe failed',
+    };
+  }
 }
 
 // ───────────────────────────────────────────────────────────────────────

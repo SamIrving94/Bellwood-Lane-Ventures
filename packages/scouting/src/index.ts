@@ -15,9 +15,8 @@ import 'server-only';
 import { getPricePaid } from '@repo/property-data/src/hmlr';
 import { getHousepriceIndex } from '@repo/property-data/src/hmlr-hpi';
 import {
-  getSourcedProperties,
+  getSourcedPropertiesMulti,
   getAccountCredits,
-  getActiveListings,
 } from '@repo/property-data/src/propertydata';
 
 import { fetchProbateGrants } from './probate-data';
@@ -202,66 +201,55 @@ export async function runScoutingPipeline(
       console.warn('[scouting] Gazette source failed', err);
       return [];
     }),
-    Promise.all(
-      allSeeds.map(async (seed) => {
+    // PropertyData /sourced-properties — iterate the 6 high-signal lists
+    // per seed. getSourcedPropertiesMulti handles throttling internally.
+    // Seeds run sequentially to avoid global rate-limit collisions.
+    (async () => {
+      const all: Array<{
+        probateRef: string;
+        address: string;
+        postcode: string;
+        grantDate: string;
+        executorName: null;
+        solicitorFirm: null;
+        estateValuePence: number | null;
+        grantType: 'unknown';
+        source: string;
+        daysSinceGrant: number;
+      }> = [];
+      for (const seed of allSeeds) {
         try {
-          const properties = await getSourcedProperties(
-            seed.postcode,
-            seed.radiusMiles ? { radiusMiles: seed.radiusMiles } : undefined,
-          );
-          return properties.map((p) => ({
-            probateRef: `pd-${seed.label}-${p.address.slice(0, 16).replace(/\s+/g, '_')}`,
-            address: p.address,
-            postcode: p.postcode,
-            grantDate: new Date().toISOString().slice(0, 10),
-            executorName: null,
-            solicitorFirm: null,
-            estateValuePence: p.estimatedValuePence ?? p.pricePence,
-            grantType: 'unknown' as const,
-            source: `propertydata_${p.listingType}`,
-            daysSinceGrant: p.daysOnMarket ?? 0,
-          }));
+          const properties = await getSourcedPropertiesMulti(seed.postcode, {
+            radiusMiles: seed.radiusMiles,
+          });
+          for (const p of properties) {
+            all.push({
+              probateRef: `pd-${seed.label}-${p.id ?? p.address.slice(0, 16).replace(/\s+/g, '_')}`,
+              address: p.address,
+              postcode: p.postcode,
+              grantDate: new Date().toISOString().slice(0, 10),
+              executorName: null,
+              solicitorFirm: null,
+              estateValuePence: p.originalPricePence ?? p.pricePence,
+              grantType: 'unknown' as const,
+              source: `propertydata_${p.listingType}`,
+              daysSinceGrant: p.daysOnMarket ?? 0,
+            });
+          }
         } catch (err) {
           const msg = (err as Error)?.message ?? String(err);
           if (!sourceErrors.propertydata) {
             sourceErrors.propertydata = `${seed.label}: ${msg.slice(0, 150)}`;
           }
           console.warn(`[scouting] /sourced-properties failed for ${seed.label}`, err);
-          return [];
         }
-      }),
-    ).then((arrays) => arrays.flat()),
-    // Stale-listing harvester — RICE A. For each scan seed, pull active
-    // /listings filtered to days_on_market >= 60. Motivated-seller territory.
-    Promise.all(
-      allSeeds.map(async (seed) => {
-        try {
-          const listings = await getActiveListings(seed.postcode, {
-            radiusMiles: seed.radiusMiles,
-            minDaysOnMarket: 60,
-          });
-          return listings.map((l) => ({
-            probateRef: `stale-${seed.label}-${l.address.slice(0, 16).replace(/\s+/g, '_')}`,
-            address: l.address,
-            postcode: l.postcode,
-            grantDate: new Date().toISOString().slice(0, 10),
-            executorName: null,
-            solicitorFirm: l.agentName,
-            estateValuePence: l.pricePence,
-            grantType: 'unknown' as const,
-            source: `propertydata_stale_${l.daysOnMarket ?? '?'}d`,
-            daysSinceGrant: l.daysOnMarket ?? 60,
-          }));
-        } catch (err) {
-          const msg = (err as Error)?.message ?? String(err);
-          if (!sourceErrors.staleListings) {
-            sourceErrors.staleListings = `${seed.label}: ${msg.slice(0, 150)}`;
-          }
-          console.warn(`[scouting] /listings stale failed for ${seed.label}`, err);
-          return [];
-        }
-      }),
-    ).then((arrays) => arrays.flat()),
+      }
+      return all;
+    })(),
+    // Stale-listing harvester is now redundant — the 'slow-to-sell-properties'
+    // and 'reduced-properties' list types in getSourcedPropertiesMulti cover
+    // the same signal. Return empty so the third tuple slot stays consistent.
+    Promise.resolve([]),
   ]);
 
   // If we have no seeds at all, flag it as a config issue.

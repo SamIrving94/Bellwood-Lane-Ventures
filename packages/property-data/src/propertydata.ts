@@ -358,45 +358,67 @@ export async function getAgentsByPostcode(postcode: string) {
 // Endpoint: /sourced-properties — distressed listings (probate, repos, BMV)
 // ---------------------------------------------------------------------------
 
+// Schema reflects the ACTUAL response shape discovered by direct probe.
+// Properties live at body.properties, not body.result.properties.
 const SourcedPropertiesSchema = z.object({
   status: z.string().optional(),
-  result: z
-    .object({
-      properties: z
-        .array(
-          z
-            .object({
-              address: z.string().optional(),
-              postcode: z.string().optional(),
-              price: z.number().optional(),
-              bedrooms: z.number().optional(),
-              property_type: z.string().optional(),
-              listing_type: z.string().optional(), // probate / repossession / bmv / etc
-              listing_url: z.string().optional(),
-              days_on_market: z.number().optional(),
-              estimated_value: z.number().optional(),
-              discount_percentage: z.number().optional(),
-              source: z.string().optional(),
-            })
-            .partial(),
-        )
-        .optional(),
-    })
+  list: z
+    .object({ id: z.string().optional(), name: z.string().optional() })
     .partial()
+    .optional(),
+  postcode: z.string().optional(),
+  radius: z.number().optional(),
+  result_count: z.number().optional(),
+  api_calls_cost: z.number().optional(),
+  properties: z
+    .array(
+      z
+        .object({
+          id: z.string().optional(),
+          address: z.string().optional(),
+          precise_address: z.string().nullable().optional(),
+          postcode: z.string().optional(),
+          type: z.string().optional(),
+          type_standardised: z.string().optional(),
+          bedrooms: z.number().nullable().optional(),
+          price: z.number().nullable().optional(),
+          sqf: z.number().nullable().optional(),
+          days_on_market: z.number().nullable().optional(),
+          days_since_price_change: z.number().nullable().optional(),
+          sstc: z.number().nullable().optional(),
+          lat: z.string().nullable().optional(),
+          lng: z.string().nullable().optional(),
+          distance_to: z.string().nullable().optional(),
+          price_history: z
+            .array(z.object({ date: z.string(), price: z.number() }).partial())
+            .optional(),
+          summary: z.string().nullable().optional(),
+          image_url: z.string().nullable().optional(),
+          url: z.string().nullable().optional(),
+        })
+        .partial(),
+    )
     .optional(),
 });
 
 export type SourcedProperty = {
+  id: string | null;
   address: string;
+  preciseAddress: string | null;
   postcode: string;
   pricePence: number | null;
   bedrooms: number | null;
   propertyType: string | null;
-  listingType: string;
+  listingType: string; // the list slug — repossessed-properties etc.
   listingUrl: string | null;
   daysOnMarket: number | null;
-  estimatedValuePence: number | null;
+  daysSincePriceChange: number | null;
+  /** Original asking price (if price history shows a reduction) in pence. */
+  originalPricePence: number | null;
+  /** Percentage discount from the highest historical price, 0-100. */
   discountPercent: number | null;
+  summary: string | null;
+  imageUrl: string | null;
   source: string;
 };
 
@@ -535,11 +557,12 @@ export async function getSourcedPropertiesRaw(
 }
 
 /**
- * Distressed property listings — probate, repossession, below-market-value.
- * Postcode-scoped. ~3 credits per call. 1-day cache (listings churn fast).
+ * Distressed property listings for ONE list type. Each call costs ~1
+ * PropertyData credit and is cached 24h. Postcode-scoped.
  *
- * Used by the daily scouting cron as a real-time lead source alongside
- * The Gazette's probate notices.
+ * The PropertyData /sourced-properties endpoint accepts ONE list slug
+ * per call (e.g. 'auction-properties'). For aggregating across multiple
+ * distress signals, use {@link getSourcedPropertiesMulti}.
  */
 export async function getSourcedProperties(
   postcode: string,
@@ -547,7 +570,7 @@ export async function getSourcedProperties(
 ): Promise<SourcedProperty[]> {
   const params: Record<string, string | number> = {
     postcode: postcode.replace(/\s/g, ''),
-    list: opts?.list ?? DEFAULT_LIST,
+    list: opts?.list ?? SOURCED_LIST_TYPES[0],
   };
   if (typeof opts?.radiusMiles === 'number') {
     params.radius = opts.radiusMiles;
@@ -557,12 +580,21 @@ export async function getSourcedProperties(
     params,
     {
       ttlMs: 24 * 60 * 60 * 1000,
-      estimatedCredits: 3,
+      estimatedCredits: 1,
       schema: SourcedPropertiesSchema,
     },
   );
-  const properties = (data as { result?: { properties?: unknown[] } } | null)
-    ?.result?.properties;
+  // PropertyData puts properties[] at the ROOT of the body, not under `result`.
+  // The `list` field at root is an object {id, name}; use id as the listing type.
+  const body = data as
+    | {
+        properties?: unknown[];
+        list?: { id?: string; name?: string };
+      }
+    | null;
+  const properties = body?.properties;
+  const listSlug =
+    typeof body?.list?.id === 'string' ? body.list.id : 'distressed';
   if (!Array.isArray(properties)) return [];
 
   const normalised: SourcedProperty[] = [];
@@ -572,30 +604,108 @@ export async function getSourcedProperties(
     const postcodeOut =
       typeof p.postcode === 'string' ? p.postcode.toUpperCase().trim() : null;
     if (!address || !postcodeOut) continue;
+
+    // Derive discount from price_history (max historical → current).
+    let originalPricePence: number | null = null;
+    let discountPercent: number | null = null;
+    const hist = Array.isArray(p.price_history)
+      ? (p.price_history as Array<{ price?: number }>)
+      : [];
+    const currentPrice = typeof p.price === 'number' ? p.price : null;
+    const maxHistPrice = hist
+      .map((h) => h.price)
+      .filter((v): v is number => typeof v === 'number')
+      .reduce((m, v) => (v > m ? v : m), 0);
+    if (currentPrice && maxHistPrice > currentPrice) {
+      originalPricePence = Math.round(maxHistPrice * 100);
+      discountPercent = Math.round(
+        ((maxHistPrice - currentPrice) / maxHistPrice) * 100,
+      );
+    }
+
     normalised.push({
+      id: typeof p.id === 'string' ? p.id : null,
       address,
+      preciseAddress:
+        typeof p.precise_address === 'string' ? p.precise_address : null,
       postcode: postcodeOut,
-      pricePence: typeof p.price === 'number' ? Math.round(p.price * 100) : null,
+      pricePence: currentPrice ? Math.round(currentPrice * 100) : null,
       bedrooms: typeof p.bedrooms === 'number' ? p.bedrooms : null,
       propertyType:
-        typeof p.property_type === 'string' ? p.property_type : null,
-      listingType:
-        typeof p.listing_type === 'string' ? p.listing_type : 'distressed',
-      listingUrl: typeof p.listing_url === 'string' ? p.listing_url : null,
+        (typeof p.type_standardised === 'string' && p.type_standardised) ||
+        (typeof p.type === 'string' ? p.type : null),
+      listingType: listSlug,
+      listingUrl: typeof p.url === 'string' ? p.url : null,
       daysOnMarket:
         typeof p.days_on_market === 'number' ? p.days_on_market : null,
-      estimatedValuePence:
-        typeof p.estimated_value === 'number'
-          ? Math.round(p.estimated_value * 100)
+      daysSincePriceChange:
+        typeof p.days_since_price_change === 'number'
+          ? p.days_since_price_change
           : null,
-      discountPercent:
-        typeof p.discount_percentage === 'number'
-          ? p.discount_percentage
-          : null,
-      source: typeof p.source === 'string' ? p.source : 'propertydata',
+      originalPricePence,
+      discountPercent,
+      summary: typeof p.summary === 'string' ? p.summary : null,
+      imageUrl: typeof p.image_url === 'string' ? p.image_url : null,
+      source: `propertydata_${listSlug}`,
     });
   }
   return normalised;
+}
+
+/**
+ * Fan out across multiple PropertyData list types and merge results,
+ * deduped by id (or address+postcode if id missing).
+ *
+ * Throttle: PropertyData rate limit is 4 calls per 10 seconds. We pause
+ * 2700ms between calls. For 6 list types × 1 area that's ~16s wall-clock,
+ * 6 credits. Each call is cached 24h so repeat probes are free.
+ *
+ * Returns aggregated SourcedProperty[] with the strongest distress signal
+ * surfaced in `listingType` when a property hits multiple lists.
+ */
+export async function getSourcedPropertiesMulti(
+  postcode: string,
+  opts?: { radiusMiles?: number; lists?: readonly string[] },
+): Promise<SourcedProperty[]> {
+  const lists = opts?.lists ?? SOURCED_LIST_TYPES.slice(0, 6);
+  const seen = new Map<string, SourcedProperty>();
+
+  for (let i = 0; i < lists.length; i++) {
+    const list = lists[i]!;
+    try {
+      const props = await getSourcedProperties(postcode, {
+        radiusMiles: opts?.radiusMiles,
+        list,
+      });
+      for (const p of props) {
+        const key =
+          p.id ?? `${p.address.toLowerCase()}|${p.postcode.toLowerCase()}`;
+        if (!seen.has(key)) {
+          seen.set(key, p);
+        } else {
+          // Stronger signal wins (earlier in SOURCED_LIST_TYPES = higher signal)
+          const existing = seen.get(key)!;
+          const existingRank = SOURCED_LIST_TYPES.indexOf(
+            existing.listingType as (typeof SOURCED_LIST_TYPES)[number],
+          );
+          const newRank = SOURCED_LIST_TYPES.indexOf(
+            p.listingType as (typeof SOURCED_LIST_TYPES)[number],
+          );
+          if (newRank >= 0 && (existingRank < 0 || newRank < existingRank)) {
+            seen.set(key, p);
+          }
+        }
+      }
+    } catch (err) {
+      console.warn(`[propertydata multi] ${list} failed`, err);
+    }
+    // Throttle except after the last
+    if (i < lists.length - 1) {
+      await new Promise((r) => setTimeout(r, 2700));
+    }
+  }
+
+  return Array.from(seen.values());
 }
 
 // ---------------------------------------------------------------------------
