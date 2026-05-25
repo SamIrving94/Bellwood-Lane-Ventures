@@ -540,8 +540,6 @@ async function addResolvedArea(
       listingCount: probe.listingCount,
       checkedAt: new Date().toISOString(),
       error: probe.error,
-      sourcedBreakdown: probe.sourcedBreakdown,
-      staleListingCount: probe.staleListingCount,
     },
     history: appendHistory([], probe.listingCount),
   };
@@ -582,8 +580,6 @@ export async function widenArea(
       listingCount: probe.listingCount,
       checkedAt: new Date().toISOString(),
       error: probe.error,
-      sourcedBreakdown: probe.sourcedBreakdown,
-      staleListingCount: probe.staleListingCount,
     },
     history: appendHistory(current.history, probe.listingCount),
   };
@@ -612,8 +608,6 @@ export async function reProbeArea(
       listingCount: probe.listingCount,
       checkedAt: new Date().toISOString(),
       error: probe.error,
-      sourcedBreakdown: probe.sourcedBreakdown,
-      staleListingCount: probe.staleListingCount,
     },
     history: appendHistory(current.history, probe.listingCount),
   };
