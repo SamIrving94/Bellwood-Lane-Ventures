@@ -6,22 +6,63 @@ export const maxDuration = 60;
 export const runtime = 'nodejs';
 
 /**
- * GET /agents/diag-propertydata?postcode=M14+5LL&radius=3
+ * GET /agents/diag-propertydata?postcode=M14+5LL&mode=<mode>
  *
- * Runs our actual production wrapper (getSourcedPropertiesMulti) so we
- * verify schema + parsing + throttle all work end-to-end. Returns the
- * normalised SourcedProperty[] our cron will see.
+ * mode=sourced  → end-to-end /sourced-properties via our wrapper (default)
+ * mode=shapes   → probe planning/titles-by-company/HMO raw to see response shapes
  */
 export const GET = async (request: Request) => {
   if (!validateAgentAuth(request)) return unauthorizedResponse();
 
   const url = new URL(request.url);
   const postcode = url.searchParams.get('postcode') ?? 'M14 5LL';
-  const radius = Number(url.searchParams.get('radius') ?? '3');
+  const compact = postcode.replace(/\s/g, '');
+  const radius = url.searchParams.get('radius') ?? '3';
+  const mode = url.searchParams.get('mode') ?? 'sourced';
 
+  if (mode === 'shapes') {
+    const apiKey = process.env.PROPERTYDATA_API_KEY ?? '';
+    if (!apiKey)
+      return NextResponse.json({ error: 'no key' }, { status: 500 });
+
+    const probe = async (ep: string, extraParams: Record<string, string> = {}) => {
+      const u = new URL(`https://api.propertydata.co.uk${ep}`);
+      u.searchParams.set('key', apiKey);
+      u.searchParams.set('postcode', compact);
+      for (const [k, v] of Object.entries(extraParams)) u.searchParams.set(k, v);
+      try {
+        const res = await fetch(u.toString(), {
+          headers: { Accept: 'application/json' },
+        });
+        const body = await res.json().catch(() => null);
+        return {
+          ep,
+          http: res.status,
+          bodyKeys: body ? Object.keys(body) : null,
+          sampleBody: body
+            ? JSON.parse(JSON.stringify(body).slice(0, 1500))
+            : null,
+        };
+      } catch (err) {
+        return { ep, http: null, err: (err as Error).message };
+      }
+    };
+
+    const results = [];
+    results.push(await probe('/planning-applications'));
+    await new Promise((r) => setTimeout(r, 2700));
+    results.push(await probe('/national-hmo-register'));
+    await new Promise((r) => setTimeout(r, 2700));
+    // titles-by-company needs a company_id, not postcode — probe with placeholder
+    results.push(await probe('/titles-by-company', { company_number: '00000000' }));
+
+    return NextResponse.json({ ok: true, postcode, results });
+  }
+
+  // Default mode: end-to-end test via our wrapper
   const t0 = Date.now();
   const props = await getSourcedPropertiesMulti(postcode, {
-    radiusMiles: radius,
+    radiusMiles: Number(radius),
   });
   const elapsedMs = Date.now() - t0;
 
@@ -40,13 +81,11 @@ export const GET = async (request: Request) => {
     sample: props.slice(0, 5).map((p) => ({
       address: p.address,
       postcode: p.postcode,
-      price: p.pricePence ? `£${Math.round(p.pricePence / 100).toLocaleString('en-GB')}` : null,
-      bedrooms: p.bedrooms,
-      type: p.propertyType,
+      price: p.pricePence
+        ? `£${Math.round(p.pricePence / 100).toLocaleString('en-GB')}`
+        : null,
       listingType: p.listingType,
       daysOnMarket: p.daysOnMarket,
-      discount: p.discountPercent ? `${p.discountPercent}%` : null,
-      summary: p.summary,
       url: p.listingUrl,
     })),
   });
