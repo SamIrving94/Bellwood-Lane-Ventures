@@ -412,24 +412,81 @@ export type SourcedProperty = {
  *
  * Source: PropertyData docs error code 1101 = "Missing input: list".
  */
+/**
+ * Every list type PropertyData /sourced-properties might accept. The
+ * exact set available depends on the account's plan. We probe each
+ * individually rather than sending them as a combined list, because
+ * PropertyData 422s the whole call if any single value is invalid for
+ * the account.
+ */
 export const SOURCED_LIST_TYPES = [
   'repossession',
+  'belowmarketvalue',
   'probate',
   'auction',
-  'belowmarketvalue',
   'unmodernised',
   'cashbuyer',
 ] as const;
 
 export type SourcedListType = (typeof SOURCED_LIST_TYPES)[number];
 
+const DEFAULT_LIST = 'repossession';
+
 /**
- * Conservative default — these two are universally available on
- * PropertyData and unambiguous. Other list types may require a higher
- * tier or use slightly different identifiers per area; we add them back
- * once we've verified what this account supports.
+ * Per-list-type probe — call /sourced-properties once per list type,
+ * record what works, return a breakdown. Resilient to any single type
+ * being invalid for the account. ~3 credits per list type per call,
+ * but cached.
  */
-const DEFAULT_LIST = 'repossession,probate';
+export type ListTypeBreakdown = Record<
+  SourcedListType,
+  { count: number; error: string | null }
+>;
+
+export async function probeSourcedByType(
+  postcode: string,
+  opts?: { radiusMiles?: number; types?: readonly SourcedListType[] },
+): Promise<ListTypeBreakdown> {
+  const types = opts?.types ?? SOURCED_LIST_TYPES;
+  const out: Partial<ListTypeBreakdown> = {};
+
+  await Promise.all(
+    types.map(async (t) => {
+      // Use the raw endpoint so we see PropertyData's actual response —
+      // getSourcedProperties() swallows errors and returns [], which
+      // makes a 422 indistinguishable from "no listings".
+      const raw = await getSourcedPropertiesRaw(postcode, {
+        radiusMiles: opts?.radiusMiles,
+        list: t,
+      });
+
+      if (!raw.ok) {
+        const body = raw.body as Record<string, unknown> | null;
+        const msg =
+          (body?.message as string | undefined) ??
+          raw.error ??
+          `HTTP ${raw.status ?? '?'}`;
+        out[t] = {
+          count: 0,
+          error: `${raw.status ?? '?'}: ${msg.slice(0, 80)}`,
+        };
+        return;
+      }
+
+      const body = raw.body as { result?: { properties?: unknown[] } } | null;
+      const properties = body?.result?.properties;
+      out[t] = {
+        count: Array.isArray(properties) ? properties.length : 0,
+        error: null,
+      };
+    }),
+  );
+
+  for (const t of SOURCED_LIST_TYPES) {
+    if (!out[t]) out[t] = { count: 0, error: 'not probed' };
+  }
+  return out as ListTypeBreakdown;
+}
 
 export async function getSourcedPropertiesRaw(
   postcode: string,

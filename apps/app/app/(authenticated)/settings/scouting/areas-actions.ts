@@ -4,7 +4,8 @@ import { auth } from '@repo/auth/server';
 import { database } from '@repo/database';
 import {
   getActiveListings,
-  getSourcedProperties,
+  probeSourcedByType,
+  type ListTypeBreakdown,
 } from '@repo/property-data/src/propertydata';
 import { findPlaces } from '@repo/property-data/src/os-places';
 import { revalidatePath } from 'next/cache';
@@ -26,6 +27,10 @@ export type Area = {
     listingCount: number;
     checkedAt: string;
     error: string | null;
+    /** Per-list-type breakdown: which PropertyData list types work, which don't. */
+    sourcedBreakdown?: ListTypeBreakdown;
+    /** Active listings from /listings filtered to days_on_market >= 60. */
+    staleListingCount?: number;
   } | null;
   /** Rolling 30-day listing-count history for the sparkline. */
   history?: Array<{ date: string; count: number }>;
@@ -232,25 +237,54 @@ function resolveInput(raw: string): Resolved {
 // Probe — hit PropertyData once on the seed and count listings
 // ───────────────────────────────────────────────────────────────────────
 
+/**
+ * Probe an area honestly:
+ *  - Hit /sourced-properties once PER LIST TYPE, surface breakdown
+ *  - Hit /listings (active stale) once
+ *  - Total = sum of working types + stale listings
+ *  - If everything 422s/errors, surface that — don't pretend a 0-count
+ *    "0 listings" when really we got no answer
+ */
 async function probeArea(
   seedPostcode: string,
   radiusMiles: number,
-): Promise<{ listingCount: number; error: string | null }> {
-  try {
-    const [sourced, listings] = await Promise.all([
-      getSourcedProperties(seedPostcode, { radiusMiles }).catch(() => []),
-      getActiveListings(seedPostcode, {
-        radiusMiles,
-        minDaysOnMarket: 60,
-      }).catch(() => []),
-    ]);
-    return { listingCount: sourced.length + listings.length, error: null };
-  } catch (err) {
-    return {
-      listingCount: 0,
-      error: (err as Error)?.message ?? 'Probe failed',
-    };
-  }
+): Promise<{
+  listingCount: number;
+  error: string | null;
+  sourcedBreakdown: ListTypeBreakdown;
+  staleListingCount: number;
+}> {
+  const [sourcedBreakdown, stale] = await Promise.all([
+    probeSourcedByType(seedPostcode, { radiusMiles }),
+    getActiveListings(seedPostcode, {
+      radiusMiles,
+      minDaysOnMarket: 60,
+    }).catch(() => []),
+  ]);
+
+  const sourcedTotal = Object.values(sourcedBreakdown).reduce(
+    (s, b) => s + b.count,
+    0,
+  );
+
+  // Did every list type fail with the SAME error? If so, surface it as
+  // the area-level error so the user understands their plan/auth issue.
+  const errors = Object.values(sourcedBreakdown)
+    .map((b) => b.error)
+    .filter((e): e is string => !!e);
+  const allFailed =
+    errors.length === Object.keys(sourcedBreakdown).length &&
+    stale.length === 0;
+  const commonError = allFailed
+    ? (errors[0] ?? 'All PropertyData probes failed')
+    : null;
+
+  return {
+    listingCount: sourcedTotal + stale.length,
+    error: commonError,
+    sourcedBreakdown,
+    staleListingCount: stale.length,
+  };
 }
 
 // ───────────────────────────────────────────────────────────────────────
@@ -534,6 +568,8 @@ async function addResolvedArea(
       listingCount: probe.listingCount,
       checkedAt: new Date().toISOString(),
       error: probe.error,
+      sourcedBreakdown: probe.sourcedBreakdown,
+      staleListingCount: probe.staleListingCount,
     },
     history: appendHistory([], probe.listingCount),
   };
@@ -574,6 +610,8 @@ export async function widenArea(
       listingCount: probe.listingCount,
       checkedAt: new Date().toISOString(),
       error: probe.error,
+      sourcedBreakdown: probe.sourcedBreakdown,
+      staleListingCount: probe.staleListingCount,
     },
     history: appendHistory(current.history, probe.listingCount),
   };
@@ -602,6 +640,8 @@ export async function reProbeArea(
       listingCount: probe.listingCount,
       checkedAt: new Date().toISOString(),
       error: probe.error,
+      sourcedBreakdown: probe.sourcedBreakdown,
+      staleListingCount: probe.staleListingCount,
     },
     history: appendHistory(current.history, probe.listingCount),
   };
