@@ -17,6 +17,8 @@ import { getHousepriceIndex } from '@repo/property-data/src/hmlr-hpi';
 import {
   getSourcedPropertiesMulti,
   getAccountCredits,
+  getPlanningApplications,
+  getHmoRegister,
 } from '@repo/property-data/src/propertydata';
 
 import { fetchProbateGrants } from './probate-data';
@@ -109,6 +111,8 @@ export interface ScoutingPipelineResult {
     hmcts: number;
     gazette: number;
     propertydata: number;
+    planning: number;
+    hmo: number;
     staleListings: number;
     afterDedupe: number;
     postcodesScanned: number;
@@ -118,6 +122,8 @@ export interface ScoutingPipelineResult {
     hmcts?: string;
     gazette?: string;
     propertydata?: string;
+    planning?: string;
+    hmo?: string;
     staleListings?: string;
   };
 }
@@ -156,6 +162,8 @@ export async function runScoutingPipeline(
     hmcts?: string;
     gazette?: string;
     propertydata?: string;
+    planning?: string;
+    hmo?: string;
     staleListings?: string;
   } = {};
 
@@ -188,7 +196,13 @@ export async function runScoutingPipeline(
     })),
   ];
 
-  const [hmctsGrants, gazetteGrants, sourcedFromPostcodes, staleListings] = await Promise.all([
+  const [
+    hmctsGrants,
+    gazetteGrants,
+    sourcedFromPostcodes,
+    planningGrants,
+    hmoGrants,
+  ] = await Promise.all([
     fetchProbateGrants(sinceDate, limit).catch((err) => {
       const msg = (err as Error)?.message ?? String(err);
       sourceErrors.hmcts = msg.slice(0, 200);
@@ -246,10 +260,99 @@ export async function runScoutingPipeline(
       }
       return all;
     })(),
-    // Stale-listing harvester is now redundant — the 'slow-to-sell-properties'
-    // and 'reduced-properties' list types in getSourcedPropertiesMulti cover
-    // the same signal. Return empty so the third tuple slot stays consistent.
-    Promise.resolve([]),
+    // /planning-applications — properties with recent planning activity
+    // (especially negative decisions = stuck owner = motivated)
+    (async () => {
+      const all: Array<{
+        probateRef: string;
+        address: string;
+        postcode: string;
+        grantDate: string;
+        executorName: null;
+        solicitorFirm: null;
+        estateValuePence: number | null;
+        grantType: 'unknown';
+        source: string;
+        daysSinceGrant: number;
+      }> = [];
+      for (const seed of allSeeds) {
+        try {
+          const apps = await getPlanningApplications(seed.postcode, {
+            radiusMiles: seed.radiusMiles,
+          });
+          // Only include applications with a meaningful seller signal
+          for (const app of apps) {
+            if (app.sellerSignalScore < 55) continue;
+            const pc = app.postcode ?? seed.postcode.split(' ')[0]!;
+            all.push({
+              probateRef: `pln-${seed.label}-${app.reference.slice(0, 24).replace(/\s+/g, '_')}`,
+              address: app.address,
+              postcode: pc,
+              grantDate: app.decidedAt ?? new Date().toISOString().slice(0, 10),
+              executorName: null,
+              solicitorFirm: null,
+              estateValuePence: null,
+              grantType: 'unknown' as const,
+              source: `planning_${app.decisionRating ?? 'pending'}`,
+              daysSinceGrant: 0,
+            });
+          }
+        } catch (err) {
+          const msg = (err as Error)?.message ?? String(err);
+          if (!sourceErrors.planning) {
+            sourceErrors.planning = `${seed.label}: ${msg.slice(0, 150)}`;
+          }
+        }
+      }
+      return all;
+    })(),
+    // /national-hmo-register — HMOs in the area; ones with licences expiring
+    // within 12 months are higher-signal (often sold around licence renewal)
+    (async () => {
+      const all: Array<{
+        probateRef: string;
+        address: string;
+        postcode: string;
+        grantDate: string;
+        executorName: null;
+        solicitorFirm: null;
+        estateValuePence: number | null;
+        grantType: 'unknown';
+        source: string;
+        daysSinceGrant: number;
+      }> = [];
+      for (const seed of allSeeds) {
+        try {
+          const hmos = await getHmoRegister(seed.postcode, {
+            radiusMiles: seed.radiusMiles,
+          });
+          for (const hmo of hmos) {
+            // Only include HMOs with expiring licences — strongest signal
+            if (!hmo.licenceExpiringSoon) continue;
+            const pcMatch = hmo.address.match(/[A-Z]{1,2}\d{1,2}[A-Z]?\s?\d[A-Z]{2}/);
+            const pc = pcMatch ? pcMatch[0] : seed.postcode.split(' ')[0]!;
+            all.push({
+              probateRef: `hmo-${seed.label}-${hmo.reference.slice(0, 24).replace(/\s+/g, '_')}`,
+              address: hmo.address,
+              postcode: pc,
+              grantDate: new Date().toISOString().slice(0, 10),
+              executorName: null,
+              solicitorFirm: null,
+              estateValuePence: null,
+              grantType: 'unknown' as const,
+              source: 'hmo_licence_expiring',
+              daysSinceGrant: 0,
+            });
+          }
+        } catch (err) {
+          const msg = (err as Error)?.message ?? String(err);
+          if (!sourceErrors.hmo) {
+            sourceErrors.hmo = `${seed.label}: ${msg.slice(0, 150)}`;
+          }
+        }
+      }
+      return all;
+    })(),
   ]);
 
   // If we have no seeds at all, flag it as a config issue.
@@ -263,7 +366,8 @@ export async function runScoutingPipeline(
     ...hmctsGrants,
     ...gazetteGrants,
     ...sourcedFromPostcodes,
-    ...staleListings,
+    ...planningGrants,
+    ...hmoGrants,
   ].filter((g) => {
     const key = `${g.address.toLowerCase()}|${g.postcode.toLowerCase()}`;
     if (seen.has(key)) return false;
@@ -272,7 +376,7 @@ export async function runScoutingPipeline(
   }).slice(0, limit);
 
   console.info(
-    `[scouting] sources: hmcts=${hmctsGrants.length} gazette=${gazetteGrants.length} propertydata=${sourcedFromPostcodes.length} stale=${staleListings.length} (after dedupe: ${rawGrants.length})`,
+    `[scouting] sources: hmcts=${hmctsGrants.length} gazette=${gazetteGrants.length} propertydata=${sourcedFromPostcodes.length} planning=${planningGrants.length} hmo=${hmoGrants.length} (after dedupe: ${rawGrants.length})`,
   );
 
   // Step 2 — GDPR sanitise raw payloads
@@ -349,7 +453,9 @@ export async function runScoutingPipeline(
       hmcts: hmctsGrants.length,
       gazette: gazetteGrants.length,
       propertydata: sourcedFromPostcodes.length,
-      staleListings: staleListings.length,
+      planning: planningGrants.length,
+      hmo: hmoGrants.length,
+      staleListings: 0,
       afterDedupe: rawGrants.length,
       postcodesScanned: allSeeds.length,
     },
