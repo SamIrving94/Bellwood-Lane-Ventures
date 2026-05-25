@@ -238,6 +238,8 @@ export async function runScoutingPipeline(
           pricePence: number | null;
           originalPricePence: number | null;
           discountPercent: number | null;
+          reductionCount: number;
+          velocityScore: number;
           bedrooms: number | null;
           propertyType: string | null;
           daysOnMarket: number | null;
@@ -271,6 +273,8 @@ export async function runScoutingPipeline(
                 pricePence: p.pricePence,
                 originalPricePence: p.originalPricePence,
                 discountPercent: p.discountPercent,
+                reductionCount: p.reductionCount,
+                velocityScore: p.velocityScore,
                 bedrooms: p.bedrooms,
                 propertyType: p.propertyType,
                 daysOnMarket: p.daysOnMarket,
@@ -455,6 +459,46 @@ export async function runScoutingPipeline(
     return sanitisePayload(raw);
   });
 
+  // Build signals lookup BEFORE enrichment (we lose rawGrant after enrich).
+  // Keyed by probateRef so we can rejoin even when enrichLeads drops rows.
+  const signalsByRef = new Map<
+    string,
+    {
+      reductionCount?: number;
+      velocityScore?: number;
+      daysOnMarket?: number | null;
+      discountPercent?: number | null;
+      listingType?: string;
+    }
+  >();
+  for (const g of rawGrants) {
+    const pd = (g as { propertyData?: Record<string, unknown> }).propertyData;
+    if (pd) {
+      signalsByRef.set(g.probateRef, {
+        reductionCount:
+          typeof pd.reductionCount === 'number'
+            ? (pd.reductionCount as number)
+            : undefined,
+        velocityScore:
+          typeof pd.velocityScore === 'number'
+            ? (pd.velocityScore as number)
+            : undefined,
+        daysOnMarket:
+          typeof pd.daysOnMarket === 'number'
+            ? (pd.daysOnMarket as number)
+            : null,
+        discountPercent:
+          typeof pd.discountPercent === 'number'
+            ? (pd.discountPercent as number)
+            : null,
+        listingType:
+          typeof pd.listingType === 'string'
+            ? (pd.listingType as string)
+            : undefined,
+      });
+    }
+  }
+
   // Step 3 — Enrich via tier cascade
   const enriched = await enrichLeads(rawGrants);
 
@@ -466,7 +510,8 @@ export async function runScoutingPipeline(
         getHousepriceIndex(lead.postcode).catch(() => null),
       ]);
 
-      const breakdown = scoreLead(lead, pricePaid, hpi);
+      const signals = signalsByRef.get(lead.probateRef);
+      const breakdown = scoreLead(lead, pricePaid, hpi, signals);
 
       const scoutLead: ScoutLead = {
         runDate,

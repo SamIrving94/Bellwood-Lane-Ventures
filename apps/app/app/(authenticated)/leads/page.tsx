@@ -78,6 +78,10 @@ const LeadsPage = async ({
                 (pd?.originalPricePence as number | undefined) ?? null,
               discountPercent:
                 (pd?.discountPercent as number | undefined) ?? null,
+              reductionCount:
+                (pd?.reductionCount as number | undefined) ?? 0,
+              velocityScore:
+                (pd?.velocityScore as number | undefined) ?? 0,
               bedrooms: (pd?.bedrooms as number | undefined) ?? null,
               propertyType:
                 (pd?.propertyType as string | undefined) ?? null,

@@ -37,6 +37,22 @@ export interface ScoreBreakdown {
   marketTrendLabel: string;
 }
 
+/**
+ * Per-lead "freshness" signals derived from PropertyData (passed through
+ * from rawPayload at the cron layer). Used to boost motivation when the
+ * listing shows price-velocity or accelerating distress.
+ */
+export interface LeadSignals {
+  /** Number of distinct price reductions in the listing history. */
+  reductionCount?: number;
+  /** Velocity = (totalDropPercent × reductionCount) / daysOnMarket. */
+  velocityScore?: number;
+  daysOnMarket?: number | null;
+  discountPercent?: number | null;
+  /** Source slug, e.g. 'repossessed-properties' — for type-specific boosts. */
+  listingType?: string;
+}
+
 // ---------------------------------------------------------------------------
 // Component scorers
 // ---------------------------------------------------------------------------
@@ -46,7 +62,10 @@ export interface ScoreBreakdown {
  *
  * High-urgency lead types and fresh Golden Windows score highest.
  */
-function scoreMotivation(lead: EnrichedLead): number {
+function scoreMotivation(
+  lead: EnrichedLead,
+  signals?: LeadSignals,
+): number {
   let score = 0;
 
   // Lead type urgency (0–25)
@@ -77,6 +96,27 @@ function scoreMotivation(lead: EnrichedLead): number {
 
   // Letters of administration = higher motivation (unplanned estate)
   if (lead.grantType === 'letters_of_administration') score += 3;
+
+  // ── Velocity boost (0–8) ───────────────────────────────────────────
+  // High velocity = seller dropping price rapidly; classic motivated signal.
+  if (signals?.velocityScore && signals.velocityScore > 0) {
+    if (signals.velocityScore >= 1.0) score += 8;
+    else if (signals.velocityScore >= 0.5) score += 5;
+    else if (signals.velocityScore >= 0.2) score += 3;
+    else if (signals.velocityScore >= 0.05) score += 1;
+  }
+
+  // Stale-listing boost (0–4) — long on market without reductions still
+  // signals discouragement.
+  if (
+    signals?.daysOnMarket &&
+    signals.daysOnMarket >= 90 &&
+    (!signals.reductionCount || signals.reductionCount === 0)
+  ) {
+    score += 4;
+  } else if (signals?.daysOnMarket && signals.daysOnMarket >= 60) {
+    score += 2;
+  }
 
   return Math.min(45, score);
 }
@@ -176,12 +216,13 @@ function verdictFromScore(total: number, hasCriticalData: boolean): Verdict {
 export function scoreLead(
   lead: EnrichedLead,
   pricePaid: PricePaid | null,
-  hpi: Hpi | null
+  hpi: Hpi | null,
+  signals?: LeadSignals,
 ): ScoreBreakdown {
   // Critical data check: must have at least an address and postcode
   const hasCriticalData = Boolean(lead.address && lead.postcode);
 
-  const motivation = scoreMotivation(lead);
+  const motivation = scoreMotivation(lead, signals);
   const equity = scoreEquity(lead, pricePaid);
   const { score: marketTrend, label: marketTrendLabel } = scoreMarketTrend(hpi);
   const contactQuality = scoreContactQuality(lead);

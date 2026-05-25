@@ -417,6 +417,15 @@ export type SourcedProperty = {
   originalPricePence: number | null;
   /** Percentage discount from the highest historical price, 0-100. */
   discountPercent: number | null;
+  /** How many distinct price reductions in the listing history. */
+  reductionCount: number;
+  /**
+   * Velocity = (totalDropPercent × reductionCount) / max(daysOnMarket, 1).
+   * High velocity (>0.5) means the seller is dropping price rapidly →
+   * strong motivation signal. Compare: 3 reductions × 10% in 30 days = 1.0;
+   * 1 reduction × 5% in 90 days = 0.056.
+   */
+  velocityScore: number;
   summary: string | null;
   imageUrl: string | null;
   source: string;
@@ -605,11 +614,13 @@ export async function getSourcedProperties(
       typeof p.postcode === 'string' ? p.postcode.toUpperCase().trim() : null;
     if (!address || !postcodeOut) continue;
 
-    // Derive discount from price_history (max historical → current).
+    // Derive discount + velocity from price_history.
     let originalPricePence: number | null = null;
     let discountPercent: number | null = null;
+    let reductionCount = 0;
+    let velocityScore = 0;
     const hist = Array.isArray(p.price_history)
-      ? (p.price_history as Array<{ price?: number }>)
+      ? (p.price_history as Array<{ price?: number; date?: string }>)
       : [];
     const currentPrice = typeof p.price === 'number' ? p.price : null;
     const maxHistPrice = hist
@@ -621,6 +632,28 @@ export async function getSourcedProperties(
       discountPercent = Math.round(
         ((maxHistPrice - currentPrice) / maxHistPrice) * 100,
       );
+    }
+    // Walk history chronologically to count distinct price DROPS.
+    const sortedHist = [...hist]
+      .filter((h) => typeof h.price === 'number')
+      .sort((a, b) => (a.date ?? '').localeCompare(b.date ?? ''));
+    for (let k = 1; k < sortedHist.length; k++) {
+      const prev = sortedHist[k - 1]?.price ?? 0;
+      const cur = sortedHist[k]?.price ?? 0;
+      if (cur < prev) reductionCount++;
+    }
+    // Velocity = magnitude of drops × frequency, normalised by listing age.
+    const daysOnMarket =
+      typeof p.days_on_market === 'number' ? p.days_on_market : null;
+    if (
+      reductionCount > 0 &&
+      discountPercent !== null &&
+      daysOnMarket !== null &&
+      daysOnMarket > 0
+    ) {
+      velocityScore =
+        Math.round(((discountPercent * reductionCount) / daysOnMarket) * 100) /
+        100;
     }
 
     normalised.push({
@@ -644,6 +677,8 @@ export async function getSourcedProperties(
           : null,
       originalPricePence,
       discountPercent,
+      reductionCount,
+      velocityScore,
       summary: typeof p.summary === 'string' ? p.summary : null,
       imageUrl: typeof p.image_url === 'string' ? p.image_url : null,
       source: `propertydata_${listSlug}`,

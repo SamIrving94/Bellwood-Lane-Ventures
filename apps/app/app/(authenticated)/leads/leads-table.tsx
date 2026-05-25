@@ -23,6 +23,8 @@ type Lead = {
   pricePence: number | null;
   originalPricePence: number | null;
   discountPercent: number | null;
+  reductionCount: number;
+  velocityScore: number;
   bedrooms: number | null;
   propertyType: string | null;
   daysOnMarket: number | null;
@@ -294,6 +296,15 @@ function LeadCard({
                 {lead.discountPercent && lead.discountPercent > 0 && (
                   <span className="inline-flex rounded-full border border-orange-200 bg-orange-100 px-2 py-0.5 text-[11px] font-medium text-orange-800">
                     ↓ {lead.discountPercent}% reduced
+                    {lead.reductionCount > 1 && ` ×${lead.reductionCount}`}
+                  </span>
+                )}
+                {lead.velocityScore >= 0.5 && (
+                  <span
+                    className="inline-flex rounded-full border border-red-200 bg-red-100 px-2 py-0.5 text-[11px] font-medium text-red-800"
+                    title={`Velocity score ${lead.velocityScore.toFixed(2)} — accelerating distress`}
+                  >
+                    ⚡ Accelerating
                   </span>
                 )}
                 {typeof lead.daysOnMarket === 'number' &&
