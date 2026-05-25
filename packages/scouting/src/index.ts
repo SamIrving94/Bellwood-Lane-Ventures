@@ -280,9 +280,11 @@ export async function runScoutingPipeline(
           const apps = await getPlanningApplications(seed.postcode, {
             radiusMiles: seed.radiusMiles,
           });
-          // Only include applications with a meaningful seller signal
+          // Include applications with at least some seller signal. The
+          // downstream scorer will weight further; we just don't want to
+          // filter so hard that we starve the pipeline.
           for (const app of apps) {
-            if (app.sellerSignalScore < 55) continue;
+            if (app.sellerSignalScore < 45) continue;
             const pc = app.postcode ?? seed.postcode.split(' ')[0]!;
             all.push({
               probateRef: `pln-${seed.label}-${app.reference.slice(0, 24).replace(/\s+/g, '_')}`,
@@ -326,9 +328,10 @@ export async function runScoutingPipeline(
           const hmos = await getHmoRegister(seed.postcode, {
             radiusMiles: seed.radiusMiles,
           });
+          // Include all HMOs as context leads. Expiring-licence ones flag
+          // higher; the scorer downstream can prioritise. Without this we
+          // miss too many — most licences are >12mo out at any moment.
           for (const hmo of hmos) {
-            // Only include HMOs with expiring licences — strongest signal
-            if (!hmo.licenceExpiringSoon) continue;
             const pcMatch = hmo.address.match(/[A-Z]{1,2}\d{1,2}[A-Z]?\s?\d[A-Z]{2}/);
             const pc = pcMatch ? pcMatch[0] : seed.postcode.split(' ')[0]!;
             all.push({
@@ -340,7 +343,9 @@ export async function runScoutingPipeline(
               solicitorFirm: null,
               estateValuePence: null,
               grantType: 'unknown' as const,
-              source: 'hmo_licence_expiring',
+              source: hmo.licenceExpiringSoon
+                ? 'hmo_licence_expiring'
+                : 'hmo_register',
               daysSinceGrant: 0,
             });
           }
