@@ -72,6 +72,31 @@ const LeadDetailPage = async ({
   const scoreBreakdown = raw.scoreBreakdown as
     | Record<string, number>
     | undefined;
+  const rationale = (raw.rationale as string | undefined) ?? null;
+  type ScoreFactor = {
+    label: string;
+    points: number;
+    dimension: string;
+    tone?: 'positive' | 'negative' | 'neutral';
+  };
+  const scoreFactors =
+    (raw.scoreFactors as ScoreFactor[] | undefined) ?? [];
+  const positiveFactors = scoreFactors
+    .filter((f) => f.points > 0)
+    .sort((a, b) => b.points - a.points);
+  const negativeFactors = scoreFactors
+    .filter((f) => f.points < 0)
+    .sort((a, b) => a.points - b.points);
+  const neutralFactors = scoreFactors.filter(
+    (f) => f.points === 0 && f.tone === 'neutral',
+  );
+  const DIMENSION_LABELS: Record<string, string> = {
+    motivation: 'Motivation',
+    equity: 'Equity',
+    marketTrend: 'Market',
+    contactQuality: 'Contact',
+    risk: 'Risk',
+  };
 
   const isPropertyData = lead.source.startsWith('propertydata_');
   const isPlanning = lead.source.startsWith('planning_');
@@ -295,14 +320,143 @@ const LeadDetailPage = async ({
           </div>
         )}
 
-        {/* Risk flags */}
-        {riskFlags.length > 0 && (
+        {/* Why this score — ALWAYS VISIBLE, the answer to "why" */}
+        {scoreFactors.length > 0 && (
+          <div className="rounded-xl border-2 border-slate-200 bg-white p-5">
+            <div className="flex items-baseline justify-between gap-3">
+              <div>
+                <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+                  Why this score
+                </p>
+                {rationale && (
+                  <p className="mt-1 text-[15px] font-medium text-slate-900">
+                    {rationale}
+                  </p>
+                )}
+              </div>
+              {scoreBreakdown && (
+                <div className="text-right">
+                  <p className="font-mono font-bold text-3xl tabular-nums leading-none">
+                    {scoreBreakdown.total}
+                  </p>
+                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                    / 100
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* Positive contributors */}
+            {positiveFactors.length > 0 && (
+              <div className="mt-4">
+                <p className="text-[11px] font-medium uppercase tracking-wider text-emerald-700">
+                  What pushed it up
+                </p>
+                <ul className="mt-2 grid gap-1.5 sm:grid-cols-2">
+                  {positiveFactors.map((f, idx) => (
+                    <li
+                      key={`${f.label}-${idx}`}
+                      className="flex items-center justify-between gap-3 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm"
+                    >
+                      <span className="min-w-0 flex-1 truncate text-slate-900">
+                        {f.label}
+                      </span>
+                      <span className="font-mono text-emerald-800 font-semibold tabular-nums">
+                        +{f.points}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {/* Negative contributors */}
+            {negativeFactors.length > 0 && (
+              <div className="mt-4">
+                <p className="text-[11px] font-medium uppercase tracking-wider text-rose-700">
+                  What pulled it down
+                </p>
+                <ul className="mt-2 grid gap-1.5 sm:grid-cols-2">
+                  {negativeFactors.map((f, idx) => (
+                    <li
+                      key={`${f.label}-${idx}`}
+                      className="flex items-center justify-between gap-3 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm"
+                    >
+                      <span className="min-w-0 flex-1 truncate text-slate-900">
+                        ⚠ {f.label}
+                      </span>
+                      <span className="font-mono text-rose-800 font-semibold tabular-nums">
+                        {f.points}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {/* Per-dimension breakdown row */}
+            {scoreBreakdown && (
+              <div className="mt-4 grid grid-cols-5 gap-2 border-t pt-3 text-center text-[11px]">
+                <div>
+                  <p className="text-muted-foreground">Motivation</p>
+                  <p className="font-mono text-sm font-semibold">
+                    {scoreBreakdown.motivation}
+                    <span className="text-muted-foreground">/40</span>
+                  </p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Equity</p>
+                  <p className="font-mono text-sm font-semibold">
+                    {scoreBreakdown.equity}
+                    <span className="text-muted-foreground">/25</span>
+                  </p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Market</p>
+                  <p className="font-mono text-sm font-semibold">
+                    {scoreBreakdown.marketTrend}
+                    <span className="text-muted-foreground">/15</span>
+                  </p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Contact</p>
+                  <p className="font-mono text-sm font-semibold">
+                    {scoreBreakdown.contactQuality}
+                    <span className="text-muted-foreground">/10</span>
+                  </p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Risk</p>
+                  <p
+                    className={`font-mono text-sm font-semibold ${
+                      scoreBreakdown.risk < 0
+                        ? 'text-rose-700'
+                        : scoreBreakdown.risk > 0
+                          ? 'text-emerald-700'
+                          : ''
+                    }`}
+                  >
+                    {scoreBreakdown.risk > 0 ? '+' : ''}
+                    {scoreBreakdown.risk}
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {neutralFactors.length > 0 && (
+              <p className="mt-3 text-[11px] text-muted-foreground">
+                Missing inputs:{' '}
+                {neutralFactors.map((f) => f.label).join(' · ')}
+              </p>
+            )}
+          </div>
+        )}
+
+        {/* Back-compat: surface riskFlags inline for older leads without factors[] */}
+        {riskFlags.length > 0 && scoreFactors.length === 0 && (
           <div className="rounded-xl border border-rose-200 bg-rose-50/50 p-5">
             <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-rose-700">
               Risk flags
-            </p>
-            <p className="mt-1 text-xs text-rose-700">
-              These reduce the lead score. Acquire with eyes open.
             </p>
             <ul className="mt-3 space-y-1 text-sm text-rose-900">
               {riskFlags.map((flag) => (
@@ -313,60 +467,6 @@ const LeadDetailPage = async ({
               ))}
             </ul>
           </div>
-        )}
-
-        {/* Score breakdown — collapsible */}
-        {scoreBreakdown && (
-          <details className="rounded-xl border bg-card p-5">
-            <summary className="cursor-pointer font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-              Score breakdown
-            </summary>
-            <div className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
-              <div className="flex justify-between border-b pb-1">
-                <span className="text-muted-foreground">Motivation</span>
-                <span className="font-mono">
-                  {scoreBreakdown.motivation} / 40
-                </span>
-              </div>
-              <div className="flex justify-between border-b pb-1">
-                <span className="text-muted-foreground">Equity</span>
-                <span className="font-mono">
-                  {scoreBreakdown.equity} / 25
-                </span>
-              </div>
-              <div className="flex justify-between border-b pb-1">
-                <span className="text-muted-foreground">Market trend</span>
-                <span className="font-mono">
-                  {scoreBreakdown.marketTrend} / 15
-                </span>
-              </div>
-              <div className="flex justify-between border-b pb-1">
-                <span className="text-muted-foreground">Contact quality</span>
-                <span className="font-mono">
-                  {scoreBreakdown.contactQuality} / 10
-                </span>
-              </div>
-              <div className="flex justify-between border-b pb-1">
-                <span className="text-muted-foreground">Risk adjustment</span>
-                <span
-                  className={`font-mono ${
-                    scoreBreakdown.risk < 0
-                      ? 'text-rose-700'
-                      : scoreBreakdown.risk > 0
-                        ? 'text-emerald-700'
-                        : ''
-                  }`}
-                >
-                  {scoreBreakdown.risk > 0 ? '+' : ''}
-                  {scoreBreakdown.risk}
-                </span>
-              </div>
-              <div className="flex justify-between font-semibold sm:col-span-2">
-                <span>Total</span>
-                <span className="font-mono">{scoreBreakdown.total} / 100</span>
-              </div>
-            </div>
-          </details>
         )}
 
         {/* Planning details */}

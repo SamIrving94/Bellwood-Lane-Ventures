@@ -250,7 +250,7 @@ export async function runScoutingPipeline(
         postcode: string;
         grantDate: string;
         executorName: null;
-        solicitorFirm: null;
+        solicitorFirm: string | null;
         estateValuePence: number | null;
         grantType: 'unknown';
         source: string;
@@ -328,7 +328,7 @@ export async function runScoutingPipeline(
     postcode: string;
     grantDate: string;
     executorName: null;
-    solicitorFirm: null;
+    solicitorFirm: string | null;
     estateValuePence: number | null;
     grantType: 'unknown';
     source: string;
@@ -682,13 +682,15 @@ export async function runScoutingPipeline(
       };
       const breakdown = scoreLead(lead, pricePaid, hpi, signals);
 
-      // Stamp risk flags + score breakdown onto rawPayload so the UI can
-      // surface 'why this lead scored what it scored'.
+      // Stamp the full "why this score" payload onto rawPayload so the UI
+      // can render it verbatim — no inference, no guesswork.
       let enrichedRaw = sanitisedGrants[i] ?? null;
       if (includeRawPayload && enrichedRaw) {
         enrichedRaw = {
           ...enrichedRaw,
           riskFlags: breakdown.riskFlags,
+          rationale: breakdown.rationale,
+          scoreFactors: breakdown.factors,
           scoreBreakdown: {
             motivation: breakdown.motivation,
             equity: breakdown.equity,

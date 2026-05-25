@@ -10,86 +10,118 @@
  *   Market Trend    15 pts  — HPI trend for postcode region
  *   Contact Quality 10 pts  — completeness of contact details
  *   Risk           +10 / -10 — flood + EPC band + short lease + planning
- *                              enforcement. SUBTRACTS for distressed-area
- *                              risks we don't want to acquire, ADDS for
- *                              clean-title low-risk picks.
+ *                              enforcement.
  *
- *   Total caps at 100.
- *
- * Verdicts:
- *   STRONG           ≥ 70
- *   VIABLE           50–69
- *   THIN             30–49
- *   PASS             < 30
- *   INSUFFICIENT_DATA  when critical inputs are missing
+ * Every contribution is captured as a Factor so the UI can render
+ * "why this score" without guesswork.
  */
 
 import type { Hpi } from '@repo/property-data/src/hmlr-hpi';
 import type { PricePaid } from '@repo/property-data/src/hmlr';
 import type { EnrichedLead } from './enrichment';
 
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
-
 export type Verdict = 'STRONG' | 'VIABLE' | 'THIN' | 'PASS' | 'INSUFFICIENT_DATA';
 
-export interface ScoreBreakdown {
-  motivation: number;   // 0–40
-  equity: number;       // 0–25
-  marketTrend: number;  // 0–15
-  contactQuality: number; // 0–10
-  risk: number;         // -10 to +10 (penalty when negative)
-  total: number;        // 0–100 (clamped)
-  verdict: Verdict;
-  marketTrendLabel: string;
-  /** Human-readable risk reasons, e.g. ['flood: high', 'EPC F', 'lease 62y']. */
-  riskFlags: string[];
-}
+export type ScoreDimension =
+  | 'motivation'
+  | 'equity'
+  | 'marketTrend'
+  | 'contactQuality'
+  | 'risk';
 
 /**
- * Per-lead "freshness" signals derived from PropertyData (passed through
- * from rawPayload at the cron layer). Used to boost motivation when the
- * listing shows price-velocity or accelerating distress.
+ * A single thing that pushed the score up or down. The UI uses these
+ * directly to render "Why this score" — no inference, no guesswork.
  */
+export interface ScoreFactor {
+  /** Plain-English short label, e.g. "Probate lead", "Stale 87d", "EPC F". */
+  label: string;
+  /** Signed point contribution. Positive raises score, negative lowers. */
+  points: number;
+  dimension: ScoreDimension;
+  /**
+   * Optional sub-tone for UI colouring. 'positive' = green, 'negative' = rose,
+   * 'neutral' = slate. Defaults to positive/negative based on sign.
+   */
+  tone?: 'positive' | 'negative' | 'neutral';
+}
+
+export interface ScoreBreakdown {
+  motivation: number;
+  equity: number;
+  marketTrend: number;
+  contactQuality: number;
+  risk: number;
+  total: number;
+  verdict: Verdict;
+  marketTrendLabel: string;
+  /** Backwards-compatible: short risk reasons. Mirrors factors with negative points in risk dimension. */
+  riskFlags: string[];
+  /** Every factor that contributed to the score, in source order. */
+  factors: ScoreFactor[];
+  /** One-line plain-English summary, ready to render. */
+  rationale: string;
+}
+
 export interface LeadSignals {
-  /** Number of distinct price reductions in the listing history. */
   reductionCount?: number;
-  /** Velocity = (totalDropPercent × reductionCount) / daysOnMarket. */
   velocityScore?: number;
   daysOnMarket?: number | null;
   discountPercent?: number | null;
-  /** Source slug, e.g. 'repossessed-properties' — for type-specific boosts. */
   listingType?: string;
-  /** % of postcode population aged 65+. Used as a pre-probate proxy. */
   percentOver65?: number | null;
-  /** % of postcode population aged 75+. Stronger pre-probate signal. */
   percentOver75?: number | null;
-  // ── Risk inputs ──────────────────────────────────────────────────────
-  /** EA flood band: 'very low' | 'low' | 'medium' | 'high'. */
   floodRisk?: string | null;
-  /** Property's EPC rating: A B C D E F G. F/G is a penalty. */
   epcRating?: string | null;
-  /** Remaining lease years. <80 is a soft penalty, <60 is a hard one. */
   remainingLeaseYears?: number | null;
-  /** Tenure: 'freehold' is +1, 'leasehold' triggers the lease check. */
   tenure?: 'freehold' | 'leasehold' | 'unknown' | null;
-  /** Count of planning enforcement notices / refusals in the area. */
   planningRefusalCount?: number;
 }
 
-// ---------------------------------------------------------------------------
-// Component scorers
-// ---------------------------------------------------------------------------
+// ─────────────────────────────────────────────────────────────────────────
+// Helpers
+// ─────────────────────────────────────────────────────────────────────────
 
-/**
- * Motivation score (0–45).
- *
- * High-urgency lead types and fresh Golden Windows score highest.
- */
+function add(
+  factors: ScoreFactor[],
+  label: string,
+  points: number,
+  dimension: ScoreDimension,
+  tone?: ScoreFactor['tone'],
+): void {
+  if (points === 0) return;
+  factors.push({ label, points, dimension, tone });
+}
+
+const LISTING_TYPE_LABELS: Record<string, string> = {
+  'repossessed-properties': 'Repossessed',
+  'quick-sale-properties': 'Quick sale',
+  'reduced-properties': 'Price reduced',
+  'slow-to-sell-properties': 'Stale listing',
+  'derelict-properties': 'Derelict',
+  'unmodernised-properties': 'Unmodernised',
+  'back-on-market': 'Back on market',
+  'properties-with-no-chain': 'No chain',
+  'cash-buyers-only-properties': 'Cash only',
+  'auction-properties': 'Auction',
+  'short-lease-properties': 'Short lease',
+  'poor-epc-score': 'Poor EPC',
+};
+
+function leadTypeLabel(key: string): string {
+  return key
+    .replace(/_/g, ' ')
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Component scorers — each returns the cap value AND populates factors[]
+// ─────────────────────────────────────────────────────────────────────────
+
 function scoreMotivation(
   lead: EnrichedLead,
-  signals?: LeadSignals,
+  signals: LeadSignals | undefined,
+  factors: ScoreFactor[],
 ): number {
   let score = 0;
 
@@ -108,82 +140,127 @@ function scoreMotivation(
     unknown: 5,
   };
   const typeKey = lead.leadType.toLowerCase().replace(/\s+/g, '_');
-  score += typeScores[typeKey] ?? 5;
+  const typePoints = typeScores[typeKey] ?? 5;
+  // Prefer the PropertyData listing label when present (more specific than 'unknown')
+  const niceTypeLabel = signals?.listingType
+    ? (LISTING_TYPE_LABELS[signals.listingType] ?? leadTypeLabel(typeKey))
+    : leadTypeLabel(typeKey);
+  score += typePoints;
+  add(factors, niceTypeLabel, typePoints, 'motivation');
 
-  // Golden Window timing bonus (0–12)
-  if (lead.goldenWindowLabel === 'hot') score += 12;
-  else if (lead.goldenWindowLabel === 'warm') score += 8;
-  else if (lead.goldenWindowLabel === 'cool') score += 4;
-  // cold = 0
-
-  // Solicitor involvement — suggests live estate administration (0–5)
-  if (lead.solicitorFirm) score += 5;
-
-  // Letters of administration = higher motivation (unplanned estate)
-  if (lead.grantType === 'letters_of_administration') score += 3;
-
-  // ── Velocity boost (0–8) ───────────────────────────────────────────
-  // High velocity = seller dropping price rapidly; classic motivated signal.
-  if (signals?.velocityScore && signals.velocityScore > 0) {
-    if (signals.velocityScore >= 1.0) score += 8;
-    else if (signals.velocityScore >= 0.5) score += 5;
-    else if (signals.velocityScore >= 0.2) score += 3;
-    else if (signals.velocityScore >= 0.05) score += 1;
+  // Golden Window
+  if (lead.goldenWindowLabel === 'hot') {
+    score += 12;
+    add(factors, 'Hot probate window', 12, 'motivation');
+  } else if (lead.goldenWindowLabel === 'warm') {
+    score += 8;
+    add(factors, 'Warm probate window', 8, 'motivation');
+  } else if (lead.goldenWindowLabel === 'cool') {
+    score += 4;
+    add(factors, 'Cool probate window', 4, 'motivation');
   }
 
-  // Stale-listing boost (0–4) — long on market without reductions still
-  // signals discouragement.
+  // Solicitor involvement
+  if (lead.solicitorFirm) {
+    score += 5;
+    add(factors, 'Solicitor identified', 5, 'motivation');
+  }
+
+  // Letters of admin = unplanned estate
+  if (lead.grantType === 'letters_of_administration') {
+    score += 3;
+    add(factors, 'Letters of administration (unplanned)', 3, 'motivation');
+  }
+
+  // Velocity boost
+  if (signals?.velocityScore && signals.velocityScore > 0) {
+    let pts = 0;
+    if (signals.velocityScore >= 1.0) pts = 8;
+    else if (signals.velocityScore >= 0.5) pts = 5;
+    else if (signals.velocityScore >= 0.2) pts = 3;
+    else if (signals.velocityScore >= 0.05) pts = 1;
+    if (pts > 0) {
+      score += pts;
+      const reductionsText =
+        typeof signals.reductionCount === 'number' && signals.reductionCount > 0
+          ? ` (${signals.reductionCount} drops)`
+          : '';
+      add(
+        factors,
+        `Accelerating price drops${reductionsText}`,
+        pts,
+        'motivation',
+      );
+    }
+  }
+
+  // Stale-listing
   if (
     signals?.daysOnMarket &&
     signals.daysOnMarket >= 90 &&
     (!signals.reductionCount || signals.reductionCount === 0)
   ) {
     score += 4;
+    add(factors, `Stale ${signals.daysOnMarket}d, no reductions`, 4, 'motivation');
   } else if (signals?.daysOnMarket && signals.daysOnMarket >= 60) {
     score += 2;
+    add(factors, `On market ${signals.daysOnMarket}d`, 2, 'motivation');
   }
 
-  // ── Pre-probate area boost (0–5) ─────────────────────────────────────
-  // Areas with high over-75 population have more probate grants in the
-  // coming years. Modest boost — area-level proxy, not property-level.
+  // Pre-probate area
   if (signals?.percentOver75 && signals.percentOver75 >= 15) {
     score += 5;
+    add(
+      factors,
+      `Pre-probate area (${Math.round(signals.percentOver75)}% over 75)`,
+      5,
+      'motivation',
+    );
   } else if (signals?.percentOver75 && signals.percentOver75 >= 10) {
     score += 3;
+    add(
+      factors,
+      `Older area (${Math.round(signals.percentOver75)}% over 75)`,
+      3,
+      'motivation',
+    );
   } else if (signals?.percentOver65 && signals.percentOver65 >= 25) {
     score += 2;
+    add(
+      factors,
+      `Older area (${Math.round(signals.percentOver65)}% over 65)`,
+      2,
+      'motivation',
+    );
   }
 
   return Math.min(40, score);
 }
 
-/**
- * Risk score (-10 to +10).
- *
- * Heavy penalty: high flood risk, F/G EPC, very-short lease (<60 yr).
- * Mild penalty: medium flood, E EPC, short lease (<80 yr), planning
- * enforcement.
- * Bonus: freehold tenure, A-C EPC, lease >100 yr, no risk flags = clean
- * acquisition.
- */
-function scoreRisk(signals?: LeadSignals): {
-  score: number;
-  flags: string[];
-} {
+function scoreRisk(
+  signals: LeadSignals | undefined,
+  factors: ScoreFactor[],
+): { score: number; flags: string[] } {
   let score = 0;
   const flags: string[] = [];
   if (!signals) return { score: 0, flags: [] };
 
-  // Flood risk
+  // Flood
   const flood = (signals.floodRisk ?? '').toLowerCase();
   if (flood.includes('high')) {
     score -= 6;
-    flags.push(`flood: high`);
+    flags.push('flood: high');
+    add(factors, 'High flood risk', -6, 'risk', 'negative');
   } else if (flood.includes('medium')) {
     score -= 3;
-    flags.push(`flood: medium`);
-  } else if (flood.includes('low') || flood.includes('very low')) {
+    flags.push('flood: medium');
+    add(factors, 'Medium flood risk', -3, 'risk', 'negative');
+  } else if (flood.includes('very low')) {
     score += 1;
+    add(factors, 'Very low flood risk', 1, 'risk', 'positive');
+  } else if (flood.includes('low')) {
+    score += 1;
+    add(factors, 'Low flood risk', 1, 'risk', 'positive');
   }
 
   // EPC
@@ -191,109 +268,173 @@ function scoreRisk(signals?: LeadSignals): {
   if (epc === 'F' || epc === 'G') {
     score -= 4;
     flags.push(`EPC ${epc}`);
+    add(factors, `Poor EPC (${epc})`, -4, 'risk', 'negative');
   } else if (epc === 'E') {
     score -= 2;
-    flags.push(`EPC E`);
+    flags.push('EPC E');
+    add(factors, 'Below-par EPC (E)', -2, 'risk', 'negative');
   } else if (epc === 'A' || epc === 'B' || epc === 'C') {
     score += 2;
+    add(factors, `Good EPC (${epc})`, 2, 'risk', 'positive');
   }
 
   // Lease
-  if (signals.tenure === 'leasehold' && typeof signals.remainingLeaseYears === 'number') {
+  if (
+    signals.tenure === 'leasehold' &&
+    typeof signals.remainingLeaseYears === 'number'
+  ) {
     if (signals.remainingLeaseYears < 60) {
       score -= 6;
       flags.push(`lease ${signals.remainingLeaseYears}y`);
+      add(
+        factors,
+        `Very short lease (${signals.remainingLeaseYears}y)`,
+        -6,
+        'risk',
+        'negative',
+      );
     } else if (signals.remainingLeaseYears < 80) {
       score -= 3;
       flags.push(`lease ${signals.remainingLeaseYears}y`);
+      add(
+        factors,
+        `Short lease (${signals.remainingLeaseYears}y)`,
+        -3,
+        'risk',
+        'negative',
+      );
     } else if (signals.remainingLeaseYears > 125) {
       score += 1;
+      add(
+        factors,
+        `Long lease (${signals.remainingLeaseYears}y)`,
+        1,
+        'risk',
+        'positive',
+      );
     }
   } else if (signals.tenure === 'freehold') {
     score += 2;
+    add(factors, 'Freehold', 2, 'risk', 'positive');
   }
 
-  // Planning refusals (proxy for area-level enforcement risk)
+  // Planning refusals
   if (signals.planningRefusalCount && signals.planningRefusalCount >= 3) {
     score -= 2;
     flags.push(`${signals.planningRefusalCount} planning refusals nearby`);
+    add(
+      factors,
+      `${signals.planningRefusalCount} planning refusals nearby`,
+      -2,
+      'risk',
+      'negative',
+    );
   }
 
-  // Clamp to ±10
   return { score: Math.max(-10, Math.min(10, score)), flags };
 }
 
-/**
- * Equity score (0–30).
- *
- * Compares estimated estate value against area average sold price.
- * Higher equity headroom = better BMV opportunity.
- */
 function scoreEquity(
   lead: EnrichedLead,
-  pricePaid: PricePaid | null
+  pricePaid: PricePaid | null,
+  factors: ScoreFactor[],
 ): number {
-  if (!lead.estateValuePence) return 0;
+  if (!lead.estateValuePence) {
+    add(factors, 'No estate value recorded', 0, 'equity', 'neutral');
+    return 0;
+  }
 
   const avgAreaPricePence = pricePaid?.avgPrice
-    ? pricePaid.avgPrice * 100 // HMLR prices are in pounds, convert to pence
+    ? pricePaid.avgPrice * 100
     : null;
 
   if (!avgAreaPricePence) {
-    // No comparables — give minimal credit for having an estate value
+    add(factors, 'Estate value present, no area comparable', 6, 'equity');
     return 6;
   }
 
   const equityRatio = lead.estateValuePence / avgAreaPricePence;
 
-  // Score bands based on LTV headroom (scaled to 25-point cap)
-  if (equityRatio >= 1.5) return 25; // Strong equity — significant BMV room
-  if (equityRatio >= 1.2) return 20;
-  if (equityRatio >= 1.0) return 15;
-  if (equityRatio >= 0.75) return 10; // Borderline — thin margins
-  if (equityRatio >= 0.5) return 5;   // Low equity — likely mortgaged
-  return 2;                            // Very low equity
-}
-
-/**
- * Market trend score (0–15).
- *
- * Rising market = buyer incentive; declining = added urgency for seller.
- * Both can be positive for motivated-seller strategy but in different ways.
- */
-function scoreMarketTrend(hpi: Hpi | null): { score: number; label: string } {
-  if (!hpi) return { score: 7, label: 'unknown' }; // Neutral default
-
-  switch (hpi.trend) {
-    case 'rising':
-      // Rising market: confident buyers, strong comparables
-      return { score: 15, label: 'rising' };
-    case 'stable':
-      return { score: 10, label: 'stable' };
-    case 'declining':
-      // Declining market: seller urgency increases, but exit harder
-      return { score: 6, label: 'declining' };
-    default:
-      return { score: 7, label: 'unknown' };
+  let pts = 2;
+  let label = 'Low equity vs area average';
+  if (equityRatio >= 1.5) {
+    pts = 25;
+    label = 'Strong equity (1.5× area average)';
+  } else if (equityRatio >= 1.2) {
+    pts = 20;
+    label = 'Solid equity (1.2× area average)';
+  } else if (equityRatio >= 1.0) {
+    pts = 15;
+    label = 'Equity at area average';
+  } else if (equityRatio >= 0.75) {
+    pts = 10;
+    label = 'Borderline equity (75% of area)';
+  } else if (equityRatio >= 0.5) {
+    pts = 5;
+    label = 'Thin equity (50% of area)';
   }
+  add(factors, label, pts, 'equity');
+  return pts;
 }
 
-/**
- * Contact quality score (0–10).
- *
- * Complete contact details increase conversion probability.
- */
-function scoreContactQuality(lead: EnrichedLead): number {
+function scoreMarketTrend(
+  hpi: Hpi | null,
+  factors: ScoreFactor[],
+): { score: number; label: string } {
+  if (!hpi) {
+    add(factors, 'Market trend unknown', 7, 'marketTrend', 'neutral');
+    return { score: 7, label: 'unknown' };
+  }
+  if (hpi.trend === 'rising') {
+    add(factors, 'Rising market', 15, 'marketTrend', 'positive');
+    return { score: 15, label: 'rising' };
+  }
+  if (hpi.trend === 'stable') {
+    add(factors, 'Stable market', 10, 'marketTrend', 'neutral');
+    return { score: 10, label: 'stable' };
+  }
+  if (hpi.trend === 'declining') {
+    add(factors, 'Declining market', 6, 'marketTrend', 'neutral');
+    return { score: 6, label: 'declining' };
+  }
+  add(factors, 'Market trend unknown', 7, 'marketTrend', 'neutral');
+  return { score: 7, label: 'unknown' };
+}
+
+function scoreContactQuality(
+  lead: EnrichedLead,
+  factors: ScoreFactor[],
+): number {
   let score = 0;
-  if (lead.contactName) score += 3;
-  if (lead.contactPhone) score += 4;
-  if (lead.contactEmail) score += 3;
+  const pieces: string[] = [];
+  if (lead.contactName) {
+    score += 3;
+    pieces.push('name');
+  }
+  if (lead.contactPhone) {
+    score += 4;
+    pieces.push('phone');
+  }
+  if (lead.contactEmail) {
+    score += 3;
+    pieces.push('email');
+  }
+  if (score === 0) {
+    add(factors, 'No contact data', 0, 'contactQuality', 'neutral');
+  } else {
+    add(
+      factors,
+      `Contact ready (${pieces.join(', ')})`,
+      score,
+      'contactQuality',
+    );
+  }
   return score;
 }
 
-// ---------------------------------------------------------------------------
-// Verdict assignment
-// ---------------------------------------------------------------------------
+// ─────────────────────────────────────────────────────────────────────────
+// Verdict + rationale
+// ─────────────────────────────────────────────────────────────────────────
 
 function verdictFromScore(total: number, hasCriticalData: boolean): Verdict {
   if (!hasCriticalData) return 'INSUFFICIENT_DATA';
@@ -303,38 +444,75 @@ function verdictFromScore(total: number, hasCriticalData: boolean): Verdict {
   return 'PASS';
 }
 
-// ---------------------------------------------------------------------------
-// Public scorer
-// ---------------------------------------------------------------------------
-
 /**
- * Score an enriched lead against property-data comparables.
- *
- * @param lead      - Enriched lead with contact and Golden Window data.
- * @param pricePaid - HMLR price paid data for the postcode (may be null).
- * @param hpi       - HMLR house price index for the region (may be null).
- * @returns ScoreBreakdown with per-component scores, total, and verdict.
+ * Build a one-line plain-English summary, ready to render directly.
+ * Picks the strongest positive factor and the strongest negative one.
  */
+function buildRationale(
+  verdict: Verdict,
+  total: number,
+  factors: ScoreFactor[],
+): string {
+  if (verdict === 'INSUFFICIENT_DATA') {
+    return 'Insufficient data to score — missing address or postcode.';
+  }
+  const positives = factors
+    .filter((f) => f.points > 0)
+    .sort((a, b) => b.points - a.points);
+  const negatives = factors
+    .filter((f) => f.points < 0)
+    .sort((a, b) => a.points - b.points);
+
+  const verdictWord =
+    verdict === 'STRONG'
+      ? 'Strong'
+      : verdict === 'VIABLE'
+        ? 'Viable'
+        : verdict === 'THIN'
+          ? 'Thin'
+          : 'Pass';
+
+  const topPositives = positives.slice(0, 3).map((f) => f.label.toLowerCase());
+  const topNegatives = negatives.slice(0, 2).map((f) => f.label.toLowerCase());
+
+  let s = `${verdictWord} lead (${total}/100)`;
+  if (topPositives.length > 0) {
+    s += ` driven by ${topPositives.join(', ')}`;
+  }
+  if (topNegatives.length > 0) {
+    s += `; pulled down by ${topNegatives.join(', ')}`;
+  }
+  return s + '.';
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Public scorer
+// ─────────────────────────────────────────────────────────────────────────
+
 export function scoreLead(
   lead: EnrichedLead,
   pricePaid: PricePaid | null,
   hpi: Hpi | null,
   signals?: LeadSignals,
 ): ScoreBreakdown {
-  // Critical data check: must have at least an address and postcode
   const hasCriticalData = Boolean(lead.address && lead.postcode);
+  const factors: ScoreFactor[] = [];
 
-  const motivation = scoreMotivation(lead, signals);
-  const equity = scoreEquity(lead, pricePaid);
-  const { score: marketTrend, label: marketTrendLabel } = scoreMarketTrend(hpi);
-  const contactQuality = scoreContactQuality(lead);
-  const { score: risk, flags: riskFlags } = scoreRisk(signals);
+  const motivation = scoreMotivation(lead, signals, factors);
+  const equity = scoreEquity(lead, pricePaid, factors);
+  const { score: marketTrend, label: marketTrendLabel } = scoreMarketTrend(
+    hpi,
+    factors,
+  );
+  const contactQuality = scoreContactQuality(lead, factors);
+  const { score: risk, flags: riskFlags } = scoreRisk(signals, factors);
 
   const total = Math.max(
     0,
     Math.min(100, motivation + equity + marketTrend + contactQuality + risk),
   );
   const verdict = verdictFromScore(total, hasCriticalData);
+  const rationale = buildRationale(verdict, total, factors);
 
   return {
     motivation,
@@ -346,5 +524,7 @@ export function scoreLead(
     verdict,
     marketTrendLabel,
     riskFlags,
+    factors,
+    rationale,
   };
 }

@@ -38,6 +38,8 @@ type Lead = {
   dissolvedCompanyName: string | null;
   dissolvedAt: string | null;
   riskFlags: string[];
+  rationale: string | null;
+  topPositiveFactors: string[];
 };
 
 type Props = {
@@ -380,15 +382,25 @@ function LeadCard({
             </div>
 
             {/* Right side — score + actions */}
-            <div className="flex flex-col items-end gap-2">
-              <div className="text-right">
-                <div className="font-mono text-2xl font-bold tabular-nums leading-none">
+            <div className="flex flex-col items-end gap-2 text-right">
+              <div>
+                <div
+                  className="font-mono text-2xl font-bold tabular-nums leading-none"
+                  title={lead.rationale ?? undefined}
+                >
                   {lead.leadScore}
                 </div>
                 <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
                   Score
                 </div>
               </div>
+              {lead.topPositiveFactors.length > 0 && (
+                <ul className="max-w-[180px] space-y-0.5 text-right text-[11px] leading-tight text-emerald-700">
+                  {lead.topPositiveFactors.map((f, i) => (
+                    <li key={`${f}-${i}`}>+ {f}</li>
+                  ))}
+                </ul>
+              )}
               <StarRatingInline
                 targetType="scout_lead"
                 targetId={lead.id}
