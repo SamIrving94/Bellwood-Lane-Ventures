@@ -589,10 +589,21 @@ const LeadDetailPage = async ({
           </div>
         )}
 
-        {/* Founder feedback */}
+        {/* Founder feedback — captures context so the calibration page
+            can analyse which factors are mis-weighted. */}
         <FeedbackPanel
           targetType="scout_lead"
           targetId={lead.id}
+          context={{
+            scorerScore: lead.leadScore,
+            scorerVerdict: lead.verdict,
+            source: lead.source,
+            listingType: (pd?.listingType as string | undefined) ?? null,
+            scoreFactors: scoreFactors,
+            scoreBreakdown: scoreBreakdown ?? null,
+            postcode: lead.postcode,
+            scoredAt: new Date().toISOString(),
+          }}
           overrideFields={[
             {
               key: 'leadScore',

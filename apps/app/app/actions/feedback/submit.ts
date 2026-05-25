@@ -9,6 +9,12 @@ type SubmitFeedbackInput = {
   targetId: string;
   rating: number;
   overrides?: Record<string, unknown>;
+  /**
+   * Snapshot of the scoring inputs at the moment of feedback.
+   * Stored alongside overrides under the _context key so the
+   * calibration page can analyse which factors are mis-weighted.
+   */
+  context?: Record<string, unknown>;
   notes?: string;
   markedAsTemplate?: boolean;
 };
@@ -21,6 +27,16 @@ export async function submitFeedback(data: SubmitFeedbackInput) {
     throw new Error('Rating must be between 1 and 5');
   }
 
+  // Merge context (snapshot of scoring inputs) into overrides JSON under
+  // _context. The applyOverrides path ignores keys starting with _ so this
+  // is a transparent passthrough — the calibration query reads it directly.
+  const mergedOverrides = {
+    ...(data.overrides ?? {}),
+    ...(data.context && Object.keys(data.context).length > 0
+      ? { _context: data.context }
+      : {}),
+  };
+
   // Create feedback record
   const feedback = await database.founderFeedback.create({
     data: {
@@ -28,15 +44,23 @@ export async function submitFeedback(data: SubmitFeedbackInput) {
       targetId: data.targetId,
       founderId: userId,
       rating: data.rating,
-      overrides: data.overrides ? (data.overrides as Prisma.InputJsonValue) : undefined,
+      overrides:
+        Object.keys(mergedOverrides).length > 0
+          ? (mergedOverrides as Prisma.InputJsonValue)
+          : undefined,
       notes: data.notes ?? undefined,
       markedAsTemplate: data.markedAsTemplate ?? false,
     },
   });
 
-  // Apply overrides to the target entity
+  // Apply overrides to the target entity (excluding internal _context).
   if (data.overrides && Object.keys(data.overrides).length > 0) {
-    await applyOverrides(data.targetType, data.targetId, data.overrides, userId);
+    const applyable = Object.fromEntries(
+      Object.entries(data.overrides).filter(([k]) => !k.startsWith('_')),
+    );
+    if (Object.keys(applyable).length > 0) {
+      await applyOverrides(data.targetType, data.targetId, applyable, userId);
+    }
   }
 
   // Revalidate relevant pages

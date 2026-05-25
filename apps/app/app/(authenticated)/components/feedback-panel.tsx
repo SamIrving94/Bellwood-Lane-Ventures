@@ -16,6 +16,14 @@ type FeedbackPanelProps = {
     notes: string | null;
     overrides: Record<string, unknown> | null;
   } | null;
+  /**
+   * Snapshot of the scoring inputs at the moment of feedback — captured
+   * verbatim so the calibration page can analyse "when factor X was
+   * present, how often did the founder disagree?". Stored under
+   * overrides._context (transparent passthrough; doesn't trigger
+   * the lead-update path).
+   */
+  context?: Record<string, unknown>;
   onComplete?: () => void;
 };
 
@@ -53,6 +61,7 @@ export function FeedbackPanel({
   quickMode = false,
   overrideFields = [],
   existingFeedback,
+  context,
   onComplete,
 }: FeedbackPanelProps) {
   const [rating, setRating] = useState(existingFeedback?.rating ?? 0);
@@ -93,6 +102,7 @@ export function FeedbackPanel({
         targetId,
         rating,
         overrides: Object.keys(cleanOverrides).length > 0 ? cleanOverrides : undefined,
+        context,
         notes: notes.trim() || undefined,
         markedAsTemplate: markedAsTemplate || undefined,
       });
@@ -100,7 +110,7 @@ export function FeedbackPanel({
       setSubmitted(true);
       onComplete?.();
     });
-  }, [rating, overrides, notes, markedAsTemplate, targetType, targetId, onComplete]);
+  }, [rating, overrides, notes, markedAsTemplate, targetType, targetId, context, onComplete]);
 
   const handleStarClick = (star: number) => {
     setRating(star);
@@ -111,6 +121,7 @@ export function FeedbackPanel({
           targetType,
           targetId,
           rating: star,
+          context,
         });
         setSubmitted(true);
         onComplete?.();

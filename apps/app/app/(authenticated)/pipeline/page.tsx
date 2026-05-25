@@ -134,18 +134,77 @@ async function LeadsTabContent({ filter }: { filter?: string }) {
   ).length;
   return (
     <LeadsTable
-      leads={leads.map((l) => ({
-        id: l.id,
-        address: l.address,
-        postcode: l.postcode,
-        leadType: l.leadType,
-        leadScore: l.leadScore,
-        verdict: l.verdict,
-        estimatedEquityPence: l.estimatedEquityPence,
-        marketTrend: l.marketTrend,
-        status: l.status,
-        existingRating: feedbackByLeadId[l.id] ?? 0,
-      }))}
+      leads={leads.map((l) => {
+        const raw = (l.rawPayload ?? {}) as Record<string, unknown>;
+        const pd = raw.propertyData as Record<string, unknown> | undefined;
+        const planning = raw.planning as Record<string, unknown> | undefined;
+        const hmo = raw.hmo as Record<string, unknown> | undefined;
+        const dissolved = raw.dissolvedCompany as
+          | Record<string, unknown>
+          | undefined;
+        return {
+          id: l.id,
+          address: l.address,
+          postcode: l.postcode,
+          leadType: l.leadType,
+          leadScore: l.leadScore,
+          verdict: l.verdict,
+          estimatedEquityPence: l.estimatedEquityPence,
+          marketTrend: l.marketTrend,
+          status: l.status,
+          source: l.source,
+          existingRating: feedbackByLeadId[l.id] ?? 0,
+          listingType:
+            (pd?.listingType as string | undefined) ?? null,
+          listingUrl: (pd?.listingUrl as string | undefined) ?? null,
+          imageUrl: (pd?.imageUrl as string | undefined) ?? null,
+          summary: (pd?.summary as string | undefined) ?? null,
+          pricePence: (pd?.pricePence as number | undefined) ?? null,
+          originalPricePence:
+            (pd?.originalPricePence as number | undefined) ?? null,
+          discountPercent:
+            (pd?.discountPercent as number | undefined) ?? null,
+          reductionCount:
+            (pd?.reductionCount as number | undefined) ?? 0,
+          velocityScore:
+            (pd?.velocityScore as number | undefined) ?? 0,
+          bedrooms: (pd?.bedrooms as number | undefined) ?? null,
+          propertyType:
+            (pd?.propertyType as string | undefined) ?? null,
+          daysOnMarket:
+            (pd?.daysOnMarket as number | undefined) ?? null,
+          planningDecision:
+            (planning?.decision as string | undefined) ?? null,
+          planningRating:
+            (planning?.decisionRating as string | undefined) ?? null,
+          planningProposal:
+            (planning?.proposal as string | undefined) ?? null,
+          planningUrl:
+            (planning?.url as string | undefined) ?? null,
+          hmoExpiringSoon:
+            (hmo?.licenceExpiringSoon as boolean | undefined) ?? false,
+          hmoLicenceExpiry:
+            (hmo?.licenceExpiry as string | undefined) ?? null,
+          dissolvedCompanyName:
+            (dissolved?.companyName as string | undefined) ?? null,
+          dissolvedAt:
+            (dissolved?.dissolvedAt as string | undefined) ?? null,
+          riskFlags:
+            (raw.riskFlags as string[] | undefined) ?? [],
+          rationale:
+            (raw.rationale as string | undefined) ?? null,
+          topPositiveFactors: (
+            (raw.scoreFactors as Array<{
+              label: string;
+              points: number;
+            }> | undefined) ?? []
+          )
+            .filter((f) => f.points > 0)
+            .sort((a, b) => b.points - a.points)
+            .slice(0, 3)
+            .map((f) => f.label),
+        };
+      })}
       unratedCount={unratedCount}
       initialFilter={filter ?? 'all'}
     />

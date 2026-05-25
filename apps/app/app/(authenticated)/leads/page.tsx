@@ -1,6 +1,7 @@
 import { auth } from '@repo/auth/server';
 import { database } from '@repo/database';
 import type { Metadata } from 'next';
+import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { Header } from '../components/header';
 import { LeadsTable } from './leads-table';
@@ -49,6 +50,14 @@ const LeadsPage = async ({
     <>
       <Header pages={[]} page="Leads" />
       <div className="flex flex-1 flex-col gap-4 p-6">
+        <div className="flex justify-end">
+          <Link
+            href="/leads/calibration"
+            className="text-xs text-muted-foreground hover:text-foreground hover:underline"
+          >
+            Scorer calibration →
+          </Link>
+        </div>
         <LeadsTable
           leads={leads.map((l) => {
             const raw = (l.rawPayload ?? {}) as Record<string, unknown>;
