@@ -1,6 +1,10 @@
 import { NextResponse } from 'next/server';
 import { validateAgentAuth, unauthorizedResponse } from '../_lib/auth';
 
+// 50 probes × 2.7s = ~135s minimum runtime. Pro plan supports 300s.
+export const maxDuration = 300;
+export const runtime = 'nodejs';
+
 /**
  * GET /agents/diag-propertydata?postcode=M14+5LL
  *
