@@ -1,5 +1,9 @@
 import { NextResponse } from 'next/server';
-import { getSourcedPropertiesMulti } from '@repo/property-data/src/propertydata';
+import {
+  getHmoRegister,
+  getPlanningApplications,
+  getSourcedPropertiesMulti,
+} from '@repo/property-data/src/propertydata';
 import { validateAgentAuth, unauthorizedResponse } from '../_lib/auth';
 
 export const maxDuration = 60;
@@ -19,6 +23,34 @@ export const GET = async (request: Request) => {
   const compact = postcode.replace(/\s/g, '');
   const radius = url.searchParams.get('radius') ?? '3';
   const mode = url.searchParams.get('mode') ?? 'sourced';
+
+  if (mode === 'planning' || mode === 'hmo') {
+    const t0 = Date.now();
+    if (mode === 'planning') {
+      const apps = await getPlanningApplications(postcode, {
+        radiusMiles: Number(radius),
+      });
+      return NextResponse.json({
+        ok: true,
+        postcode,
+        radius,
+        elapsedMs: Date.now() - t0,
+        total: apps.length,
+        sample: apps.slice(0, 5),
+      });
+    }
+    const hmos = await getHmoRegister(postcode, {
+      radiusMiles: Number(radius),
+    });
+    return NextResponse.json({
+      ok: true,
+      postcode,
+      radius,
+      elapsedMs: Date.now() - t0,
+      total: hmos.length,
+      sample: hmos.slice(0, 5),
+    });
+  }
 
   if (mode === 'shapes') {
     const apiKey = process.env.PROPERTYDATA_API_KEY ?? '';
