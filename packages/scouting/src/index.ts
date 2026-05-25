@@ -228,6 +228,22 @@ export async function runScoutingPipeline(
         grantType: 'unknown';
         source: string;
         daysSinceGrant: number;
+        /** Rich PropertyData fields — flow through rawPayload to the UI. */
+        propertyData?: {
+          id: string | null;
+          listingType: string;
+          listingUrl: string | null;
+          imageUrl: string | null;
+          summary: string | null;
+          pricePence: number | null;
+          originalPricePence: number | null;
+          discountPercent: number | null;
+          bedrooms: number | null;
+          propertyType: string | null;
+          daysOnMarket: number | null;
+          daysSincePriceChange: number | null;
+          preciseAddress: string | null;
+        };
       }> = [];
       for (const seed of allSeeds) {
         try {
@@ -246,6 +262,21 @@ export async function runScoutingPipeline(
               grantType: 'unknown' as const,
               source: `propertydata_${p.listingType}`,
               daysSinceGrant: p.daysOnMarket ?? 0,
+              propertyData: {
+                id: p.id,
+                listingType: p.listingType,
+                listingUrl: p.listingUrl,
+                imageUrl: p.imageUrl,
+                summary: p.summary,
+                pricePence: p.pricePence,
+                originalPricePence: p.originalPricePence,
+                discountPercent: p.discountPercent,
+                bedrooms: p.bedrooms,
+                propertyType: p.propertyType,
+                daysOnMarket: p.daysOnMarket,
+                daysSincePriceChange: p.daysSincePriceChange,
+                preciseAddress: p.preciseAddress,
+              },
             });
           }
         } catch (err) {
@@ -271,6 +302,28 @@ export async function runScoutingPipeline(
     grantType: 'unknown';
     source: string;
     daysSinceGrant: number;
+    /** Rich planning fields when source = planning_* */
+    planning?: {
+      reference: string;
+      authority: string | null;
+      proposal: string | null;
+      category: string | null;
+      status: string | null;
+      decision: string | null;
+      decisionRating: string | null;
+      receivedAt: string | null;
+      decidedAt: string | null;
+      url: string | null;
+      sellerSignalScore: number;
+    };
+    /** Rich HMO fields when source = hmo_* */
+    hmo?: {
+      reference: string;
+      council: string | null;
+      licenceType: string | null;
+      licenceExpiry: string | null;
+      licenceExpiringSoon: boolean;
+    };
   };
 
   // Throttle between PropertyData calls to stay within rate limit.
@@ -301,6 +354,19 @@ export async function runScoutingPipeline(
           grantType: 'unknown' as const,
           source: `planning_${app.decisionRating ?? 'pending'}`,
           daysSinceGrant: 0,
+          planning: {
+            reference: app.reference,
+            authority: app.authority,
+            proposal: app.proposal,
+            category: app.category,
+            status: app.status,
+            decision: app.decision,
+            decisionRating: app.decisionRating,
+            receivedAt: app.receivedAt,
+            decidedAt: app.decidedAt,
+            url: app.url,
+            sellerSignalScore: app.sellerSignalScore,
+          },
         });
       }
     } catch (err) {
@@ -338,6 +404,13 @@ export async function runScoutingPipeline(
             ? 'hmo_licence_expiring'
             : 'hmo_register',
           daysSinceGrant: 0,
+          hmo: {
+            reference: hmo.reference,
+            council: hmo.council,
+            licenceType: hmo.licenceType,
+            licenceExpiry: hmo.licenceExpiry,
+            licenceExpiringSoon: hmo.licenceExpiringSoon,
+          },
         });
       }
     } catch (err) {
