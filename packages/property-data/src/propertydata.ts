@@ -1642,6 +1642,483 @@ export async function getDemographics(
 }
 
 // ---------------------------------------------------------------------------
+// Endpoint: /sold-prices — recent comparable sales
+// ---------------------------------------------------------------------------
+
+const SoldPricesSchema = z.object({
+  status: z.string().optional(),
+  result: z
+    .object({
+      average_price: z.number().optional(),
+      median_price: z.number().optional(),
+      transactions: z
+        .array(
+          z
+            .object({
+              address: z.string().optional(),
+              postcode: z.string().optional(),
+              price: z.number().optional(),
+              date: z.string().optional(),
+              property_type: z.string().optional(),
+              new_build: z.boolean().optional(),
+              tenure: z.string().optional(),
+            })
+            .partial(),
+        )
+        .optional(),
+    })
+    .partial()
+    .optional(),
+});
+
+export type SoldTransaction = {
+  address: string;
+  postcode: string | null;
+  pricePence: number;
+  date: string;
+  propertyType: string | null;
+  tenure: string | null;
+};
+
+export type SoldPrices = {
+  averagePricePence: number | null;
+  medianPricePence: number | null;
+  transactions: SoldTransaction[];
+};
+
+export async function getSoldPrices(
+  postcode: string,
+): Promise<SoldPrices | null> {
+  const data = await fetchPropertyData(
+    '/sold-prices',
+    { postcode: postcode.replace(/\s/g, '') },
+    {
+      ttlMs: 7 * 24 * 60 * 60 * 1000,
+      estimatedCredits: 2,
+      schema: SoldPricesSchema,
+    },
+  );
+  const r = (data as { result?: Record<string, unknown> } | null)?.result;
+  if (!r) return null;
+  const transactions: SoldTransaction[] = [];
+  for (const raw of (r.transactions as unknown[] | undefined) ?? []) {
+    const t = raw as Record<string, unknown>;
+    const address = typeof t.address === 'string' ? t.address : null;
+    const price = typeof t.price === 'number' ? t.price : null;
+    const date = typeof t.date === 'string' ? t.date : null;
+    if (!address || !price || !date) continue;
+    transactions.push({
+      address,
+      postcode: typeof t.postcode === 'string' ? t.postcode : null,
+      pricePence: Math.round(price * 100),
+      date,
+      propertyType:
+        typeof t.property_type === 'string' ? t.property_type : null,
+      tenure: typeof t.tenure === 'string' ? t.tenure : null,
+    });
+  }
+  return {
+    averagePricePence:
+      typeof r.average_price === 'number'
+        ? Math.round(r.average_price * 100)
+        : null,
+    medianPricePence:
+      typeof r.median_price === 'number'
+        ? Math.round(r.median_price * 100)
+        : null,
+    transactions,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Endpoint: /yields — rental yield for area
+// ---------------------------------------------------------------------------
+
+const YieldsSchema = z.object({
+  status: z.string().optional(),
+  result: z
+    .object({
+      yield_average: z.number().optional(),
+      gross_yield: z.number().optional(),
+      yield_low: z.number().optional(),
+      yield_high: z.number().optional(),
+    })
+    .partial()
+    .optional(),
+});
+
+export type YieldsReading = {
+  averageYieldPct: number | null;
+  lowYieldPct: number | null;
+  highYieldPct: number | null;
+};
+
+export async function getYields(
+  postcode: string,
+): Promise<YieldsReading | null> {
+  const data = await fetchPropertyData(
+    '/yields',
+    { postcode: postcode.replace(/\s/g, '') },
+    {
+      ttlMs: 30 * 24 * 60 * 60 * 1000,
+      estimatedCredits: 2,
+      schema: YieldsSchema,
+    },
+  );
+  const r = (data as { result?: Record<string, unknown> } | null)?.result;
+  if (!r) return null;
+  const avg =
+    typeof r.yield_average === 'number'
+      ? r.yield_average
+      : typeof r.gross_yield === 'number'
+        ? r.gross_yield
+        : null;
+  return {
+    averageYieldPct: avg,
+    lowYieldPct:
+      typeof r.yield_low === 'number' ? r.yield_low : null,
+    highYieldPct:
+      typeof r.yield_high === 'number' ? r.yield_high : null,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Endpoint: /prices-per-sqf — local £/sqft benchmarks
+// ---------------------------------------------------------------------------
+
+const PricesPerSqfSchema = z.object({
+  status: z.string().optional(),
+  result: z
+    .object({
+      average: z.number().optional(),
+      median: z.number().optional(),
+      low: z.number().optional(),
+      high: z.number().optional(),
+    })
+    .partial()
+    .optional(),
+});
+
+export type PricesPerSqf = {
+  averagePerSqft: number | null;
+  medianPerSqft: number | null;
+};
+
+export async function getPricesPerSqf(
+  postcode: string,
+): Promise<PricesPerSqf | null> {
+  const data = await fetchPropertyData(
+    '/prices-per-sqf',
+    { postcode: postcode.replace(/\s/g, '') },
+    {
+      ttlMs: 30 * 24 * 60 * 60 * 1000,
+      estimatedCredits: 2,
+      schema: PricesPerSqfSchema,
+    },
+  );
+  const r = (data as { result?: Record<string, unknown> } | null)?.result;
+  if (!r) return null;
+  return {
+    averagePerSqft:
+      typeof r.average === 'number' ? r.average : null,
+    medianPerSqft: typeof r.median === 'number' ? r.median : null,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Endpoint: /council-tax — average council tax bills
+// ---------------------------------------------------------------------------
+
+const CouncilTaxSchema = z.object({
+  status: z.string().optional(),
+  result: z
+    .object({
+      band: z.string().optional(),
+      bands: z.record(z.string(), z.unknown()).optional(),
+      average_annual_bill: z.number().optional(),
+    })
+    .partial()
+    .optional(),
+});
+
+export type CouncilTaxReading = {
+  averageAnnualBill: number | null;
+  band: string | null;
+  /** Map of band letter → annual £ */
+  bandsByLetter: Record<string, number>;
+};
+
+export async function getCouncilTax(
+  postcode: string,
+): Promise<CouncilTaxReading | null> {
+  const data = await fetchPropertyData(
+    '/council-tax',
+    { postcode: postcode.replace(/\s/g, '') },
+    {
+      ttlMs: 90 * 24 * 60 * 60 * 1000,
+      estimatedCredits: 2,
+      schema: CouncilTaxSchema,
+    },
+  );
+  const r = (data as { result?: Record<string, unknown> } | null)?.result;
+  if (!r) return null;
+  const bands: Record<string, number> = {};
+  const bandsRaw = r.bands as Record<string, unknown> | undefined;
+  if (bandsRaw) {
+    for (const [letter, val] of Object.entries(bandsRaw)) {
+      if (typeof val === 'number') bands[letter.toUpperCase()] = val;
+      else if (val && typeof val === 'object') {
+        const v = val as Record<string, unknown>;
+        const amount =
+          (typeof v.amount === 'number' && v.amount) ||
+          (typeof v.annual === 'number' && v.annual) ||
+          (typeof v.value === 'number' && v.value);
+        if (typeof amount === 'number')
+          bands[letter.toUpperCase()] = amount;
+      }
+    }
+  }
+  return {
+    averageAnnualBill:
+      typeof r.average_annual_bill === 'number'
+        ? r.average_annual_bill
+        : null,
+    band: typeof r.band === 'string' ? r.band : null,
+    bandsByLetter: bands,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// getPropertySnapshot — Tier 1 + Tier 2 enrichment for a single property
+//
+// Calls 8 endpoints in serial (throttled to PropertyData's 4-calls/10s
+// limit). Designed to be invoked at scout time per UNIQUE POSTCODE, and
+// the result attached to every lead in that postcode. Aggressive caching
+// in fetchPropertyData means repeated calls on the same postcode are free.
+// ---------------------------------------------------------------------------
+
+export type PropertySnapshot = {
+  /** AVM result */
+  avm: {
+    estimatePence: number | null;
+    lowPence: number | null;
+    highPence: number | null;
+    confidence: string | null;
+  } | null;
+  /** Sold-price comparables for the postcode */
+  sold: SoldPrices | null;
+  /** Yields */
+  yields: YieldsReading | null;
+  /** Asking price per sqft benchmark */
+  pricesPerSqf: PricesPerSqf | null;
+  /** Sales demand 0-100 */
+  demandScore: number | null;
+  /** Days-on-market average */
+  daysOnMarketAvg: number | null;
+  /** 5yr forecast growth */
+  growth: GrowthReading | null;
+  /** Council tax band info */
+  councilTax: CouncilTaxReading | null;
+  /** Flood-risk band */
+  flood: { riversAndSea: string | null; surfaceWater: string | null } | null;
+  /** EPC matched to the address (if address provided) — same wrapper we use in preflight */
+  epc: { rating: string | null; matchedAddress: string | null } | null;
+  /** Tenure matched to address */
+  tenure: {
+    tenure: 'freehold' | 'leasehold' | 'unknown';
+    remainingLeaseYears: number | null;
+    matchedAddress: string | null;
+  } | null;
+  /** Top local agents */
+  agents: Array<{
+    name: string;
+    phone: string | null;
+    listings: number | null;
+    url: string | null;
+  }>;
+  /** Errors per source — informational, NOT thrown */
+  errors: Record<string, string>;
+  fetchedAt: string;
+};
+
+export async function getPropertySnapshot(input: {
+  postcode: string;
+  address?: string;
+  propertyType?:
+    | 'detached'
+    | 'semi-detached'
+    | 'terraced'
+    | 'flat'
+    | 'bungalow';
+  bedrooms?: number;
+  internalAreaSqft?: number;
+}): Promise<PropertySnapshot> {
+  const errors: Record<string, string> = {};
+  const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+  const DELAY = 2700;
+
+  // Helper to wrap each call so we never throw — collect into errors[].
+  const safe = async <T>(
+    key: string,
+    fn: () => Promise<T>,
+  ): Promise<T | null> => {
+    try {
+      return await fn();
+    } catch (err) {
+      errors[key] = (err as Error)?.message?.slice(0, 150) ?? 'failed';
+      return null;
+    }
+  };
+
+  // ── Phase A — calls that need property-level params (AVM) ─────────────
+  const avmInput = input.propertyType
+    ? {
+        postcode: input.postcode,
+        propertyType: input.propertyType,
+        bedrooms: input.bedrooms,
+        internalArea: input.internalAreaSqft,
+      }
+    : null;
+  const avmRaw = avmInput
+    ? await safe('avm', () => getValuationSale(avmInput))
+    : null;
+  const avm = avmRaw
+    ? {
+        estimatePence: Math.round(avmRaw.estimate * 100),
+        lowPence: Math.round(avmRaw.low * 100),
+        highPence: Math.round(avmRaw.high * 100),
+        confidence: avmRaw.confidence,
+      }
+    : null;
+  await sleep(DELAY);
+
+  // ── Phase B — postcode-level lookups (sequential, throttled) ─────────
+  const sold = await safe('sold', () => getSoldPrices(input.postcode));
+  await sleep(DELAY);
+  const yieldsRes = await safe('yields', () => getYields(input.postcode));
+  await sleep(DELAY);
+  const pricesPerSqf = await safe('pricesPerSqf', () =>
+    getPricesPerSqf(input.postcode),
+  );
+  await sleep(DELAY);
+  const demandRaw = await safe('demand', () =>
+    getMarketDemand(input.postcode),
+  );
+  const demandScore =
+    typeof (demandRaw as { result?: { sales_demand_score?: number } } | null)
+      ?.result?.sales_demand_score === 'number'
+      ? (demandRaw as { result: { sales_demand_score: number } }).result
+          .sales_demand_score
+      : null;
+  const daysOnMarketAvg =
+    typeof (demandRaw as { result?: { days_on_market_average?: number } } | null)
+      ?.result?.days_on_market_average === 'number'
+      ? (demandRaw as { result: { days_on_market_average: number } }).result
+          .days_on_market_average
+      : null;
+  await sleep(DELAY);
+  const growthRes = await safe('growth', () => getGrowth(input.postcode));
+  await sleep(DELAY);
+  const councilTax = await safe('councilTax', () =>
+    getCouncilTax(input.postcode),
+  );
+  await sleep(DELAY);
+  const floodRaw = await safe('flood', () => getFloodRisk(input.postcode));
+  const flood = floodRaw
+    ? {
+        riversAndSea:
+          ((floodRaw as { result?: { rivers_and_sea?: string } } | null)
+            ?.result?.rivers_and_sea as string | undefined) ?? null,
+        surfaceWater:
+          ((floodRaw as { result?: { surface_water?: string } } | null)
+            ?.result?.surface_water as string | undefined) ?? null,
+      }
+    : null;
+  await sleep(DELAY);
+  // EPC + tenure already pulled in preflight per postcode. Re-pull cheaply
+  // (cached at 90d/30d respectively).
+  const epcRows = await safe('epc', () => getEpcByPostcode(input.postcode));
+  let epc: PropertySnapshot['epc'] = null;
+  if (epcRows && epcRows.length > 0) {
+    const targetAddr = input.address?.toLowerCase().replace(/[^a-z0-9]/g, '');
+    const match = targetAddr
+      ? epcRows.find((r) => {
+          const a = r.address.toLowerCase().replace(/[^a-z0-9]/g, '');
+          return a.startsWith(targetAddr) || targetAddr.startsWith(a);
+        })
+      : null;
+    const pick = match ?? epcRows[0];
+    if (pick) {
+      epc = {
+        rating: pick.rating,
+        matchedAddress: pick.address,
+      };
+    }
+  }
+  await sleep(DELAY);
+  const tenureRows = await safe('tenure', () =>
+    getTenureByPostcode(input.postcode),
+  );
+  let tenure: PropertySnapshot['tenure'] = null;
+  if (tenureRows && tenureRows.length > 0) {
+    const targetAddr = input.address?.toLowerCase().replace(/[^a-z0-9]/g, '');
+    const match = targetAddr
+      ? tenureRows.find((r) => {
+          const a = r.address.toLowerCase().replace(/[^a-z0-9]/g, '');
+          return a.startsWith(targetAddr) || targetAddr.startsWith(a);
+        })
+      : null;
+    const pick = match ?? tenureRows[0];
+    if (pick) {
+      tenure = {
+        tenure: pick.tenure,
+        remainingLeaseYears: pick.remainingLeaseYears,
+        matchedAddress: pick.address,
+      };
+    }
+  }
+  await sleep(DELAY);
+  const agentsRaw = await safe('agents', () =>
+    getAgentsByPostcode(input.postcode),
+  );
+  const agents: PropertySnapshot['agents'] = [];
+  const agentsList = (agentsRaw as { result?: { agents?: unknown[] } } | null)
+    ?.result?.agents;
+  if (Array.isArray(agentsList)) {
+    for (const raw of agentsList.slice(0, 5)) {
+      const a = raw as Record<string, unknown>;
+      if (typeof a.name !== 'string') continue;
+      agents.push({
+        name: a.name,
+        phone: typeof a.phone === 'string' ? a.phone : null,
+        listings:
+          typeof a.number_of_listings === 'number'
+            ? a.number_of_listings
+            : null,
+        url: typeof a.url === 'string' ? a.url : null,
+      });
+    }
+  }
+
+  return {
+    avm,
+    sold,
+    yields: yieldsRes ?? null,
+    pricesPerSqf,
+    demandScore,
+    daysOnMarketAvg,
+    growth: growthRes ?? null,
+    councilTax,
+    flood,
+    epc,
+    tenure,
+    agents,
+    errors,
+    fetchedAt: new Date().toISOString(),
+  };
+}
+
+// ---------------------------------------------------------------------------
 // Endpoint: /george — PropertyData's AI research assistant (POST)
 // ---------------------------------------------------------------------------
 
