@@ -677,6 +677,44 @@ export async function getAreaLeadStats(): Promise<Record<string, AreaLeadStats>>
   return out;
 }
 
+/**
+ * Wipe all ScoutLead rows + their feedback. Used when the schema upgrades
+ * and the existing leads are missing the new rich fields — a clean slate
+ * before re-running scout is more useful than leftover sparse leads.
+ */
+export async function clearAllLeads(): Promise<{
+  ok: boolean;
+  deletedLeads: number;
+  deletedFeedback: number;
+  error?: string;
+}> {
+  const { userId } = await auth();
+  if (!userId) {
+    return { ok: false, deletedLeads: 0, deletedFeedback: 0, error: 'Unauthorized' };
+  }
+  try {
+    const fb = await database.founderFeedback.deleteMany({
+      where: { targetType: 'scout_lead' },
+    });
+    const ld = await database.scoutLead.deleteMany({});
+    revalidatePath('/leads');
+    revalidatePath('/today');
+    revalidatePath('/settings/scouting');
+    return {
+      ok: true,
+      deletedLeads: ld.count,
+      deletedFeedback: fb.count,
+    };
+  } catch (err) {
+    return {
+      ok: false,
+      deletedLeads: 0,
+      deletedFeedback: 0,
+      error: (err as Error).message,
+    };
+  }
+}
+
 export async function triggerScoutNow(): Promise<{
   ok: boolean;
   result?: Record<string, unknown>;

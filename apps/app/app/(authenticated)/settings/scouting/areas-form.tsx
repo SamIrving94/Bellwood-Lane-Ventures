@@ -4,6 +4,7 @@ import { useState, useTransition } from 'react';
 import {
   addArea,
   addAreaFromSuggestion,
+  clearAllLeads,
   removeArea,
   reProbeArea,
   triggerScoutNow,
@@ -241,6 +242,31 @@ export function AreasForm({ initial, leadStats }: Props) {
     });
   }
 
+  function handleClearAll() {
+    const confirm = window.confirm(
+      'Delete ALL scouted leads from the database?\n\nThis wipes every ScoutLead row + their feedback. Use this when the schema has been upgraded and existing leads are sparse. After clearing, click "Run scout now" to repopulate.\n\nThis cannot be undone.',
+    );
+    if (!confirm) return;
+    showToast(null, 0);
+    startScout(async () => {
+      const r = await clearAllLeads();
+      if (r.ok) {
+        showToast(
+          {
+            kind: 'success',
+            message: `✓ Cleared ${r.deletedLeads} lead${r.deletedLeads === 1 ? '' : 's'} (${r.deletedFeedback} feedback rows). Click 'Run scout now' to repopulate.`,
+          },
+          10000,
+        );
+      } else {
+        showToast({
+          kind: 'error',
+          message: r.error ?? 'Clear failed.',
+        });
+      }
+    });
+  }
+
   function handleScout() {
     showToast(null, 0);
     startScout(async () => {
@@ -346,16 +372,27 @@ export function AreasForm({ initial, leadStats }: Props) {
                 : `${areas.length} area${areas.length === 1 ? '' : 's'} · ${totalListings} listings`}
             </h2>
           </div>
-          {areas.length > 0 && (
+          <div className="flex flex-wrap items-center gap-2">
             <button
               type="button"
-              onClick={handleScout}
+              onClick={handleClearAll}
               disabled={pendingScout}
-              className="rounded-xl border border-slate-300 bg-white px-5 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
+              className="rounded-xl border border-rose-300 bg-white px-4 py-2.5 text-xs font-medium text-rose-700 transition hover:bg-rose-50 disabled:opacity-50"
+              title="Wipe every scouted lead from the database. Use before a fresh scout when the schema has changed."
             >
-              {pendingScout ? 'Scouting…' : 'Run scout now'}
+              Clear all leads
             </button>
-          )}
+            {areas.length > 0 && (
+              <button
+                type="button"
+                onClick={handleScout}
+                disabled={pendingScout}
+                className="rounded-xl border border-slate-300 bg-white px-5 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
+              >
+                {pendingScout ? 'Scouting…' : 'Run scout now'}
+              </button>
+            )}
+          </div>
         </div>
 
         {areas.length === 0 && pendingRows.length === 0 ? (
