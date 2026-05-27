@@ -153,9 +153,45 @@ const LeadDetailPage = async ({
       ? 'View planning record'
       : null;
 
+  // Always-on research links — constructed from address + postcode so we can
+  // jump to Rightmove / Zoopla / Google / Land Registry even when the lead
+  // has no stored URL.
+  const researchAddress = encodeURIComponent(
+    `${preciseAddress ?? lead.address}, ${lead.postcode}`,
+  );
+  const postcodeForSearch = encodeURIComponent(lead.postcode);
+  const researchLinks = [
+    {
+      label: 'Rightmove',
+      url: `https://www.rightmove.co.uk/property-for-sale/search.html?searchLocation=${postcodeForSearch}`,
+    },
+    {
+      label: 'Zoopla',
+      url: `https://www.zoopla.co.uk/for-sale/property/${postcodeForSearch}/`,
+    },
+    {
+      label: 'OnTheMarket',
+      url: `https://www.onthemarket.com/for-sale/property/${postcodeForSearch}/`,
+    },
+    {
+      label: 'Google',
+      url: `https://www.google.com/search?q=${researchAddress}`,
+    },
+    {
+      label: 'Land Registry',
+      url: `https://search-property-information.service.gov.uk/?q=${researchAddress}`,
+    },
+  ];
+
+  // Source attribution — derive from the source slug directly when listingType
+  // is missing. e.g. 'propertydata_unmodernised-properties' → 'Unmodernised property'
+  const inferredListingFromSource = lead.source.startsWith('propertydata_')
+    ? lead.source.replace('propertydata_', '')
+    : null;
+  const effectiveListingType = listingType ?? inferredListingFromSource;
   const sourceLabel = isPropertyData
-    ? listingType
-      ? LISTING_TYPE_LABELS[listingType] ?? listingType
+    ? effectiveListingType
+      ? LISTING_TYPE_LABELS[effectiveListingType] ?? effectiveListingType
       : 'Distressed listing'
     : isPlanning
       ? `Planning · ${planningRating ?? 'pending'}`
@@ -164,6 +200,20 @@ const LeadDetailPage = async ({
           ? 'HMO · licence expiring'
           : 'HMO register'
         : lead.source;
+  const sourceTechnical = isPropertyData
+    ? 'PropertyData /sourced-properties'
+    : isPlanning
+      ? 'PropertyData /planning-applications'
+      : isHmo
+        ? 'PropertyData /national-hmo-register'
+        : lead.source.startsWith('companies_house')
+          ? 'Companies House dissolved companies'
+          : lead.source;
+
+  // True when this lead lacks the rich PropertyData enrichment (likely
+  // scouted before the schema upgrade). Used to surface a clear refresh CTA.
+  const isSparseData =
+    !pd && !planning && !hmo && scoreFactors.length === 0;
 
   return (
     <>
@@ -289,7 +339,7 @@ const LeadDetailPage = async ({
                 </div>
               </div>
 
-              {/* External actions */}
+              {/* External actions — primary listing link (when we have one) */}
               <div className="mt-5 flex flex-wrap gap-2">
                 {externalUrl && externalLabel && (
                   <a
@@ -304,9 +354,69 @@ const LeadDetailPage = async ({
                 )}
                 {lead.status === 'new' && <ConvertButton leadId={lead.id} />}
               </div>
+
+              {/* Source attribution — always shown, makes the data lineage transparent */}
+              <p className="mt-4 text-[11px] text-muted-foreground">
+                Source: <span className="font-mono">{sourceTechnical}</span>
+              </p>
             </div>
           </div>
         </div>
+
+        {/* Research links — ALWAYS visible, even when we have a primary listing URL.
+            Founders need fast deep-links to verify the property in 1 click. */}
+        <div className="rounded-xl border bg-card p-5">
+          <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+            Research this property
+          </p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Quick deep-links to check this address on every major UK source.
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {researchLinks.map((link) => (
+              <a
+                key={link.label}
+                href={link.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50"
+              >
+                {link.label}
+                <span aria-hidden className="text-slate-400">↗</span>
+              </a>
+            ))}
+          </div>
+        </div>
+
+        {/* Sparse-data CTA — shown when this lead pre-dates the rich-payload upgrade */}
+        {isSparseData && (
+          <div className="rounded-xl border border-amber-300 bg-amber-50 p-5">
+            <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-amber-800">
+              Limited data on this lead
+            </p>
+            <p className="mt-2 text-sm text-amber-900">
+              This lead was scouted before the PropertyData enrichment was
+              wired through. We have its address, postcode, and score — but
+              no image, price, summary or score breakdown.
+            </p>
+            <p className="mt-2 text-sm text-amber-900">
+              <strong>To refresh:</strong> hit{' '}
+              <a
+                href="/settings/scouting"
+                className="underline underline-offset-2"
+              >
+                /settings/scouting → Run scout now
+              </a>
+              . PropertyData will re-fetch and any matching active listings
+              come back with the full enrichment. Old leads that no longer
+              match active listings will stay sparse.
+            </p>
+            <p className="mt-2 text-xs text-amber-800">
+              In the meantime, use the research links above to check
+              Rightmove / Zoopla / Land Registry directly.
+            </p>
+          </div>
+        )}
 
         {/* Why this is a lead — the summary */}
         {(summary || planningProposal) && (
