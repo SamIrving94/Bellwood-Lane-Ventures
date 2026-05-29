@@ -1971,16 +1971,22 @@ export async function getPropertySnapshot(input: {
   };
 
   // ── Phase A — calls that need property-level params (AVM) ─────────────
-  const avmInput = input.propertyType
+  // /valuation-sale accepts detached|semi-detached|terraced|flat. Map
+  // bungalow → detached as the closest valuation proxy.
+  const avmType: 'detached' | 'semi-detached' | 'terraced' | 'flat' | null =
+    input.propertyType === 'bungalow'
+      ? 'detached'
+      : input.propertyType ?? null;
+  const avmInput = avmType
     ? {
         postcode: input.postcode,
-        propertyType: input.propertyType,
+        propertyType: avmType,
         bedrooms: input.bedrooms,
         internalArea: input.internalAreaSqft,
       }
     : null;
   const avmRaw = avmInput
-    ? await safe('avm', () => getValuationSale(avmInput))
+    ? await safe('avm', () => getPropertyDataValuation(avmInput))
     : null;
   const avm = avmRaw
     ? {
