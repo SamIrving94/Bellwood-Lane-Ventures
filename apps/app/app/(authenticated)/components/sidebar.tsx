@@ -22,6 +22,7 @@ import {
   BuildingIcon,
   InboxIcon,
   KanbanIcon,
+  LineChartIcon,
   MailIcon,
   Settings2Icon,
 } from 'lucide-react';
@@ -53,6 +54,11 @@ const data = {
       title: 'Pipeline',
       url: '/pipeline',
       icon: KanbanIcon,
+    },
+    {
+      title: 'Book',
+      url: '/book',
+      icon: LineChartIcon,
     },
     {
       title: 'Investors',
