@@ -55,6 +55,11 @@ const data = {
       icon: KanbanIcon,
     },
     {
+      title: 'Investors',
+      url: '/investors',
+      icon: BuildingIcon,
+    },
+    {
       title: 'Outreach',
       url: '/outreach',
       icon: MailIcon,

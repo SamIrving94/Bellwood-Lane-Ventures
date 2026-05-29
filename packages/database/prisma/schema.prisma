@@ -160,6 +160,15 @@ model Deal {
   calendlyBookingLink String?
   calendlyEventAt     DateTime?
 
+  // Horizon 2 — deal-flow-as-income. A deal is only shareable to investors /
+  // referral partners AFTER Bellwood passes on it for its own book. This flag
+  // is the guardrail: nothing leaves the pipeline without an explicit release.
+  releasedForResale Boolean   @default(false)
+  releasedAt        DateTime?
+  releasedBy        String?
+  resaleReason      String?   @db.Text // why Bellwood passed (shown internally)
+  resalePricePence  Int?               // optional referral/lead asking price
+
   activities     DealActivity[]
   legalSteps     LegalStep[]
   legalDocuments LegalDocument[]
@@ -170,6 +179,7 @@ model Deal {
   @@index([status])
   @@index([postcode])
   @@index([sellerType])
+  @@index([releasedForResale])
 }
 
 model DealActivity {

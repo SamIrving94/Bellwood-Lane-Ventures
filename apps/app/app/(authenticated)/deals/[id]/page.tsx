@@ -6,6 +6,7 @@ import { notFound, redirect } from 'next/navigation';
 import { Header } from '../../components/header';
 import { FeedbackPanel } from '../../components/feedback-panel';
 import { GenerateOfferButton } from './generate-offer-button';
+import { ReleaseControl } from './release-control';
 
 export const metadata: Metadata = {
   title: 'Deal Detail — Bellwood Ventures',
@@ -180,6 +181,13 @@ const DealDetailPage = async ({
             <p className="mt-1 text-xs text-muted-foreground capitalize">Agent: {suggestedAction.agent}</p>
           </div>
         )}
+
+        {/* Pass & release to investor feed (Horizon 2 guardrail) */}
+        <ReleaseControl
+          dealId={deal.id}
+          released={deal.releasedForResale}
+          reason={deal.resaleReason}
+        />
 
         {/* Financials */}
         <div className="space-y-3">
