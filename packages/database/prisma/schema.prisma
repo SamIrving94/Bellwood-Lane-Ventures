@@ -217,17 +217,6 @@ model ScoutLead {
 
   evalConfigVersion Int?     // version of lead_scoring eval used
 
-  // Horizon 2 Track A — lead resale / referral. A lead is only listed to
-  // referral partners AFTER Bellwood passes on it for its own book. Claim
-  // fields capture who took it, for referral-income attribution.
-  referralReleased   Boolean   @default(false)
-  referralReleasedAt DateTime?
-  referralReleasedBy String?
-  referralReason     String?   @db.Text
-  referralPricePence Int?
-  referralClaimedBy  String? // partner name / email who took the lead
-  referralClaimedAt  DateTime?
-
   // Calendly booking (pre-conversion — once we send the link to a lead)
   calendlyBookingLink String?
 
@@ -245,7 +234,6 @@ model ScoutLead {
   @@index([leadScore])
   @@index([postcode])
   @@index([campaignId])
-  @@index([referralReleased])
 }
 
 model WhatsAppIntake {
