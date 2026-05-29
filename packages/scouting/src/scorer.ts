@@ -19,6 +19,10 @@
 import type { Hpi } from '@repo/property-data/src/hmlr-hpi';
 import type { PricePaid } from '@repo/property-data/src/hmlr';
 import type { EnrichedLead } from './enrichment';
+import { DEFAULT_SCORER_CONFIG, type ScorerConfig } from './scorer-config';
+
+export { DEFAULT_SCORER_CONFIG } from './scorer-config';
+export type { ScorerConfig } from './scorer-config';
 
 export type Verdict = 'STRONG' | 'VIABLE' | 'THIN' | 'PASS' | 'INSUFFICIENT_DATA';
 
@@ -122,25 +126,14 @@ function scoreMotivation(
   lead: EnrichedLead,
   signals: LeadSignals | undefined,
   factors: ScoreFactor[],
+  config: ScorerConfig,
 ): number {
   let score = 0;
 
   // Lead type urgency (0–25)
-  const typeScores: Record<string, number> = {
-    probate: 25,
-    distressed_sale: 22,
-    mortgage_default: 20,
-    lease_expiry: 18,
-    divorce: 18,
-    repossession: 22,
-    empty_property: 15,
-    downsizing: 12,
-    chain_break: 14,
-    relocation: 10,
-    unknown: 5,
-  };
+  const typeScores = config.leadTypeScores;
   const typeKey = lead.leadType.toLowerCase().replace(/\s+/g, '_');
-  const typePoints = typeScores[typeKey] ?? 5;
+  const typePoints = typeScores[typeKey] ?? config.leadTypeFallback;
   // Prefer the PropertyData listing label when present (more specific than 'unknown')
   const niceTypeLabel = signals?.listingType
     ? (LISTING_TYPE_LABELS[signals.listingType] ?? leadTypeLabel(typeKey))
@@ -150,26 +143,31 @@ function scoreMotivation(
 
   // Golden Window
   if (lead.goldenWindowLabel === 'hot') {
-    score += 12;
-    add(factors, 'Hot probate window', 12, 'motivation');
+    score += config.goldenWindow.hot;
+    add(factors, 'Hot probate window', config.goldenWindow.hot, 'motivation');
   } else if (lead.goldenWindowLabel === 'warm') {
-    score += 8;
-    add(factors, 'Warm probate window', 8, 'motivation');
+    score += config.goldenWindow.warm;
+    add(factors, 'Warm probate window', config.goldenWindow.warm, 'motivation');
   } else if (lead.goldenWindowLabel === 'cool') {
-    score += 4;
-    add(factors, 'Cool probate window', 4, 'motivation');
+    score += config.goldenWindow.cool;
+    add(factors, 'Cool probate window', config.goldenWindow.cool, 'motivation');
   }
 
   // Solicitor involvement
   if (lead.solicitorFirm) {
-    score += 5;
-    add(factors, 'Solicitor identified', 5, 'motivation');
+    score += config.solicitorBonus;
+    add(factors, 'Solicitor identified', config.solicitorBonus, 'motivation');
   }
 
   // Letters of admin = unplanned estate
   if (lead.grantType === 'letters_of_administration') {
-    score += 3;
-    add(factors, 'Letters of administration (unplanned)', 3, 'motivation');
+    score += config.lettersOfAdminBonus;
+    add(
+      factors,
+      'Letters of administration (unplanned)',
+      config.lettersOfAdminBonus,
+      'motivation',
+    );
   }
 
   // Velocity boost
@@ -234,12 +232,13 @@ function scoreMotivation(
     );
   }
 
-  return Math.min(40, score);
+  return Math.min(config.dimensionCaps.motivation, score);
 }
 
 function scoreRisk(
   signals: LeadSignals | undefined,
   factors: ScoreFactor[],
+  config: ScorerConfig,
 ): { score: number; flags: string[] } {
   let score = 0;
   const flags: string[] = [];
@@ -331,13 +330,20 @@ function scoreRisk(
     );
   }
 
-  return { score: Math.max(-10, Math.min(10, score)), flags };
+  return {
+    score: Math.max(
+      config.dimensionCaps.riskMin,
+      Math.min(config.dimensionCaps.riskMax, score),
+    ),
+    flags,
+  };
 }
 
 function scoreEquity(
   lead: EnrichedLead,
   pricePaid: PricePaid | null,
   factors: ScoreFactor[],
+  config: ScorerConfig,
 ): number {
   if (!lead.estateValuePence) {
     add(factors, 'No estate value recorded', 0, 'equity', 'neutral');
@@ -349,30 +355,23 @@ function scoreEquity(
     : null;
 
   if (!avgAreaPricePence) {
-    add(factors, 'Estate value present, no area comparable', 6, 'equity');
-    return 6;
+    add(
+      factors,
+      'Estate value present, no area comparable',
+      config.equityNoComparable,
+      'equity',
+    );
+    return config.equityNoComparable;
   }
 
   const equityRatio = lead.estateValuePence / avgAreaPricePence;
 
-  let pts = 2;
-  let label = 'Low equity vs area average';
-  if (equityRatio >= 1.5) {
-    pts = 25;
-    label = 'Strong equity (1.5× area average)';
-  } else if (equityRatio >= 1.2) {
-    pts = 20;
-    label = 'Solid equity (1.2× area average)';
-  } else if (equityRatio >= 1.0) {
-    pts = 15;
-    label = 'Equity at area average';
-  } else if (equityRatio >= 0.75) {
-    pts = 10;
-    label = 'Borderline equity (75% of area)';
-  } else if (equityRatio >= 0.5) {
-    pts = 5;
-    label = 'Thin equity (50% of area)';
-  }
+  // Bands are pre-sorted high → low; first match wins.
+  const band =
+    config.equityBands.find((b) => equityRatio >= b.minRatio) ??
+    config.equityBands[config.equityBands.length - 1];
+  const pts = band?.points ?? 2;
+  const label = band?.label ?? 'Low equity vs area average';
   add(factors, label, pts, 'equity');
   return pts;
 }
@@ -380,45 +379,49 @@ function scoreEquity(
 function scoreMarketTrend(
   hpi: Hpi | null,
   factors: ScoreFactor[],
+  config: ScorerConfig,
 ): { score: number; label: string } {
+  const mt = config.marketTrend;
   if (!hpi) {
-    add(factors, 'Market trend unknown', 7, 'marketTrend', 'neutral');
-    return { score: 7, label: 'unknown' };
+    add(factors, 'Market trend unknown', mt.unknown, 'marketTrend', 'neutral');
+    return { score: mt.unknown, label: 'unknown' };
   }
   if (hpi.trend === 'rising') {
-    add(factors, 'Rising market', 15, 'marketTrend', 'positive');
-    return { score: 15, label: 'rising' };
+    add(factors, 'Rising market', mt.rising, 'marketTrend', 'positive');
+    return { score: mt.rising, label: 'rising' };
   }
   if (hpi.trend === 'stable') {
-    add(factors, 'Stable market', 10, 'marketTrend', 'neutral');
-    return { score: 10, label: 'stable' };
+    add(factors, 'Stable market', mt.stable, 'marketTrend', 'neutral');
+    return { score: mt.stable, label: 'stable' };
   }
   if (hpi.trend === 'declining') {
-    add(factors, 'Declining market', 6, 'marketTrend', 'neutral');
-    return { score: 6, label: 'declining' };
+    add(factors, 'Declining market', mt.declining, 'marketTrend', 'neutral');
+    return { score: mt.declining, label: 'declining' };
   }
-  add(factors, 'Market trend unknown', 7, 'marketTrend', 'neutral');
-  return { score: 7, label: 'unknown' };
+  add(factors, 'Market trend unknown', mt.unknown, 'marketTrend', 'neutral');
+  return { score: mt.unknown, label: 'unknown' };
 }
 
 function scoreContactQuality(
   lead: EnrichedLead,
   factors: ScoreFactor[],
+  config: ScorerConfig,
 ): number {
   let score = 0;
   const pieces: string[] = [];
   if (lead.contactName) {
-    score += 3;
+    score += config.contact.name;
     pieces.push('name');
   }
   if (lead.contactPhone) {
-    score += 4;
+    score += config.contact.phone;
     pieces.push('phone');
   }
   if (lead.contactEmail) {
-    score += 3;
+    score += config.contact.email;
     pieces.push('email');
   }
+  score = Math.min(config.dimensionCaps.contactQuality, score);
   if (score === 0) {
     add(factors, 'No contact data', 0, 'contactQuality', 'neutral');
   } else {
@@ -436,11 +439,15 @@ function scoreContactQuality(
 // Verdict + rationale
 // ─────────────────────────────────────────────────────────────────────────
 
-function verdictFromScore(total: number, hasCriticalData: boolean): Verdict {
+function verdictFromScore(
+  total: number,
+  hasCriticalData: boolean,
+  config: ScorerConfig,
+): Verdict {
   if (!hasCriticalData) return 'INSUFFICIENT_DATA';
-  if (total >= 70) return 'STRONG';
-  if (total >= 50) return 'VIABLE';
-  if (total >= 30) return 'THIN';
+  if (total >= config.verdictThresholds.strong) return 'STRONG';
+  if (total >= config.verdictThresholds.viable) return 'VIABLE';
+  if (total >= config.verdictThresholds.thin) return 'THIN';
   return 'PASS';
 }
 
@@ -494,24 +501,26 @@ export function scoreLead(
   pricePaid: PricePaid | null,
   hpi: Hpi | null,
   signals?: LeadSignals,
+  config: ScorerConfig = DEFAULT_SCORER_CONFIG,
 ): ScoreBreakdown {
   const hasCriticalData = Boolean(lead.address && lead.postcode);
   const factors: ScoreFactor[] = [];
 
-  const motivation = scoreMotivation(lead, signals, factors);
-  const equity = scoreEquity(lead, pricePaid, factors);
+  const motivation = scoreMotivation(lead, signals, factors, config);
+  const equity = scoreEquity(lead, pricePaid, factors, config);
   const { score: marketTrend, label: marketTrendLabel } = scoreMarketTrend(
     hpi,
     factors,
+    config,
   );
-  const contactQuality = scoreContactQuality(lead, factors);
-  const { score: risk, flags: riskFlags } = scoreRisk(signals, factors);
+  const contactQuality = scoreContactQuality(lead, factors, config);
+  const { score: risk, flags: riskFlags } = scoreRisk(signals, factors, config);
 
   const total = Math.max(
     0,
     Math.min(100, motivation + equity + marketTrend + contactQuality + risk),
   );
-  const verdict = verdictFromScore(total, hasCriticalData);
+  const verdict = verdictFromScore(total, hasCriticalData, config);
   const rationale = buildRationale(verdict, total, factors);
 
   return {

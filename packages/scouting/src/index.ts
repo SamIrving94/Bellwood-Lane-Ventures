@@ -33,6 +33,7 @@ import { fetchProbateGrants } from './probate-data';
 import { fetchGazetteProbateNotices } from './gazette';
 import { enrichLeads } from './enrichment';
 import { scoreLead } from './scorer';
+import { DEFAULT_SCORER_CONFIG, type ScorerConfig } from './scorer-config';
 import { sanitisePayload, auditProtectedFields } from './rbac';
 
 /** Return the most-frequent value in an array (first wins on tie). */
@@ -59,6 +60,11 @@ export { fetchProbateGrants } from './probate-data';
 export { fetchGazetteProbateNotices } from './gazette';
 export { enrichLeads } from './enrichment';
 export { scoreLead } from './scorer';
+export {
+  DEFAULT_SCORER_CONFIG,
+  mergeScorerConfig,
+  type ScorerConfig,
+} from './scorer-config';
 export { sanitisePayload, auditProtectedFields } from './rbac';
 
 export type { ProbateLead } from './probate-data';
@@ -85,6 +91,8 @@ export interface ScoutLead {
   sourceTrail: string | null;
   rawPayload: Record<string, unknown> | null;
   status: 'new';
+  /** Version of the EvalConfig that produced this score (null = hard-coded defaults). */
+  evalConfigVersion: number | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -112,6 +120,17 @@ export interface ScoutingPipelineOptions {
    * fires one /sourced-properties call per seed.
    */
   scanSeeds?: Array<{ label?: string; postcode: string; radiusMiles: number }>;
+  /**
+   * Active scorer config (weights/thresholds) loaded from the EvalConfig table.
+   * When omitted, the scorer uses its hard-coded DEFAULT_SCORER_CONFIG.
+   */
+  scorerConfig?: ScorerConfig;
+  /**
+   * Version number of the EvalConfig used. Stamped onto every persisted lead
+   * so calibration can attribute a score to the config that produced it.
+   * Null when scoring with hard-coded defaults.
+   */
+  evalConfigVersion?: number | null;
 }
 
 export interface ScoutingPipelineResult {
@@ -178,6 +197,8 @@ export async function runScoutingPipeline(
     includeRawPayload = true,
     sourcedPropertyPostcodes = [],
     scanSeeds = [],
+    scorerConfig = DEFAULT_SCORER_CONFIG,
+    evalConfigVersion = null,
   } = options;
 
   const runDate = new Date();
@@ -680,7 +701,7 @@ export async function runScoutingPipeline(
         tenure: pc?.tenure ?? null,
         remainingLeaseYears: pc?.remainingLeaseYears ?? null,
       };
-      const breakdown = scoreLead(lead, pricePaid, hpi, signals);
+      const breakdown = scoreLead(lead, pricePaid, hpi, signals, scorerConfig);
 
       // Stamp the full "why this score" payload onto rawPayload so the UI
       // can render it verbatim — no inference, no guesswork.
@@ -718,6 +739,7 @@ export async function runScoutingPipeline(
         sourceTrail: lead.sourceTrail,
         rawPayload: enrichedRaw,
         status: 'new',
+        evalConfigVersion,
       };
 
       return scoutLead;

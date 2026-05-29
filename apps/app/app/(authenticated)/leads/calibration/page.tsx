@@ -35,6 +35,14 @@ const CalibrationPage = async () => {
     orderBy: { createdAt: 'desc' },
   });
 
+  // Which scorer config is live? The cron loads the highest active
+  // lead_scoring EvalConfig and stamps its version on every lead it scores.
+  const activeConfig = await database.evalConfig.findFirst({
+    where: { evalType: 'lead_scoring', activatedAt: { not: null } },
+    orderBy: { version: 'desc' },
+    select: { version: true, description: true, activatedAt: true },
+  });
+
   // Aggregate: scorer vs founder agreement
   let agree = 0;
   let disagreeHigh = 0; // founder rated higher than scorer
@@ -129,6 +137,19 @@ const CalibrationPage = async () => {
             {feedback.length === 1 ? '' : 's'} in the last 90 days. Use this
             to spot which scoring factors are pulling the model off-target.
           </p>
+          <div className="mt-3 inline-flex items-center gap-2 rounded-full border bg-card px-3 py-1 text-xs">
+            <span className="text-muted-foreground">Live scorer config:</span>
+            {activeConfig ? (
+              <span className="font-mono font-semibold text-emerald-700">
+                v{activeConfig.version}
+                {activeConfig.description ? ` · ${activeConfig.description}` : ''}
+              </span>
+            ) : (
+              <span className="font-mono font-semibold text-slate-600">
+                built-in defaults
+              </span>
+            )}
+          </div>
         </div>
 
         {/* Headline accuracy */}
@@ -292,8 +313,14 @@ const CalibrationPage = async () => {
               anything.
             </li>
             <li>
-              · No weights are auto-changed. The suggestions are a guide for
-              a human review.
+              · Suggestions are a guide for human review — nothing auto-tunes.
+              To apply new weights, activate an{' '}
+              <span className="font-medium text-slate-700">
+                EvalConfig (lead_scoring)
+              </span>{' '}
+              version: the daily scout then scores with it and stamps that
+              version on each lead, so the numbers above always reflect the
+              live config.
             </li>
           </ul>
         </div>

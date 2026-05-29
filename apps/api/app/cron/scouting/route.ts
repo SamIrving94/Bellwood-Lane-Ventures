@@ -1,6 +1,6 @@
 import { env } from '@/env';
 import { database, Prisma } from '@repo/database';
-import { runScoutingPipeline } from '@repo/scouting';
+import { mergeScorerConfig, runScoutingPipeline } from '@repo/scouting';
 import { getPropertySnapshot } from '@repo/property-data/src/propertydata';
 import { NextResponse } from 'next/server';
 
@@ -98,11 +98,35 @@ export const POST = async (request: Request) => {
     }
   }
 
+  // ── Load the active lead-scoring config (closes the calibration loop) ──
+  // The scorer's weights/thresholds live in the EvalConfig table so they can
+  // be tuned without a deploy. We pick the highest active (activatedAt != null)
+  // version for evalType 'lead_scoring', merge it over the hard-coded defaults,
+  // and stamp the version onto every lead so calibration can attribute scores
+  // to the config that produced them. No active config → hard-coded defaults.
+  let scorerConfig = mergeScorerConfig(null); // = DEFAULT_SCORER_CONFIG
+  let evalConfigVersion: number | null = null;
+  try {
+    const active = await database.evalConfig.findFirst({
+      where: { evalType: 'lead_scoring', activatedAt: { not: null } },
+      orderBy: { version: 'desc' },
+      select: { version: true, config: true },
+    });
+    if (active) {
+      scorerConfig = mergeScorerConfig(active.config);
+      evalConfigVersion = active.version;
+    }
+  } catch (err) {
+    console.warn('[cron/scouting] failed to load active scorer config', err);
+  }
+
   const result = await runScoutingPipeline({
     limit: 50,
     minScore: 30,
     sourcedPropertyPostcodes,
     scanSeeds,
+    scorerConfig,
+    evalConfigVersion,
   });
 
   // ── Persist leads FIRST (cheap, durable) ─────────────────────────────
@@ -308,6 +332,7 @@ export const POST = async (request: Request) => {
     qualified: result.leads.length,
     persisted: createdCount,
     snapshotsEnriched: enrichedCount,
+    evalConfigVersion,
     highScoreLeads: highScoreLeads.length,
     strongLeads: strongLeads.length,
     summary: result.summary,
