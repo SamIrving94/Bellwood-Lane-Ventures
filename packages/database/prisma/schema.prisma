@@ -169,6 +169,19 @@ model Deal {
   resaleReason      String?   @db.Text // why Bellwood passed (shown internally)
   resalePricePence  Int?               // optional referral/lead asking price
 
+  // Line 1 — trade economics (deals Bellwood buys for its own book). These are
+  // the *actuals*, distinct from ourOfferPence (what we offered). Captured when
+  // a deal is acquired and again when it's exited, so we can show realised P&L
+  // and validate the AVM against the real sale price.
+  acquisitionPricePence Int?      // what we actually paid
+  acquiredAt            DateTime? // our purchase completion date
+  refurbCostPence       Int?      // refurbishment spend
+  legalFeesPence        Int?      // legal / SDLT / conveyancing
+  otherCostsPence       Int?      // holding, finance, misc
+  exitPricePence        Int?      // what we sold it for
+  exitedAt              DateTime? // date sold
+  realisedProfitPence   Int?      // exit − acquisition − all costs (stored)
+
   activities     DealActivity[]
   legalSteps     LegalStep[]
   legalDocuments LegalDocument[]

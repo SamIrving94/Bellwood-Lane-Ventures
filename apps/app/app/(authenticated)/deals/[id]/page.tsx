@@ -5,6 +5,7 @@ import type { Metadata } from 'next';
 import { notFound, redirect } from 'next/navigation';
 import { Header } from '../../components/header';
 import { FeedbackPanel } from '../../components/feedback-panel';
+import { DealEconomicsPanel } from './deal-economics-panel';
 import { GenerateOfferButton } from './generate-offer-button';
 import { InvestorPanel } from './investor-panel';
 import { ReleaseControl } from './release-control';
@@ -244,6 +245,23 @@ const DealDetailPage = async ({
           </div>
         </div>
         </div>
+
+        {/* Line 1 — trade economics / realised P&L */}
+        <DealEconomicsPanel
+          dealId={deal.id}
+          economics={{
+            acquisitionPricePence: deal.acquisitionPricePence,
+            acquiredAt: deal.acquiredAt,
+            refurbCostPence: deal.refurbCostPence,
+            legalFeesPence: deal.legalFeesPence,
+            otherCostsPence: deal.otherCostsPence,
+            exitPricePence: deal.exitPricePence,
+            exitedAt: deal.exitedAt,
+            realisedProfitPence: deal.realisedProfitPence,
+          }}
+          estimatedMarketValuePence={deal.estimatedMarketValuePence}
+          ourOfferPence={deal.ourOfferPence}
+        />
 
         {/* Calendly booking status */}
         <div className="rounded-lg border bg-card p-4">
