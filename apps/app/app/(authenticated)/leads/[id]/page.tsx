@@ -539,6 +539,48 @@ const LeadDetailPage = async ({
           </section>
         )}
 
+        {/* ── THE VERDICT — decision info first, before the deep data ─────
+            The founder's question is "should I chase this, and why?".
+            Answer it up top: plain rationale + what this lead is + score.
+            The full factor breakdown stays lower as supporting detail. */}
+        {(rationale || summary || planningProposal) && (
+          <section className="rounded-2xl border-2 border-slate-200 bg-white p-5">
+            <div className="flex items-start justify-between gap-4">
+              <div className="min-w-0 flex-1">
+                <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+                  The verdict
+                </p>
+                {rationale && (
+                  <p className="mt-1 text-[15px] font-medium leading-relaxed text-slate-900">
+                    {rationale}
+                  </p>
+                )}
+                {(summary || planningProposal) && (
+                  <p className="mt-2 text-sm leading-relaxed text-slate-600">
+                    {summary ?? planningProposal}
+                  </p>
+                )}
+                {(positiveFactors.length > 0 || negativeFactors.length > 0) && (
+                  <p className="mt-3 text-xs text-muted-foreground">
+                    Full score breakdown below ↓
+                  </p>
+                )}
+              </div>
+              <div className="shrink-0 text-right">
+                <p className="font-mono font-bold text-3xl tabular-nums leading-none">
+                  {lead.leadScore}
+                  <span className="text-base text-muted-foreground">/100</span>
+                </p>
+                <span
+                  className={`mt-2 inline-flex rounded-full border px-2.5 py-0.5 text-xs font-medium ${verdictColors[lead.verdict] || ''}`}
+                >
+                  {lead.verdict}
+                </span>
+              </div>
+            </div>
+          </section>
+        )}
+
         {/* ── PROPERTY SNAPSHOT — Tier 1 + Tier 2 enrichment ─────────────── */}
 
         {!snapshot && !isSparseData && (
@@ -937,43 +979,12 @@ const LeadDetailPage = async ({
           </div>
         )}
 
-        {/* Why this is a lead — the summary */}
-        {(summary || planningProposal) && (
+        {/* Score breakdown — supporting detail for the verdict card above */}
+        {scoreFactors.length > 0 && (
           <div className="rounded-xl border bg-card p-5">
             <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-              Why this is a lead
+              Score breakdown
             </p>
-            <p className="mt-2 text-sm leading-relaxed text-slate-700">
-              {summary ?? planningProposal}
-            </p>
-          </div>
-        )}
-
-        {/* Why this score — ALWAYS VISIBLE, the answer to "why" */}
-        {scoreFactors.length > 0 && (
-          <div className="rounded-xl border-2 border-slate-200 bg-white p-5">
-            <div className="flex items-baseline justify-between gap-3">
-              <div>
-                <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-                  Why this score
-                </p>
-                {rationale && (
-                  <p className="mt-1 text-[15px] font-medium text-slate-900">
-                    {rationale}
-                  </p>
-                )}
-              </div>
-              {scoreBreakdown && (
-                <div className="text-right">
-                  <p className="font-mono font-bold text-3xl tabular-nums leading-none">
-                    {scoreBreakdown.total}
-                  </p>
-                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                    / 100
-                  </p>
-                </div>
-              )}
-            </div>
 
             {/* Positive contributors */}
             {positiveFactors.length > 0 && (

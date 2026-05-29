@@ -135,7 +135,7 @@ const LeadsPage = async ({
             };
           })}
           unratedCount={unratedCount}
-          initialFilter={filter ?? 'all'}
+          initialFilter={filter ?? 'shortlist'}
         />
       </div>
     </>

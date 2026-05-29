@@ -80,6 +80,7 @@ function formatGBP(pence: number): string {
 }
 
 type FilterKey =
+  | 'shortlist'
   | 'all'
   | 'unrated'
   | 'rated'
@@ -91,10 +92,20 @@ type FilterKey =
   | 'hmo'
   | 'dissolved';
 
+// Source-type filters are analyst tools, not part of the daily "what do I
+// act on" job — they live behind a "More filters" disclosure.
+const SECONDARY_FILTERS: FilterKey[] = [
+  'propertydata',
+  'planning',
+  'hmo',
+  'dissolved',
+];
+
 export function LeadsTable({ leads, unratedCount, initialFilter }: Props) {
   const [activeFilter, setActiveFilter] = useState<FilterKey>(
-    (initialFilter as FilterKey) ?? 'all',
+    (initialFilter as FilterKey) ?? 'shortlist',
   );
+  const [showMoreFilters, setShowMoreFilters] = useState(false);
   const [localRatings, setLocalRatings] = useState<Record<string, number>>({});
 
   const handleRated = (leadId: string, rating: number) => {
@@ -107,6 +118,14 @@ export function LeadsTable({ leads, unratedCount, initialFilter }: Props) {
   const filteredLeads = leads.filter((lead) => {
     const rating = getRating(lead);
     switch (activeFilter) {
+      case 'shortlist':
+        // The daily triage view: act-on-these-today. New, worth pursuing,
+        // not yet rated.
+        return (
+          lead.status === 'new' &&
+          (lead.verdict === 'STRONG' || lead.verdict === 'VIABLE') &&
+          !rating
+        );
       case 'unrated':
         return lead.status === 'new' && !rating;
       case 'rated':
@@ -135,8 +154,15 @@ export function LeadsTable({ leads, unratedCount, initialFilter }: Props) {
       return lead?.status === 'new' && !lead.existingRating;
     }).length;
 
+  const shortlistCount = leads.filter(
+    (l) =>
+      l.status === 'new' &&
+      (l.verdict === 'STRONG' || l.verdict === 'VIABLE') &&
+      !getRating(l),
+  ).length;
+
   const filters: { key: FilterKey; label: string; count: number }[] = [
-    { key: 'all', label: 'All', count: leads.length },
+    { key: 'shortlist', label: "Today's shortlist", count: shortlistCount },
     {
       key: 'STRONG',
       label: 'Strong',
@@ -152,6 +178,7 @@ export function LeadsTable({ leads, unratedCount, initialFilter }: Props) {
       label: 'Unrated',
       count: Math.max(0, currentUnratedCount),
     },
+    { key: 'all', label: 'All', count: leads.length },
     {
       key: 'propertydata',
       label: 'Distressed',
@@ -175,10 +202,17 @@ export function LeadsTable({ leads, unratedCount, initialFilter }: Props) {
     },
   ];
 
+  const primaryFilters = filters.filter(
+    (f) => !SECONDARY_FILTERS.includes(f.key),
+  );
+  const secondaryFilters = filters.filter((f) =>
+    SECONDARY_FILTERS.includes(f.key),
+  );
+
   return (
     <>
       <div className="flex flex-wrap items-center gap-1">
-        {filters.map((f) => (
+        {primaryFilters.map((f) => (
           <button
             key={f.key}
             type="button"
@@ -193,7 +227,40 @@ export function LeadsTable({ leads, unratedCount, initialFilter }: Props) {
             <span className="ml-1 opacity-70">{f.count}</span>
           </button>
         ))}
+        <button
+          type="button"
+          onClick={() => setShowMoreFilters((v) => !v)}
+          className="rounded-full px-3 py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted/80"
+        >
+          {showMoreFilters ? 'Fewer filters' : 'More filters'}
+          <span aria-hidden className="ml-1">
+            {showMoreFilters ? '▾' : '▸'}
+          </span>
+        </button>
       </div>
+
+      {showMoreFilters && (
+        <div className="flex flex-wrap items-center gap-1">
+          <span className="mr-1 font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+            By source
+          </span>
+          {secondaryFilters.map((f) => (
+            <button
+              key={f.key}
+              type="button"
+              onClick={() => setActiveFilter(f.key)}
+              className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+                activeFilter === f.key
+                  ? 'bg-primary text-primary-foreground'
+                  : 'bg-muted text-muted-foreground hover:bg-muted/80'
+              }`}
+            >
+              {f.label}
+              <span className="ml-1 opacity-70">{f.count}</span>
+            </button>
+          ))}
+        </div>
+      )}
 
       <p className="text-muted-foreground text-sm">
         {filteredLeads.length} lead{filteredLeads.length !== 1 ? 's' : ''}
@@ -201,11 +268,30 @@ export function LeadsTable({ leads, unratedCount, initialFilter }: Props) {
 
       {filteredLeads.length === 0 ? (
         <div className="rounded-lg border bg-card p-8 text-center">
-          <p className="text-muted-foreground">
-            {activeFilter === 'unrated'
-              ? 'All leads have been rated.'
-              : 'No leads match this filter.'}
-          </p>
+          {activeFilter === 'shortlist' ? (
+            <>
+              <p className="font-medium text-foreground">
+                Nothing needs you right now.
+              </p>
+              <p className="mt-1 text-muted-foreground text-sm">
+                No new STRONG or VIABLE leads to action. Browse{' '}
+                <button
+                  type="button"
+                  onClick={() => setActiveFilter('all')}
+                  className="font-medium text-primary hover:underline"
+                >
+                  all leads
+                </button>{' '}
+                or run a fresh scout from Settings → Scouting.
+              </p>
+            </>
+          ) : (
+            <p className="text-muted-foreground">
+              {activeFilter === 'unrated'
+                ? 'All leads have been rated.'
+                : 'No leads match this filter.'}
+            </p>
+          )}
         </div>
       ) : (
         <div className="grid gap-3">
@@ -265,6 +351,40 @@ function LeadCard({
 
   const externalUrl = lead.listingUrl ?? lead.planningUrl ?? null;
 
+  // Cap the card to the 2 strongest "why act" signals (plain English) plus a
+  // single collapsed risk pill — scanning 200 cards with 7+ pills each is
+  // impossible. Priority: price cut > falling fast > stale > HMO expiry.
+  const highlights: { label: string; cls: string; title?: string }[] = [];
+  if (lead.discountPercent && lead.discountPercent > 0) {
+    highlights.push({
+      label: `↓ ${lead.discountPercent}% price cut${lead.reductionCount > 1 ? ` ×${lead.reductionCount}` : ''}`,
+      cls: 'border-orange-200 bg-orange-100 text-orange-800',
+    });
+  }
+  if (lead.velocityScore >= 0.5) {
+    highlights.push({
+      label: 'Price falling fast',
+      cls: 'border-red-200 bg-red-100 text-red-800',
+      title:
+        'Repeated, accelerating price cuts — a strong sign of a motivated seller.',
+    });
+  }
+  if (typeof lead.daysOnMarket === 'number' && lead.daysOnMarket >= 60) {
+    highlights.push({
+      label: `${lead.daysOnMarket} days unsold`,
+      cls: 'border-amber-200 bg-amber-50 text-amber-800',
+    });
+  }
+  if (lead.hmoExpiringSoon) {
+    highlights.push({
+      label: 'HMO licence expiring',
+      cls: 'border-rose-200 bg-rose-100 text-rose-800',
+      title: lead.hmoLicenceExpiry ? `Expires ${lead.hmoLicenceExpiry}` : undefined,
+    });
+  }
+  const topHighlights = highlights.slice(0, 2);
+  const riskCount = lead.riskFlags.length;
+
   return (
     <div className="overflow-hidden rounded-xl border bg-card transition hover:shadow-md">
       <div className="flex">
@@ -312,40 +432,23 @@ function LeadCard({
                 >
                   {sourceBadge}
                 </span>
-                {lead.discountPercent && lead.discountPercent > 0 && (
-                  <span className="inline-flex rounded-full border border-orange-200 bg-orange-100 px-2 py-0.5 text-[11px] font-medium text-orange-800">
-                    ↓ {lead.discountPercent}% reduced
-                    {lead.reductionCount > 1 && ` ×${lead.reductionCount}`}
-                  </span>
-                )}
-                {lead.velocityScore >= 0.5 && (
+                {topHighlights.map((h) => (
                   <span
-                    className="inline-flex rounded-full border border-red-200 bg-red-100 px-2 py-0.5 text-[11px] font-medium text-red-800"
-                    title={`Velocity score ${lead.velocityScore.toFixed(2)} — accelerating distress`}
+                    key={h.label}
+                    title={h.title}
+                    className={`inline-flex rounded-full border px-2 py-0.5 text-[11px] font-medium ${h.cls}`}
                   >
-                    ⚡ Accelerating
-                  </span>
-                )}
-                {typeof lead.daysOnMarket === 'number' &&
-                  lead.daysOnMarket >= 60 && (
-                    <span className="inline-flex rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-800">
-                      {lead.daysOnMarket}d on market
-                    </span>
-                  )}
-                {lead.hmoExpiringSoon && (
-                  <span className="inline-flex rounded-full border border-rose-200 bg-rose-100 px-2 py-0.5 text-[11px] font-medium text-rose-800">
-                    Licence: {lead.hmoLicenceExpiry}
-                  </span>
-                )}
-                {lead.riskFlags.slice(0, 3).map((flag) => (
-                  <span
-                    key={flag}
-                    className="inline-flex rounded-full border border-rose-200 bg-rose-50 px-2 py-0.5 text-[11px] font-medium text-rose-700"
-                    title="Risk penalty applied to score"
-                  >
-                    ⚠ {flag}
+                    {h.label}
                   </span>
                 ))}
+                {riskCount > 0 && (
+                  <span
+                    className="inline-flex rounded-full border border-rose-200 bg-rose-50 px-2 py-0.5 text-[11px] font-medium text-rose-700"
+                    title={lead.riskFlags.join(' · ')}
+                  >
+                    ⚠ {riskCount} risk{riskCount === 1 ? '' : 's'}
+                  </span>
+                )}
               </div>
 
               {/* Key facts row */}
