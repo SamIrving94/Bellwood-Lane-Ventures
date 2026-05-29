@@ -2,7 +2,7 @@
 
 import { auth } from '@repo/auth/server';
 import { database } from '@repo/database';
-import { runAVM } from '@repo/valuation';
+import { mergeOfferConfig, runAVM } from '@repo/valuation';
 import { revalidatePath } from 'next/cache';
 
 // Map a free-text deal.propertyType onto the AVM's PropertyType enum.
@@ -54,6 +54,16 @@ export async function generateDealOffer(dealId: string) {
     PROPERTY_TYPE_MAP[deal.propertyType.toLowerCase()] ?? 'terraced';
   const avmSellerType = SELLER_TYPE_MAP[deal.sellerType] ?? 'standard';
 
+  // Founder-tuned offer policy: highest active avm_confidence EvalConfig wins.
+  // No active config → built-in defaults (unchanged behaviour).
+  const activeConfig = await database.evalConfig.findFirst({
+    where: { evalType: 'avm_confidence', activatedAt: { not: null } },
+    orderBy: { version: 'desc' },
+    select: { version: true, config: true },
+  });
+  const offerConfig = mergeOfferConfig(activeConfig?.config);
+  const evalConfigVersion = activeConfig?.version ?? null;
+
   const avm = await runAVM({
     postcode: deal.postcode,
     propertyType: avmPropertyType as never,
@@ -61,6 +71,7 @@ export async function generateDealOffer(dealId: string) {
     bedrooms: deal.bedrooms ?? undefined,
     sellerType: avmSellerType as never,
     dealId: deal.id,
+    offerConfig,
   });
 
   const r = avm.resultJson;
@@ -75,6 +86,7 @@ export async function generateDealOffer(dealId: string) {
       riskScore: avm.riskScore,
       resultJson: avm.resultJson as never,
       expiresAt: avm.expiresAt,
+      evalConfigVersion,
     },
   });
 

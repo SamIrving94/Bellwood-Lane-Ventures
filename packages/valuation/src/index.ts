@@ -24,6 +24,7 @@ import 'server-only';
 import { getBaseValuation, type BaseValuationInput, type PropertyType } from './base-valuation';
 import { scoreRisk, type RiskScoringInput, type RadonCategory, type CoalMiningZone, type KnotweedProximity, type FloodZone, type NoiseBand, type ConstructionType } from './risk-scoring';
 import { calculateOffer, type SellerType, type InvestmentGrade, type OfferResult } from './offer-calculation';
+import { DEFAULT_OFFER_CONFIG, type OfferConfig } from './offer-config';
 import { projectTrend, type TrendProjection } from './trend-projection';
 
 // ---------------------------------------------------------------------------
@@ -37,6 +38,8 @@ export type {
   FactorScore,
 } from './risk-scoring';
 export type { SellerType, InvestmentGrade, OfferResult, DiscountLine } from './offer-calculation';
+export { DEFAULT_OFFER_CONFIG, mergeOfferConfig } from './offer-config';
+export type { OfferConfig } from './offer-config';
 export type { TrendProjection, TrendForecastPoint } from './trend-projection';
 
 // ---------------------------------------------------------------------------
@@ -69,6 +72,9 @@ export interface AvmInput {
   remainingLeaseYears?: number;
   grossRentalYield?: number;
   investmentGrade?: InvestmentGrade;
+
+  /** Founder-tunable offer policy (margins, guard rails). Defaults built-in. */
+  offerConfig?: OfferConfig;
 }
 
 // ---------------------------------------------------------------------------
@@ -173,6 +179,7 @@ export async function runAVM(input: AvmInput): Promise<AvmResultPayload> {
     radonCategory, coalMiningZone, knotweedProximity, floodZone, noiseBand,
     constructionType,
     remainingLeaseYears, grossRentalYield, investmentGrade,
+    offerConfig = DEFAULT_OFFER_CONFIG,
   } = input;
 
   // Step 1: Base valuation
@@ -198,14 +205,17 @@ export async function runAVM(input: AvmInput): Promise<AvmResultPayload> {
   const trend: TrendProjection = projectTrend(baseValuation.pointEstimate, baseValuation.hpi);
 
   // Step 4: Offer calculation
-  const offer: OfferResult = calculateOffer({
-    baseValuation,
-    riskScore,
-    sellerType,
-    investmentGrade,
-    remainingLeaseYears,
-    grossRentalYield,
-  });
+  const offer: OfferResult = calculateOffer(
+    {
+      baseValuation,
+      riskScore,
+      sellerType,
+      investmentGrade,
+      remainingLeaseYears,
+      grossRentalYield,
+    },
+    offerConfig,
+  );
 
   // Step 5: Assemble AvmResultJson
   const env = riskScore.environmental;

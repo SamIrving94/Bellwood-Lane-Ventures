@@ -32,6 +32,7 @@
 import 'server-only';
 
 import type { BaseValuation } from './base-valuation.js';
+import { DEFAULT_OFFER_CONFIG, type OfferConfig } from './offer-config.js';
 import type { RiskScore } from './risk-scoring.js';
 
 // ---------------------------------------------------------------------------
@@ -84,17 +85,10 @@ export interface OfferResult {
 }
 
 // ---------------------------------------------------------------------------
-// Base acquisition margins by seller type
+// Base acquisition margins by seller type and investment-grade nudges now live
+// in offer-config.ts (DEFAULT_OFFER_CONFIG) so the founder can tune them via
+// an avm_confidence EvalConfig without a code change.
 // ---------------------------------------------------------------------------
-
-const SELLER_TYPE_MARGIN: Record<SellerType, number> = {
-  probate:     0.20,
-  chain_break: 0.20,
-  short_lease: 0.15,
-  repossession: 0.25,
-  relocation:  0.20,
-  standard:    0.22,
-};
 
 // ---------------------------------------------------------------------------
 // Investment grade derivation
@@ -133,21 +127,13 @@ function leaseDiscount(remainingYears: number | undefined): number {
 // Investment grade margin adjustment
 // ---------------------------------------------------------------------------
 
-const GRADE_ADJUSTMENT: Record<InvestmentGrade, number> = {
-  'A+': -0.03,
-  A:    0,
-  B:    0,
-  C:    0.03,
-  D:    0.05,
-};
-
 // ---------------------------------------------------------------------------
 // Offer validity
 // ---------------------------------------------------------------------------
 
-function validUntilDate(): string {
+function validUntilDate(days: number): string {
   const d = new Date();
-  d.setDate(d.getDate() + 14);
+  d.setDate(d.getDate() + days);
   return d.toISOString().slice(0, 10);
 }
 
@@ -198,7 +184,10 @@ function buildJustification(
 // Public API
 // ---------------------------------------------------------------------------
 
-export function calculateOffer(input: OfferCalculationInput): OfferResult {
+export function calculateOffer(
+  input: OfferCalculationInput,
+  config: OfferConfig = DEFAULT_OFFER_CONFIG,
+): OfferResult {
   const { baseValuation, riskScore, sellerType, remainingLeaseYears, grossRentalYield } = input;
 
   const avm = baseValuation.pointEstimate;
@@ -209,11 +198,14 @@ export function calculateOffer(input: OfferCalculationInput): OfferResult {
     input.investmentGrade ?? deriveInvestmentGrade(grossRentalYield, riskScore);
 
   // Base acquisition margin
-  const baseMargin = SELLER_TYPE_MARGIN[sellerType];
+  const baseMargin = config.sellerTypeMargin[sellerType];
 
   // Grade adjustment to base margin
-  const gradeAdj = GRADE_ADJUSTMENT[investmentGrade];
-  const effectiveBaseMargin = Math.max(0.10, baseMargin + gradeAdj);
+  const gradeAdj = config.gradeAdjustment[investmentGrade];
+  const effectiveBaseMargin = Math.max(
+    config.minEffectiveMargin,
+    baseMargin + gradeAdj,
+  );
 
   // Base offer before risk discounts
   const baseOffer = Math.round(avm * (1 - effectiveBaseMargin));
@@ -264,18 +256,18 @@ export function calculateOffer(input: OfferCalculationInput): OfferResult {
       fraction: leaseFraction,
     });
 
-  // Total discount fraction (capped at 40%)
+  // Total discount fraction (capped by config)
   const rawTotalDiscount = discountLines.reduce((s, d) => s + d.fraction, 0);
-  const discountCapped = rawTotalDiscount > 0.40;
-  const totalDiscountFraction = Math.min(rawTotalDiscount, 0.40);
+  const discountCapped = rawTotalDiscount > config.totalDiscountCap;
+  const totalDiscountFraction = Math.min(rawTotalDiscount, config.totalDiscountCap);
 
   // Final offer = base offer minus additional risk discounts (applied to AVM)
   const additionalDiscount = Math.round(avm * totalDiscountFraction);
   const rawFinalOffer = baseOffer - additionalDiscount;
 
   // Floor / ceiling
-  const floor = Math.round(avm * 0.60);
-  const ceiling = Math.round(avm * 0.88);
+  const floor = Math.round(avm * config.floorFraction);
+  const ceiling = Math.round(avm * config.ceilingFraction);
   const finalOffer = Math.max(floor, Math.min(ceiling, rawFinalOffer));
   const requiresCeoEscalation = rawFinalOffer < floor;
 
@@ -304,7 +296,7 @@ export function calculateOffer(input: OfferCalculationInput): OfferResult {
     offerHigh,
     requiresCeoEscalation,
     discountCapped,
-    validUntil: validUntilDate(),
+    validUntil: validUntilDate(config.offerValidityDays),
     justification,
     investmentGrade,
     sellerType,

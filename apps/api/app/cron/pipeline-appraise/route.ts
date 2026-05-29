@@ -1,6 +1,6 @@
 import { env } from '@/env';
 import { database } from '@repo/database';
-import { runAVM } from '@repo/valuation';
+import { mergeOfferConfig, runAVM } from '@repo/valuation';
 import { NextResponse } from 'next/server';
 
 // Pipeline Stage 2: Auto-appraise top leads (7:15am daily)
@@ -12,6 +12,16 @@ export const POST = async (request: Request) => {
   }
 
   const pipelineRunId = `run_${Date.now()}`;
+
+  // Founder-tuned offer policy (highest active avm_confidence EvalConfig).
+  // No active config → built-in defaults. Loaded once for the whole run.
+  const activeOfferConfig = await database.evalConfig.findFirst({
+    where: { evalType: 'avm_confidence', activatedAt: { not: null } },
+    orderBy: { version: 'desc' },
+    select: { version: true, config: true },
+  });
+  const offerConfig = mergeOfferConfig(activeOfferConfig?.config);
+  const offerConfigVersion = activeOfferConfig?.version ?? null;
 
   // Find high-scoring leads from today that have been converted to deals
   // OR deals in 'new_lead' or 'valuation' stage with no AVM result
@@ -92,6 +102,7 @@ export const POST = async (request: Request) => {
         bedrooms: deal.bedrooms ?? undefined,
         sellerType: avmSellerType as any,
         dealId: deal.id,
+        offerConfig,
       });
 
       // Store AVM result
@@ -103,6 +114,7 @@ export const POST = async (request: Request) => {
           riskScore: avmResult.riskScore,
           resultJson: avmResult.resultJson as any,
           expiresAt: avmResult.expiresAt,
+          evalConfigVersion: offerConfigVersion,
         },
       });
 

@@ -187,10 +187,18 @@ const DealDetailPage = async ({
           <h2 className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
             Financials
           </h2>
-          <GenerateOfferButton
-            dealId={deal.id}
-            hasOffer={deal.ourOfferPence !== null}
-          />
+          <div className="flex items-center gap-3">
+            <a
+              href="/deals/offer-config"
+              className="text-xs text-muted-foreground hover:text-foreground hover:underline"
+            >
+              Tune offer policy
+            </a>
+            <GenerateOfferButton
+              dealId={deal.id}
+              hasOffer={deal.ourOfferPence !== null}
+            />
+          </div>
         </div>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <div className="rounded-lg border bg-card p-4">
