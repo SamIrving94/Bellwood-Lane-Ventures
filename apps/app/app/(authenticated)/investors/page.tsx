@@ -44,6 +44,7 @@ const InvestorFeedPage = async () => {
       resaleReason: true,
       resalePricePence: true,
       releasedAt: true,
+      _count: { select: { investorInterests: true } },
     },
   });
 
@@ -93,11 +94,18 @@ const InvestorFeedPage = async () => {
                       {d.sellerType.replace('_', ' ')}
                     </p>
                   </div>
-                  {d.verdict && (
-                    <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium">
-                      {d.verdict}
-                    </span>
-                  )}
+                  <div className="flex shrink-0 flex-col items-end gap-1">
+                    {d.verdict && (
+                      <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium">
+                        {d.verdict}
+                      </span>
+                    )}
+                    {d._count.investorInterests > 0 && (
+                      <span className="rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-medium text-blue-800 dark:bg-blue-950 dark:text-blue-300">
+                        {d._count.investorInterests} interested
+                      </span>
+                    )}
+                  </div>
                 </div>
 
                 <div className="mt-4 grid grid-cols-3 gap-2 text-center">

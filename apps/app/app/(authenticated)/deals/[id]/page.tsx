@@ -6,6 +6,7 @@ import { notFound, redirect } from 'next/navigation';
 import { Header } from '../../components/header';
 import { FeedbackPanel } from '../../components/feedback-panel';
 import { GenerateOfferButton } from './generate-offer-button';
+import { InvestorPanel } from './investor-panel';
 import { ReleaseControl } from './release-control';
 
 export const metadata: Metadata = {
@@ -38,6 +39,7 @@ const DealDetailPage = async ({
         legalSteps: { orderBy: { createdAt: 'asc' } },
         legalDocuments: { orderBy: { createdAt: 'desc' } },
         avmResults: { orderBy: { createdAt: 'desc' }, take: 1 },
+        investorInterests: { orderBy: { createdAt: 'desc' } },
       },
     }),
     database.agentEvent.findMany({
@@ -188,6 +190,11 @@ const DealDetailPage = async ({
           released={deal.releasedForResale}
           reason={deal.resaleReason}
         />
+
+        {/* Investor interest + updates (only once released) */}
+        {deal.releasedForResale && (
+          <InvestorPanel dealId={deal.id} interests={deal.investorInterests} />
+        )}
 
         {/* Financials */}
         <div className="space-y-3">

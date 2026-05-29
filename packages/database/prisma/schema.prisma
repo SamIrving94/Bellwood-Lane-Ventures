@@ -175,6 +175,7 @@ model Deal {
   avmResults     AvmResult[]
   dealUpdates    DealUpdate[]
   trackToken     TrackToken?
+  investorInterests InvestorInterest[]
 
   @@index([status])
   @@index([postcode])
@@ -672,6 +673,26 @@ model AgentAccount {
   updatedAt      DateTime  @updatedAt
 
   @@index([referralCode])
+}
+
+// Horizon 2 — an investor's interest in a released deal. Doubles as the
+// notification subscription list: when a released deal gets a DealUpdate, every
+// interest with notify=true is emailed. Seller PII never reaches investors.
+model InvestorInterest {
+  id            String   @id @default(cuid())
+  dealId        String
+  deal          Deal     @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  investorName  String
+  investorEmail String
+  note          String?  @db.Text
+  notify        Boolean  @default(true) // receive live DealUpdate emails
+  status        String   @default("interested") // interested | committed | passed
+  createdBy     String? // founder userId who logged it, if founder-entered
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([dealId, investorEmail])
+  @@index([dealId])
 }
 
 model EstateAgentContact {
