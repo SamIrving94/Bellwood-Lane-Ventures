@@ -415,7 +415,6 @@ const LeadDetailPage = async ({
                     <span aria-hidden>↗</span>
                   </a>
                 )}
-                {lead.status === 'new' && <ConvertButton leadId={lead.id} />}
               </div>
 
               {/* Source attribution — always shown, makes the data lineage transparent */}
@@ -425,6 +424,120 @@ const LeadDetailPage = async ({
             </div>
           </div>
         </div>
+
+        {/* ── NEXT STEP: MAKE CONTACT ────────────────────────────────────
+            The whole point of a lead is to reach the vendor. Scouted leads
+            rarely carry direct contact details, so we give the founder the
+            concrete routes: call the listing agent, find the registered
+            owner (Land Registry), or write to the property. */}
+        {lead.status === 'new' && (
+          <section className="rounded-2xl border-2 border-slate-900/10 bg-slate-50 p-5">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-slate-500">
+                  Next step
+                </p>
+                <h2 className="mt-1 font-semibold text-lg">Make contact</h2>
+              </div>
+              <ConvertButton leadId={lead.id} />
+            </div>
+
+            {/* Direct vendor contact — best case, rarely present on scouted leads */}
+            {(lead.contactName || lead.contactPhone || lead.contactEmail) && (
+              <div className="mt-4 rounded-xl border border-emerald-300 bg-emerald-50 p-4">
+                <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-emerald-700">
+                  Direct contact on file
+                </p>
+                {lead.contactName && (
+                  <p className="mt-1 font-medium">{lead.contactName}</p>
+                )}
+                <div className="mt-1 flex flex-wrap gap-x-4 text-sm">
+                  {lead.contactPhone && (
+                    <a
+                      href={`tel:${lead.contactPhone}`}
+                      className="font-medium text-emerald-800 hover:underline"
+                    >
+                      📞 {lead.contactPhone}
+                    </a>
+                  )}
+                  {lead.contactEmail && (
+                    <a
+                      href={`mailto:${lead.contactEmail}`}
+                      className="font-medium text-emerald-800 hover:underline"
+                    >
+                      ✉ {lead.contactEmail}
+                    </a>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Contact routes — always available */}
+            <div className="mt-4 grid gap-3 sm:grid-cols-3">
+              {/* 1. Call the listing agent */}
+              <div className="rounded-xl border bg-white p-4">
+                <p className="font-medium text-sm">1 · Call the listing agent</p>
+                {snapshot?.agents && snapshot.agents.length > 0 ? (
+                  <div className="mt-2 space-y-1 text-sm">
+                    <p className="font-medium">{snapshot.agents[0].name}</p>
+                    {snapshot.agents[0].phone ? (
+                      <a
+                        href={`tel:${snapshot.agents[0].phone}`}
+                        className="text-blue-700 hover:underline"
+                      >
+                        📞 {snapshot.agents[0].phone}
+                      </a>
+                    ) : (
+                      <p className="text-muted-foreground text-xs">
+                        Phone not listed — open the listing below.
+                      </p>
+                    )}
+                  </div>
+                ) : listingUrl ? (
+                  <a
+                    href={listingUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-2 inline-block text-sm text-blue-700 hover:underline"
+                  >
+                    Open the listing to find the agent ↗
+                  </a>
+                ) : (
+                  <p className="mt-2 text-muted-foreground text-xs">
+                    No agent found yet. Enrich this lead or use the research
+                    links below.
+                  </p>
+                )}
+              </div>
+
+              {/* 2. Find the registered owner */}
+              <div className="rounded-xl border bg-white p-4">
+                <p className="font-medium text-sm">2 · Find the owner</p>
+                <p className="mt-1 text-muted-foreground text-xs">
+                  Buy the title from Land Registry (~£3) to get the registered
+                  owner&apos;s name.
+                </p>
+                <a
+                  href={`https://search-property-information.service.gov.uk/?q=${researchAddress}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-2 inline-block text-sm text-blue-700 hover:underline"
+                >
+                  Search Land Registry ↗
+                </a>
+              </div>
+
+              {/* 3. Write to the property */}
+              <div className="rounded-xl border bg-white p-4">
+                <p className="font-medium text-sm">3 · Write to the property</p>
+                <p className="mt-1 text-sm">{preciseAddress ?? lead.address}</p>
+                <p className="font-mono text-xs text-muted-foreground">
+                  {lead.postcode}
+                </p>
+              </div>
+            </div>
+          </section>
+        )}
 
         {/* ── PROPERTY SNAPSHOT — Tier 1 + Tier 2 enrichment ─────────────── */}
 
@@ -1089,8 +1202,10 @@ const LeadDetailPage = async ({
           </div>
         )}
 
-        {/* Contact (if known — rare for scouted leads, common for quick-form) */}
-        {(lead.contactName || lead.contactEmail || lead.contactPhone) && (
+        {/* Contact (if known). For 'new' leads this is shown in the
+            "Make contact" block above, so only render here once converted. */}
+        {lead.status !== 'new' &&
+          (lead.contactName || lead.contactEmail || lead.contactPhone) && (
           <div className="rounded-xl border bg-card p-5">
             <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
               Contact

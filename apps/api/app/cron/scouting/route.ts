@@ -105,65 +105,108 @@ export const POST = async (request: Request) => {
     scanSeeds,
   });
 
-  // ── Snapshot enrichment for top-N leads ──────────────────────────────
-  // For the top 10 leads by score, fetch the full Tier 1+2 property
-  // snapshot (AVM + sold comps + yields + tenure + EPC + facts) and
-  // attach to rawPayload before persisting. Dedupes by postcode so we
-  // only call PropertyData once per unique postcode (cache does the rest).
-  const topToEnrich = [...result.leads]
-    .sort((a, b) => b.leadScore - a.leadScore)
-    .slice(0, 10);
-
-  const snapshotsByPostcode = new Map<string, Awaited<ReturnType<typeof getPropertySnapshot>>>();
-  for (const lead of topToEnrich) {
-    if (snapshotsByPostcode.has(lead.postcode)) continue;
-    try {
-      const pd = (lead.rawPayload as { propertyData?: Record<string, unknown> } | null)
-        ?.propertyData;
-      const rawType = pd?.propertyType as string | undefined;
-      const propertyType: 'detached' | 'semi-detached' | 'terraced' | 'flat' | 'bungalow' | undefined =
-        rawType?.toLowerCase().includes('semi') ? 'semi-detached'
-        : rawType?.toLowerCase().includes('detached') ? 'detached'
-        : rawType?.toLowerCase().includes('terrac') ? 'terraced'
-        : rawType?.toLowerCase().includes('flat') || rawType?.toLowerCase().includes('apart') ? 'flat'
-        : rawType?.toLowerCase().includes('bungalow') ? 'bungalow'
-        : undefined;
-      const bedrooms = typeof pd?.bedrooms === 'number' ? (pd.bedrooms as number) : undefined;
-      const snap = await getPropertySnapshot({
-        postcode: lead.postcode,
-        address: lead.address,
-        propertyType,
-        bedrooms,
-      });
-      snapshotsByPostcode.set(lead.postcode, snap);
-    } catch (err) {
-      console.warn('[cron/scouting] snapshot enrichment failed', lead.postcode, err);
-    }
-  }
-
+  // ── Persist leads FIRST (cheap, durable) ─────────────────────────────
+  // Snapshot enrichment is slow (~27s/postcode) and previously ran BEFORE
+  // the write — so a 300s timeout during enrichment lost the entire run.
+  // We now persist immediately (a few ms), then enrich in a second pass
+  // where each lead is updated individually. A timeout now only costs
+  // un-enriched snapshots; the leads themselves are already safe.
   let createdCount = 0;
   if (result.leads.length > 0) {
     const written = await database.scoutLead.createMany({
-      data: result.leads.map((lead) => {
-        const baseRaw =
+      data: result.leads.map((lead) => ({
+        ...lead,
+        rawPayload:
           lead.rawPayload === null
             ? Prisma.JsonNull
-            : (lead.rawPayload as Prisma.InputJsonValue);
-        // Attach snapshot if we have one for this postcode AND this lead
-        // was in the top-N batch
-        const snap = snapshotsByPostcode.get(lead.postcode);
-        const enrichedRaw =
-          snap && lead.rawPayload !== null
-            ? ({ ...(lead.rawPayload as Record<string, unknown>), snapshot: snap } as Prisma.InputJsonValue)
-            : baseRaw;
-        return {
-          ...lead,
-          rawPayload: enrichedRaw,
-        };
-      }),
+            : (lead.rawPayload as Prisma.InputJsonValue),
+      })),
       skipDuplicates: true,
     });
     createdCount = written.count;
+  }
+
+  // ── Second pass: enrich top-N persisted leads with property snapshot ──
+  // For the top 10 leads by score, fetch the full Tier 1+2 snapshot
+  // (AVM + sold comps + yields + tenure + EPC + facts) and merge into the
+  // persisted row. Deduped by postcode (cache covers repeats). Each
+  // update commits independently, so partial progress survives a timeout.
+  const topToEnrich = [...result.leads]
+    .sort((a, b) => b.leadScore - a.leadScore)
+    .slice(0, 10);
+  const snapshotsByPostcode = new Map<
+    string,
+    Awaited<ReturnType<typeof getPropertySnapshot>>
+  >();
+  let enrichedCount = 0;
+  for (const lead of topToEnrich) {
+    try {
+      // createMany doesn't return ids — look the persisted row up by its
+      // new unique key. Skips cleanly if the lead was a dedup no-op miss.
+      const row = await database.scoutLead.findUnique({
+        where: {
+          address_postcode: { address: lead.address, postcode: lead.postcode },
+        },
+      });
+      if (!row) continue;
+      const existingRaw = (row.rawPayload ?? {}) as Record<string, unknown>;
+      if (existingRaw.snapshot) {
+        enrichedCount++;
+        continue; // already enriched on a prior run — don't re-spend credits
+      }
+
+      let snap = snapshotsByPostcode.get(lead.postcode);
+      if (!snap) {
+        const pd = (
+          lead.rawPayload as { propertyData?: Record<string, unknown> } | null
+        )?.propertyData;
+        const rawType = pd?.propertyType as string | undefined;
+        const propertyType:
+          | 'detached'
+          | 'semi-detached'
+          | 'terraced'
+          | 'flat'
+          | 'bungalow'
+          | undefined = rawType?.toLowerCase().includes('semi')
+          ? 'semi-detached'
+          : rawType?.toLowerCase().includes('detached')
+            ? 'detached'
+            : rawType?.toLowerCase().includes('terrac')
+              ? 'terraced'
+              : rawType?.toLowerCase().includes('flat') ||
+                  rawType?.toLowerCase().includes('apart')
+                ? 'flat'
+                : rawType?.toLowerCase().includes('bungalow')
+                  ? 'bungalow'
+                  : undefined;
+        const bedrooms =
+          typeof pd?.bedrooms === 'number' ? (pd.bedrooms as number) : undefined;
+        snap = await getPropertySnapshot({
+          postcode: lead.postcode,
+          address: lead.address,
+          propertyType,
+          bedrooms,
+        });
+        snapshotsByPostcode.set(lead.postcode, snap);
+      }
+
+      await database.scoutLead.update({
+        where: { id: row.id },
+        data: {
+          rawPayload: {
+            ...existingRaw,
+            snapshot: snap,
+          } as Prisma.InputJsonValue,
+        },
+      });
+      enrichedCount++;
+    } catch (err) {
+      console.warn(
+        '[cron/scouting] snapshot enrichment failed',
+        lead.postcode,
+        err,
+      );
+    }
   }
 
   // Surface what was found so the Today page knows.
@@ -264,6 +307,7 @@ export const POST = async (request: Request) => {
     enriched: result.enriched,
     qualified: result.leads.length,
     persisted: createdCount,
+    snapshotsEnriched: enrichedCount,
     highScoreLeads: highScoreLeads.length,
     strongLeads: strongLeads.length,
     summary: result.summary,

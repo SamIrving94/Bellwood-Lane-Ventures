@@ -215,6 +215,10 @@ model ScoutLead {
 
   whatsAppIntake WhatsAppIntake?
 
+  // Dedup key: one row per physical property. Makes
+  // createMany({ skipDuplicates: true }) actually skip re-sourced leads
+  // instead of inserting a new row every daily cron run.
+  @@unique([address, postcode])
   @@index([status])
   @@index([leadScore])
   @@index([postcode])
