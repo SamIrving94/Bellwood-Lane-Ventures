@@ -8,6 +8,7 @@ import { FeedbackPanel } from '../../components/feedback-panel';
 import { CalendlyButton } from './calendly-button';
 import { ConvertButton } from './convert-button';
 import { EnrichLeadButton } from './enrich-button';
+import { ReferralControl } from './referral-control';
 
 export const metadata: Metadata = {
   title: 'Lead Detail — Bellwood Ventures',
@@ -537,6 +538,18 @@ const LeadDetailPage = async ({
               </div>
             </div>
           </section>
+        )}
+
+        {/* ── HORIZON 2 TRACK A: PASS & LIST FOR REFERRAL ────────────────
+            Once we've decided not to chase a lead for our own book, we can
+            list it on the referral feed for partners. Hidden once converted. */}
+        {lead.status !== 'converted' && (
+          <ReferralControl
+            leadId={lead.id}
+            released={lead.referralReleased}
+            reason={lead.referralReason}
+            claimedBy={lead.referralClaimedBy}
+          />
         )}
 
         {/* ── THE VERDICT — decision info first, before the deep data ─────

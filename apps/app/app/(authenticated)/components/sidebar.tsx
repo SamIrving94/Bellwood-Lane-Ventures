@@ -20,6 +20,7 @@ import {
 // NotificationsTrigger removed (Knock not used)
 import {
   BuildingIcon,
+  HandshakeIcon,
   InboxIcon,
   KanbanIcon,
   MailIcon,
@@ -58,6 +59,11 @@ const data = {
       title: 'Investors',
       url: '/investors',
       icon: BuildingIcon,
+    },
+    {
+      title: 'Referrals',
+      url: '/referrals',
+      icon: HandshakeIcon,
     },
     {
       title: 'Outreach',
