@@ -1,7 +1,12 @@
 import { env } from '@/env';
 import { database, Prisma } from '@repo/database';
 import { runScoutingPipeline } from '@repo/scouting';
+import { getPropertySnapshot } from '@repo/property-data/src/propertydata';
 import { NextResponse } from 'next/server';
+
+// Snapshot enrichment is slow (~27s per unique postcode). Allow more time
+// than the default 60s — bumps to Vercel Pro plan cap.
+export const maxDuration = 300;
 
 /**
  * Daily scouting pipeline — runs at 7am.
@@ -100,13 +105,62 @@ export const POST = async (request: Request) => {
     scanSeeds,
   });
 
+  // ── Snapshot enrichment for top-N leads ──────────────────────────────
+  // For the top 10 leads by score, fetch the full Tier 1+2 property
+  // snapshot (AVM + sold comps + yields + tenure + EPC + facts) and
+  // attach to rawPayload before persisting. Dedupes by postcode so we
+  // only call PropertyData once per unique postcode (cache does the rest).
+  const topToEnrich = [...result.leads]
+    .sort((a, b) => b.leadScore - a.leadScore)
+    .slice(0, 10);
+
+  const snapshotsByPostcode = new Map<string, Awaited<ReturnType<typeof getPropertySnapshot>>>();
+  for (const lead of topToEnrich) {
+    if (snapshotsByPostcode.has(lead.postcode)) continue;
+    try {
+      const pd = (lead.rawPayload as { propertyData?: Record<string, unknown> } | null)
+        ?.propertyData;
+      const rawType = pd?.propertyType as string | undefined;
+      const propertyType: 'detached' | 'semi-detached' | 'terraced' | 'flat' | 'bungalow' | undefined =
+        rawType?.toLowerCase().includes('semi') ? 'semi-detached'
+        : rawType?.toLowerCase().includes('detached') ? 'detached'
+        : rawType?.toLowerCase().includes('terrac') ? 'terraced'
+        : rawType?.toLowerCase().includes('flat') || rawType?.toLowerCase().includes('apart') ? 'flat'
+        : rawType?.toLowerCase().includes('bungalow') ? 'bungalow'
+        : undefined;
+      const bedrooms = typeof pd?.bedrooms === 'number' ? (pd.bedrooms as number) : undefined;
+      const snap = await getPropertySnapshot({
+        postcode: lead.postcode,
+        address: lead.address,
+        propertyType,
+        bedrooms,
+      });
+      snapshotsByPostcode.set(lead.postcode, snap);
+    } catch (err) {
+      console.warn('[cron/scouting] snapshot enrichment failed', lead.postcode, err);
+    }
+  }
+
   let createdCount = 0;
   if (result.leads.length > 0) {
     const written = await database.scoutLead.createMany({
-      data: result.leads.map((lead) => ({
-        ...lead,
-        rawPayload: lead.rawPayload === null ? Prisma.JsonNull : (lead.rawPayload as Prisma.InputJsonValue),
-      })),
+      data: result.leads.map((lead) => {
+        const baseRaw =
+          lead.rawPayload === null
+            ? Prisma.JsonNull
+            : (lead.rawPayload as Prisma.InputJsonValue);
+        // Attach snapshot if we have one for this postcode AND this lead
+        // was in the top-N batch
+        const snap = snapshotsByPostcode.get(lead.postcode);
+        const enrichedRaw =
+          snap && lead.rawPayload !== null
+            ? ({ ...(lead.rawPayload as Record<string, unknown>), snapshot: snap } as Prisma.InputJsonValue)
+            : baseRaw;
+        return {
+          ...lead,
+          rawPayload: enrichedRaw,
+        };
+      }),
       skipDuplicates: true,
     });
     createdCount = written.count;

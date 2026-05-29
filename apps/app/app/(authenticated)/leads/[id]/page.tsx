@@ -7,6 +7,7 @@ import { Header } from '../../components/header';
 import { FeedbackPanel } from '../../components/feedback-panel';
 import { CalendlyButton } from './calendly-button';
 import { ConvertButton } from './convert-button';
+import { EnrichLeadButton } from './enrich-button';
 
 export const metadata: Metadata = {
   title: 'Lead Detail — Bellwood Ventures',
@@ -215,6 +216,68 @@ const LeadDetailPage = async ({
   const isSparseData =
     !pd && !planning && !hmo && scoreFactors.length === 0;
 
+  // ── Property snapshot (Tier 1 + 2 enrichment, may be missing) ──────
+  type SoldTxn = {
+    address: string;
+    pricePence: number;
+    date: string;
+    propertyType: string | null;
+  };
+  type Snapshot = {
+    avm: {
+      estimatePence: number | null;
+      lowPence: number | null;
+      highPence: number | null;
+      confidence: string | null;
+    } | null;
+    sold: {
+      averagePricePence: number | null;
+      medianPricePence: number | null;
+      transactions: SoldTxn[];
+    } | null;
+    yields: { averageYieldPct: number | null } | null;
+    pricesPerSqf: { averagePerSqft: number | null } | null;
+    demandScore: number | null;
+    daysOnMarketAvg: number | null;
+    growth: {
+      annualGrowthPct: number | null;
+      fiveYearGrowthPct: number | null;
+      forecastGrowthPct: number | null;
+    } | null;
+    councilTax: {
+      averageAnnualBill: number | null;
+      band: string | null;
+      bandsByLetter: Record<string, number>;
+    } | null;
+    flood: { riversAndSea: string | null; surfaceWater: string | null } | null;
+    epc: { rating: string | null; matchedAddress: string | null } | null;
+    tenure: {
+      tenure: 'freehold' | 'leasehold' | 'unknown';
+      remainingLeaseYears: number | null;
+    } | null;
+    agents: Array<{
+      name: string;
+      phone: string | null;
+      listings: number | null;
+      url: string | null;
+    }>;
+    fetchedAt: string;
+  };
+  const snapshot = (raw.snapshot as Snapshot | undefined) ?? null;
+
+  // AVM discount calculation
+  const avmEstimate = snapshot?.avm?.estimatePence ?? null;
+  const askingPrice = pricePence;
+  const discountVsMarket =
+    avmEstimate && askingPrice && avmEstimate > 0
+      ? Math.round(((avmEstimate - askingPrice) / avmEstimate) * 100)
+      : null;
+
+  // Property lat/lng from PropertyData rawPayload (saved when sourced-properties returned it)
+  const lat = (pd?.lat as string | number | undefined) ?? null;
+  const lng = (pd?.lng as string | number | undefined) ?? null;
+  const hasCoords = lat !== null && lng !== null;
+
   return (
     <>
       <Header
@@ -362,6 +425,349 @@ const LeadDetailPage = async ({
             </div>
           </div>
         </div>
+
+        {/* ── PROPERTY SNAPSHOT — Tier 1 + Tier 2 enrichment ─────────────── */}
+
+        {!snapshot && !isSparseData && (
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-300 bg-amber-50 p-4">
+            <p className="text-sm text-amber-900">
+              No property snapshot yet. Click to fetch AVM, sold
+              comparables, yield, EPC, tenure, council tax & flood band in
+              one go (~25s, 22 credits).
+            </p>
+            <EnrichLeadButton leadId={lead.id} />
+          </div>
+        )}
+
+        {snapshot && (
+          <>
+            {/* AVM + discount strip — top-of-mind 'is this BMV?' answer */}
+            {snapshot.avm?.estimatePence && (
+              <div className="rounded-xl border bg-card p-5">
+                <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+                  Asking vs market
+                </p>
+                <div className="mt-3 flex flex-wrap items-baseline gap-x-8 gap-y-2">
+                  <div>
+                    <p className="text-[11px] text-muted-foreground">Asking</p>
+                    <p className="font-mono font-bold text-2xl tabular-nums leading-none">
+                      {askingPrice ? formatGBP(askingPrice) : '—'}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-[11px] text-muted-foreground">
+                      Market value (AVM)
+                    </p>
+                    <p className="font-mono font-bold text-2xl tabular-nums leading-none">
+                      {formatGBP(snapshot.avm.estimatePence)}
+                    </p>
+                    {snapshot.avm.lowPence && snapshot.avm.highPence && (
+                      <p className="mt-0.5 font-mono text-[11px] text-muted-foreground">
+                        Range {formatGBP(snapshot.avm.lowPence)} –{' '}
+                        {formatGBP(snapshot.avm.highPence)}
+                      </p>
+                    )}
+                  </div>
+                  {discountVsMarket !== null && (
+                    <div>
+                      <p className="text-[11px] text-muted-foreground">
+                        vs market
+                      </p>
+                      <p
+                        className={`font-mono font-bold text-2xl tabular-nums leading-none ${
+                          discountVsMarket >= 15
+                            ? 'text-emerald-700'
+                            : discountVsMarket >= 5
+                              ? 'text-amber-700'
+                              : discountVsMarket >= 0
+                                ? 'text-slate-700'
+                                : 'text-rose-700'
+                        }`}
+                      >
+                        {discountVsMarket > 0 ? '−' : '+'}
+                        {Math.abs(discountVsMarket)}%
+                      </p>
+                      <p className="mt-0.5 text-[11px] text-muted-foreground">
+                        {discountVsMarket >= 15
+                          ? 'Below market'
+                          : discountVsMarket >= 0
+                            ? 'Roughly at market'
+                            : 'Above market'}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Property facts chips */}
+            <div className="rounded-xl border bg-card p-5">
+              <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+                Property facts
+              </p>
+              <div className="mt-3 grid gap-3 sm:grid-cols-4">
+                <div>
+                  <p className="text-[11px] text-muted-foreground">Tenure</p>
+                  <p className="font-medium text-sm">
+                    {snapshot.tenure?.tenure
+                      ? snapshot.tenure.tenure.charAt(0).toUpperCase() +
+                        snapshot.tenure.tenure.slice(1)
+                      : '—'}
+                  </p>
+                  {snapshot.tenure?.remainingLeaseYears && (
+                    <p
+                      className={`mt-0.5 text-[11px] ${
+                        snapshot.tenure.remainingLeaseYears < 80
+                          ? 'text-rose-700'
+                          : 'text-muted-foreground'
+                      }`}
+                    >
+                      {snapshot.tenure.remainingLeaseYears}y remaining
+                    </p>
+                  )}
+                </div>
+                <div>
+                  <p className="text-[11px] text-muted-foreground">EPC</p>
+                  <p className="font-medium text-sm">
+                    {snapshot.epc?.rating ?? '—'}
+                  </p>
+                  {snapshot.epc?.matchedAddress && (
+                    <p
+                      className="mt-0.5 truncate text-[11px] text-muted-foreground"
+                      title={snapshot.epc.matchedAddress}
+                    >
+                      matched
+                    </p>
+                  )}
+                </div>
+                <div>
+                  <p className="text-[11px] text-muted-foreground">
+                    Council tax
+                  </p>
+                  <p className="font-medium text-sm">
+                    {snapshot.councilTax?.band
+                      ? `Band ${snapshot.councilTax.band}`
+                      : snapshot.councilTax?.averageAnnualBill
+                        ? `~£${Math.round(snapshot.councilTax.averageAnnualBill)}/yr`
+                        : '—'}
+                  </p>
+                  {snapshot.councilTax?.averageAnnualBill && (
+                    <p className="mt-0.5 text-[11px] text-muted-foreground">
+                      avg £
+                      {Math.round(snapshot.councilTax.averageAnnualBill)}/yr
+                    </p>
+                  )}
+                </div>
+                <div>
+                  <p className="text-[11px] text-muted-foreground">Flood</p>
+                  <p className="font-medium text-sm capitalize">
+                    {snapshot.flood?.riversAndSea ?? '—'}
+                  </p>
+                  {snapshot.flood?.surfaceWater && (
+                    <p className="mt-0.5 text-[11px] text-muted-foreground capitalize">
+                      surface: {snapshot.flood.surfaceWater}
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Investment row */}
+            <div className="rounded-xl border bg-card p-5">
+              <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+                Investment lens
+              </p>
+              <div className="mt-3 grid gap-3 sm:grid-cols-4">
+                <div>
+                  <p className="text-[11px] text-muted-foreground">
+                    Rental yield
+                  </p>
+                  <p className="font-mono font-semibold text-xl tabular-nums">
+                    {snapshot.yields?.averageYieldPct
+                      ? `${snapshot.yields.averageYieldPct.toFixed(1)}%`
+                      : '—'}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-[11px] text-muted-foreground">
+                    Sales demand
+                  </p>
+                  <p className="font-mono font-semibold text-xl tabular-nums">
+                    {typeof snapshot.demandScore === 'number'
+                      ? `${snapshot.demandScore}/100`
+                      : '—'}
+                  </p>
+                  {typeof snapshot.daysOnMarketAvg === 'number' && (
+                    <p className="text-[11px] text-muted-foreground">
+                      avg {Math.round(snapshot.daysOnMarketAvg)}d to sell
+                    </p>
+                  )}
+                </div>
+                <div>
+                  <p className="text-[11px] text-muted-foreground">
+                    Growth forecast
+                  </p>
+                  <p className="font-mono font-semibold text-xl tabular-nums">
+                    {snapshot.growth?.forecastGrowthPct !== null &&
+                    snapshot.growth?.forecastGrowthPct !== undefined
+                      ? `${snapshot.growth.forecastGrowthPct > 0 ? '+' : ''}${snapshot.growth.forecastGrowthPct.toFixed(1)}%`
+                      : '—'}
+                  </p>
+                  {snapshot.growth?.fiveYearGrowthPct !== null &&
+                    snapshot.growth?.fiveYearGrowthPct !== undefined && (
+                      <p className="text-[11px] text-muted-foreground">
+                        5yr:{' '}
+                        {snapshot.growth.fiveYearGrowthPct > 0 ? '+' : ''}
+                        {snapshot.growth.fiveYearGrowthPct.toFixed(1)}%
+                      </p>
+                    )}
+                </div>
+                <div>
+                  <p className="text-[11px] text-muted-foreground">£/sqft</p>
+                  <p className="font-mono font-semibold text-xl tabular-nums">
+                    {snapshot.pricesPerSqf?.averagePerSqft
+                      ? `£${Math.round(snapshot.pricesPerSqf.averagePerSqft)}`
+                      : '—'}
+                  </p>
+                  <p className="text-[11px] text-muted-foreground">
+                    area avg asking
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Sold comparables */}
+            {snapshot.sold?.transactions &&
+              snapshot.sold.transactions.length > 0 && (
+                <div className="rounded-xl border bg-card p-5">
+                  <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+                    Recent sold comparables
+                  </p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Last {snapshot.sold.transactions.length} transactions in
+                    this postcode.
+                    {snapshot.sold.averagePricePence && (
+                      <>
+                        {' '}
+                        Average{' '}
+                        {formatGBP(snapshot.sold.averagePricePence)}.
+                      </>
+                    )}
+                  </p>
+                  <table className="mt-3 w-full text-sm">
+                    <thead className="border-b">
+                      <tr className="text-left text-[11px] uppercase text-muted-foreground">
+                        <th className="py-2 font-medium">Address</th>
+                        <th className="py-2 text-right font-medium">Price</th>
+                        <th className="py-2 text-right font-medium">Date</th>
+                        <th className="py-2 text-right font-medium">Type</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y">
+                      {snapshot.sold.transactions
+                        .slice(0, 8)
+                        .map((t, i) => (
+                          <tr key={`${t.address}-${i}`}>
+                            <td className="py-2 pr-3 text-slate-700">
+                              {t.address}
+                            </td>
+                            <td className="py-2 pr-3 text-right font-mono">
+                              {formatGBP(t.pricePence)}
+                            </td>
+                            <td className="py-2 pr-3 text-right text-muted-foreground">
+                              {new Date(t.date).toLocaleDateString('en-GB', {
+                                month: 'short',
+                                year: 'numeric',
+                              })}
+                            </td>
+                            <td className="py-2 text-right text-xs text-muted-foreground">
+                              {t.propertyType ?? ''}
+                            </td>
+                          </tr>
+                        ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+            {/* Top agents */}
+            {snapshot.agents && snapshot.agents.length > 0 && (
+              <div className="rounded-xl border bg-card p-5">
+                <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+                  Top agents in this postcode
+                </p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Who's selling the comparable stock — useful for Marketer
+                  outreach.
+                </p>
+                <ul className="mt-3 divide-y">
+                  {snapshot.agents.map((a, i) => (
+                    <li
+                      key={`${a.name}-${i}`}
+                      className="flex flex-wrap items-center justify-between gap-2 py-2 text-sm"
+                    >
+                      <div>
+                        <span className="font-medium">{a.name}</span>
+                        {typeof a.listings === 'number' && (
+                          <span className="ml-2 text-xs text-muted-foreground">
+                            {a.listings} listing
+                            {a.listings === 1 ? '' : 's'}
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex gap-3 text-xs">
+                        {a.phone && (
+                          <a
+                            href={`tel:${a.phone}`}
+                            className="text-primary hover:underline"
+                          >
+                            {a.phone}
+                          </a>
+                        )}
+                        {a.url && (
+                          <a
+                            href={a.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-muted-foreground hover:text-foreground"
+                          >
+                            Site ↗
+                          </a>
+                        )}
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {/* Google Maps embed — visual reality check */}
+            {hasCoords && (
+              <div className="overflow-hidden rounded-xl border bg-card">
+                <div className="border-b p-4">
+                  <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+                    Location
+                  </p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Visual check — drag the map to look around.
+                  </p>
+                </div>
+                <iframe
+                  title={`Map of ${lead.address}`}
+                  src={`https://www.google.com/maps?q=${lat},${lng}&z=17&output=embed`}
+                  className="h-[400px] w-full border-0"
+                  loading="lazy"
+                />
+              </div>
+            )}
+
+            {/* Snapshot timestamp */}
+            <p className="text-center text-[11px] text-muted-foreground">
+              Snapshot fetched{' '}
+              {new Date(snapshot.fetchedAt).toLocaleString('en-GB')}
+            </p>
+          </>
+        )}
 
         {/* Research links — ALWAYS visible, even when we have a primary listing URL.
             Founders need fast deep-links to verify the property in 1 click. */}
