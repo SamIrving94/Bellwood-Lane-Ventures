@@ -21,6 +21,7 @@
     "@repo/feature-flags": "workspace:*",
     "@repo/next-config": "workspace:*",
     "@repo/observability": "workspace:*",
+    "@repo/scouting": "workspace:*",
     "@repo/security": "workspace:*",
     "@repo/seo": "workspace:*",
     "@t3-oss/env-nextjs": "^0.12.0",

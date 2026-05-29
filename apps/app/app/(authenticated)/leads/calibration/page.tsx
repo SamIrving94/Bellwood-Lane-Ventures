@@ -137,18 +137,28 @@ const CalibrationPage = async () => {
             {feedback.length === 1 ? '' : 's'} in the last 90 days. Use this
             to spot which scoring factors are pulling the model off-target.
           </p>
-          <div className="mt-3 inline-flex items-center gap-2 rounded-full border bg-card px-3 py-1 text-xs">
-            <span className="text-muted-foreground">Live scorer config:</span>
-            {activeConfig ? (
-              <span className="font-mono font-semibold text-emerald-700">
-                v{activeConfig.version}
-                {activeConfig.description ? ` · ${activeConfig.description}` : ''}
-              </span>
-            ) : (
-              <span className="font-mono font-semibold text-slate-600">
-                built-in defaults
-              </span>
-            )}
+          <div className="mt-3 flex flex-wrap items-center gap-3">
+            <span className="inline-flex items-center gap-2 rounded-full border bg-card px-3 py-1 text-xs">
+              <span className="text-muted-foreground">Live scorer config:</span>
+              {activeConfig ? (
+                <span className="font-mono font-semibold text-emerald-700">
+                  v{activeConfig.version}
+                  {activeConfig.description
+                    ? ` · ${activeConfig.description}`
+                    : ''}
+                </span>
+              ) : (
+                <span className="font-mono font-semibold text-slate-600">
+                  built-in defaults
+                </span>
+              )}
+            </span>
+            <Link
+              href="/leads/scorer-config"
+              className="rounded-full bg-foreground px-3 py-1 font-medium text-background text-xs hover:opacity-90"
+            >
+              Tune the scorer →
+            </Link>
           </div>
         </div>
 
