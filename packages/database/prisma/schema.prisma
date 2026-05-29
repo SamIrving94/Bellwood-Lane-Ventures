@@ -691,6 +691,23 @@ model TrackToken {
   @@index([dealId])
 }
 
+// Line 2 — a magic-link granting an investor read-only access to the public
+// sourced-deal feed. No password, no account created on their behalf (privacy
+// by design). One token per investor/firm; revoke to cut access.
+model InvestorAccessToken {
+  id           String    @id @default(cuid())
+  token        String    @unique // url-safe, generated
+  label        String    // who this link is for (investor / firm name)
+  email        String?
+  revoked      Boolean   @default(false)
+  createdBy    String
+  createdAt    DateTime  @default(now())
+  lastViewedAt DateTime?
+  viewCount    Int       @default(0)
+
+  @@index([revoked])
+}
+
 model AgentAccount {
   id             String    @id @default(cuid())
   email          String    @unique

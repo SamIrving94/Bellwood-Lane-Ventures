@@ -4,6 +4,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { Header } from '../components/header';
+import { InvestorAccessLinks } from './access-links';
 
 export const metadata: Metadata = {
   title: 'Investor feed — Bellwood Ventures',
@@ -64,6 +65,20 @@ const InvestorFeedPage = async () => {
     .filter((d) => d.sourcingFeeStatus === 'proposed')
     .reduce((s, d) => s + (d.sourcingFeePence ?? 0), 0);
 
+  const accessTokens = await database.investorAccessToken.findMany({
+    orderBy: { createdAt: 'desc' },
+    select: {
+      id: true,
+      token: true,
+      label: true,
+      email: true,
+      revoked: true,
+      lastViewedAt: true,
+      viewCount: true,
+    },
+  });
+  const webUrl = process.env.NEXT_PUBLIC_WEB_URL || 'http://localhost:3001';
+
   return (
     <>
       <Header
@@ -86,6 +101,9 @@ const InvestorFeedPage = async () => {
             <span className="font-medium text-foreground">Pass &amp; release</span>.
           </p>
         </div>
+
+        {/* Investor access links (public read-only feed) */}
+        <InvestorAccessLinks webUrl={webUrl} tokens={accessTokens} />
 
         {/* Line 2 — sourcing fee pipeline */}
         <div className="grid gap-4 sm:grid-cols-3">
