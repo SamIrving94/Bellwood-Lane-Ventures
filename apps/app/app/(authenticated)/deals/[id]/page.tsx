@@ -9,6 +9,7 @@ import { DealEconomicsPanel } from './deal-economics-panel';
 import { GenerateOfferButton } from './generate-offer-button';
 import { InvestorPanel } from './investor-panel';
 import { ReleaseControl } from './release-control';
+import { SourcingFeePanel } from './sourcing-fee-panel';
 
 export const metadata: Metadata = {
   title: 'Deal Detail — Bellwood Ventures',
@@ -194,7 +195,22 @@ const DealDetailPage = async ({
 
         {/* Investor interest + updates (only once released) */}
         {deal.releasedForResale && (
-          <InvestorPanel dealId={deal.id} interests={deal.investorInterests} />
+          <>
+            <InvestorPanel dealId={deal.id} interests={deal.investorInterests} />
+            <SourcingFeePanel
+              dealId={deal.id}
+              fee={{
+                sourcingFeePence: deal.sourcingFeePence,
+                sourcingFeeStatus: deal.sourcingFeeStatus,
+                sourcedToName: deal.sourcedToName,
+                sourcedToEmail: deal.sourcedToEmail,
+              }}
+              interests={deal.investorInterests.map((i) => ({
+                investorName: i.investorName,
+                investorEmail: i.investorEmail,
+              }))}
+            />
+          </>
         )}
 
         {/* Financials */}

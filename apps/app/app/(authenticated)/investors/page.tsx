@@ -44,9 +44,25 @@ const InvestorFeedPage = async () => {
       resaleReason: true,
       resalePricePence: true,
       releasedAt: true,
+      sourcingFeePence: true,
+      sourcingFeeStatus: true,
       _count: { select: { investorInterests: true } },
     },
   });
+
+  // Line 2 money view — what the sourcing channel has earned / is owed.
+  const feePaid = deals
+    .filter((d) => d.sourcingFeeStatus === 'paid')
+    .reduce((s, d) => s + (d.sourcingFeePence ?? 0), 0);
+  const feeOwed = deals
+    .filter(
+      (d) =>
+        d.sourcingFeeStatus === 'agreed' || d.sourcingFeeStatus === 'invoiced',
+    )
+    .reduce((s, d) => s + (d.sourcingFeePence ?? 0), 0);
+  const feeProposed = deals
+    .filter((d) => d.sourcingFeeStatus === 'proposed')
+    .reduce((s, d) => s + (d.sourcingFeePence ?? 0), 0);
 
   return (
     <>
@@ -69,6 +85,34 @@ const InvestorFeedPage = async () => {
             never shown here — release a deal from its page with{' '}
             <span className="font-medium text-foreground">Pass &amp; release</span>.
           </p>
+        </div>
+
+        {/* Line 2 — sourcing fee pipeline */}
+        <div className="grid gap-4 sm:grid-cols-3">
+          <div className="rounded-xl border bg-card p-4">
+            <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
+              Fees paid
+            </p>
+            <p className="mt-1 font-mono text-xl font-semibold tabular-nums text-emerald-600 dark:text-emerald-400">
+              {formatGBP(feePaid)}
+            </p>
+          </div>
+          <div className="rounded-xl border bg-card p-4">
+            <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
+              Agreed / invoiced
+            </p>
+            <p className="mt-1 font-mono text-xl font-semibold tabular-nums">
+              {formatGBP(feeOwed)}
+            </p>
+          </div>
+          <div className="rounded-xl border bg-card p-4">
+            <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
+              Proposed
+            </p>
+            <p className="mt-1 font-mono text-xl font-semibold tabular-nums text-muted-foreground">
+              {formatGBP(feeProposed)}
+            </p>
+          </div>
         </div>
 
         {deals.length === 0 ? (
@@ -103,6 +147,17 @@ const InvestorFeedPage = async () => {
                     {d._count.investorInterests > 0 && (
                       <span className="rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-medium text-blue-800 dark:bg-blue-950 dark:text-blue-300">
                         {d._count.investorInterests} interested
+                      </span>
+                    )}
+                    {d.sourcingFeeStatus !== 'none' && (
+                      <span
+                        className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${
+                          d.sourcingFeeStatus === 'paid'
+                            ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
+                            : 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
+                        }`}
+                      >
+                        Fee {d.sourcingFeeStatus}
                       </span>
                     )}
                   </div>

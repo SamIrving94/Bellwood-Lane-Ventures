@@ -128,6 +128,16 @@ enum ParseStatus {
   manual_review
 }
 
+// Line 2 — investor sourcing fee lifecycle. A released deal earns a fee when
+// an investor takes it: proposed → agreed → invoiced → paid.
+enum SourcingFeeStatus {
+  none
+  proposed
+  agreed
+  invoiced
+  paid
+}
+
 model Deal {
   id                        String     @id @default(cuid())
   address                   String
@@ -181,6 +191,17 @@ model Deal {
   exitPricePence        Int?      // what we sold it for
   exitedAt              DateTime? // date sold
   realisedProfitPence   Int?      // exit − acquisition − all costs (stored)
+
+  // Line 2 — investor sourcing fee. Only meaningful once a deal is released to
+  // the investor feed and an investor takes it. Tracks the money outcome of
+  // the sourcing channel, distinct from the trade P&L above.
+  sourcingFeePence   Int?
+  sourcingFeeStatus  SourcingFeeStatus @default(none)
+  sourcedToName      String?           // investor who took the deal
+  sourcedToEmail     String?
+  sourcingAgreedAt   DateTime?
+  sourcingInvoicedAt DateTime?
+  sourcingPaidAt     DateTime?
 
   activities     DealActivity[]
   legalSteps     LegalStep[]
