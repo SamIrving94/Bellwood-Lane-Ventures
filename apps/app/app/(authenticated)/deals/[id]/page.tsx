@@ -5,6 +5,7 @@ import type { Metadata } from 'next';
 import { notFound, redirect } from 'next/navigation';
 import { Header } from '../../components/header';
 import { FeedbackPanel } from '../../components/feedback-panel';
+import { GenerateOfferButton } from './generate-offer-button';
 
 export const metadata: Metadata = {
   title: 'Deal Detail — Bellwood Ventures',
@@ -181,6 +182,16 @@ const DealDetailPage = async ({
         )}
 
         {/* Financials */}
+        <div className="space-y-3">
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
+            Financials
+          </h2>
+          <GenerateOfferButton
+            dealId={deal.id}
+            hasOffer={deal.ourOfferPence !== null}
+          />
+        </div>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <div className="rounded-lg border bg-card p-4">
             <p className="text-sm text-muted-foreground">Asking Price</p>
@@ -208,6 +219,7 @@ const DealDetailPage = async ({
               {deal.marginPercent ? `${deal.marginPercent.toFixed(1)}%` : '—'}
             </p>
           </div>
+        </div>
         </div>
 
         {/* Calendly booking status */}

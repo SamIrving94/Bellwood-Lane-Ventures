@@ -24,6 +24,7 @@
     "@repo/scouting": "workspace:*",
     "@repo/security": "workspace:*",
     "@repo/seo": "workspace:*",
+    "@repo/valuation": "workspace:*",
     "@t3-oss/env-nextjs": "^0.12.0",
     "date-fns": "^4.1.0",
     "fuse.js": "^7.1.0",
