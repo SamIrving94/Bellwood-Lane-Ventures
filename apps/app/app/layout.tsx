@@ -2,7 +2,6 @@ import './styles.css';
 import { DesignSystemProvider } from '@repo/design-system';
 import { Toaster } from '@repo/design-system/components/ui/sonner';
 import { fonts } from '@repo/design-system/lib/fonts';
-import { Toolbar } from '@repo/feature-flags/components/toolbar';
 import type { ReactNode } from 'react';
 
 type RootLayoutProperties = {
@@ -14,7 +13,6 @@ const RootLayout = ({ children }: RootLayoutProperties) => (
     <body>
       <DesignSystemProvider>{children}</DesignSystemProvider>
       <Toaster />
-      <Toolbar />
     </body>
   </html>
 );

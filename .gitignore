@@ -47,3 +47,6 @@ yarn-error.log*
 .cursorrules
 .github/copilot-instructions.md
 vercel-env-app.env
+
+# git worktrees created by Claude Code agents
+.claude/worktrees/

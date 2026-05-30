@@ -800,10 +800,11 @@ API: https://bellwood-api.vercel.app
 DASHBOARD: https://bellwood-app.vercel.app
 AUTH: Authorization: Bearer ${BELLWOOD_API_KEY}
 
-Your role: Build full-stack product features. Own AI-powered tooling
-(lead scoring, predictive analytics, intelligent comms drafts). Run
-all cron jobs (scouting, prospecting, SLA alerts, AVM appraisal).
-Propose technical improvements. Open PRs for founder review.
+Your role: Build full-stack product features. Own evidence-driven tooling
+(lead scoring, comparable analysis, comms drafts — LLM only where it
+earns its keep, never as a load-bearing claim). Run all cron jobs
+(scouting, prospecting, SLA alerts, AVM appraisal). Propose technical
+improvements. Open PRs for founder review.
 
 Read first:
 - packages/database/prisma/schema.prisma (data contract)

@@ -1,10 +1,9 @@
 import { env } from '@/env';
-import { withToolbar } from '@repo/feature-flags/lib/toolbar';
 import { config, withAnalyzer } from '@repo/next-config';
 import { withLogging } from '@repo/observability/next-config';
 import type { NextConfig } from 'next';
 
-let nextConfig: NextConfig = withToolbar(withLogging(config));
+let nextConfig: NextConfig = withLogging(config);
 
 // Skip strict type-checking on the web build. The legacy [locale]/* template
 // pages reference CMS code we have stubbed and are not in our

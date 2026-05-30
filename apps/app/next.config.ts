@@ -1,10 +1,9 @@
 import { env } from '@/env';
-import { withToolbar } from '@repo/feature-flags/lib/toolbar';
 import { config, withAnalyzer } from '@repo/next-config';
 import { withLogging } from '@repo/observability/next-config';
 import type { NextConfig } from 'next';
 
-let nextConfig: NextConfig = withToolbar(withLogging(config));
+let nextConfig: NextConfig = withLogging(config);
 
 // Aggressively exclude dev-only and unused deps to stay under Vercel's
 // 262MB lambda limit.

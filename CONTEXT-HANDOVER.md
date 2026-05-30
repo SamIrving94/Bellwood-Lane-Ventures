@@ -73,21 +73,26 @@
 
 ---
 
-## 🤖 Paperclip Agents (9 total)
+## 🤖 Paperclip Agents (7 — canonical set)
 
-1. **CTO** — writes code, opens PRs on `paperclip/cto/*` branches
-2. **Scout** — sources leads from probate/auction feeds → `POST /agents/leads`
-3. **Appraiser** — runs AVM + offer calc → `POST /agents/valuations`
-4. **Marketer** — drafts outreach campaigns → `POST /agents/outreach`
-5. **Counsel** — legal steps + flags → `POST /agents/legal`
-6. **Orchestrator** — SLA alerts, chain breaks → `POST /agents/alerts`
-7. **Concierge** — vendor-facing comms (held for founder review)
-8. **Relationship Manager** — investor syndicate
-9. **Chief of Staff** — calendar, priority, summaries
+The April 2026 v3 brief listed 9 agents; v3.1 (§17) corrects this to the
+7 that actually carry distinct responsibility. Scout / Orchestrator /
+Concierge / Relationship Manager / Chief of Staff folded into roles
+below — they were never separate agents in practice.
+
+1. **CEO** — reviews FounderActions, approves vendor comms, escalates SLAs
+2. **Engineer** — writes code, runs crons, opens PRs on `paperclip/cto/*` branches
+3. **Designer** — UX/UI review, accessibility audits
+4. **Appraiser** — runs AVM + drafts signed PDFs → `POST /agents/valuations`
+5. **Counsel** — legal steps + compliance review → `POST /agents/legal`
+6. **Marketer** — drafts outreach campaigns (held for founder review) → `POST /agents/outreach`
+7. **Liaison** — vendor + agent + investor comms
 
 **Auth:** `Authorization: Bearer <PAPERCLIP_API_KEY>`
 
-**Full onboarding instructions:** `docs/PAPERCLIP-SYNC-BRIEF.md` — 686 lines, has a copy-paste prompt block for each agent.
+**Canonical onboarding:** `docs/PAPERCLIP-SYNC-BRIEF.md` §17 — has a
+copy-paste prompt block for each agent. Always treat that brief as the
+source of truth; this handover is a quick index.
 
 ---
 
