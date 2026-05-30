@@ -13,13 +13,16 @@
     "typecheck": "tsc --noEmit --emitDeclarationOnly false"
   },
   "dependencies": {
+    "@repo/ai": "workspace:*",
     "@repo/auctions": "workspace:*",
     "@repo/auth": "workspace:*",
     "@repo/calendly": "workspace:*",
     "@repo/database": "workspace:*",
     "@repo/deal-updates": "workspace:*",
+    "@repo/document-pipeline": "workspace:*",
     "@repo/email": "workspace:*",
     "@repo/instant-offer": "workspace:*",
+    "@repo/knowledge-base": "workspace:*",
     "@repo/next-config": "workspace:*",
     "@repo/observability": "workspace:*",
     "@repo/property-data": "workspace:*",

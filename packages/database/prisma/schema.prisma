@@ -788,3 +788,63 @@ model Setting {
 
   @@index([key])
 }
+
+// ---------------------------------------------------------------------------
+// LlmCallLog — per-call telemetry for every Claude (or future) LLM call
+// ---------------------------------------------------------------------------
+// Captures: which feature called it, which model was used, token spend,
+// latency, success / error. NEVER stores prompt or response content —
+// metrics only, GDPR-safe by design. Drives /admin/llm-usage.
+//
+// Written via the setLlmLogger() hook in @repo/ai/claude, installed at app
+// boot in each apps/*/instrumentation.ts file.
+
+model LlmCallLog {
+  id           String   @id @default(cuid())
+  createdAt    DateTime @default(now())
+  feature      String   // e.g. "morning_briefing", "offer_narrative"
+  model        String   // e.g. "claude-haiku-4-5", "claude-sonnet-4-5"
+  inputTokens  Int      @default(0)
+  outputTokens Int      @default(0)
+  durationMs   Int      @default(0)
+  success      Boolean
+  errorReason  String?
+
+  @@index([feature, createdAt])
+  @@index([model, createdAt])
+  @@index([createdAt])
+}
+
+// ---------------------------------------------------------------------------
+// KnowledgeChunk — RAG over the docs/ markdown corpus.
+// ---------------------------------------------------------------------------
+// Each row is a heading-aware chunk (~400 tokens) from a single markdown
+// file. The `embedding` column is pgvector; managed via raw SQL in
+// @repo/knowledge-base because Prisma cannot speak the type natively.
+//
+// REQUIRES: the pgvector extension is enabled on the Neon database.
+// One-time setup (do this BEFORE the first `prisma db push`):
+//
+//   CREATE EXTENSION IF NOT EXISTS vector;
+//
+// Both Voyage 3 (1024-dim, preferred) and OpenAI text-embedding-3-small
+// (truncated to 1024 via the `dimensions` request param) write into the
+// same `vector(1024)` column — `model` records which one produced the row.
+//
+// Idempotency: `contentHash` is SHA-256 of body. The ingest CLI uses it to
+// skip re-embedding unchanged docs.
+
+model KnowledgeChunk {
+  id           String                  @id @default(cuid())
+  sourcePath   String
+  headingTrail String
+  body         String                  @db.Text
+  embedding    Unsupported("vector(1024)")
+  model        String
+  contentHash  String
+  updatedAt    DateTime                @updatedAt
+  createdAt    DateTime                @default(now())
+
+  @@index([sourcePath])
+  @@index([contentHash])
+}

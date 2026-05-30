@@ -2,16 +2,25 @@
   "name": "@repo/ai",
   "version": "0.0.0",
   "private": true,
+  "exports": {
+    ".": "./index.ts",
+    "./claude": "./claude.ts",
+    "./keys": "./keys.ts"
+  },
   "scripts": {
     "clean": "git clean -xdf .cache .turbo dist node_modules",
     "typecheck": "tsc --noEmit --emitDeclarationOnly false"
   },
   "dependencies": {
+    "@ai-sdk/anthropic": "^1.2.0",
     "@ai-sdk/openai": "^1.2.0",
+    "@anthropic-ai/sdk": "^0.32.1",
+    "@openrouter/ai-sdk-provider": "^0.4.0",
     "@t3-oss/env-nextjs": "^0.12.0",
     "ai": "^4.1.52",
     "react": "^19.0.0",
     "react-markdown": "^10.0.1",
+    "server-only": "^0.0.1",
     "tailwind-merge": "^3.0.2",
     "zod": "^3.24.2"
   },

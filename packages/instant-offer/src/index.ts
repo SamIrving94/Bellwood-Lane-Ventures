@@ -9,6 +9,7 @@
 
 import 'server-only';
 
+import { callClaude } from '@repo/ai/claude';
 import { runAVM, type PropertyType, type SellerType } from '@repo/valuation';
 
 // ---------------------------------------------------------------------------
@@ -52,6 +53,12 @@ export interface InstantOfferResult {
   completionDays: number;
   /** Human-readable reasoning lines for transparency panel */
   reasoning: string[];
+  /**
+   * LLM-generated 2-3 paragraph narrative in Bellwood voice, suitable for
+   * dropping into the signed PDF or follow-up email. Null when Claude is
+   * unavailable — callers fall back to the `reasoning` array.
+   */
+  narrative: string | null;
   /** When the offer expires (72 hours from now) */
   lockedUntil: Date;
   /** True when this needs founder approval before being shown to the agent */
@@ -177,6 +184,23 @@ export async function generateInstantOffer(
     r.confidenceLevel,
   );
 
+  // Generate a plain-English narrative for the vendor PDF / follow-up email.
+  // Null-tolerant: when Claude is unavailable, callers fall back to the
+  // structured `reasoning` array. NEVER load-bearing.
+  const narrative = await generateOfferNarrative({
+    sellerType,
+    avmPointEstimate: r.avmPointEstimate,
+    finalOffer: r.finalOffer,
+    confidenceLevel: r.confidenceLevel,
+    comparableCount: r.comparableCount,
+    postcode: r.postcode,
+    epcRating: r.epcRating,
+    discountLines: r.discountLines.slice(0, 5),
+    preRicsFlags: r.preRicsFlags.slice(0, 3),
+    completionDays,
+    requiresReview,
+  });
+
   // The underlying AVM (HMLR Price Paid + hedonic + offer-calc) works in
   // POUNDS (HMLR returns price as integer pounds). The web payload labels
   // these fields *Pence and the UI divides by 100 for display, so we must
@@ -191,7 +215,90 @@ export async function generateInstantOffer(
     confidenceScore,
     completionDays,
     reasoning,
+    narrative,
     lockedUntil: new Date(Date.now() + 72 * 60 * 60 * 1000),
     requiresReview,
   };
+}
+
+// ───────────────────────────────────────────────────────────────────────────
+// LLM offer narrative
+//
+// Turns the AVM payload into 2-3 short paragraphs the vendor can actually
+// read — what the offer is, what drives it, and what happens next. Bellwood
+// voice: professional, specific, no marketing fluff.
+// ───────────────────────────────────────────────────────────────────────────
+
+const NARRATIVE_SYSTEM_PROMPT = `You write vendor-facing offer narratives for Bellwood Ventures, a UK cash buyer of fall-through and probate properties.
+
+Audience: a UK homeowner or estate executor reading the indicative offer for the first time. Often distressed, often dyslexic, always tired.
+
+Voice: professional, specific, slightly dry. Closer to a chartered surveyor than a property influencer. Adjectives only when they earn their place. Numbers and specifics over sentiment.
+
+Format: 2 to 3 short paragraphs. Plain text — NO markdown, NO bullets, NO headings. Each paragraph 2-4 sentences max.
+
+Content rules:
+- Paragraph 1: state the offer figure and what it is (an indicative cash offer, locked for 72 hours, subject to viewing).
+- Paragraph 2: explain what drives the figure — comparable sales count, the key seller-type context, the top 1-2 risk factors that adjusted it. Honest, not defensive.
+- Paragraph 3 (only if useful): one concrete next step — viewing, conversation, what we'll need to confirm.
+- If requiresReview is true, say plainly that a senior member of the team is reviewing the inputs before any binding commitment.
+- NEVER use: "AI", "machine learning", "algorithm", "powered by", "amazing", "best", "fast cash today", urgency timers, emoji.
+- NEVER invent: stick to the figures and factors you are given.
+- Use UK spelling. £ symbol with grouped thousands, e.g. £252,400.`;
+
+interface NarrativeInput {
+  sellerType: SellerType;
+  avmPointEstimate: number;
+  finalOffer: number;
+  confidenceLevel: string;
+  comparableCount: number;
+  postcode: string;
+  epcRating: string | null;
+  discountLines: Array<{ label: string; fraction: number }>;
+  preRicsFlags: string[];
+  completionDays: number;
+  requiresReview: boolean;
+}
+
+async function generateOfferNarrative(input: NarrativeInput): Promise<string | null> {
+  const discountList =
+    input.discountLines.length === 0
+      ? '(no risk discounts applied)'
+      : input.discountLines
+          .map((d) => `- ${d.label}: ${(d.fraction * 100).toFixed(1)}%`)
+          .join('\n');
+
+  const flagList =
+    input.preRicsFlags.length === 0
+      ? '(none)'
+      : input.preRicsFlags.map((f) => `- ${f}`).join('\n');
+
+  const offerPct = ((input.finalOffer / input.avmPointEstimate) * 100).toFixed(0);
+
+  const userPrompt = [
+    `Offer figure: £${input.finalOffer.toLocaleString('en-GB')}`,
+    `Market valuation (point estimate): £${input.avmPointEstimate.toLocaleString('en-GB')}`,
+    `Offer as % of AVM: ${offerPct}%`,
+    `Confidence: ${input.confidenceLevel}`,
+    `Comparable sales used: ${input.comparableCount} (last 24 months, ${input.postcode})`,
+    `Seller-type context: ${input.sellerType.replace('_', ' ')}`,
+    `EPC rating: ${input.epcRating ?? 'unknown'}`,
+    `Committed completion window: ${input.completionDays} days`,
+    `Requires senior review before binding: ${input.requiresReview ? 'YES' : 'no'}`,
+    '',
+    'Risk discounts applied (largest first):',
+    discountList,
+    '',
+    'Pre-RICS flags:',
+    flagList,
+  ].join('\n');
+
+  return callClaude({
+    system: NARRATIVE_SYSTEM_PROMPT,
+    user: userPrompt,
+    maxTokens: 600,
+    temperature: 0.5,
+    feature: 'offer_narrative',
+    cacheSystemPrompt: true,
+  });
 }

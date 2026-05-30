@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
+import { callClaudeForJson, CLAUDE_HAIKU } from '@repo/ai/claude';
 import { database } from '@repo/database';
 import {
   generateInstantOffer,
@@ -61,7 +62,77 @@ const InputSchema = z.object({
   triggerLabel: z.string().optional(),
   /** Origin of the submission, e.g. "agent_quick_form" from /save-the-sale. */
   submissionSource: z.string().optional(),
+  /** Free-text "anything else?" — drives the LLM triage signal in the inbox. */
+  notes: z.string().max(2000).optional(),
 });
+
+// ────────────────────────────────────────────────────────────────────────────
+// LLM triage — runs on every /save-the-sale submission. Returns a short
+// summary + urgency signal + watch-outs so Sam can triage in the inbox
+// without opening the full record. NEVER load-bearing — null fallback.
+// ────────────────────────────────────────────────────────────────────────────
+
+interface TriageResult {
+  summary: string;
+  urgencySignal: 'high' | 'medium' | 'low';
+  watchOuts: string[];
+  recommendedNextStep: string;
+}
+
+const TRIAGE_SYSTEM_PROMPT = `You are the head of operations at Bellwood Ventures, a UK property-buying company. An estate agent has just submitted a fall-through deal via /save-the-sale. Your job: produce a 30-second briefing for the founder's inbox.
+
+Output strict JSON only, no prose, no markdown fences. Schema:
+
+{
+  "summary": string,            // 1 sentence, plain English, ≤ 25 words. The founder reads this in the queue.
+  "urgencySignal": "high" | "medium" | "low",  // independent of the urgencyDays field — based on situation + notes signal
+  "watchOuts": string[],        // 0-3 short risk flags, e.g. "short lease", "asking price unrealistic", "no condition rating given"
+  "recommendedNextStep": string // 1 sentence, ≤ 20 words, concrete action e.g. "Call the agent — chain has been broken twice"
+}
+
+Rules:
+- Use ONLY information present in the submission. Do NOT invent.
+- "urgencySignal" is high when: imminent completion deadline mentioned, repossession active, vendor in genuine distress, or contradicting info that needs a call.
+- "watchOuts" — call out anything that suggests this isn't a clean deal: missing data, asking price out of step with situation, lease-related notes, distressed wording the agent didn't tag.
+- "recommendedNextStep" — what should the founder do FIRST? View, call agent, request more info, escalate, decline.
+- No marketing fluff. No "AI" or "algorithm" language.`;
+
+async function triageSubmission(input: {
+  address: string;
+  postcode: string;
+  propertyType: string;
+  bedrooms?: number;
+  condition?: number;
+  situation: string;
+  urgencyDays?: number;
+  askingPricePence?: number;
+  role: string;
+  firmName?: string;
+  triggerLabel?: string;
+  notes?: string;
+}): Promise<TriageResult | null> {
+  const lines: string[] = [
+    `Address: ${input.address}, ${input.postcode}`,
+    `Property: ${input.propertyType}${input.bedrooms ? `, ${input.bedrooms} bed` : ''}${typeof input.condition === 'number' ? `, condition ${input.condition}/10` : ''}`,
+    `Situation: ${input.situation}`,
+    `Submitter role: ${input.role}${input.firmName ? ` at ${input.firmName}` : ''}`,
+  ];
+  if (input.triggerLabel) lines.push(`Trigger chip clicked: ${input.triggerLabel}`);
+  if (typeof input.urgencyDays === 'number')
+    lines.push(`Requested completion in: ${input.urgencyDays} days`);
+  if (typeof input.askingPricePence === 'number')
+    lines.push(`Asking price: £${Math.round(input.askingPricePence / 100).toLocaleString('en-GB')}`);
+  if (input.notes) lines.push(`Free-text notes from submitter:\n"""\n${input.notes}\n"""`);
+
+  return callClaudeForJson<TriageResult>({
+    system: TRIAGE_SYSTEM_PROMPT,
+    user: lines.join('\n'),
+    maxTokens: 400,
+    temperature: 0.3,
+    model: CLAUDE_HAIKU,
+    feature: 'save_the_sale_triage',
+  });
+}
 
 function mapPropertyType(
   pt: z.infer<typeof InputSchema>['propertyType'],
@@ -345,6 +416,26 @@ export async function POST(request: Request) {
     // requires review. The 4-working-hour signed-PDF SLA is enforced
     // operationally - this is the trigger for that workflow.
     if (input.submissionSource === 'agent_quick_form') {
+      // Run the LLM triage. Null-tolerant — null falls through to the existing
+      // deterministic description.
+      const triage = await triageSubmission({
+        address: input.address,
+        postcode: input.postcode,
+        propertyType: input.propertyType,
+        bedrooms: input.bedrooms,
+        condition: input.condition,
+        situation: input.situation,
+        urgencyDays: input.urgencyDays,
+        askingPricePence: input.askingPricePence,
+        role: input.role,
+        firmName: input.firmName,
+        triggerLabel: input.triggerLabel,
+        notes: input.notes,
+      }).catch((err) => {
+        console.warn('[quote] LLM triage failed (non-fatal)', err);
+        return null;
+      });
+
       try {
         const offerGbp = Math.round(offer.offerPence / 100).toLocaleString('en-GB');
         const slaDeadline = new Date(Date.now() + 24 * 60 * 60 * 1000);
@@ -361,17 +452,33 @@ export async function POST(request: Request) {
           contactPhone: input.contactPhone,
           slaHours: 24,
           link: `/quotes/${quoteRequest.id}`,
+          triage: triage ?? undefined,
         } as const;
+
+        // Build the SLA description, prepending the LLM triage when present.
+        const baseDescription = `${input.firmName ?? 'Agent'} submitted via /save-the-sale. Trigger: ${input.triggerLabel ?? 'unspecified'}. Indicative offer £${offerGbp} (${Math.round(offer.offerPercentOfAvm * 100)}% of AVM). Signed PDF promised within 24h.`;
+        const slaDescription = triage
+          ? [
+              `**${triage.summary}** — urgency: ${triage.urgencySignal}.`,
+              triage.watchOuts.length > 0 ? `Watch-outs: ${triage.watchOuts.join('; ')}.` : null,
+              `Next step: ${triage.recommendedNextStep}`,
+              '',
+              baseDescription,
+            ]
+              .filter(Boolean)
+              .join('\n')
+          : baseDescription;
 
         // 1) Board-facing SLA tracking action
         await database.founderAction.create({
           data: {
             type: 'ceo_escalation',
-            priority: 'high',
+            // Promote to "critical" when the triage flags high urgency.
+            priority: triage?.urgencySignal === 'high' ? 'critical' : 'high',
             status: 'pending',
             agent: 'system',
             title: `Sign + send offer: ${input.address}, ${input.postcode}`,
-            description: `${input.firmName ?? 'Agent'} submitted via /save-the-sale. Trigger: ${input.triggerLabel ?? 'unspecified'}. Indicative offer £${offerGbp} (${Math.round(offer.offerPercentOfAvm * 100)}% of AVM). Signed PDF promised within 24h.`,
+            description: slaDescription,
             expiresAt: slaDeadline,
             metadata: { ...commonMeta, assignedToAgent: 'board' },
           },
@@ -468,6 +575,7 @@ export async function POST(request: Request) {
       confidenceScore: offer.confidenceScore,
       completionDays: offer.completionDays,
       reasoning: offer.reasoning,
+      narrative: offerBase.narrative,
       lockedUntil: offer.lockedUntil.toISOString(),
       requiresReview: offer.requiresReview,
       trackUrl,

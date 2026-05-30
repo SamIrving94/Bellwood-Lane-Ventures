@@ -32,6 +32,7 @@ import { projectTrend, type TrendProjection } from './trend-projection';
 // ---------------------------------------------------------------------------
 
 export type { PropertyType, BaseValuation, ComparableSale, ConfidenceLevel } from './base-valuation';
+export { generateCompRationale } from './comp-rationale-llm';
 export type {
   RadonCategory, CoalMiningZone, KnotweedProximity, FloodZone, NoiseBand,
   ConstructionType, RiskScore, EnvironmentalScores, BuildingCharacteristics,

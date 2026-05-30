@@ -35,6 +35,7 @@ import { enrichLeads } from './enrichment';
 import { scoreLead } from './scorer';
 import { DEFAULT_SCORER_CONFIG, type ScorerConfig } from './scorer-config';
 import { sanitisePayload, auditProtectedFields } from './rbac';
+import { enrichRationaleWithLlm } from './rationale-llm';
 
 /** Return the most-frequent value in an array (first wins on tie). */
 function mostCommon<T extends string>(items: T[]): T | null {
@@ -66,6 +67,7 @@ export {
   type ScorerConfig,
 } from './scorer-config';
 export { sanitisePayload, auditProtectedFields } from './rbac';
+export { enrichRationaleWithLlm } from './rationale-llm';
 
 export type { ProbateLead } from './probate-data';
 export type { EnrichedLead } from './enrichment';
@@ -131,6 +133,14 @@ export interface ScoutingPipelineOptions {
    * Null when scoring with hard-coded defaults.
    */
   evalConfigVersion?: number | null;
+  /**
+   * When true, the pipeline runs an extra Claude call for STRONG-verdict
+   * leads and stamps a plain-English rationale onto `rawPayload.rationaleLlm`.
+   * Defaults false — caller (the scouting cron) opts in.
+   *
+   * Cost-safe: STRONG-only means typically <20 calls per cron run.
+   */
+  enrichRationaleLlm?: boolean;
 }
 
 export interface ScoutingPipelineResult {
@@ -199,6 +209,7 @@ export async function runScoutingPipeline(
     scanSeeds = [],
     scorerConfig = DEFAULT_SCORER_CONFIG,
     evalConfigVersion = null,
+    enrichRationaleLlm = false,
   } = options;
 
   const runDate = new Date();
@@ -721,6 +732,24 @@ export async function runScoutingPipeline(
             total: breakdown.total,
           },
         };
+      }
+
+      // Opt-in LLM rationale on STRONG leads only. Side-effect-safe: returns
+      // null on missing key / call failure, in which case the deterministic
+      // `rationale` field above is the surface the UI renders.
+      if (
+        enrichRationaleLlm &&
+        breakdown.verdict === 'STRONG' &&
+        enrichedRaw
+      ) {
+        const llmRationale = await enrichRationaleWithLlm(breakdown, {
+          address: lead.address,
+          postcode: lead.postcode,
+          estateValuePence: lead.estateValuePence,
+        });
+        if (llmRationale) {
+          enrichedRaw = { ...enrichedRaw, rationaleLlm: llmRationale };
+        }
       }
 
       const scoutLead: ScoutLead = {

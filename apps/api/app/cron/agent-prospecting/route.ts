@@ -1,8 +1,19 @@
 import { env } from '@/env';
+import { callClaudeForJson } from '@repo/ai/claude';
 import { database } from '@repo/database';
 import { sendEmail } from '@repo/email';
 import { getAgentsByPostcode } from '@repo/property-data';
 import { NextResponse } from 'next/server';
+
+/**
+ * Cap on how many newly surfaced firms get LLM-drafted personalised
+ * outreach per Monday run. The cron may surface 50+ firms across all
+ * postcodes — drafting for every one is overkill for a single founder
+ * who can only follow up on a handful per week.
+ *
+ * Cost guard at 15 firms ≈ 15 × ~$0.008 = $0.12 per Monday = ~$6/year.
+ */
+const MAX_DRAFTS_PER_RUN = 15;
 
 /**
  * Weekly agent prospecting cron.
@@ -189,9 +200,17 @@ export const POST = async (request: Request) => {
     .sort((a, b) => (b.numberOfListings ?? 0) - (a.numberOfListings ?? 0))
     .slice(0, 5);
 
+  // Identify the highest-leverage NEW firms (not refreshes) for personalised
+  // outreach drafts. We rank by listing volume and cap at MAX_DRAFTS_PER_RUN
+  // to keep token spend predictable. Each surviving firm gets an LLM-drafted
+  // peer-style email + LinkedIn DM held in a FounderAction for board approval.
+  const draftCandidates = await selectDraftCandidates(surfaced);
+  const draftsCreated = await draftAndPersistOutreach(draftCandidates);
+
   const summary = `Prospecting run scanned ${postcodes.length} postcodes, ` +
     `surfaced ${surfaced.length} agent records ` +
-    `(${newCount} new, ${updatedCount} refreshed).`;
+    `(${newCount} new, ${updatedCount} refreshed)` +
+    (draftsCreated > 0 ? `, drafted ${draftsCreated} personalised outreach pairs.` : '.');
 
   // FounderAction so Sam sees the run in /actions
   try {
@@ -264,5 +283,164 @@ export const POST = async (request: Request) => {
     newCount,
     updatedCount,
     topNew,
+    draftsCreated,
   });
 };
+
+// ────────────────────────────────────────────────────────────────────────────
+// LLM-drafted personalised outreach
+//
+// Pattern: held-for-review. Every draft becomes a FounderAction with the
+// email + LinkedIn DM in metadata. The founder reviews in /actions and
+// chooses to send (manually or via the outreach flow). NEVER auto-send to
+// estate agents in cold prospecting — relationship risk too high.
+// ────────────────────────────────────────────────────────────────────────────
+
+const OUTREACH_SYSTEM_PROMPT = `You write peer-to-peer outreach for Bellwood Ventures, a UK property-buying firm specialising in fall-through deals, probate, and distressed sales.
+
+You are writing to branch managers and partners at independent estate agents — busy professionals who get 5+ cold outreach messages a day. Most go straight to bin. Yours must NOT.
+
+Voice: peer-to-peer, professional, slightly dry, specific. Closer to a working surveyor than a sales rep. Short sentences. No marketing fluff. No countdown urgency. No "synergy" or "revolutionise". UK spelling.
+
+You will receive a structured profile of one firm. Produce a JSON object containing TWO drafts:
+
+{
+  "email": {
+    "subject": string,              // ≤ 7 words, specific, no clickbait
+    "bodyPlainText": string         // 3 short paragraphs, ≤ 110 words total. Sign off as "Sam — Bellwood Ventures, hello@bellwoodslane.co.uk".
+  },
+  "linkedInDm": {
+    "openingHook": string,          // 1 sentence, ≤ 18 words, references something specific about their firm or patch
+    "bodyPlainText": string         // 2 short paragraphs, ≤ 80 words total. Sign off as "Sam".
+  },
+  "personalisedHook": string        // 1 sentence, ≤ 25 words. WHY this firm specifically — e.g. "M14 listing volume signals chain-break exposure"
+}
+
+Iron rules:
+- Lead with what's in it for THEM: 24-hour cash backup when a chain breaks, agreed introducer fee, no listing sacrificed.
+- NAME the firm + their patch + (if known) their listing volume so it doesn't read as a template.
+- NEVER promise "we will buy any house" — we are selective; that's the brand.
+- NEVER use "AI", "machine learning", "algorithm" — peer language only.
+- The LinkedIn DM is SHORTER than the email. Different opening from the email subject.
+- Output ONLY the JSON object, no markdown fences, no prose.`;
+
+interface OutreachDraft {
+  email: { subject: string; bodyPlainText: string };
+  linkedInDm: { openingHook: string; bodyPlainText: string };
+  personalisedHook: string;
+}
+
+async function selectDraftCandidates(
+  surfaced: Array<{
+    postcode: string;
+    name: string;
+    phone?: string;
+    address?: string;
+    numberOfListings?: number;
+    url?: string;
+  }>,
+): Promise<typeof surfaced> {
+  // Only NEW firms (no Contact yet) get drafts — refreshing the same firm
+  // every Monday would create churny duplicate actions.
+  const existingNames = await database.contact
+    .findMany({
+      where: { type: 'estate_agent' },
+      select: { name: true },
+    })
+    .then((rows) => new Set(rows.map((r) => r.name)))
+    .catch(() => new Set<string>());
+
+  return surfaced
+    .filter((a) => !existingNames.has(a.name))
+    .filter((a) => typeof a.numberOfListings === 'number')
+    .sort((a, b) => (b.numberOfListings ?? 0) - (a.numberOfListings ?? 0))
+    .slice(0, MAX_DRAFTS_PER_RUN);
+}
+
+async function draftAndPersistOutreach(
+  candidates: Array<{
+    postcode: string;
+    name: string;
+    phone?: string;
+    address?: string;
+    numberOfListings?: number;
+    url?: string;
+  }>,
+): Promise<number> {
+  if (candidates.length === 0) return 0;
+
+  let created = 0;
+
+  for (const firm of candidates) {
+    const lines: string[] = [
+      `Firm: ${firm.name}`,
+      `Target postcode: ${firm.postcode}`,
+    ];
+    if (typeof firm.numberOfListings === 'number') {
+      lines.push(`Active listings (PropertyData snapshot): ${firm.numberOfListings}`);
+    }
+    if (firm.address) lines.push(`Branch address: ${firm.address}`);
+    if (firm.url) lines.push(`Public profile / listings page: ${firm.url}`);
+    lines.push('', 'Draft the email + LinkedIn DM per the system rules. JSON only.');
+
+    const draft = await callClaudeForJson<OutreachDraft>({
+      system: OUTREACH_SYSTEM_PROMPT,
+      user: lines.join('\n'),
+      maxTokens: 800,
+      temperature: 0.5,
+      feature: 'agent_outreach_draft',
+      cacheSystemPrompt: true,
+    }).catch((err) => {
+      console.warn(`[agent-prospecting] LLM draft failed for ${firm.name}`, err);
+      return null;
+    });
+
+    if (!draft || !draft.email || !draft.linkedInDm) continue;
+
+    try {
+      await database.founderAction.create({
+        data: {
+          type: 'approve_outreach_draft',
+          priority: 'medium',
+          status: 'pending',
+          agent: 'marketer',
+          title: `Approve outreach draft: ${firm.name} (${firm.postcode})`,
+          description: [
+            draft.personalisedHook,
+            '',
+            `**Email — "${draft.email.subject}"**`,
+            '',
+            draft.email.bodyPlainText,
+            '',
+            `**LinkedIn DM**`,
+            '',
+            draft.linkedInDm.openingHook,
+            '',
+            draft.linkedInDm.bodyPlainText,
+          ].join('\n'),
+          metadata: {
+            assignedToAgent: 'board',
+            workflow: 'approve_then_send',
+            firm: {
+              name: firm.name,
+              postcode: firm.postcode,
+              address: firm.address,
+              phone: firm.phone,
+              listings: firm.numberOfListings,
+              url: firm.url,
+            },
+            email: draft.email,
+            linkedInDm: draft.linkedInDm,
+            personalisedHook: draft.personalisedHook,
+            link: '/outreach',
+          },
+        },
+      });
+      created++;
+    } catch (err) {
+      console.warn(`[agent-prospecting] FounderAction create failed for ${firm.name}`, err);
+    }
+  }
+
+  return created;
+}

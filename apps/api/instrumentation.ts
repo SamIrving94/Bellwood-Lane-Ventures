@@ -1,4 +1,28 @@
-// Sentry instrumentation disabled — see next.config.ts.
-export function register() {
-  // no-op
+/**
+ * Next.js boot hook. Runs ONCE per server process / Vercel function
+ * cold start.
+ *
+ * Currently wires:
+ *   - LLM telemetry: every Claude call writes a row to LlmCallLog.
+ *     @repo/ai stays Prisma-free; the integration happens here.
+ *
+ * Sentry instrumentation stays disabled — see next.config.ts.
+ */
+export async function register() {
+  const { setLlmLogger } = await import('@repo/ai/claude');
+  const { database } = await import('@repo/database');
+
+  setLlmLogger(async (metric) => {
+    await database.llmCallLog.create({
+      data: {
+        feature: metric.feature,
+        model: metric.model,
+        inputTokens: metric.inputTokens,
+        outputTokens: metric.outputTokens,
+        durationMs: metric.durationMs,
+        success: metric.success,
+        errorReason: metric.errorReason,
+      },
+    });
+  });
 }
