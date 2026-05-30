@@ -1,0 +1,30 @@
+{
+  "name": "@repo/mcp-server",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "bellwood-mcp": "./bin/local-stdio.ts"
+  },
+  "exports": {
+    ".": "./src/server.ts",
+    "./tools": "./src/tools/index.ts"
+  },
+  "scripts": {
+    "start:stdio": "tsx bin/local-stdio.ts",
+    "clean": "git clean -xdf .cache .turbo dist node_modules",
+    "typecheck": "tsc --noEmit --emitDeclarationOnly false"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "@repo/database": "workspace:*",
+    "@repo/property-data": "workspace:*",
+    "tsx": "^4.19.0",
+    "zod": "^3.24.2"
+  },
+  "devDependencies": {
+    "@repo/typescript-config": "workspace:*",
+    "@types/node": "22.13.9",
+    "typescript": "^5.8.2"
+  }
+}
