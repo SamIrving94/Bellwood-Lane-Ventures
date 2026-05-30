@@ -27,7 +27,12 @@ export type {
   AuctionFilters,
   AuctionHouse,
   PropertyType,
+  VisualAssessment,
+  VisualCondition,
+  VisualFlag,
 } from './types';
+
+export { screenAuctionLot } from './lot-screener';
 
 /**
  * Fetch upcoming auction lots across all free sources, apply filters,
