@@ -20,6 +20,7 @@ import {
 // NotificationsTrigger removed (Knock not used)
 import {
   BuildingIcon,
+  CompassIcon,
   InboxIcon,
   KanbanIcon,
   LineChartIcon,
@@ -72,6 +73,11 @@ const data = {
     },
   ],
   navSecondary: [
+    {
+      title: 'Guide',
+      url: '/guide',
+      icon: CompassIcon,
+    },
     {
       title: 'Settings',
       url: '/settings',
