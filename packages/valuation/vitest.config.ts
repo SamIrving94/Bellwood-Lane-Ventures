@@ -13,6 +13,11 @@ export default defineConfig({
   resolve: {
     alias: {
       'server-only': new URL('./test-shims/server-only.ts', import.meta.url).pathname,
+      // deep-appraisal.ts imports these at module top. AVM tests don't
+      // exercise the LLM path; alias to a no-op stub.
+      '@ai-sdk/anthropic': new URL('./test-shims/ai-sdk-stub.ts', import.meta.url).pathname,
+      ai: new URL('./test-shims/ai-sdk-stub.ts', import.meta.url).pathname,
+      '@repo/ai/keys': new URL('./test-shims/ai-sdk-stub.ts', import.meta.url).pathname,
     },
   },
 });

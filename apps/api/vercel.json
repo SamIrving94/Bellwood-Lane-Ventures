@@ -21,6 +21,10 @@
       "schedule": "0 8 * * *"
     },
     {
+      "path": "/cron/deep-appraisal",
+      "schedule": "30 8 * * *"
+    },
+    {
       "path": "/cron/marketer-monthly",
       "schedule": "0 8 1 * *"
     },

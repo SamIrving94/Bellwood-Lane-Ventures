@@ -33,6 +33,8 @@ import { projectTrend, type TrendProjection } from './trend-projection';
 
 export type { PropertyType, BaseValuation, ComparableSale, ConfidenceLevel } from './base-valuation';
 export { generateCompRationale } from './comp-rationale-llm';
+export { runDeepAppraisal, DeepAppraisalSchema } from './deep-appraisal';
+export type { DeepAppraisal, DeepAppraisalInput } from './deep-appraisal';
 export type {
   RadonCategory, CoalMiningZone, KnotweedProximity, FloodZone, NoiseBand,
   ConstructionType, RiskScore, EnvironmentalScores, BuildingCharacteristics,

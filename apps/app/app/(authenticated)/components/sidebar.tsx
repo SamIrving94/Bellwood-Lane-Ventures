@@ -21,6 +21,7 @@ import {
   CompassIcon,
   FileTextIcon,
   GaugeIcon,
+  GavelIcon,
   InboxIcon,
   KanbanIcon,
   LineChartIcon,
@@ -60,6 +61,7 @@ const data = {
     { title: 'Today', url: '/', icon: InboxIcon, hasBadge: true },
     { title: 'Quotes', url: '/quotes', icon: FileTextIcon },
     { title: 'Leads', url: '/leads', icon: TargetIcon },
+    { title: 'Appraisals', url: '/appraisals', icon: GavelIcon },
     { title: 'Pipeline', url: '/pipeline', icon: KanbanIcon },
   ],
   money: [
