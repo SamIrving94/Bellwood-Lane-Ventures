@@ -32,6 +32,11 @@ export const env = createEnv({
     AGENT_PROSPECTING_POSTCODES: z.string().optional(),
     /** Email to receive the weekly prospecting summary (defaults to RESEND_FROM). */
     AGENT_PROSPECTING_REPORT_EMAIL: z.string().email().optional(),
+    /** Postmark inbound webhook — Basic Auth credentials (set on Postmark side). */
+    POSTMARK_INBOUND_USER: z.string().min(1).optional(),
+    POSTMARK_INBOUND_PASS: z.string().min(1).optional(),
+    /** Comma-separated email addresses allowed to forward documents to docs@. */
+    EMAIL_FORWARD_ALLOWLIST: z.string().optional(),
   },
   client: {},
   runtimeEnv: {
@@ -40,5 +45,8 @@ export const env = createEnv({
     PAPERCLIP_API_KEY: process.env.PAPERCLIP_API_KEY,
     AGENT_PROSPECTING_POSTCODES: process.env.AGENT_PROSPECTING_POSTCODES,
     AGENT_PROSPECTING_REPORT_EMAIL: process.env.AGENT_PROSPECTING_REPORT_EMAIL,
+    POSTMARK_INBOUND_USER: process.env.POSTMARK_INBOUND_USER,
+    POSTMARK_INBOUND_PASS: process.env.POSTMARK_INBOUND_PASS,
+    EMAIL_FORWARD_ALLOWLIST: process.env.EMAIL_FORWARD_ALLOWLIST,
   },
 });

@@ -871,19 +871,24 @@ model KnowledgeChunk {
 // soft-ref the UI can choose to suppress.
 
 model DocumentExtract {
-  id             String   @id @default(cuid())
-  createdAt      DateTime @default(now())
-  filename       String
-  docType        String
-  dealId         String?
-  uploadedBy     String   // Clerk userId
-  confidence     Float
-  deceasedName   String?
-  primaryAddress String?
-  errorReason    String?
-  extractJson    Json
+  id                 String   @id @default(cuid())
+  createdAt          DateTime @default(now())
+  filename           String
+  docType            String
+  dealId             String?
+  uploadedBy         String   // Clerk userId for manual uploads, "email_forward" for inbound emails
+  confidence         Float
+  deceasedName       String?
+  primaryAddress     String?
+  errorReason        String?
+  extractJson        Json
+  // Provenance for email-forwarded uploads
+  sourceType         String   @default("manual_upload") // 'manual_upload' | 'email_forward'
+  forwardedFromEmail String?
+  emailSubject       String?
 
   @@index([dealId])
   @@index([createdAt])
   @@index([uploadedBy])
+  @@index([sourceType])
 }
