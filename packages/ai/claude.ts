@@ -186,22 +186,25 @@ function buildPromptShape(
   if (!enableCache) {
     return { mode: 'simple', system: input.system, prompt: input.user };
   }
-  // AI SDK v4: providerOptions on a text part. The Anthropic provider
-  // reads `providerOptions.anthropic.cacheControl` and emits the
-  // wire-level `cache_control` block.
-  const messages: CoreMessage[] = [
-    {
-      role: 'system',
-      content: [
-        {
-          type: 'text',
-          text: input.system,
-          providerOptions: {
-            anthropic: { cacheControl: { type: 'ephemeral' } },
-          },
+  // AI SDK v4.1: CoreSystemMessage.content is typed as string only, but
+  // the Anthropic provider DOES accept text-part arrays with
+  // providerOptions.anthropic.cacheControl at runtime — this is how
+  // wire-level `cache_control` blocks are emitted. The typing is behind
+  // the runtime here; cast through unknown to bridge the gap.
+  const systemMsg = {
+    role: 'system' as const,
+    content: [
+      {
+        type: 'text' as const,
+        text: input.system,
+        providerOptions: {
+          anthropic: { cacheControl: { type: 'ephemeral' as const } },
         },
-      ],
-    } as CoreMessage,
+      },
+    ],
+  };
+  const messages: CoreMessage[] = [
+    systemMsg as unknown as CoreMessage,
     { role: 'user', content: input.user },
   ];
   return { mode: 'messages', messages };

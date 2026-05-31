@@ -77,9 +77,9 @@ export const POST = async (request: Request) => {
     // Top 5 STRONG leads from overnight — input for the LLM briefing
     database.scoutLead.findMany({
       where: { createdAt: { gte: todayStart }, verdict: 'STRONG' },
-      orderBy: { score: 'desc' },
+      orderBy: { leadScore: 'desc' },
       take: 5,
-      select: { address: true, postcode: true, score: true, leadType: true },
+      select: { address: true, postcode: true, leadScore: true, leadType: true },
     }),
   ]);
 
@@ -213,7 +213,7 @@ interface BriefingInput {
   topStrongLeads: Array<{
     address: string | null;
     postcode: string | null;
-    score: number | null;
+    leadScore: number | null;
     leadType: string | null;
   }>;
 }
@@ -240,7 +240,7 @@ async function buildLlmBriefing(input: BriefingInput): Promise<string | null> {
       : input.topStrongLeads
           .map(
             (l) =>
-              `- ${l.address ?? '?'} ${l.postcode ?? ''} · ${l.leadType ?? '?'} · score ${l.score ?? '?'}`,
+              `- ${l.address ?? '?'} ${l.postcode ?? ''} · ${l.leadType ?? '?'} · score ${l.leadScore ?? '?'}`,
           )
           .join('\n');
 

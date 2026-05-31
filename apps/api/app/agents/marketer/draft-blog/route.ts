@@ -267,13 +267,18 @@ export async function POST(request: Request) {
           '',
           'Full draft + compliance report in metadata. Open the action to review.',
         ].join('\n'),
-        metadata: {
-          assignedToAgent: 'counsel',
-          workflow: 'review_then_publish',
-          input,
-          draft,
-          compliance: compliance ?? null,
-        },
+        // Cast — Prisma's Json input type requires an index signature, but
+        // our BlogDraft / ComplianceReport interfaces are strictly shaped.
+        // Round-trip via JSON to satisfy InputJsonValue at the boundary.
+        metadata: JSON.parse(
+          JSON.stringify({
+            assignedToAgent: 'counsel',
+            workflow: 'review_then_publish',
+            input,
+            draft,
+            compliance: compliance ?? null,
+          }),
+        ),
       },
     })
     .catch((err) => {

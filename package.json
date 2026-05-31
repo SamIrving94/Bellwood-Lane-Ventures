@@ -10,6 +10,7 @@
   "scripts": {
     "build": "turbo build",
     "dev": "turbo dev",
+    "preflight": "turbo build --filter=api --filter=app --filter=web",
     "lint": "ultracite lint",
     "format": "ultracite format",
     "test": "turbo test",
@@ -46,7 +47,8 @@
     "onlyBuiltDependencies": ["puppeteer", "esbuild"],
     "overrides": {
       "next": "15.5.15",
-      "@next/third-parties": "15.5.15"
+      "@next/third-parties": "15.5.15",
+      "@ai-sdk/provider": "1.1.3"
     }
   }
 }

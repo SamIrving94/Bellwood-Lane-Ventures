@@ -31,9 +31,9 @@
 
 import 'server-only';
 
-import type { BaseValuation } from './base-valuation.js';
-import { DEFAULT_OFFER_CONFIG, type OfferConfig } from './offer-config.js';
-import type { RiskScore } from './risk-scoring.js';
+import type { BaseValuation } from './base-valuation';
+import { DEFAULT_OFFER_CONFIG, type OfferConfig } from './offer-config';
+import type { RiskScore } from './risk-scoring';
 
 // ---------------------------------------------------------------------------
 // Types

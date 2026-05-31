@@ -67,6 +67,8 @@ enum AgentName {
 enum ActionType {
   review_leads
   approve_offer
+  approve_outreach_draft
+  approve_blog_draft
   chain_break_alert
   sla_breach
   legal_flag

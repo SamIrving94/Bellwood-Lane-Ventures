@@ -1,15 +1,10 @@
 import { authMiddleware } from '@repo/auth/middleware';
-import {
-  noseconeMiddleware,
-  noseconeOptions,
-  noseconeOptionsWithToolbar,
-} from '@repo/security/middleware';
+import { noseconeMiddleware, noseconeOptions } from '@repo/security/middleware';
 import type { NextMiddleware } from 'next/server';
-import { env } from './env';
 
-const securityHeaders = env.FLAGS_SECRET
-  ? noseconeMiddleware(noseconeOptionsWithToolbar)
-  : noseconeMiddleware(noseconeOptions);
+// FLAGS_SECRET / noseconeOptionsWithToolbar removed when @repo/feature-flags
+// was culled — the toolbar route no longer exists.
+const securityHeaders = noseconeMiddleware(noseconeOptions);
 
 export default authMiddleware(() =>
   securityHeaders()
