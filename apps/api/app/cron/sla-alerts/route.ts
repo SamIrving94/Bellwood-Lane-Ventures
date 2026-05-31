@@ -95,3 +95,7 @@ export const POST = async (request: Request) => {
     details: breaches,
   });
 };
+
+// Vercel cron sends GET by default. Accept either method so a manual
+// POST and an automated GET both reach the same handler.
+export const GET = POST;
