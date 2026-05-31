@@ -69,6 +69,11 @@ enum ActionType {
   approve_offer
   approve_outreach_draft
   approve_blog_draft
+  approve_ig_post
+  approve_linkedin_post
+  approve_case_study
+  approve_solicitor_outreach
+  approve_paid_ad_copy
   chain_break_alert
   sla_breach
   legal_flag
@@ -476,6 +481,10 @@ model FounderAction {
   resolvedAt   DateTime?
   expiresAt    DateTime?
   agentEventId String?
+  // Dedup key for /cron/event-poller (and any other cron that might re-fire
+  // over the same window). Set as `<entityId>:<eventKind>:<bucket>` so a
+  // replay creates zero rows. Null for actions created by other paths.
+  dedupKey     String?        @unique
   createdAt    DateTime       @default(now())
   updatedAt    DateTime       @updatedAt
 
