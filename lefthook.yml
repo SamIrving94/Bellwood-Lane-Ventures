@@ -1,0 +1,22 @@
+# lefthook git hook config
+#
+# What it does:
+#   Before every `git push`, runs the full Next.js build for api, app, and
+#   web — the same pipeline Vercel runs. If anything fails to compile, the
+#   push is blocked. You cannot accidentally ship broken code.
+#
+# Setup:
+#   Hooks are installed automatically by the `prepare` npm script after
+#   `pnpm install`. You can also re-install manually with `pnpm exec lefthook install`.
+#
+# Skip in emergencies:
+#   LEFTHOOK=0 git push        # skip hooks for a single push
+#   git push --no-verify       # standard git escape hatch (same result)
+
+pre-push:
+  parallel: false
+  commands:
+    preflight:
+      run: pnpm preflight
+      # Build can take 2-3 minutes — that's the cost of catching errors here
+      # rather than in a failed Vercel deploy. Worth it.
