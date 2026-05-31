@@ -14,6 +14,9 @@ when explicitly asked. Sam and Anthony also reference these directly.
 - **Concierge / Relationship Manager** — read the briefing pack
 - **Chief of Staff** — read everything
 
+(Note: as of 2026-05, marketing agents run as internal crons; see
+docs/architecture/marketer-internal.md.)
+
 ## Index
 
 | File | What | Date |

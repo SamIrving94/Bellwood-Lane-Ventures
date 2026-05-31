@@ -85,8 +85,8 @@ below — they were never separate agents in practice.
 3. **Designer** — UX/UI review, accessibility audits
 4. **Appraiser** — runs AVM + drafts signed PDFs → `POST /agents/valuations`
 5. **Counsel** — legal steps + compliance review → `POST /agents/legal`
-6. **Marketer** — drafts outreach campaigns (held for founder review) → `POST /agents/outreach`
-7. **Liaison** — vendor + agent + investor comms
+6. **Marketer** — drafts outreach campaigns (held for founder review) → `POST /agents/outreach`, fired internally by `/cron/marketer-daily`, `/cron/marketer-weekly`, `/cron/marketer-monthly`
+7. **Liaison** — vendor + agent + investor comms, fired internally by `/cron/event-poller`
 
 **Auth:** `Authorization: Bearer <PAPERCLIP_API_KEY>`
 

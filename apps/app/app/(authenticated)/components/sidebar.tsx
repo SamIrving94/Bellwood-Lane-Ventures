@@ -25,6 +25,7 @@ import {
   KanbanIcon,
   LineChartIcon,
   MailIcon,
+  MegaphoneIcon,
   SearchIcon,
   Settings2Icon,
   TargetIcon,
@@ -67,6 +68,7 @@ const data = {
   ],
   comms: [
     { title: 'Research', url: '/research', icon: SearchIcon },
+    { title: 'Marketing', url: '/marketing', icon: MegaphoneIcon },
     { title: 'Outreach', url: '/outreach', icon: MailIcon },
     { title: 'Contacts', url: '/contacts', icon: UsersIcon },
     { title: 'Documents', url: '/documents', icon: FileTextIcon },

@@ -1,5 +1,9 @@
 # Paperclip Agent Sync Brief — Bellwood Ventures Platform
 
+> **As of 2026-05, all marketing workflows run from `/cron/marketer-*`.
+> Paperclip is retained as optional dev tooling, not a required runtime.
+> See `docs/architecture/marketer-internal.md` for the current architecture.**
+
 **This is the single source of truth for every Paperclip agent.**
 **Updated:** May 2026 (v4 — reconciled with the live Paperclip instance).
 **Audience:** All Paperclip agents in the BELA company:
@@ -40,6 +44,11 @@ The Bellwood Lane stack is two halves working together:
 │     dashboard for ad-hoc research) │  │                                │
 └────────────────────────────────────┘  └────────────────────────────────┘
 ```
+
+> **Note:** in the new architecture, marketing workflows fire from internal
+> cron (`/cron/marketer-*`) and Paperclip is optional. The diagram above
+> still describes the Phase 1 ops layer; see
+> `docs/architecture/marketer-internal.md` for the marketing-side update.
 
 **Architectural principle:** the platform writes truth, Paperclip runs ops
 on top. **Every agent action that produces data MUST push it to the
@@ -164,7 +173,8 @@ Setup details: `docs/setup/propertydata.md`.
 - `status = 'quoted'` (not `processing`, not `draft`)
 - `createdAt > now - 4h`
 
-**Polling (v1):** every 60s, until we add webhooks. Suggested loop in §6.6.
+**Polling (v1):** every 60s, until we add webhooks (superseded by
+`/cron/event-poller` running every 30 min). Suggested loop in §6.6.
 
 ### What the platform has already done before you see the row
 
@@ -378,6 +388,10 @@ Marketer's weekly digest (Sun evenings) reports these 8 numbers to CEO.
 ---
 
 ## §6 The API contract
+
+These endpoints are now called primarily by internal Vercel crons. External
+Paperclip access remains supported but is not required for any marketing
+workflow.
 
 Base URL: `https://bellwood-api.vercel.app`. All routes under `/agents/*`.
 
@@ -1093,7 +1107,11 @@ Fetch via `GET /agents/eval-config?type=<eval_type>`.
 
 ---
 
+<!-- ARCHIVED: superseded by /cron/marketer-* architecture; see docs/architecture/marketer-internal.md -->
+
 ## §13 Open questions for the Paperclip team
+
+<!-- ARCHIVED START -->
 
 Things the founders want Paperclip's view on:
 
@@ -1114,6 +1132,8 @@ Things the founders want Paperclip's view on:
 
 Reply to these in `docs/paperclip-handoff/answers.md` or by raising a
 Paperclip task tagged `platform-sync`.
+
+<!-- ARCHIVED END -->
 
 ---
 

@@ -169,23 +169,27 @@ billboards. No radio.
 
 ---
 
-## §6 Paperclip workflow — who does what
+## §6 Internal workflow — who does what
 
-| Workflow | Owner | Approval | Cadence |
-|---|---|---|---|
-| Post-offer IG copy + photo selection | **Marketer** | CEO | After every signed offer |
-| Post-resale IG copy + photo | **Marketer** | CEO | After every completion |
-| Weekly LinkedIn educational content | **Marketer** | CEO | Sun evening for week ahead |
-| Monday prospecting → first-touch DMs/emails | **Marketer** | CEO | Mondays after `/cron/agent-prospecting` fires |
-| LinkedIn comments + DM reply drafts | **Liaison** | CEO | Within 4h of inbound |
-| Vendor SEO blog post — research + draft | **Marketer** (using `askGeorge()`) | **Counsel + CEO** | 2/week |
-| Anonymised vendor case study | **Marketer + Counsel** | CEO | After every completion |
-| Paid ad copy variants | **Marketer** | CEO | Monthly |
-| Inbound vendor reply | **Liaison** | CEO (always) | Within 2h |
-| Solicitor outreach (probate + divorce) | **Marketer** | CEO | Monthly batch |
-| Distress-page compliance audit | **Counsel** | — | Quarterly |
-| Founder LinkedIn personal posts | Founders draft, **Marketer suggests** topics | None — your voice | 1–2/week |
-| Weekly performance digest to CEO | **Marketer** | CEO read-only | Sunday evenings |
+| Workflow | Owner | Approval | Cadence | Cron route |
+|---|---|---|---|---|
+| Post-offer IG copy + photo selection | **Marketer** | CEO | After every signed offer | `/cron/marketer-daily` |
+| Post-resale IG copy + photo | **Marketer** | CEO | After every completion | `/cron/marketer-daily` |
+| Weekly LinkedIn educational content | **Marketer** | CEO | Sun evening for week ahead | `/cron/marketer-weekly` |
+| Monday prospecting → first-touch DMs/emails | **Marketer** | CEO | Mondays after `/cron/agent-prospecting` fires | `/cron/agent-prospecting` (already existed) |
+| LinkedIn comments + DM reply drafts | **Liaison** | CEO | Within 4h of inbound | `/cron/event-poller` |
+| Vendor SEO blog post — research + draft | **Marketer** (using `askGeorge()`) | **Counsel + CEO** | 2/week | `/cron/marketer-weekly` |
+| Anonymised vendor case study | **Marketer + Counsel** | CEO | After every completion | `/cron/marketer-daily` |
+| Paid ad copy variants | **Marketer** | CEO | Monthly | `/cron/marketer-monthly` |
+| Inbound vendor reply | **Liaison** | CEO (always) | Within 2h | `/cron/event-poller` |
+| Solicitor outreach (probate + divorce) | **Marketer** | CEO | Monthly batch | `/cron/marketer-monthly` |
+| Distress-page compliance audit | **Counsel** | — | Quarterly | manual (no cron yet) |
+| Founder LinkedIn personal posts | Founders draft, **Marketer suggests** topics | None — your voice | 1–2/week | manual (founder's voice, not automated) |
+| Weekly performance digest to CEO | **Marketer** | CEO read-only | Sunday evenings | `/cron/weekly-patterns` (already existed) |
+
+Each cron creates `FounderAction` records that surface in `/marketing/queue`
+for approval. No vendor-facing content is sent without explicit CEO
+approval per §11.
 
 **Iron rule:** no public-facing content goes live without CEO approval.
 The platform's existing "vendor comms always held" extends to **all

@@ -7,7 +7,7 @@ property datasets. We use it in two distinct ways:
    research, ad-hoc queries, drafting investor packs, agent prospecting.
 2. **Path B — REST for the platform.** Server-only client at
    `@repo/property-data/propertydata.ts`, used by the AVM engine and (later)
-   Paperclip enrichment.
+   Paperclip enrichment (now triggered by internal cron, not external poller).
 
 Both share the same API key. Treat the key like a database password.
 

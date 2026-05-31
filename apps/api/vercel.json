@@ -13,8 +13,16 @@
       "schedule": "30 7 * * *"
     },
     {
+      "path": "/cron/marketer-daily",
+      "schedule": "45 7 * * *"
+    },
+    {
       "path": "/cron/pipeline-summary",
       "schedule": "0 8 * * *"
+    },
+    {
+      "path": "/cron/marketer-monthly",
+      "schedule": "0 8 1 * *"
     },
     {
       "path": "/cron/sla-alerts",
@@ -35,6 +43,14 @@
     {
       "path": "/cron/weekly-patterns",
       "schedule": "0 18 * * 0"
+    },
+    {
+      "path": "/cron/marketer-weekly",
+      "schedule": "30 18 * * 0"
+    },
+    {
+      "path": "/cron/event-poller",
+      "schedule": "*/30 * * * *"
     }
   ]
 }

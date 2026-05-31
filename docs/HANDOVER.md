@@ -22,6 +22,9 @@ We have **three apps** + **one ops layer**:
 | **API** | Cron jobs + Paperclip endpoints | bellwood-api.vercel.app |
 | **Paperclip** | AI ops layer (separate) | runs on its own |
 
+> (see also: `/cron/marketer-*` for the new marketing-cron architecture
+> replacing Paperclip's polling pattern)
+
 ---
 
 ## What works today
@@ -99,7 +102,7 @@ We have **three apps** + **one ops layer**:
 | Doc | What it covers |
 |---|---|
 | `docs/HANDOVER.md` | This file |
-| `docs/PAPERCLIP-SYNC-BRIEF.md` | Single source of truth for the Paperclip team — what they do, the API contract, the 4-hour SLA workflow |
+| `docs/PAPERCLIP-SYNC-BRIEF.md` | Single source of truth for the Paperclip team — what they do, the API contract, the 4-hour SLA workflow, with the marketing-cron migration making the polling pattern optional |
 | `docs/setup/propertydata.md` | PropertyData API key + cron + budget |
 
 ---
@@ -178,7 +181,7 @@ These are calls only the founders can make:
 
 1. **Domain.** bellwoodslane.co.uk — when do we wire it up?
 2. **WhatsApp account.** Personal SIM phase 1, business account phase 2 — when is phase 2?
-3. **Paperclip cadence.** Daily? Hourly? Real-time webhook? They need to know what we expect.
+3. **Paperclip cadence.** Daily? Hourly? Real-time webhook? They need to know what we expect. (Resolved: marketing workflows are scheduled via Vercel cron; see docs/architecture/marketer-internal.md)
 4. **First 10 agents.** Who do we go to first? Map them by region + relationship.
 5. **PropertyData budget.** £48/mo for 5k credits. Move to 15k (£96) when we hit 60 deals/mo.
 6. **First investor partner.** Phase 2 has us routing some deals to investors instead of buying. Who's our first?
