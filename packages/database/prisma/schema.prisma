@@ -850,3 +850,40 @@ model KnowledgeChunk {
   @@index([sourcePath])
   @@index([contentHash])
 }
+
+// ---------------------------------------------------------------------------
+// DocumentExtract — uploaded PDFs run through @repo/document-pipeline.
+// ---------------------------------------------------------------------------
+// Each row is one PDF the founder dragged into /documents, with the
+// structured ProbateExtract (or other extractor output) persisted as JSON.
+// Two scalar columns (deceasedName, primaryAddress) are denormalised so the
+// list view can render quickly without re-parsing JSON per row.
+//
+// docType taxonomy:
+//   probate   — UK probate grant (HMCTS) — full Citations API extraction
+//   lease     — leasehold pack — runs the pipeline; field coverage looser
+//   contract  — sale contract / redline — runs the pipeline; field coverage looser
+//   other     — anything else; degrades to the same pipeline with low confidence
+//
+// dealId is nullable — a doc can be uploaded standalone before a deal exists,
+// then linked retroactively. No FK constraint (relationMode = "prisma") so a
+// deleted deal doesn't cascade through extracts; the orphan id stays as a
+// soft-ref the UI can choose to suppress.
+
+model DocumentExtract {
+  id             String   @id @default(cuid())
+  createdAt      DateTime @default(now())
+  filename       String
+  docType        String
+  dealId         String?
+  uploadedBy     String   // Clerk userId
+  confidence     Float
+  deceasedName   String?
+  primaryAddress String?
+  errorReason    String?
+  extractJson    Json
+
+  @@index([dealId])
+  @@index([createdAt])
+  @@index([uploadedBy])
+}

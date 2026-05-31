@@ -2,7 +2,6 @@
 
 import { UserButton } from '@repo/auth/client';
 import { ModeToggle } from '@repo/design-system/components/mode-toggle';
-import { Button } from '@repo/design-system/components/ui/button';
 import {
   Sidebar,
   SidebarContent,
@@ -17,15 +16,19 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from '@repo/design-system/components/ui/sidebar';
-// NotificationsTrigger removed (Knock not used)
 import {
   BuildingIcon,
   CompassIcon,
+  FileTextIcon,
+  GaugeIcon,
   InboxIcon,
   KanbanIcon,
   LineChartIcon,
   MailIcon,
+  SearchIcon,
   Settings2Icon,
+  TargetIcon,
+  UsersIcon,
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -37,56 +40,96 @@ type GlobalSidebarProperties = {
 };
 
 /**
- * 4-item nav. Everything else lives inside Today / Pipeline / Outreach
- * via tabs, or is reachable via the Cmd+K Concierge overlay. Old routes
- * (/actions, /quotes, /leads, /contacts, /partners, /campaigns,
- * /intake, /valuations, /auctions, /agents) still render — they're just
- * no longer in the visible nav.
+ * Sidebar — three thematic groups, 10 visible items + 3 system.
+ *
+ * Surfacing previously-hidden routes that have real product value:
+ *   - Quotes      → /quotes (agent SLA inbox — the 4hr promise)
+ *   - Leads       → /leads (scouting output)
+ *   - Research    → /research (George concierge)
+ *   - Contacts    → /contacts (CRM)
+ *   - Documents   → /documents (probate / lease / contract review)
+ *   - Admin       → /admin/llm-usage (cost + reliability dashboard)
+ *
+ * Still off-nav by design (reachable via search / direct URL):
+ *   - /actions (Today already shows actions)
+ *   - /agents, /auctions, /campaigns, /deals, /intake, /partners, /valuations
  */
 const data = {
-  navMain: [
-    {
-      title: 'Today',
-      url: '/',
-      icon: InboxIcon,
-      hasBadge: true,
-    },
-    {
-      title: 'Pipeline',
-      url: '/pipeline',
-      icon: KanbanIcon,
-    },
-    {
-      title: 'Book',
-      url: '/book',
-      icon: LineChartIcon,
-    },
-    {
-      title: 'Investors',
-      url: '/investors',
-      icon: BuildingIcon,
-    },
-    {
-      title: 'Outreach',
-      url: '/outreach',
-      icon: MailIcon,
-    },
+  dealFlow: [
+    { title: 'Today', url: '/', icon: InboxIcon, hasBadge: true },
+    { title: 'Quotes', url: '/quotes', icon: FileTextIcon },
+    { title: 'Leads', url: '/leads', icon: TargetIcon },
+    { title: 'Pipeline', url: '/pipeline', icon: KanbanIcon },
   ],
-  navSecondary: [
-    {
-      title: 'Guide',
-      url: '/guide',
-      icon: CompassIcon,
-    },
-    {
-      title: 'Settings',
-      url: '/settings',
-      icon: Settings2Icon,
-    },
+  money: [
+    { title: 'Book', url: '/book', icon: LineChartIcon },
+    { title: 'Investors', url: '/investors', icon: BuildingIcon },
+  ],
+  comms: [
+    { title: 'Research', url: '/research', icon: SearchIcon },
+    { title: 'Outreach', url: '/outreach', icon: MailIcon },
+    { title: 'Contacts', url: '/contacts', icon: UsersIcon },
+    { title: 'Documents', url: '/documents', icon: FileTextIcon },
+  ],
+  system: [
+    { title: 'Guide', url: '/guide', icon: CompassIcon },
+    { title: 'Settings', url: '/settings', icon: Settings2Icon },
+    { title: 'LLM usage', url: '/admin/llm-usage', icon: GaugeIcon },
   ],
 };
 
-export const GlobalSidebar = ({ children, pendingActionCount = 0 }: GlobalSidebarProperties) => {
+type NavItem = {
+  title: string;
+  url: string;
+  icon: typeof InboxIcon;
+  hasBadge?: boolean;
+};
+
+function NavSection({
+  label,
+  items,
+  pathname,
+  pendingActionCount,
+}: {
+  label: string;
+  items: NavItem[];
+  pathname: string;
+  pendingActionCount: number;
+}) {
+  return (
+    <SidebarGroup>
+      <SidebarGroupLabel>{label}</SidebarGroupLabel>
+      <SidebarMenu>
+        {items.map((item) => (
+          <SidebarMenuItem key={item.title}>
+            <SidebarMenuButton
+              asChild
+              tooltip={item.title}
+              isActive={
+                item.url === '/' ? pathname === '/' : pathname.startsWith(item.url)
+              }
+            >
+              <Link href={item.url}>
+                <item.icon />
+                <span>{item.title}</span>
+                {item.hasBadge && pendingActionCount > 0 && (
+                  <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1.5 text-xs font-medium text-white">
+                    {pendingActionCount > 99 ? '99+' : pendingActionCount}
+                  </span>
+                )}
+              </Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        ))}
+      </SidebarMenu>
+    </SidebarGroup>
+  );
+}
+
+export const GlobalSidebar = ({
+  children,
+  pendingActionCount = 0,
+}: GlobalSidebarProperties) => {
   const sidebar = useSidebar();
   const pathname = usePathname();
 
@@ -106,40 +149,33 @@ export const GlobalSidebar = ({ children, pendingActionCount = 0 }: GlobalSideba
           </SidebarMenu>
         </SidebarHeader>
         <SidebarContent>
-          <SidebarGroup>
-            <SidebarGroupLabel>Deal Management</SidebarGroupLabel>
-            <SidebarMenu>
-              {data.navMain.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton
-                    asChild
-                    tooltip={item.title}
-                    isActive={
-                      item.url === '/'
-                        ? pathname === '/'
-                        : pathname.startsWith(item.url)
-                    }
-                  >
-                    <Link href={item.url}>
-                      <item.icon />
-                      <span>{item.title}</span>
-                      {'hasBadge' in item && item.hasBadge && pendingActionCount > 0 && (
-                        <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1.5 text-xs font-medium text-white">
-                          {pendingActionCount > 99 ? '99+' : pendingActionCount}
-                        </span>
-                      )}
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroup>
+          <NavSection
+            label="Deal flow"
+            items={data.dealFlow}
+            pathname={pathname}
+            pendingActionCount={pendingActionCount}
+          />
+          <NavSection
+            label="Money"
+            items={data.money}
+            pathname={pathname}
+            pendingActionCount={pendingActionCount}
+          />
+          <NavSection
+            label="Comms"
+            items={data.comms}
+            pathname={pathname}
+            pendingActionCount={pendingActionCount}
+          />
           <SidebarGroup className="mt-auto">
             <SidebarGroupContent>
               <SidebarMenu>
-                {data.navSecondary.map((item) => (
+                {data.system.map((item) => (
                   <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton asChild>
+                    <SidebarMenuButton
+                      asChild
+                      isActive={pathname.startsWith(item.url)}
+                    >
                       <Link href={item.url}>
                         <item.icon />
                         <span>{item.title}</span>

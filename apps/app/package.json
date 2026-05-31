@@ -19,6 +19,7 @@
     "@repo/database": "workspace:*",
     "@repo/deal-updates": "workspace:*",
     "@repo/design-system": "workspace:*",
+    "@repo/document-pipeline": "workspace:*",
     "@repo/next-config": "workspace:*",
     "@repo/observability": "workspace:*",
     "@repo/scouting": "workspace:*",
