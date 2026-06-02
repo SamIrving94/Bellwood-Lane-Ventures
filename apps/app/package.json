@@ -6,7 +6,7 @@
     "build": "next build",
     "start": "next start",
     "analyze": "ANALYZE=true pnpm build",
-    "test": "vitest run --passWithNoTests",
+    "test": "cross-env NODE_ENV=test vitest run --passWithNoTests",
     "clean": "git clean -xdf .cache .turbo dist node_modules",
     "typecheck": "tsc --noEmit --emitDeclarationOnly false"
   },

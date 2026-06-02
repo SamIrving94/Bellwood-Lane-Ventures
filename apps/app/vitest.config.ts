@@ -11,6 +11,11 @@ export default mergeConfig(
   defineConfig({
     test: {
       dangerouslyIgnoreUnhandledErrors: true,
+      // Child-process pool — worker_threads hang during termination on
+      // Windows with React 19 + jsdom ("Failed to terminate worker"),
+      // which blocks the lefthook pre-push for minutes/hours.
+      pool: 'forks',
+      teardownTimeout: 5000,
     },
   }),
 );
