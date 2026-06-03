@@ -9,6 +9,7 @@ import {
 import { Separator } from '@repo/design-system/components/ui/separator';
 import { SidebarTrigger } from '@repo/design-system/components/ui/sidebar';
 import { Fragment, type ReactNode } from 'react';
+import { StartTourButton } from './start-tour-button';
 
 type BreadcrumbPage = {
   title: string;
@@ -47,6 +48,9 @@ export const Header = ({ pages, page, children }: HeaderProps) => (
         </BreadcrumbList>
       </Breadcrumb>
     </div>
-    {children}
+    <div className="flex items-center">
+      <StartTourButton />
+      {children}
+    </div>
   </header>
 );
