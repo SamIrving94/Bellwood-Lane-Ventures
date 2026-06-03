@@ -55,6 +55,10 @@
     {
       "path": "/cron/event-poller",
       "schedule": "*/30 * * * *"
+    },
+    {
+      "path": "/cron/quote-ops",
+      "schedule": "*/30 * * * *"
     }
   ]
 }

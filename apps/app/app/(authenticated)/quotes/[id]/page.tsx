@@ -4,6 +4,7 @@ import type { Metadata } from 'next';
 import { database } from '@repo/database';
 import { Header } from '../../components/header';
 import { QuoteActions } from './quote-actions';
+import { ApproveAndSendButton } from './approve-and-send-button';
 
 export const dynamic = 'force-dynamic';
 
@@ -73,7 +74,7 @@ export default async function QuoteDetailPage({
 
   if (!quote) notFound();
 
-  const [updates, agent] = await Promise.all([
+  const [updates, agent, approveAction] = await Promise.all([
     database.dealUpdate.findMany({
       where: { quoteRequestId: id },
       orderBy: { createdAt: 'desc' },
@@ -83,7 +84,22 @@ export default async function QuoteDetailPage({
           where: { referralCode: quote.referralCode },
         })
       : Promise.resolve(null),
+    database.founderAction.findFirst({
+      where: {
+        type: 'approve_offer',
+        status: 'pending',
+        metadata: { path: ['quoteRequestId'], equals: id },
+      },
+      orderBy: { createdAt: 'desc' },
+    }),
   ]);
+
+  const approveMeta =
+    (approveAction?.metadata ?? {}) as Record<string, unknown>;
+  const pendingSignedOfferUrl =
+    typeof approveMeta.signedOfferUrl === 'string'
+      ? (approveMeta.signedOfferUrl as string)
+      : null;
 
   const trackUrl = quote.trackToken
     ? `${process.env.NEXT_PUBLIC_WEB_URL || 'http://localhost:3001'}/track/${quote.trackToken.token}`
@@ -140,6 +156,35 @@ export default async function QuoteDetailPage({
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-[2fr_1fr]">
           {/* LEFT — offer + timeline */}
           <div className="space-y-6">
+            {approveAction && pendingSignedOfferUrl && (
+              <div className="rounded-2xl border-2 border-amber-400 bg-white p-6">
+                <p className="text-xs uppercase tracking-widest text-amber-700">
+                  Signed offer ready
+                </p>
+                <p className="mt-2 font-semibold text-lg text-slate-900">
+                  Review the PDF, then send to{' '}
+                  {quote.contactName || quote.contactEmail}.
+                </p>
+                <p className="mt-1 text-sm text-slate-600">
+                  4-hour SLA expires{' '}
+                  {approveAction.expiresAt
+                    ? approveAction.expiresAt.toLocaleString('en-GB', {
+                        dateStyle: 'medium',
+                        timeStyle: 'short',
+                      })
+                    : '—'}
+                  .
+                </p>
+                <div className="mt-4">
+                  <ApproveAndSendButton
+                    quoteId={quote.id}
+                    founderActionId={approveAction.id}
+                    signedOfferUrl={pendingSignedOfferUrl}
+                  />
+                </div>
+              </div>
+            )}
+
             {/* Offer card */}
             {quote.offer ? (
               <div className="rounded-2xl border-2 border-amber-300 bg-amber-50/40 p-6">
