@@ -34,6 +34,7 @@ export function MarketingTabs({
           <Link
             key={t.id}
             href={t.href}
+            data-tour={`marketing-tab-${t.id}`}
             className={`relative inline-flex items-center gap-2 px-4 py-2.5 text-sm transition ${
               isActive
                 ? 'font-medium text-foreground'

@@ -64,7 +64,10 @@ export function AppraisalCard({
   return (
     <article className="overflow-hidden rounded-lg border border-slate-200 bg-white">
       {/* Header banner */}
-      <header className="border-b border-slate-200 bg-slate-50/50 p-5">
+      <header
+        data-tour="appraisal-header"
+        className="border-b border-slate-200 bg-slate-50/50 p-5"
+      >
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="space-y-1">
             <div className="flex flex-wrap items-center gap-2 text-xs uppercase tracking-wide text-slate-500">
@@ -87,7 +90,7 @@ export function AppraisalCard({
             </h2>
             <p className="text-sm text-slate-700">{ap.recommendation.headline}</p>
           </div>
-          <div className="space-y-1 text-right text-sm">
+          <div data-tour="appraisal-arv" className="space-y-1 text-right text-sm">
             <div className="text-xs uppercase tracking-wide text-slate-500">
               ARV (point)
             </div>
@@ -152,7 +155,7 @@ export function AppraisalCard({
         </Section>
 
         {/* §2 Comparables */}
-        <div className="md:col-span-2">
+        <div data-tour="appraisal-comparables" className="md:col-span-2">
           <Section title="Comparables">
             <p className="mb-2 text-xs text-slate-500">
               {ap.comparables.methodology}
@@ -169,7 +172,7 @@ export function AppraisalCard({
         </div>
 
         {/* §5 Environmental */}
-        <div className="md:col-span-2">
+        <div data-tour="appraisal-environment" className="md:col-span-2">
           <Section title="Environmental risk">
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
               {ap.environment.map((risk, i) => (
@@ -290,6 +293,7 @@ export function AppraisalCard({
         </Section>
 
         {/* §9 Confidence + escalations */}
+        <div data-tour="appraisal-escalations">
         <Section title="Confidence">
           <Field
             label="Estimated error"
@@ -321,6 +325,7 @@ export function AppraisalCard({
             </div>
           )}
         </Section>
+        </div>
       </div>
 
       {/* Footer */}

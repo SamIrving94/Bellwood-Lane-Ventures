@@ -84,7 +84,10 @@ function formatPublishDate(d: Date): string {
  */
 function ComplianceBadge({ until }: { until: Date }) {
   return (
-    <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-amber-800 dark:bg-amber-950 dark:text-amber-300">
+    <span
+      data-tour="marketing-anonymisation"
+      className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-amber-800 dark:bg-amber-950 dark:text-amber-300"
+    >
       Publishes after {formatPublishDate(until)}
     </span>
   );
@@ -106,6 +109,7 @@ export function MarketingCard({ action }: { action: MarketingAction }) {
 
   return (
     <div
+      data-tour="marketing-queue-row"
       className={`rounded-lg border bg-card p-4 transition-opacity ${
         isPending ? 'opacity-50' : ''
       } ${isGated ? 'opacity-50' : ''}`}

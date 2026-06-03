@@ -197,7 +197,7 @@ export default async function TodayPage() {
         </div>
 
         {/* ─── Needs your decision ──────────────────────────── */}
-        <section>
+        <section data-tour="action-list">
           <div className="mb-4 flex items-baseline justify-between">
             <h2 className="font-semibold text-lg">Needs your decision</h2>
             {decisionCount > 0 && (
@@ -398,15 +398,15 @@ export default async function TodayPage() {
         <section>
           <h2 className="mb-4 font-semibold text-lg">In the last 24 hours</h2>
           <div className="grid grid-cols-3 gap-4">
-            <div className="rounded-2xl border bg-card p-5">
+            <div data-tour="stat-pending" className="rounded-2xl border bg-card p-5">
               <p className="text-muted-foreground text-xs">Quote submissions</p>
               <p className="mt-1 font-serif text-3xl font-semibold">{quotesLast24h}</p>
             </div>
-            <div className="rounded-2xl border bg-card p-5">
+            <div data-tour="stat-overdue" className="rounded-2xl border bg-card p-5">
               <p className="text-muted-foreground text-xs">New leads</p>
               <p className="mt-1 font-serif text-3xl font-semibold">{leadsLast24h}</p>
             </div>
-            <div className="rounded-2xl border bg-card p-5">
+            <div data-tour="stat-revenue" className="rounded-2xl border bg-card p-5">
               <p className="text-muted-foreground text-xs">Outreach replies</p>
               <p className="mt-1 font-serif text-3xl font-semibold">{repliesLast24h}</p>
             </div>

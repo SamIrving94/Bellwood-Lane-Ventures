@@ -89,6 +89,26 @@ type NavItem = {
   hasBadge?: boolean;
 };
 
+// Stable slug per nav item for the in-app tour to anchor on. Selectors
+// live in apps/app/app/(authenticated)/guide/tours.ts — keep these in sync.
+const TOUR_SLUGS: Record<string, string> = {
+  '/': 'today',
+  '/quotes': 'quotes',
+  '/leads': 'leads',
+  '/appraisals': 'appraisals',
+  '/pipeline': 'pipeline',
+  '/book': 'book',
+  '/investors': 'investors',
+  '/research': 'research',
+  '/marketing': 'marketing',
+  '/outreach': 'outreach',
+  '/contacts': 'contacts',
+  '/documents': 'documents',
+  '/guide': 'guide',
+  '/settings': 'settings',
+  '/admin/llm-usage': 'llm-usage',
+};
+
 function NavSection({
   label,
   items,
@@ -105,7 +125,14 @@ function NavSection({
       <SidebarGroupLabel>{label}</SidebarGroupLabel>
       <SidebarMenu>
         {items.map((item) => (
-          <SidebarMenuItem key={item.title}>
+          <SidebarMenuItem
+            key={item.title}
+            data-tour={
+              TOUR_SLUGS[item.url]
+                ? `sidebar-${TOUR_SLUGS[item.url]}`
+                : undefined
+            }
+          >
             <SidebarMenuButton
               asChild
               tooltip={item.title}
@@ -175,7 +202,14 @@ export const GlobalSidebar = ({
             <SidebarGroupContent>
               <SidebarMenu>
                 {data.system.map((item) => (
-                  <SidebarMenuItem key={item.title}>
+                  <SidebarMenuItem
+                    key={item.title}
+                    data-tour={
+                      TOUR_SLUGS[item.url]
+                        ? `sidebar-${TOUR_SLUGS[item.url]}`
+                        : undefined
+                    }
+                  >
                     <SidebarMenuButton
                       asChild
                       isActive={pathname.startsWith(item.url)}
