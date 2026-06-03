@@ -23,38 +23,69 @@ export const POST = async (request: Request) => {
   }
 
   // ── Read scouting.areas (the new single source) ─────────────────────
-  // Each Area = { label, seedPostcode, district, radiusMiles, lastProbe }
-  // Derive both: districts[] for HMCTS/Gazette/agent-prospecting AND
-  // scanSeeds[] for PropertyData /sourced-properties + /listings.
+  // Each Area = { id, label, seedPostcode, district, radiusMiles, lastProbe }
+  //
+  // We scan a BOUNDED batch of areas per run and rotate. The PropertyData
+  // planning + HMO loops inside the pipeline are serial and rate-limited
+  // (mandatory ~11s + 2.7s/seed sleeps EACH loop), and the whole pipeline
+  // must finish inside maxDuration (300s) BEFORE the first lead is persisted.
+  // With the full 16-area list that produced ~32 seed-calls and ~200s of pure
+  // sleep — the function was killed mid-run, persisting nothing. That is why
+  // zero leads landed and no completion event was logged for weeks.
+  //
+  // Fix: pick the MAX_SEEDS_PER_RUN oldest-probed (never-probed first) areas,
+  // stamp lastProbe after the run so tomorrow picks the next batch, and rotate
+  // through the whole list over a few days.
+  const MAX_SEEDS_PER_RUN = 6;
+
   type ScanSeed = { label?: string; postcode: string; radiusMiles: number };
   let scanSeeds: ScanSeed[] = [];
   let sourcedPropertyPostcodes: string[] = [];
+  // Raw area objects + the ids we scanned this run — used to advance rotation.
+  let areasRaw: Record<string, unknown>[] | null = null;
+  let selectedAreaIds: string[] = [];
 
   try {
     const areasSetting = await database.setting.findUnique({
       where: { key: 'scouting.areas' },
     });
     if (areasSetting && Array.isArray(areasSetting.value)) {
-      const areas = (areasSetting.value as unknown[]).flatMap((raw) => {
-        if (!raw || typeof raw !== 'object') return [];
-        const a = raw as Record<string, unknown>;
+      areasRaw = (areasSetting.value as unknown[]).filter(
+        (r): r is Record<string, unknown> => !!r && typeof r === 'object',
+      );
+      const areas = areasRaw.flatMap((a) => {
         const seedPostcode =
           typeof a.seedPostcode === 'string' ? a.seedPostcode : null;
-        const district = typeof a.district === 'string' ? a.district : null;
         const radiusMiles =
           typeof a.radiusMiles === 'number' ? a.radiusMiles : 1.5;
         const label = typeof a.label === 'string' ? a.label : undefined;
-        if (!seedPostcode || !district) return [];
-        return [{ seedPostcode, district, radiusMiles, label }];
+        const id =
+          typeof a.id === 'string' ? a.id : (seedPostcode ?? `${label}`);
+        // never-probed → 0 so it sorts to the FRONT of the rotation queue.
+        const lp = a.lastProbe as { checkedAt?: unknown } | null | undefined;
+        const lastProbeAt =
+          lp && typeof lp.checkedAt === 'string'
+            ? (Number.isFinite(Date.parse(lp.checkedAt))
+                ? Date.parse(lp.checkedAt)
+                : 0)
+            : 0;
+        if (!seedPostcode) return [];
+        return [{ id, seedPostcode, radiusMiles, label, lastProbeAt }];
       });
-      scanSeeds = areas.map((a) => ({
+      // Oldest-probed (and never-probed) first; bounded batch per run.
+      areas.sort((a, b) => a.lastProbeAt - b.lastProbeAt);
+      const batch = areas.slice(0, MAX_SEEDS_PER_RUN);
+      scanSeeds = batch.map((a) => ({
         label: a.label,
         postcode: a.seedPostcode,
         radiusMiles: a.radiusMiles,
       }));
-      sourcedPropertyPostcodes = Array.from(
-        new Set(areas.map((a) => a.district)),
-      );
+      selectedAreaIds = batch.map((a) => a.id);
+      // Deliberately DO NOT pass bare districts as sourcedPropertyPostcodes —
+      // PropertyData rejects districts on /sourced-properties yet they still
+      // incur the expensive serial sleep loops. Companies-House district
+      // filtering is derived from the full-postcode seeds inside the pipeline.
+      sourcedPropertyPostcodes = [];
     }
   } catch (err) {
     console.warn('[cron/scouting] failed to read scouting.areas', err);
@@ -96,6 +127,12 @@ export const POST = async (request: Request) => {
         .map((p) => p.trim())
         .filter(Boolean);
     }
+    // Bound legacy mode too, so it can never blow the maxDuration budget.
+    scanSeeds = scanSeeds.slice(0, MAX_SEEDS_PER_RUN);
+    sourcedPropertyPostcodes = sourcedPropertyPostcodes.slice(
+      0,
+      MAX_SEEDS_PER_RUN,
+    );
   }
 
   // ── Load the active lead-scoring config (closes the calibration loop) ──
@@ -148,6 +185,38 @@ export const POST = async (request: Request) => {
       skipDuplicates: true,
     });
     createdCount = written.count;
+  }
+
+  // ── Advance area rotation ───────────────────────────────────────────
+  // Stamp lastProbe.checkedAt on the areas we scanned this run. Because we
+  // select oldest-probed-first, stamping now pushes them to the back of the
+  // queue so the next run picks up the following batch — full coverage over
+  // ~ceil(areaCount / MAX_SEEDS_PER_RUN) days. Best-effort: a failure here
+  // never affects the leads already persisted above.
+  if (areasRaw && selectedAreaIds.length > 0) {
+    try {
+      const nowIso = result.runDate.toISOString();
+      const updatedAreas = areasRaw.map((a) => {
+        const id =
+          typeof a.id === 'string'
+            ? a.id
+            : typeof a.seedPostcode === 'string'
+              ? a.seedPostcode
+              : null;
+        if (!id || !selectedAreaIds.includes(id)) return a;
+        const prevLp =
+          a.lastProbe && typeof a.lastProbe === 'object'
+            ? (a.lastProbe as Record<string, unknown>)
+            : {};
+        return { ...a, lastProbe: { ...prevLp, checkedAt: nowIso } };
+      });
+      await database.setting.update({
+        where: { key: 'scouting.areas' },
+        data: { value: updatedAreas as Prisma.InputJsonValue },
+      });
+    } catch (err) {
+      console.warn('[cron/scouting] failed to advance area rotation', err);
+    }
   }
 
   // ── Second pass: enrich top-N persisted leads with property snapshot ──
@@ -270,55 +339,75 @@ export const POST = async (request: Request) => {
   // The metadata.assignedToAgent field signals which Paperclip agent should
   // pick up the action on its next heartbeat. The board sees both in
   // /actions; Marketer's polling query filters to its own.
-  if (highScoreLeads.length > 0) {
-    const leadIds = result.leads
-      .filter((l) => l.leadScore >= 70)
+  // Founders must see EVERY qualified lead daily — not only the 70+ ones.
+  // A lead that clears the pipeline's minScore (THIN+) is worth a founder
+  // glance to decide invest / pass / refer. We therefore create the review
+  // action whenever any qualified lead lands, and embed each lead's score +
+  // verdict in the sample so triage is instant. The marketer-outreach draft
+  // (costly, sensitive) stays gated to high-scoring leads only.
+  if (result.leads.length > 0) {
+    const reviewSample = result.leads
+      .map(
+        (l, i) =>
+          `${i}:${l.address.slice(0, 40)}, ${l.postcode} — ${l.leadScore}/${l.verdict}`,
+      )
+      .slice(0, 10);
+    const highLeadIds = highScoreLeads
       .map((l, i) => `${i}:${l.address.slice(0, 40)}, ${l.postcode}`)
       .slice(0, 10);
     try {
-      // Founder-facing review action
+      // Founder-facing review action — fires for ALL qualified leads.
       await database.founderAction.create({
         data: {
           type: 'review_leads',
-          priority: highScoreLeads.length >= 5 ? 'high' : 'medium',
+          priority:
+            highScoreLeads.length >= 5 || strongLeads.length > 0
+              ? 'high'
+              : highScoreLeads.length > 0
+                ? 'medium'
+                : 'low',
           status: 'pending',
           agent: 'system',
           agentEventId: eventId,
-          title: `Review ${highScoreLeads.length} new lead${highScoreLeads.length === 1 ? '' : 's'} scored 70+`,
-          description: `Daily scout run found ${result.leads.length} qualified leads. ${strongLeads.length} STRONG, ${highScoreLeads.length} scored ≥ 70. Open Pipeline → Leads to review and convert the best to deals.`,
+          title: `Review ${result.leads.length} new qualified lead${result.leads.length === 1 ? '' : 's'}${highScoreLeads.length ? ` (${highScoreLeads.length} scored 70+)` : ''}`,
+          description: `Daily scout run found ${result.leads.length} qualified leads — ${strongLeads.length} STRONG, ${highScoreLeads.length} scored ≥ 70. Open Pipeline → Leads to review each and decide invest / pass / refer to another investor.`,
           metadata: {
             source: 'cron_scouting',
             assignedToAgent: 'board',
-            leadCount: highScoreLeads.length,
+            leadCount: result.leads.length,
+            highScoreCount: highScoreLeads.length,
             strongCount: strongLeads.length,
             runDate: result.runDate.toISOString(),
             link: '/pipeline?tab=leads',
-            leadSample: leadIds,
+            leadSample: reviewSample,
           },
         },
       });
 
-      // Marketer-facing draft action (Paperclip picks up on next heartbeat)
-      await database.founderAction.create({
-        data: {
-          type: 'dispatch_campaign',
-          priority: 'medium',
-          status: 'pending',
-          agent: 'marketer',
-          agentEventId: eventId,
-          title: `Draft outreach for ${highScoreLeads.length} new high-scoring lead${highScoreLeads.length === 1 ? '' : 's'}`,
-          description: `Scout cron found ${highScoreLeads.length} leads scored ≥ 70 (${strongLeads.length} STRONG). For each, draft a first-touch email to the executor/contact tailored to the lead type (probate / chain break / repos / problem property). Hold all drafts for board approval. Top examples: ${leadIds.slice(0, 3).join(' | ')}.`,
-          metadata: {
-            source: 'cron_scouting',
-            assignedToAgent: 'marketer',
-            workflow: 'draft_outreach_for_new_leads',
-            leadCount: highScoreLeads.length,
-            strongCount: strongLeads.length,
-            runDate: result.runDate.toISOString(),
-            link: '/pipeline?tab=leads',
+      // Marketer-facing draft action — high-scoring leads only (outreach is
+      // costly + sensitive; we don't draft for borderline leads).
+      if (highScoreLeads.length > 0) {
+        await database.founderAction.create({
+          data: {
+            type: 'dispatch_campaign',
+            priority: 'medium',
+            status: 'pending',
+            agent: 'marketer',
+            agentEventId: eventId,
+            title: `Draft outreach for ${highScoreLeads.length} new high-scoring lead${highScoreLeads.length === 1 ? '' : 's'}`,
+            description: `Scout cron found ${highScoreLeads.length} leads scored ≥ 70 (${strongLeads.length} STRONG). For each, draft a first-touch email to the executor/contact tailored to the lead type (probate / chain break / repos / problem property). Hold all drafts for board approval. Top examples: ${highLeadIds.slice(0, 3).join(' | ')}.`,
+            metadata: {
+              source: 'cron_scouting',
+              assignedToAgent: 'marketer',
+              workflow: 'draft_outreach_for_new_leads',
+              leadCount: highScoreLeads.length,
+              strongCount: strongLeads.length,
+              runDate: result.runDate.toISOString(),
+              link: '/pipeline?tab=leads',
+            },
           },
-        },
-      });
+        });
+      }
     } catch (err) {
       console.warn('[cron/scouting] founder-action create failed', err);
     }
