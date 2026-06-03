@@ -26,6 +26,7 @@
     "@repo/next-config": "workspace:*",
     "@repo/observability": "workspace:*",
     "@repo/property-data": "workspace:*",
+    "@repo/quote-ops": "workspace:*",
     "@repo/scouting": "workspace:*",
     "@repo/valuation": "workspace:*",
     "@repo/whatsapp-parser": "workspace:*",
