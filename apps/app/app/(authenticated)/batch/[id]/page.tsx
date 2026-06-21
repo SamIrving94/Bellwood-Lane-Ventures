@@ -23,6 +23,22 @@ const CONF_STYLE: Record<string, string> = {
   low: 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-400',
 };
 
+/**
+ * Highlight elevated flood risk. The flood string looks like
+ * "Rivers/sea: High" — we colour High red and Medium amber, everything else
+ * stays muted.
+ */
+function floodBadgeStyle(floodRisk: string): string {
+  const v = floodRisk.toLowerCase();
+  if (v.includes('high')) {
+    return 'bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-400';
+  }
+  if (v.includes('medium')) {
+    return 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-400';
+  }
+  return 'bg-muted text-muted-foreground';
+}
+
 const BatchReviewPage = async ({
   params,
 }: {
@@ -196,6 +212,29 @@ const BatchReviewPage = async ({
                               </span>
                             )}
                           </div>
+                          {(i.floodRisk ||
+                            i.demandRating ||
+                            i.grossYieldPct != null) && (
+                            <div className="mt-1 flex flex-wrap items-center gap-1">
+                              {i.floodRisk && (
+                                <span
+                                  className={`rounded px-1.5 py-0.5 text-[10px] ${floodBadgeStyle(i.floodRisk)}`}
+                                >
+                                  {i.floodRisk}
+                                </span>
+                              )}
+                              {i.demandRating && (
+                                <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
+                                  {i.demandRating}
+                                </span>
+                              )}
+                              {i.grossYieldPct != null && (
+                                <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
+                                  {i.grossYieldPct.toFixed(1)}% yield
+                                </span>
+                              )}
+                            </div>
+                          )}
                         </td>
                         <td className="px-3 py-2 capitalize text-muted-foreground">
                           {i.mappedType ?? i.propertyType}

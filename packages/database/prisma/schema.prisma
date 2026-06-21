@@ -925,6 +925,12 @@ model PropertyBatch {
   processedItems Int      @default(0)
   priorBatchId   String? // prior batch we diffed against (null for first upload)
 
+  // Raw uploaded file, retained so export can append columns to the EXACT
+  // original workbook (preserving all original columns + sheets) rather than
+  // rebuilding it from parsed fields.
+  originalFile Bytes?
+  originalMime String?
+
   items PropertyBatchItem[]
 
   @@index([createdAt])
@@ -967,6 +973,13 @@ model PropertyBatchItem {
   status     String  @default("pending") // pending | done | error | skipped
   error      String?
   resultJson Json?
+
+  // Extra PropertyData signals surfaced in the batch review (best-effort;
+  // null when the call returns nothing or no key is configured).
+  floodRisk     String? // e.g. 'Very low' | 'Low' | 'Medium' | 'High'
+  demandRating  String? // area sales demand rating
+  grossYieldPct Float? // indicative gross rental yield %
+  signalsJson   Json? // raw signal payloads for future surfacing
 
   // Change tracking vs prior batch
   changeStatus         String? // 'new' | 'carried'

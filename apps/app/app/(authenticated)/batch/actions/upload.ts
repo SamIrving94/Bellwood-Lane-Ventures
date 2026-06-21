@@ -15,8 +15,8 @@ export type UploadResult =
  * a PropertyBatch + PropertyBatchItem records (status 'pending'), and diff
  * against the previous batch by dedupeKey so the review page can show what's
  * new vs carried over (and what fell out — computed on the review page from the
- * prior batch). The file itself is parsed in-memory and discarded; only the
- * structured rows are stored.
+ * prior batch). We also persist the raw uploaded bytes (originalFile/originalMime)
+ * so the export can hand back the founder's exact spreadsheet plus our columns.
  */
 export async function uploadBatch(formData: FormData): Promise<UploadResult> {
   const { userId } = await auth();
@@ -31,8 +31,9 @@ export async function uploadBatch(formData: FormData): Promise<UploadResult> {
   }
 
   let parsed;
+  let buf: Buffer;
   try {
-    const buf = Buffer.from(await file.arrayBuffer());
+    buf = Buffer.from(await file.arrayBuffer());
     parsed = parseSheet(buf);
   } catch (e) {
     return { ok: false, error: `Could not read the spreadsheet: ${(e as Error).message}` };
@@ -68,6 +69,8 @@ export async function uploadBatch(formData: FormData): Promise<UploadResult> {
       totalItems: parsed.rows.length,
       processedItems: 0,
       priorBatchId: priorBatch?.id ?? null,
+      originalFile: buf,
+      originalMime: file.type || '',
     },
     select: { id: true },
   });

@@ -4,6 +4,7 @@ import { mergeOfferConfig, runAVM } from '@repo/valuation';
 import { NextResponse } from 'next/server';
 import { conservativeMarketValue } from '../../../../lib/batch/condition';
 import { computeDiscount } from '../../../../lib/batch/discount';
+import { fetchBatchSignals } from '../../../../lib/batch/signals';
 
 /**
  * Run the AVM over a batch of uploaded properties.
@@ -108,6 +109,11 @@ export async function POST(request: Request) {
         item.signOffPricePence,
       );
 
+      // Enrich with extra PropertyData signals. fetchBatchSignals is fully
+      // defensive (Promise.allSettled + try/catch) so this can never throw and
+      // never blocks the item being marked done with its AVM result.
+      const signals = await fetchBatchSignals(item.postcode);
+
       await database.propertyBatchItem.update({
         where: { id: item.id },
         data: {
@@ -119,6 +125,10 @@ export async function POST(request: Request) {
           avmSources: r.avmSources,
           discountPercent: discount.discountPercent,
           benchmarkUsed: discount.benchmarkUsed,
+          floodRisk: signals.floodRisk,
+          demandRating: signals.demandRating,
+          grossYieldPct: signals.grossYieldPct,
+          signalsJson: signals.signalsJson,
           status: 'done',
           error: null,
           resultJson: {
