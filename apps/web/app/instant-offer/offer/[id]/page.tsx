@@ -93,7 +93,7 @@ export default async function OfferCertificatePage({
         </p>
         <div className="mt-6 flex items-end justify-between">
           <div>
-            <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-[#DB5C5C]">
+            <p className="font-serif italic text-[13px] text-[#DB5C5C]">
               Binding cash offer
             </p>
             <h1 className="mt-2 font-serif text-3xl font-semibold leading-tight">
@@ -112,7 +112,7 @@ export default async function OfferCertificatePage({
 
       <section className="mt-10 grid grid-cols-2 gap-x-8 gap-y-6">
         <div>
-          <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-stone-500">
+          <p className="font-serif italic text-[13px] text-stone-500">
             Property
           </p>
           <p className="mt-2 font-serif text-lg leading-snug">
@@ -125,7 +125,7 @@ export default async function OfferCertificatePage({
           </p>
         </div>
         <div>
-          <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-stone-500">
+          <p className="font-serif italic text-[13px] text-stone-500">
             Seller situation
           </p>
           <p className="mt-2 font-serif text-lg capitalize">
@@ -135,7 +135,7 @@ export default async function OfferCertificatePage({
       </section>
 
       <section className="mt-10 rounded-2xl border-2 border-[#DB5C5C] bg-[#F6ECE7] p-8">
-        <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-stone-500">
+        <p className="font-serif italic text-[13px] text-stone-500">
           Our cash offer
         </p>
         <p
@@ -160,7 +160,7 @@ export default async function OfferCertificatePage({
       </section>
 
       <section className="mt-10">
-        <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-stone-500">
+        <p className="font-serif italic text-[13px] text-stone-500">
           Terms
         </p>
         <dl className="mt-3 divide-y divide-stone-200 border-y border-stone-200">
@@ -186,7 +186,7 @@ export default async function OfferCertificatePage({
               key={k}
               className="grid grid-cols-1 gap-1 py-3 sm:grid-cols-[180px_1fr] sm:gap-6"
             >
-              <dt className="font-mono text-[11px] uppercase tracking-[0.12em] text-stone-500">
+              <dt className="font-serif italic text-[13px] text-stone-500">
                 {k}
               </dt>
               <dd className="text-[14px] text-[#2B2220]">{v}</dd>
@@ -197,7 +197,7 @@ export default async function OfferCertificatePage({
 
       {reasoningLines.length > 0 && (
         <section className="mt-10">
-          <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-stone-500">
+          <p className="font-serif italic text-[13px] text-stone-500">
             How we got to this number
           </p>
           <ul className="mt-3 space-y-2 text-[13px] text-stone-700">
@@ -210,7 +210,7 @@ export default async function OfferCertificatePage({
 
       <section className="mt-12 grid grid-cols-2 gap-6">
         <div>
-          <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-stone-500">
+          <p className="font-serif italic text-[13px] text-stone-500">
             For the seller
           </p>
           <div className="mt-2 h-16 border-b-2 border-stone-400" />
@@ -219,7 +219,7 @@ export default async function OfferCertificatePage({
           </p>
         </div>
         <div>
-          <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-stone-500">
+          <p className="font-serif italic text-[13px] text-stone-500">
             For Bellwoods Lane Ltd
           </p>
           <div className="mt-2 h-16 border-b-2 border-stone-400" />

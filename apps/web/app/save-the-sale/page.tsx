@@ -59,7 +59,7 @@ export default function SaveTheSalePage() {
       <section className="px-6 pt-12 pb-20 md:px-12 md:pt-16 md:pb-24">
         <div className="mx-auto grid max-w-6xl grid-cols-1 gap-12 lg:grid-cols-[1fr_1.2fr] lg:gap-16">
           <div>
-            <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-[#DB5C5C]">
+            <p className="font-serif italic text-[13px] text-[#DB5C5C]">
               For UK estate agents
             </p>
             <h1
@@ -80,7 +80,7 @@ export default function SaveTheSalePage() {
             </p>
             <ul className="mt-8 space-y-3 text-[14px] text-stone-700">
               <li className="flex items-start gap-3">
-                <span className="mt-1 inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-[#DB5C5C]" />
+                <span className="mt-1 inline-block h-1.5 w-1.5 shrink-0 rounded-md bg-[#DB5C5C]" />
                 <span>
                   <strong className="text-[#2B2220]">No re-trade.</strong>{' '}
                   The price your client accepts is the price they complete at,
@@ -88,7 +88,7 @@ export default function SaveTheSalePage() {
                 </span>
               </li>
               <li className="flex items-start gap-3">
-                <span className="mt-1 inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-[#DB5C5C]" />
+                <span className="mt-1 inline-block h-1.5 w-1.5 shrink-0 rounded-md bg-[#DB5C5C]" />
                 <span>
                   <strong className="text-[#2B2220]">Partner fee, agreed per deal.</strong>{' '}
                   Sale fee, introducer fee, plus the resale instruction when
@@ -97,7 +97,7 @@ export default function SaveTheSalePage() {
                 </span>
               </li>
               <li className="flex items-start gap-3">
-                <span className="mt-1 inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-[#DB5C5C]" />
+                <span className="mt-1 inline-block h-1.5 w-1.5 shrink-0 rounded-md bg-[#DB5C5C]" />
                 <span>
                   <strong className="text-[#2B2220]">WhatsApp-able vendor link.</strong>{' '}
                   After you submit, you get a link you can WhatsApp the
@@ -126,7 +126,7 @@ export default function SaveTheSalePage() {
       {/* ————— TRUST FOOTER ————— */}
       <footer className="border-t border-stone-200/60 bg-white px-6 py-10 md:px-12">
         <div className="mx-auto flex max-w-5xl flex-col items-start justify-between gap-4 md:flex-row md:items-center">
-          <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-stone-500">
+          <p className="font-serif italic text-[13px] text-stone-500">
             Property Redress Scheme (PRS) &middot; HMRC AML supervised &middot; ICO registered
           </p>
           <nav className="flex flex-wrap items-center gap-6 text-[13px] text-stone-600">

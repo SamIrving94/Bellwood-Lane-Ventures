@@ -61,7 +61,7 @@ export function EmailSampleButton() {
           >
             {status.kind === 'success' ? (
               <div className="text-center">
-                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-[#DB5C5C]/20 text-2xl text-[#DB5C5C]">
+                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-md bg-[#DB5C5C]/20 text-2xl text-[#DB5C5C]">
                   ✓
                 </div>
                 <p className="mt-5 font-serif text-xl">On its way.</p>
@@ -71,14 +71,14 @@ export function EmailSampleButton() {
                 <button
                   type="button"
                   onClick={close}
-                  className="mt-6 rounded-full border border-stone-300 px-5 py-2 text-sm text-stone-700 hover:border-stone-400"
+                  className="mt-6 rounded-md border border-stone-300 px-5 py-2 text-sm text-stone-700 hover:border-stone-400"
                 >
                   Close
                 </button>
               </div>
             ) : (
               <>
-                <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-[#DB5C5C]">
+                <p className="font-serif italic text-[13px] text-[#DB5C5C]">
                   Sample offer pack
                 </p>
                 <h3 className="mt-2 font-serif text-2xl font-semibold">
@@ -111,7 +111,7 @@ export function EmailSampleButton() {
                   <button
                     type="submit"
                     disabled={status.kind === 'submitting'}
-                    className="w-full rounded-full bg-[#874646] px-6 py-3 text-sm font-medium text-white transition hover:bg-[#6F3A3A] disabled:opacity-50"
+                    className="w-full rounded-md bg-[#874646] px-6 py-3 text-sm font-medium text-white transition hover:bg-[#6F3A3A] disabled:opacity-50"
                   >
                     {status.kind === 'submitting'
                       ? 'Sending...'

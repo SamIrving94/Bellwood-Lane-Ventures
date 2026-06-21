@@ -52,7 +52,7 @@ export function ProofOfFundsButton() {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="rounded-full bg-[#874646] px-6 py-3 text-sm text-white transition hover:bg-[#6F3A3A]"
+        className="rounded-md bg-[#874646] px-6 py-3 text-sm text-white transition hover:bg-[#6F3A3A]"
       >
         Request proof of funds
       </button>
@@ -87,14 +87,14 @@ export function ProofOfFundsButton() {
                 <button
                   type="button"
                   onClick={close}
-                  className="mt-6 rounded-full border border-stone-300 px-5 py-2 text-sm text-stone-700 hover:border-stone-400"
+                  className="mt-6 rounded-md border border-stone-300 px-5 py-2 text-sm text-stone-700 hover:border-stone-400"
                 >
                   Close
                 </button>
               </div>
             ) : (
               <>
-                <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-[#DB5C5C]">
+                <p className="font-serif italic text-[13px] text-[#DB5C5C]">
                   Proof of funds
                 </p>
                 <h3
@@ -145,7 +145,7 @@ export function ProofOfFundsButton() {
                     <button
                       type="submit"
                       disabled={status.kind === 'submitting'}
-                      className="rounded-full bg-[#DB5C5C] px-6 py-3 text-sm font-medium text-[#2B2220] transition hover:bg-[#b08f52] disabled:opacity-50"
+                      className="rounded-md bg-[#DB5C5C] px-6 py-3 text-sm font-medium text-[#2B2220] transition hover:bg-[#b08f52] disabled:opacity-50"
                     >
                       {status.kind === 'submitting'
                         ? 'Sending...'

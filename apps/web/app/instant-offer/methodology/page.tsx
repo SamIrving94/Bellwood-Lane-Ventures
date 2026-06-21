@@ -24,7 +24,7 @@ export default function MethodologyPage() {
           </Link>
           <Link
             href="/instant-offer#chat"
-            className="rounded-full bg-[#874646] px-5 py-2 text-sm text-white transition hover:bg-[#6F3A3A]"
+            className="rounded-md bg-[#874646] px-5 py-2 text-sm text-white transition hover:bg-[#6F3A3A]"
           >
             Get an offer
           </Link>
@@ -170,7 +170,7 @@ export default function MethodologyPage() {
           </h2>
           <Link
             href="/instant-offer#chat"
-            className="mt-6 inline-flex items-center gap-2 rounded-full bg-[#DB5C5C] px-8 py-3 text-sm font-medium text-[#2B2220] transition hover:bg-[#b08f52]"
+            className="mt-6 inline-flex items-center gap-2 rounded-md bg-[#DB5C5C] px-8 py-3 text-sm font-medium text-[#2B2220] transition hover:bg-[#b08f52]"
           >
             Get an indicative offer →
           </Link>

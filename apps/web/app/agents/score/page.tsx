@@ -17,12 +17,12 @@ export default function BellwoodScorePage() {
       <div className="mx-auto max-w-3xl">
         <Link
           href="/agents"
-          className="inline-flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.2em] text-stone-500 transition hover:text-[#874646]"
+          className="inline-flex items-center gap-2 font-serif italic text-[13px] text-stone-500 transition hover:text-[#874646]"
         >
           <span aria-hidden>←</span> Back to agents
         </Link>
 
-        <p className="mt-10 font-mono text-[11px] uppercase tracking-[0.22em] text-[#DB5C5C]">
+        <p className="mt-10 font-serif italic text-[13px] text-[#DB5C5C]">
           Bellwood Score · For partner agents
         </p>
         <h1
@@ -78,7 +78,7 @@ export default function BellwoodScorePage() {
           </ul>
         </div>
 
-        <p className="mt-12 font-mono text-[10px] uppercase tracking-[0.22em] text-stone-400">
+        <p className="mt-12 font-serif italic text-[13px] text-stone-400">
           Bellwoods Lane Ltd · Property Redress Scheme (PRS) · HMRC AML
           supervised · ICO registered
         </p>

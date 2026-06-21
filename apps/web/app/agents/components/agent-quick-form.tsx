@@ -145,7 +145,7 @@ export function AgentQuickForm({ defaultTriggerLabel }: AgentQuickFormProperties
     >
       <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
         <label className="block md:col-span-2">
-          <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-stone-500">
+          <span className="font-serif italic text-[13px] text-stone-500">
             Property address
           </span>
           <input
@@ -157,7 +157,7 @@ export function AgentQuickForm({ defaultTriggerLabel }: AgentQuickFormProperties
           />
         </label>
         <label className="block">
-          <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-stone-500">
+          <span className="font-serif italic text-[13px] text-stone-500">
             Postcode
           </span>
           <input
@@ -169,7 +169,7 @@ export function AgentQuickForm({ defaultTriggerLabel }: AgentQuickFormProperties
           />
         </label>
         <label className="block">
-          <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-stone-500">
+          <span className="font-serif italic text-[13px] text-stone-500">
             Your firm
           </span>
           <input
@@ -183,7 +183,7 @@ export function AgentQuickForm({ defaultTriggerLabel }: AgentQuickFormProperties
       </div>
 
       <div className="mt-6">
-        <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-stone-500">
+        <span className="font-serif italic text-[13px] text-stone-500">
           What&rsquo;s happened?
         </span>
         <div className="mt-2 flex flex-wrap gap-2">
@@ -206,7 +206,7 @@ export function AgentQuickForm({ defaultTriggerLabel }: AgentQuickFormProperties
 
       <div className="mt-6 grid grid-cols-1 gap-5 md:grid-cols-2">
         <label className="block">
-          <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-stone-500">
+          <span className="font-serif italic text-[13px] text-stone-500">
             Your name
           </span>
           <input
@@ -217,7 +217,7 @@ export function AgentQuickForm({ defaultTriggerLabel }: AgentQuickFormProperties
           />
         </label>
         <label className="block">
-          <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-stone-500">
+          <span className="font-serif italic text-[13px] text-stone-500">
             Email
           </span>
           <input
@@ -228,7 +228,7 @@ export function AgentQuickForm({ defaultTriggerLabel }: AgentQuickFormProperties
           />
         </label>
         <label className="block md:col-span-2">
-          <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-stone-500">
+          <span className="font-serif italic text-[13px] text-stone-500">
             Work mobile <span className="text-stone-400 normal-case tracking-normal">(WhatsApp · optional but faster)</span>
           </span>
           <input
@@ -256,7 +256,7 @@ export function AgentQuickForm({ defaultTriggerLabel }: AgentQuickFormProperties
         <button
           type="submit"
           disabled={state.kind === 'submitting'}
-          className="inline-flex items-center gap-2 rounded-full bg-[#874646] px-7 py-3 text-sm font-medium text-white transition hover:bg-[#6F3A3A] disabled:opacity-50"
+          className="inline-flex items-center gap-2 rounded-md bg-[#874646] px-7 py-3 text-sm font-medium text-white transition hover:bg-[#6F3A3A] disabled:opacity-50"
         >
           {state.kind === 'submitting' ? 'Pulling comps\u2026' : 'See the number'}
           <span aria-hidden>→</span>
@@ -281,7 +281,7 @@ function SuccessView({
   if (offer.requiresReview) {
     return (
       <div className="rounded-3xl border border-[#DB5C5C]/40 bg-white p-10 shadow-sm">
-        <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-[#DB5C5C]">
+        <p className="font-serif italic text-[13px] text-[#DB5C5C]">
           Manual review
         </p>
         <h3 className="mt-3 font-serif text-3xl font-semibold text-[#2B2220]">
@@ -300,10 +300,10 @@ function SuccessView({
     <div className="space-y-5">
       <div className="rounded-3xl border-2 border-[#DB5C5C]/50 bg-white p-7 shadow-md md:p-9">
         <div className="flex items-baseline justify-between">
-          <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-[#DB5C5C]">
+          <p className="font-serif italic text-[13px] text-[#DB5C5C]">
             Indicative offer
           </p>
-          <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-stone-400">
+          <p className="font-serif italic text-[13px] text-stone-400">
             Ref {offer.quoteId?.slice(-8).toUpperCase()}
           </p>
         </div>
@@ -315,7 +315,7 @@ function SuccessView({
         </p>
         <div className="mt-6 grid grid-cols-2 gap-6 text-sm md:grid-cols-3">
           <div>
-            <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-stone-400">
+            <p className="font-serif italic text-[13px] text-stone-400">
               AVM range
             </p>
             <p className="mt-1 text-stone-700">
@@ -324,7 +324,7 @@ function SuccessView({
             </p>
           </div>
           <div>
-            <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-stone-400">
+            <p className="font-serif italic text-[13px] text-stone-400">
               Completion
             </p>
             <p className="mt-1 text-stone-700">
@@ -332,7 +332,7 @@ function SuccessView({
             </p>
           </div>
           <div>
-            <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-stone-400">
+            <p className="font-serif italic text-[13px] text-stone-400">
               Locked
             </p>
             <p className="mt-1 text-stone-700">72 hours from now</p>
@@ -403,7 +403,7 @@ function VendorShareCard({
 
   return (
     <div className="rounded-2xl border border-stone-200 bg-white p-6">
-      <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-[#DB5C5C]">
+      <p className="font-serif italic text-[13px] text-[#DB5C5C]">
         Share with your vendor
       </p>
       <p className="mt-2 text-[14px] leading-relaxed text-stone-600">

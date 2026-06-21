@@ -48,7 +48,7 @@ export function SignupForm() {
   if (status.state === 'success') {
     return (
       <div className="text-center">
-        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-[#DB5C5C]/20 text-2xl text-[#DB5C5C]">
+        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-md bg-[#DB5C5C]/20 text-2xl text-[#DB5C5C]">
           ✓
         </div>
         <h3 className="mt-6 font-serif text-2xl font-semibold">
@@ -97,7 +97,7 @@ export function SignupForm() {
       <button
         type="submit"
         disabled={status.state === 'submitting'}
-        className="w-full rounded-full bg-[#DB5C5C] px-6 py-4 text-sm font-medium text-[#2B2220] transition hover:bg-[#b08f52] disabled:opacity-50"
+        className="w-full rounded-md bg-[#DB5C5C] px-6 py-4 text-sm font-medium text-[#2B2220] transition hover:bg-[#b08f52] disabled:opacity-50"
       >
         {status.state === 'submitting'
           ? 'Creating account...'

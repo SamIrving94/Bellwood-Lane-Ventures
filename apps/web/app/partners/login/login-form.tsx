@@ -30,7 +30,7 @@ export function LoginForm() {
   if (status.state === 'success') {
     return (
       <div className="text-center">
-        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-[#DB5C5C]/20 text-xl text-[#DB5C5C]">
+        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-md bg-[#DB5C5C]/20 text-xl text-[#DB5C5C]">
           ✓
         </div>
         <p className="mt-5 font-serif text-xl">Check your inbox.</p>
@@ -74,7 +74,7 @@ export function LoginForm() {
       <button
         type="submit"
         disabled={status.state === 'submitting'}
-        className="w-full rounded-full bg-[#874646] px-6 py-4 text-sm font-medium text-white transition hover:bg-[#6F3A3A] disabled:opacity-50"
+        className="w-full rounded-md bg-[#874646] px-6 py-4 text-sm font-medium text-white transition hover:bg-[#6F3A3A] disabled:opacity-50"
       >
         {status.state === 'submitting'
           ? 'Sending link...'

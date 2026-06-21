@@ -133,7 +133,7 @@ export default function WhyWeWontBuyAnyHomePage() {
       {/* ————— HERO ————— */}
       <section className="px-6 pt-16 pb-12 md:px-12 md:pt-24 md:pb-16">
         <div className="mx-auto max-w-4xl">
-          <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-[#DB5C5C]">
+          <p className="font-serif italic text-[13px] text-[#DB5C5C]">
             Our line
           </p>
           <h1
@@ -157,7 +157,7 @@ export default function WhyWeWontBuyAnyHomePage() {
       {/* ————— WHAT WE BUY ————— */}
       <section className="border-y border-stone-200/60 bg-white px-6 py-20 md:px-12 md:py-24">
         <div className="mx-auto max-w-6xl">
-          <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-[#DB5C5C]">
+          <p className="font-serif italic text-[13px] text-[#DB5C5C]">
             What we buy
           </p>
           <h2 className="mt-3 font-serif text-3xl font-semibold leading-[1.05] tracking-[-0.02em] md:text-5xl">
@@ -188,7 +188,7 @@ export default function WhyWeWontBuyAnyHomePage() {
       {/* ————— WHAT WE WON'T BUY ————— */}
       <section className="border-b border-stone-200/60 bg-[#F6ECE7] px-6 py-20 md:px-12 md:py-28">
         <div className="mx-auto max-w-4xl">
-          <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-[#DB5C5C]">
+          <p className="font-serif italic text-[13px] text-[#DB5C5C]">
             What we won&rsquo;t buy
           </p>
           <h2 className="mt-3 font-serif text-3xl font-semibold leading-[1.05] tracking-[-0.02em] md:text-5xl">
@@ -210,7 +210,7 @@ export default function WhyWeWontBuyAnyHomePage() {
                   {s.b}
                 </dd>
                 <dd className="mt-4 rounded-xl border-l-2 border-[#DB5C5C] bg-white px-5 py-4 text-[14px] leading-relaxed text-stone-700">
-                  <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-[#DB5C5C]">
+                  <span className="font-serif italic text-[13px] text-[#DB5C5C]">
                     What we recommend instead
                   </span>
                   <p className="mt-2">{s.recommend}</p>
@@ -224,7 +224,7 @@ export default function WhyWeWontBuyAnyHomePage() {
       {/* ————— WHY SELECTIVITY HELPS YOU ————— */}
       <section className="border-b border-stone-200/60 px-6 py-20 md:px-12 md:py-24">
         <div className="mx-auto max-w-3xl">
-          <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-[#DB5C5C]">
+          <p className="font-serif italic text-[13px] text-[#DB5C5C]">
             Why this matters to you
           </p>
           <h2 className="mt-3 font-serif text-3xl font-semibold leading-[1.1] tracking-[-0.02em] md:text-4xl">
@@ -257,7 +257,7 @@ export default function WhyWeWontBuyAnyHomePage() {
       {/* ————— ROUTING ————— */}
       <section className="border-b border-stone-200/60 bg-[#874646] px-6 py-20 text-white md:px-12 md:py-24">
         <div className="mx-auto max-w-4xl">
-          <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-[#DB5C5C]">
+          <p className="font-serif italic text-[13px] text-[#DB5C5C]">
             Where to go from here
           </p>
           <h2 className="mt-3 font-serif text-3xl font-semibold leading-[1.05] tracking-[-0.02em] md:text-4xl">
@@ -282,7 +282,7 @@ export default function WhyWeWontBuyAnyHomePage() {
               <p className="text-[15px] text-white/90">
                 Working chain, no urgency, testing the market
               </p>
-              <span className="font-mono text-[11px] uppercase tracking-[0.18em] text-white/50">
+              <span className="font-serif italic text-[13px] text-white/50">
                 Use a high-street agent
               </span>
             </li>
@@ -294,7 +294,7 @@ export default function WhyWeWontBuyAnyHomePage() {
                 href="https://www.stepchange.org"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="font-mono text-[11px] uppercase tracking-[0.18em] text-white/70 underline-offset-4 hover:underline"
+                className="font-serif italic text-[13px] text-white/70 underline-offset-4 hover:underline"
               >
                 Talk to StepChange first →
               </a>
@@ -307,7 +307,7 @@ export default function WhyWeWontBuyAnyHomePage() {
       <section className="border-b border-stone-200/60 bg-stone-50 px-6 py-12 md:px-12">
         <div className="mx-auto flex max-w-5xl flex-col items-center justify-between gap-4 text-center md:flex-row md:text-left">
           <div>
-            <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-stone-500">
+            <p className="font-serif italic text-[13px] text-stone-500">
               Estate agent reading this?
             </p>
             <p className="mt-1 font-serif text-xl">
@@ -316,7 +316,7 @@ export default function WhyWeWontBuyAnyHomePage() {
           </div>
           <Link
             href="/agents"
-            className="inline-flex items-center gap-2 rounded-full border border-stone-300 bg-white px-6 py-3 text-sm text-stone-700 transition hover:border-stone-400"
+            className="inline-flex items-center gap-2 rounded-md border border-stone-300 bg-white px-6 py-3 text-sm text-stone-700 transition hover:border-stone-400"
           >
             See the agent partner programme →
           </Link>

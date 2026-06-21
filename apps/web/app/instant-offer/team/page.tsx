@@ -22,7 +22,7 @@ export default function TeamPage() {
           </Link>
           <Link
             href="/instant-offer#chat"
-            className="rounded-full bg-[#874646] px-5 py-2 text-sm text-white transition hover:bg-[#6F3A3A]"
+            className="rounded-md bg-[#874646] px-5 py-2 text-sm text-white transition hover:bg-[#6F3A3A]"
           >
             Get an offer
           </Link>

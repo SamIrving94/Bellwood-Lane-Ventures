@@ -59,7 +59,7 @@ export default async function InvestorFeedPage({
   return (
     <main className="mx-auto w-full max-w-5xl space-y-6 p-6">
       <div>
-        <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-neutral-500">
+        <p className="font-serif italic text-[13px] text-neutral-500">
           Bellwoods Lane · Sourced deals
         </p>
         <h1 className="mt-1 font-semibold text-2xl tracking-tight">

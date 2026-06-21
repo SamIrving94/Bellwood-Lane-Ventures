@@ -113,12 +113,12 @@ export default async function TrackPage({
       <div className="mx-auto max-w-3xl">
         <Link
           href="/instant-offer"
-          className="inline-flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.2em] text-stone-500 transition hover:text-[#874646]"
+          className="inline-flex items-center gap-2 font-serif italic text-[13px] text-stone-500 transition hover:text-[#874646]"
         >
           <span aria-hidden>←</span> bellwoodslane.co.uk
         </Link>
 
-        <p className="mt-12 font-mono text-[11px] uppercase tracking-[0.22em] text-[#DB5C5C]">
+        <p className="mt-12 font-serif italic text-[13px] text-[#DB5C5C]">
           Live timeline · transparent
         </p>
         <h1
@@ -136,7 +136,7 @@ export default async function TrackPage({
         {/* Headline offer card */}
         {offer && (
           <div className="mt-10 rounded-2xl border-2 border-[#DB5C5C]/40 bg-[#F6ECE7] p-7">
-            <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-stone-500">
+            <p className="font-serif italic text-[13px] text-stone-500">
               Cash offer
             </p>
             <p className="mt-2 font-serif text-[48px] font-semibold leading-none tracking-[-0.025em] text-[#874646] md:text-[64px]">
@@ -164,7 +164,7 @@ export default async function TrackPage({
             <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#1F6B3A] opacity-70" />
             <span className="relative inline-flex h-2 w-2 rounded-full bg-[#1F6B3A]" />
           </span>
-          <span className="font-mono text-[11px] uppercase tracking-[0.18em] text-stone-600">
+          <span className="font-serif italic text-[13px] text-stone-600">
             Live · refresh any time to see new events
           </span>
         </div>
@@ -193,7 +193,7 @@ export default async function TrackPage({
                     <span className="block h-1.5 w-1.5 rounded-full bg-white" />
                   )}
                 </span>
-                <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-[#DB5C5C]">
+                <p className="font-serif italic text-[13px] text-[#DB5C5C]">
                   {KIND_LABEL[u.kind] ?? u.kind}
                 </p>
                 <h2 className="mt-2 font-serif text-2xl font-semibold leading-tight">
@@ -218,7 +218,7 @@ export default async function TrackPage({
         <hr className="my-16 border-stone-200" />
 
         <section>
-          <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-stone-500">
+          <p className="font-serif italic text-[13px] text-stone-500">
             Why this page exists
           </p>
           <p className="mt-4 text-[15px] leading-relaxed text-stone-700">
@@ -240,7 +240,7 @@ export default async function TrackPage({
           <VendorReplyForm token={token} />
         </section>
 
-        <p className="mt-12 font-mono text-[10px] uppercase tracking-[0.22em] text-stone-400">
+        <p className="mt-12 font-serif italic text-[13px] text-stone-400">
           Bellwoods Lane Ltd · Property Redress Scheme (PRS) · HMRC AML supervised · ICO registered
         </p>
       </div>

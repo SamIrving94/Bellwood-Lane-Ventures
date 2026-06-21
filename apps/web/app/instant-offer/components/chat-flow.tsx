@@ -153,7 +153,7 @@ function Chips({
           key={String(o.value)}
           type="button"
           onClick={() => onSelect(o.value, o.label)}
-          className="rounded-full border border-stone-300 bg-white px-4 py-2 text-sm transition hover:border-[#DB5C5C] hover:bg-[#F6ECE7]"
+          className="rounded-md border border-stone-300 bg-white px-4 py-2 text-sm transition hover:border-[#DB5C5C] hover:bg-[#F6ECE7]"
         >
           {o.label}
         </button>
@@ -739,7 +739,7 @@ function OfferCard({ offer }: { offer: OfferResult }) {
         <button
           onClick={handleReserve}
           disabled={accepting}
-          className="flex-1 rounded-full bg-[#DB5C5C] px-6 py-4 text-sm font-medium text-[#2B2220] transition hover:bg-[#b08f52] disabled:opacity-50"
+          className="flex-1 rounded-md bg-[#DB5C5C] px-6 py-4 text-sm font-medium text-[#2B2220] transition hover:bg-[#b08f52] disabled:opacity-50"
         >
           {accepting ? 'Reserving...' : 'Reserve this offer →'}
         </button>
@@ -747,7 +747,7 @@ function OfferCard({ offer }: { offer: OfferResult }) {
           href={`/instant-offer/offer/${offer.quoteId}`}
           target="_blank"
           rel="noopener noreferrer"
-          className="rounded-full border border-stone-300 px-6 py-4 text-sm text-stone-700 transition hover:border-stone-400 text-center"
+          className="rounded-md border border-stone-300 px-6 py-4 text-sm text-stone-700 transition hover:border-stone-400 text-center"
         >
           View certificate
         </a>
@@ -755,7 +755,7 @@ function OfferCard({ offer }: { offer: OfferResult }) {
 
       {offer.trackUrl && (
         <div className="mt-5 rounded-xl border border-stone-200 bg-[#FBF8F5] p-4">
-          <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-[#DB5C5C]">
+          <p className="font-serif italic text-[13px] text-[#DB5C5C]">
             Live timeline
           </p>
           <p className="mt-2 text-sm text-stone-700">

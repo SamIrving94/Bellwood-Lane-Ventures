@@ -1,4 +1,6 @@
-// Subtle live-status pill with pulsing dot.
+// Quiet status note — a small static dot + italic serif. No pulse, no pill
+// chrome (the pulsing-pill look read as a generic landing-page tell). API kept
+// so existing callers don't change.
 
 import type { ReactNode } from 'react';
 
@@ -8,20 +10,15 @@ type LivePillProps = {
 };
 
 export function LivePill({ children, tone = 'green' }: LivePillProps) {
-  const dotColor = tone === 'green' ? '#1F6B3A' : '#DB5C5C';
+  const dot = tone === 'green' ? '#1F6B3A' : '#DB5C5C';
   return (
-    <div className="inline-flex items-center gap-2 rounded-full border border-stone-200 bg-white/80 px-3 py-1.5 font-mono text-[11px] uppercase tracking-[0.18em] text-stone-600 backdrop-blur">
-      <span className="relative flex h-1.5 w-1.5">
-        <span
-          className="absolute inline-flex h-full w-full animate-ping rounded-full opacity-70"
-          style={{ background: dotColor }}
-        />
-        <span
-          className="relative inline-flex h-1.5 w-1.5 rounded-full"
-          style={{ background: dotColor }}
-        />
-      </span>
+    <span className="inline-flex items-center gap-2.5 font-serif text-sm italic text-stone-600">
+      <span
+        className="h-1.5 w-1.5 shrink-0 rounded-full"
+        style={{ background: dot }}
+        aria-hidden
+      />
       {children}
-    </div>
+    </span>
   );
 }

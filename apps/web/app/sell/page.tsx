@@ -1,7 +1,16 @@
 import Link from 'next/link';
 import { Suspense } from 'react';
 import { ChatFlow } from '../instant-offer/components/chat-flow';
-import { LivePill } from '../instant-offer/components/live-pill';
+import {
+  Button,
+  Eyebrow,
+  LogoLockup,
+  Monogram,
+  Seal,
+  SectionNumber,
+  StatusNote,
+  Wordmark,
+} from '@/components/brand';
 
 export const revalidate = 300;
 
@@ -18,8 +27,8 @@ const REASONS: Array<{ k: string; t: string; b: string }> = [
   },
   {
     k: 'Relocation',
-    t: 'You\u2019re moving abroad or for work',
-    b: "International signatures, time-zone delays, empty house syndrome. You sign once, we complete on your timeline.",
+    t: 'You’re moving abroad or for work',
+    b: 'International signatures, time-zone delays, empty house syndrome. You sign once, we complete on your timeline.',
   },
   {
     k: 'Divorce or separation',
@@ -31,7 +40,7 @@ const REASONS: Array<{ k: string; t: string; b: string }> = [
 const FAQ: Array<{ q: string; a: string }> = [
   {
     q: 'Why is the offer below open-market?',
-    a: "Because we buy for cash, complete in 14\u201328 days, charge no fee, and take the risk of fall-through. Our typical offer is 75\u201387% of open-market value. You're paying us a speed premium for certainty.",
+    a: "Because we buy for cash, complete in 14–28 days, charge no fee, and take the risk of fall-through. Our typical offer is 75–87% of open-market value. You're paying us a speed premium for certainty.",
   },
   {
     q: 'Can I change my mind after I accept?',
@@ -59,91 +68,78 @@ const FAQ: Array<{ q: string; a: string }> = [
   },
 ];
 
+const NAV = [
+  { href: '#how', label: 'How it works' },
+  { href: '#faq', label: 'FAQ' },
+  { href: '/instant-offer/methodology', label: 'Methodology' },
+  { href: '/agents', label: 'For agents' },
+];
+
 export default function SellPage() {
   return (
     <>
       {/* ————— NAV ————— */}
-      <header className="sticky top-0 z-40 border-b border-stone-200/60 bg-[#FBF8F5]/85 backdrop-blur-md">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4 md:px-10">
-          <Link
-            href="/sell"
-            className="font-serif text-xl font-semibold tracking-tight"
-          >
-            BELLWOODS
-            <span className="mx-2 inline-block h-px w-8 bg-[#DB5C5C] align-middle" />
-            <span className="text-sm font-normal tracking-[0.22em] text-stone-500">
-              LANE
-            </span>
-          </Link>
-          <nav className="hidden items-center gap-6 text-[13px] text-stone-600 md:flex">
-            <a href="#how" className="hover:text-[#874646]">
-              How it works
-            </a>
-            <a href="#faq" className="hover:text-[#874646]">
-              FAQ
-            </a>
-            <Link
-              href="/instant-offer/methodology"
-              className="hover:text-[#874646]"
-            >
-              Methodology
-            </Link>
-            <Link href="/agents" className="hover:text-[#874646]">
-              For agents
-            </Link>
-            <a
-              href="#offer"
-              className="rounded-full bg-[#874646] px-5 py-2 text-white transition hover:bg-[#6F3A3A]"
-            >
+      <header className="sticky top-0 z-40 border-b border-[#EBE1DB]/70 bg-[#FBF8F5]/85 backdrop-blur-md">
+        <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-3.5 md:px-10">
+          <LogoLockup href="/sell" />
+          <nav className="hidden items-center gap-7 text-[14px] text-stone-600 md:flex">
+            {NAV.map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                className="transition-colors hover:text-brand-deep"
+              >
+                {item.label}
+              </Link>
+            ))}
+            <Button href="#offer" className="px-5 py-2 text-sm">
               Get an offer
-            </a>
+            </Button>
           </nav>
         </div>
       </header>
 
       {/* ————— HERO ————— */}
-      <section className="px-6 pt-16 pb-12 md:px-12 md:pt-20 md:pb-16">
-        <div className="mx-auto max-w-5xl">
-          <LivePill>For UK homeowners</LivePill>
+      <section className="relative overflow-hidden px-6 pt-24 pb-20 md:px-12 md:pt-28 md:pb-24">
+        <Monogram
+          aria-hidden
+          className="pointer-events-none absolute -right-24 -top-10 h-72 w-auto opacity-[0.05] md:h-[26rem]"
+        />
+        <div className="relative mx-auto max-w-5xl">
+          <Eyebrow>for UK homeowners</Eyebrow>
           <h1
-            className="mt-8 font-serif font-semibold leading-[0.98] tracking-[-0.025em] text-[#2B2220]"
+            className="mt-7 font-serif font-semibold leading-[0.95] tracking-[-0.03em] text-[#2B2220]"
             style={{ fontSize: 'clamp(44px, 7vw, 80px)' }}
           >
             Sell your home.
             <br />
             On your timeline.
             <br />
-            <span className="italic text-[#DB5C5C]">No fees. No chain. No surprises.</span>
+            <span className="italic font-normal text-brand">
+              No fees. No chain. No surprises.
+            </span>
           </h1>
           <p className="mt-8 max-w-2xl text-lg leading-relaxed text-stone-600 md:mt-10">
-            We buy UK residential property directly with our own capital.
-            An indicative offer back within 4 business hours, a confirmed
-            price within 24 hours of viewing.{' '}
-            <strong className="font-semibold text-[#2B2220]">
+            We buy UK residential property directly with our own capital. An
+            indicative offer back within 4 business hours, a confirmed price
+            within 24 hours of viewing.{' '}
+            <strong className="font-medium text-[#2B2220]">
               Completion in weeks not months
-            </strong>
-            {' '}— paced to suit a probate grant or onward move. The price we
-            confirm in writing is the price we complete at.
+            </strong>{' '}
+            — paced to suit a probate grant or onward move. The price we confirm
+            in writing is the price we complete at.
           </p>
 
-          <div className="mt-10 flex flex-col items-start gap-3 sm:flex-row sm:items-center">
-            <a
-              href="#offer"
-              className="inline-flex items-center gap-2 rounded-full bg-[#DB5C5C] px-8 py-4 text-[15px] font-medium text-[#2B2220] shadow-sm transition hover:bg-[#b08f52]"
-            >
-              Get a cash offer
-              <span aria-hidden>→</span>
-            </a>
-            <Link
-              href="/instant-offer/methodology"
-              className="inline-flex items-center gap-2 rounded-full border border-stone-300 px-8 py-4 text-[15px] text-stone-700 transition hover:border-stone-400"
-            >
+          <div className="mt-10 flex flex-wrap items-center gap-x-7 gap-y-4">
+            <Button href="#offer">Get a cash offer</Button>
+            <Button href="/instant-offer/methodology" variant="ghost">
               See how we calculate offers
-            </Link>
+            </Button>
           </div>
 
-          <p className="mt-10 font-mono text-[11px] uppercase tracking-[0.18em] text-stone-500">
-            Property Redress Scheme (PRS) · HMRC AML supervised · ICO registered · Zero fees
+          <p className="mt-10 font-serif text-sm italic text-stone-500">
+            Property Redress Scheme (PRS) &middot; HMRC AML supervised &middot;
+            ICO registered &middot; Zero fees
           </p>
         </div>
       </section>
@@ -151,25 +147,23 @@ export default function SellPage() {
       {/* ————— HOW IT WORKS ————— */}
       <section
         id="how"
-        className="border-y border-stone-200/60 bg-white px-6 py-24 md:px-12"
+        className="border-y border-[#EBE1DB]/70 bg-white px-6 py-24 md:px-12 md:py-28"
       >
         <div className="mx-auto grid max-w-6xl grid-cols-1 gap-12 lg:grid-cols-[1fr_2fr] lg:gap-16">
           <div>
-            <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-[#DB5C5C]">
-              How it works
-            </p>
-            <h2 className="mt-3 font-serif text-4xl font-semibold leading-[1] tracking-[-0.02em] md:text-6xl">
-              Five steps.
-              <br />
-              No surprises.
+            <SectionNumber>01</SectionNumber>
+            <Eyebrow className="mt-5">how it works</Eyebrow>
+            <h2 className="mt-4 font-serif text-4xl font-semibold leading-[1] tracking-[-0.02em] md:text-6xl">
+              Five steps.{' '}
+              <span className="italic font-normal text-brand">No surprises.</span>
             </h2>
             <p className="mt-6 text-[15px] leading-relaxed text-stone-600">
-              Every offer is generated from real comparable sales. The
-              maths are published. Nothing hidden. The price we confirm
-              in writing is the price we complete at.
+              Every offer is generated from real comparable sales. The maths are
+              published. Nothing hidden. The price we confirm in writing is the
+              price we complete at.
             </p>
           </div>
-          <div className="space-y-4">
+          <ol className="divide-y divide-[#EBE1DB] border-y border-[#EBE1DB]">
             {[
               {
                 n: '01',
@@ -202,48 +196,48 @@ export default function SellPage() {
                 d: 'You instruct your own solicitor (your choice — we never require ours). We instruct ours same-day. Regular updates on a live timeline you can share with anyone. We pay all our legal costs.',
               },
             ].map((s) => (
-              <div
+              <li
                 key={s.n}
-                className="grid grid-cols-[44px_1fr] items-start gap-4 rounded-2xl border border-stone-200 bg-white p-6 md:grid-cols-[44px_1fr_160px] md:gap-6"
+                className="grid grid-cols-[44px_1fr] items-start gap-5 py-6 md:grid-cols-[56px_1fr_170px] md:gap-7"
               >
-                <span className="font-serif text-[22px] italic text-[#DB5C5C]">
+                <span className="font-serif text-3xl font-light text-brand-deep/30 tabular-nums">
                   {s.n}
                 </span>
                 <div>
-                  <h3 className="font-serif text-lg font-semibold md:text-xl">{s.t}</h3>
+                  <h3 className="font-serif text-lg font-semibold md:text-xl">
+                    {s.t}
+                  </h3>
                   <p className="mt-2 text-[14px] leading-relaxed text-stone-600">
                     {s.d}
                   </p>
                 </div>
-                <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-[#DB5C5C] md:text-right">
+                <p className="font-serif text-sm italic text-brand md:text-right">
                   {s.sla}
                 </p>
-              </div>
+              </li>
             ))}
-          </div>
+          </ol>
         </div>
       </section>
 
       {/* ————— REASONS / SITUATIONS ————— */}
-      <section className="border-b border-stone-200/60 bg-[#F6ECE7] px-6 py-24 md:px-12">
+      <section className="border-b border-[#EBE1DB]/70 bg-[#F6ECE7] px-6 py-24 md:px-12 md:py-28">
         <div className="mx-auto max-w-6xl">
           <div className="mb-12 max-w-3xl">
-            <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-[#DB5C5C]">
-              Who we buy from
-            </p>
-            <h2 className="mt-3 font-serif text-4xl font-semibold leading-[1.05] tracking-[-0.02em] md:text-5xl">
-              Real reasons people choose certainty over price.
+            <Eyebrow>who we buy from</Eyebrow>
+            <h2 className="mt-4 font-serif text-4xl font-semibold leading-[1.05] tracking-[-0.02em] md:text-5xl">
+              Real reasons people choose{' '}
+              <span className="italic font-normal text-brand">certainty</span>{' '}
+              over price.
             </h2>
           </div>
           <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
             {REASONS.map((r) => (
               <div
                 key={r.k}
-                className="rounded-2xl border border-[#DB5C5C]/20 bg-white p-7"
+                className="rounded-sm border border-[#E4D8D1] bg-white p-7 transition-shadow hover:shadow-[0_24px_48px_-32px_rgba(43,34,32,0.4)]"
               >
-                <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-[#DB5C5C]">
-                  {r.k}
-                </p>
+                <p className="font-serif text-sm italic text-brand">{r.k}</p>
                 <p className="mt-3 font-serif text-xl font-semibold">{r.t}</p>
                 <p className="mt-3 text-sm leading-relaxed text-stone-600">
                   {r.b}
@@ -257,19 +251,17 @@ export default function SellPage() {
       {/* ————— THE OFFER (CHAT) ————— */}
       <section
         id="offer"
-        className="border-b border-stone-200/60 px-6 py-24 md:px-12"
+        className="border-b border-[#EBE1DB]/70 px-6 py-24 md:px-12 md:py-28"
       >
         <div className="mx-auto max-w-3xl">
-          <div className="mb-12 text-center">
-            <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-[#DB5C5C]">
-              Get an offer
-            </p>
-            <h2 className="mt-3 font-serif text-4xl font-semibold md:text-5xl">
+          <div className="mb-12 flex flex-col items-center text-center">
+            <Eyebrow>get an offer</Eyebrow>
+            <h2 className="mt-4 font-serif text-4xl font-semibold md:text-5xl">
               Tell us about your home.
             </h2>
             <p className="mt-4 text-stone-600">
-              A few quick details. A real binding offer back the same day —
-              not an estimate.
+              A few quick details. A real binding offer back the same day — not
+              an estimate.
             </p>
           </div>
           <Suspense fallback={<div className="h-96" />}>
@@ -279,23 +271,28 @@ export default function SellPage() {
       </section>
 
       {/* ————— PROMISE ————— */}
-      <section className="border-b border-stone-200/60 bg-[#874646] px-6 py-24 text-white md:px-12">
-        <div className="mx-auto grid max-w-6xl grid-cols-1 gap-12 lg:grid-cols-[1fr_1.4fr]">
+      <section className="relative overflow-hidden border-b border-[#EBE1DB]/70 bg-brand-deep px-6 py-24 text-white md:px-12 md:py-28">
+        <Monogram
+          aria-hidden
+          className="pointer-events-none absolute -bottom-16 -right-16 h-80 w-auto opacity-[0.06]"
+        />
+        <div className="relative mx-auto grid max-w-6xl grid-cols-1 gap-12 lg:grid-cols-[1fr_1.4fr]">
           <div>
-            <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-[#DB5C5C]">
-              The written promise
-            </p>
-            <h2 className="mt-3 font-serif text-4xl font-semibold leading-[1.05] tracking-[-0.02em] md:text-5xl">
+            <Eyebrow tone="light">the written promise</Eyebrow>
+            <h2 className="mt-4 font-serif text-4xl font-semibold leading-[1.05] tracking-[-0.02em] md:text-5xl">
               No re-trade.
               <br />
-              No surprises.
+              <span className="italic font-normal text-[#f0c9c0]">
+                No surprises.
+              </span>
             </h2>
             <p className="mt-6 text-[15px] leading-relaxed text-white/70">
-              The single biggest complaint about cash buyers is the
-              last-minute price drop. We make it contractually impossible.
+              The single biggest complaint about cash buyers is the last-minute
+              price drop. We make it contractually impossible.
             </p>
+            <Seal label="Bellwoods Lane" className="mt-10 hidden lg:inline-flex" />
           </div>
-          <dl className="space-y-4">
+          <dl className="divide-y divide-white/10 border-t border-white/10">
             {[
               ['Offer validity', 'Legally binding upon Bellwoods Lane for 72 hours. Time-stamped, in writing, downloadable as PDF.'],
               ['No re-trade', 'We cannot reduce the offer between issue and exchange. The only exception is a survey-disclosed material defect, in which case you can walk away free.'],
@@ -305,9 +302,9 @@ export default function SellPage() {
             ].map(([k, v]) => (
               <div
                 key={k as string}
-                className="grid grid-cols-1 gap-2 border-t border-white/10 pt-5 sm:grid-cols-[180px_1fr] sm:gap-8"
+                className="grid grid-cols-1 gap-2 py-5 sm:grid-cols-[180px_1fr] sm:gap-8"
               >
-                <dt className="font-mono text-[11px] uppercase tracking-[0.12em] text-white/50">
+                <dt className="font-serif text-[15px] italic text-[#f0c9c0]">
                   {k}
                 </dt>
                 <dd className="text-white/90">{v}</dd>
@@ -320,21 +317,19 @@ export default function SellPage() {
       {/* ————— FAQ ————— */}
       <section
         id="faq"
-        className="border-b border-stone-200/60 px-6 py-24 md:px-12"
+        className="border-b border-[#EBE1DB]/70 px-6 py-24 md:px-12 md:py-28"
       >
         <div className="mx-auto max-w-3xl">
-          <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-[#DB5C5C]">
-            Honest answers
-          </p>
-          <h2 className="mt-3 font-serif text-4xl font-semibold md:text-5xl">
+          <Eyebrow>honest answers</Eyebrow>
+          <h2 className="mt-4 font-serif text-4xl font-semibold md:text-5xl">
             Questions sellers ask us most.
           </h2>
-          <div className="mt-12 divide-y divide-stone-200 rounded-2xl border border-stone-200 bg-white">
+          <div className="mt-12 divide-y divide-[#EBE1DB] border-y border-[#EBE1DB]">
             {FAQ.map((item, i) => (
-              <details key={item.q} className="group p-6" open={i === 0}>
-                <summary className="flex cursor-pointer items-center justify-between gap-4 font-serif text-lg font-semibold">
+              <details key={item.q} className="group py-5" open={i === 0}>
+                <summary className="flex cursor-pointer list-none items-center justify-between gap-4 font-serif text-[18px] text-brand-deep">
                   <span>{item.q}</span>
-                  <span className="ml-4 text-xl text-stone-400 transition group-open:rotate-45">
+                  <span className="ml-4 font-serif text-2xl font-light text-brand transition-transform duration-200 group-open:rotate-45">
                     +
                   </span>
                 </summary>
@@ -345,148 +340,139 @@ export default function SellPage() {
         </div>
       </section>
 
-      {/* ————— WHEN NOT TO USE BELLWOOD ————— */}
-      <section className="border-b border-stone-200/60 bg-[#F6ECE7] px-6 py-20 md:px-12 md:py-24">
+      {/* ————— WHEN NOT TO USE BELLWOODS ————— */}
+      <section className="border-b border-[#EBE1DB]/70 bg-[#F6ECE7] px-6 py-20 md:px-12 md:py-24">
         <div className="mx-auto max-w-4xl">
-          <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-[#DB5C5C]">
-            The honest version
-          </p>
-          <h2 className="mt-3 font-serif text-3xl font-semibold leading-tight tracking-[-0.02em] md:text-5xl">
-            When we&rsquo;re probably <span className="italic text-[#DB5C5C]">not</span> the right answer
+          <Eyebrow>the honest version</Eyebrow>
+          <h2 className="mt-4 font-serif text-3xl font-semibold leading-tight tracking-[-0.02em] md:text-5xl">
+            When we&rsquo;re probably{' '}
+            <span className="italic font-normal text-brand">not</span> the right
+            answer
           </h2>
           <p className="mt-5 max-w-2xl text-[15px] leading-relaxed text-stone-700">
-            We buy at 65&ndash;75% of open market value. That trade is right
-            for some sellers and wrong for others. We&rsquo;d rather tell
-            you so up front than waste your time.
+            We buy at 65&ndash;75% of open market value. That trade is right for
+            some sellers and wrong for others. We&rsquo;d rather tell you so up
+            front than waste your time.
           </p>
-          <ul className="mt-8 space-y-4">
-            <li className="flex items-start gap-3 rounded-xl border border-stone-200 bg-white p-5">
-              <span className="mt-1 inline-block h-2 w-2 shrink-0 rounded-full bg-stone-400" />
-              <div>
-                <p className="font-serif text-[17px] font-semibold text-[#2B2220]">
-                  You have plenty of time and no pressure to sell.
-                </p>
-                <p className="mt-1 text-[14px] leading-relaxed text-stone-600">
-                  If you can wait 4&ndash;8 months for the right buyer, the
-                  open market will almost certainly get you a better price.
-                  Speed is the trade you&rsquo;re paying for with us.
-                </p>
-              </div>
-            </li>
-            <li className="flex items-start gap-3 rounded-xl border border-stone-200 bg-white p-5">
-              <span className="mt-1 inline-block h-2 w-2 shrink-0 rounded-full bg-stone-400" />
-              <div>
-                <p className="font-serif text-[17px] font-semibold text-[#2B2220]">
-                  Your property is in excellent condition and high demand.
-                </p>
-                <p className="mt-1 text-[14px] leading-relaxed text-stone-600">
-                  Family homes in popular streets, with no chain issues,
-                  usually sell fast at full market value through a good
-                  high-street agent. That&rsquo;s their wedge, not ours.
-                </p>
-              </div>
-            </li>
-            <li className="flex items-start gap-3 rounded-xl border border-stone-200 bg-white p-5">
-              <span className="mt-1 inline-block h-2 w-2 shrink-0 rounded-full bg-stone-400" />
-              <div>
-                <p className="font-serif text-[17px] font-semibold text-[#2B2220]">
-                  You want to maximise every pound of sale price.
-                </p>
-                <p className="mt-1 text-[14px] leading-relaxed text-stone-600">
-                  Our offer is below open-market value by design — a speed
-                  premium for cash, certainty, and no chain. If maximising
-                  is the goal, this isn&rsquo;t the route.
-                </p>
-              </div>
-            </li>
+          <ul className="mt-8 space-y-px overflow-hidden rounded-sm border border-[#E4D8D1] bg-[#E4D8D1]">
+            {[
+              {
+                t: 'You have plenty of time and no pressure to sell.',
+                d: 'If you can wait 4–8 months for the right buyer, the open market will almost certainly get you a better price. Speed is the trade you’re paying for with us.',
+              },
+              {
+                t: 'Your property is in excellent condition and high demand.',
+                d: 'Family homes in popular streets, with no chain issues, usually sell fast at full market value through a good high-street agent. That’s their wedge, not ours.',
+              },
+              {
+                t: 'You want to maximise every pound of sale price.',
+                d: 'Our offer is below open-market value by design — a speed premium for cash, certainty, and no chain. If maximising is the goal, this isn’t the route.',
+              },
+            ].map((item) => (
+              <li key={item.t} className="flex items-start gap-4 bg-white p-6">
+                <span className="mt-2.5 h-px w-4 shrink-0 bg-brand" />
+                <div>
+                  <p className="font-serif text-[17px] font-semibold text-[#2B2220]">
+                    {item.t}
+                  </p>
+                  <p className="mt-1 text-[14px] leading-relaxed text-stone-600">
+                    {item.d}
+                  </p>
+                </div>
+              </li>
+            ))}
           </ul>
           <p className="mt-8 max-w-2xl text-[14px] leading-relaxed text-stone-600">
-            If you read those and one of them describes you, we&rsquo;d
-            genuinely suggest calling a local agent first. We&rsquo;d
-            rather you sold well than sold to us.
+            If you read those and one of them describes you, we&rsquo;d genuinely
+            suggest calling a local agent first. We&rsquo;d rather you sold well
+            than sold to us.
           </p>
         </div>
       </section>
 
       {/* ————— AGENTS LINK ————— */}
-      <section className="border-b border-stone-200/60 bg-stone-50 px-6 py-12 md:px-12">
-        <div className="mx-auto flex max-w-5xl flex-col items-center justify-between gap-4 text-center md:flex-row md:text-left">
+      <section className="border-b border-[#EBE1DB]/70 bg-white px-6 py-14 md:px-12">
+        <div className="mx-auto flex max-w-5xl flex-col items-center justify-between gap-5 text-center md:flex-row md:text-left">
           <div>
-            <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-stone-500">
-              Are you an estate agent?
-            </p>
-            <p className="mt-1 font-serif text-xl">
+            <Eyebrow tone="muted">are you an estate agent?</Eyebrow>
+            <p className="mt-2 font-serif text-xl">
               Partner fee agreed per deal, in writing.
             </p>
           </div>
-          <Link
-            href="/agents"
-            className="inline-flex items-center gap-2 rounded-full border border-stone-300 bg-white px-6 py-3 text-sm text-stone-700 transition hover:border-stone-400"
-          >
-            See the agent partner programme →
-          </Link>
+          <Button href="/agents" variant="ghost">
+            See the agent partner programme
+          </Button>
         </div>
       </section>
 
       {/* ————— FINAL CTA ————— */}
       <section className="px-6 py-16 md:px-12">
-        <div className="mx-auto max-w-6xl overflow-hidden rounded-[32px] bg-[#874646] px-8 py-16 text-white md:px-16 md:py-20">
-          <div className="grid grid-cols-1 items-center gap-10 lg:grid-cols-2">
+        <div className="relative mx-auto max-w-6xl overflow-hidden rounded-sm bg-brand-deep px-8 py-16 text-white md:px-16 md:py-20">
+          <Monogram
+            aria-hidden
+            className="pointer-events-none absolute -bottom-12 right-6 h-64 w-auto opacity-[0.07]"
+          />
+          <div className="relative grid grid-cols-1 items-center gap-10 lg:grid-cols-2">
             <div>
-              <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-[#DB5C5C]">
-                See the number
-              </p>
+              <Eyebrow tone="light">see the number</Eyebrow>
               <h2 className="mt-4 font-serif text-5xl font-semibold leading-[1] tracking-[-0.025em] md:text-7xl">
-                A real offer in writing.
+                A real offer{' '}
+                <span className="italic font-normal text-[#f0c9c0]">
+                  in writing.
+                </span>
               </h2>
             </div>
             <div className="lg:text-right">
-              <a
-                href="#offer"
-                className="inline-flex items-center gap-2 rounded-full bg-[#DB5C5C] px-8 py-4 text-[15px] font-medium text-[#2B2220] transition hover:bg-[#b08f52]"
-              >
+              <Button href="#offer" variant="accent">
                 Get my offer
-                <span aria-hidden>→</span>
-              </a>
+              </Button>
             </div>
           </div>
         </div>
       </section>
 
       {/* ————— FOOTER ————— */}
-      <footer className="bg-white px-6 py-14 md:px-12">
+      <footer className="bg-[#FBF8F5] px-6 py-16 md:px-12">
         <div className="mx-auto max-w-6xl">
           <div className="flex flex-col items-start justify-between gap-8 md:flex-row md:items-center">
-            <div>
-              <p className="font-serif text-xl font-semibold tracking-tight">
-                BELLWOODS
-                <span className="mx-2 inline-block h-px w-8 bg-[#DB5C5C] align-middle" />
-                <span className="text-sm font-normal tracking-[0.22em] text-stone-500">
-                  LANE
-                </span>
-              </p>
-              <p className="mt-2 text-sm text-stone-500">
-                Direct-to-vendor property buyers · UK
-              </p>
+            <div className="flex items-center gap-4">
+              <Seal label="Est. 2026" />
+              <div className="pl-1">
+                <Wordmark ventures className="text-base" />
+                <p className="mt-2 font-serif text-sm italic text-stone-500">
+                  Direct-to-vendor property buyers &middot; UK
+                </p>
+              </div>
             </div>
-            <nav className="flex flex-wrap items-center gap-6 text-sm text-stone-600">
-              <a href="#offer">Get an offer</a>
-              <Link href="/instant-offer/methodology">Methodology</Link>
-              <Link href="/why-we-wont-buy-any-home">What we won&rsquo;t buy</Link>
-              <Link href="/agents">For agents</Link>
-              <Link href="/legal/fca-disclosure">Regulatory</Link>
+            <nav className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-stone-600">
+              <a href="#offer" className="hover:text-brand-deep">
+                Get an offer
+              </a>
+              <Link href="/instant-offer/methodology" className="hover:text-brand-deep">
+                Methodology
+              </Link>
+              <Link href="/why-we-wont-buy-any-home" className="hover:text-brand-deep">
+                What we won&rsquo;t buy
+              </Link>
+              <Link href="/agents" className="hover:text-brand-deep">
+                For agents
+              </Link>
+              <Link href="/legal/fca-disclosure" className="hover:text-brand-deep">
+                Regulatory
+              </Link>
             </nav>
           </div>
-          <p className="mt-10 font-mono text-[11px] leading-relaxed text-stone-500">
-            Bellwoods Lane Ltd is a UK cash property buyer, not an
-            FCA-authorised firm. We do not provide financial or legal
-            advice. Seek independent legal advice before accepting any
-            offer. All offers are subject to satisfactory survey and title
-            searches.
-          </p>
-          <p className="mt-4 font-mono text-[11px] text-stone-400">
-            © {new Date().getFullYear()} Bellwoods Lane Ltd.
-          </p>
+          <div className="mt-10 border-t border-[#EBE1DB] pt-6">
+            <p className="text-[11px] leading-relaxed text-stone-500">
+              Bellwoods Lane Ltd is a UK cash property buyer, not an
+              FCA-authorised firm. We do not provide financial or legal advice.
+              Seek independent legal advice before accepting any offer. All offers
+              are subject to satisfactory survey and title searches.
+            </p>
+            <p className="mt-4 text-[11px] text-stone-400">
+              © {new Date().getFullYear()} Bellwoods Lane Ltd.
+            </p>
+          </div>
         </div>
       </footer>
     </>

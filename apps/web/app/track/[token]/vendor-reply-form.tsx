@@ -47,7 +47,7 @@ export function VendorReplyForm({ token }: { token: string }) {
   if (status === 'sent') {
     return (
       <div className="mt-6 rounded-2xl border border-[#1F6B3A]/30 bg-[#F1F7F1] p-6">
-        <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-[#1F6B3A]">
+        <p className="font-serif italic text-[13px] text-[#1F6B3A]">
           Message received
         </p>
         <p className="mt-3 text-[15px] leading-relaxed text-stone-700">
@@ -61,7 +61,7 @@ export function VendorReplyForm({ token }: { token: string }) {
   return (
     <form onSubmit={onSubmit} className="mt-6 space-y-4">
       <label className="block">
-        <span className="font-mono text-[11px] uppercase tracking-[0.18em] text-stone-600">
+        <span className="font-serif italic text-[13px] text-stone-600">
           Message
         </span>
         <textarea
@@ -119,7 +119,7 @@ export function VendorReplyForm({ token }: { token: string }) {
       <button
         type="submit"
         disabled={status === 'submitting' || !message.trim()}
-        className="inline-flex items-center gap-2 rounded-full bg-[#874646] px-6 py-3 font-mono text-[11px] uppercase tracking-[0.18em] text-white transition hover:bg-[#2B2220] disabled:cursor-not-allowed disabled:opacity-50"
+        className="inline-flex items-center gap-2 rounded-md bg-[#874646] px-6 py-3 font-serif italic text-[13px] text-white transition hover:bg-[#2B2220] disabled:cursor-not-allowed disabled:opacity-50"
       >
         {status === 'submitting' ? 'Sending…' : 'Send message'}
       </button>
