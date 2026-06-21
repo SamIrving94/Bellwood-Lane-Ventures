@@ -12,7 +12,7 @@ type SparklineProps = {
 
 export function Sparkline({
   points,
-  color = '#0A2540',
+  color = '#874646',
   fillColor,
   width = 120,
   height = 32,

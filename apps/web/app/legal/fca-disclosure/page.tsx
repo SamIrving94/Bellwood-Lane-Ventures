@@ -194,33 +194,33 @@ const SECTIONS: Array<{
 
 export default function FCADisclosurePage() {
   return (
-    <main className="min-h-screen bg-[#FAFAF7] px-6 py-20 md:px-12 md:py-28">
+    <main className="min-h-screen bg-[#FBF8F5] px-6 py-20 md:px-12 md:py-28">
       <div className="mx-auto max-w-3xl">
         <Link
           href="/instant-offer"
-          className="inline-flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.2em] text-slate-500 transition hover:text-[#0A2540]"
+          className="inline-flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.2em] text-stone-500 transition hover:text-[#874646]"
         >
           <span aria-hidden>←</span> Back to indicative offer
         </Link>
 
-        <p className="mt-12 font-mono text-[11px] uppercase tracking-[0.22em] text-[#C6A664]">
+        <p className="mt-12 font-mono text-[11px] uppercase tracking-[0.22em] text-[#DB5C5C]">
           Regulatory disclosure
         </p>
         <h1
-          className="mt-5 font-serif font-semibold leading-[1.02] tracking-[-0.025em] text-[#0A1020]"
+          className="mt-5 font-serif font-semibold leading-[1.02] tracking-[-0.025em] text-[#2B2220]"
           style={{ fontSize: 'clamp(44px, 6vw, 72px)' }}
         >
           Where we stand,
           <br />
           written plainly.
         </h1>
-        <p className="mt-8 max-w-2xl text-[17px] leading-relaxed text-slate-600">
+        <p className="mt-8 max-w-2xl text-[17px] leading-relaxed text-stone-600">
           Cash property buying is an unregulated corner of the market.
           That is not a loophole we are exploiting — it is a fact we&rsquo;d
           rather you understood up-front. This page sets out, in ordinary
           language, what it means to do business with us.
         </p>
-        <p className="mt-4 font-mono text-[11px] text-slate-400">
+        <p className="mt-4 font-mono text-[11px] text-stone-400">
           Last updated{' '}
           {new Date().toLocaleDateString('en-GB', {
             day: 'numeric',
@@ -233,43 +233,43 @@ export default function FCADisclosurePage() {
         <div className="mt-16 space-y-16">
           {SECTIONS.map((s) => (
             <section key={s.id} id={s.id}>
-              <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-[#C6A664]">
+              <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-[#DB5C5C]">
                 {s.eyebrow}
               </p>
               <h2 className="mt-3 font-serif text-3xl font-semibold leading-[1.15] tracking-[-0.02em] md:text-4xl">
                 {s.title}
               </h2>
-              <div className="prose prose-slate mt-5 max-w-none text-[16px] leading-relaxed text-slate-700 [&_a]:text-[#0A2540] [&_a]:underline [&_li]:my-2 [&_p]:mt-4 [&_ul]:mt-4 [&_ul]:list-disc [&_ul]:pl-5">
+              <div className="prose prose-slate mt-5 max-w-none text-[16px] leading-relaxed text-stone-700 [&_a]:text-[#874646] [&_a]:underline [&_li]:my-2 [&_p]:mt-4 [&_ul]:mt-4 [&_ul]:list-disc [&_ul]:pl-5">
                 {s.body}
               </div>
             </section>
           ))}
         </div>
 
-        <hr className="my-20 border-slate-200" />
+        <hr className="my-20 border-stone-200" />
 
         <section>
-          <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-slate-500">
+          <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-stone-500">
             Company details
           </p>
           <dl className="mt-5 grid grid-cols-1 gap-x-8 gap-y-3 text-[14px] sm:grid-cols-[160px_1fr]">
-            <dt className="font-mono text-[10px] uppercase tracking-[0.12em] text-slate-500">
+            <dt className="font-mono text-[10px] uppercase tracking-[0.12em] text-stone-500">
               Legal name
             </dt>
             <dd>Bellwoods Lane Ltd</dd>
-            <dt className="font-mono text-[10px] uppercase tracking-[0.12em] text-slate-500">
+            <dt className="font-mono text-[10px] uppercase tracking-[0.12em] text-stone-500">
               Registered in
             </dt>
             <dd>England &amp; Wales</dd>
-            <dt className="font-mono text-[10px] uppercase tracking-[0.12em] text-slate-500">
+            <dt className="font-mono text-[10px] uppercase tracking-[0.12em] text-stone-500">
               Company number
             </dt>
-            <dd className="text-slate-400">[pending]</dd>
-            <dt className="font-mono text-[10px] uppercase tracking-[0.12em] text-slate-500">
+            <dd className="text-stone-400">[pending]</dd>
+            <dt className="font-mono text-[10px] uppercase tracking-[0.12em] text-stone-500">
               Registered office
             </dt>
             <dd>London, United Kingdom</dd>
-            <dt className="font-mono text-[10px] uppercase tracking-[0.12em] text-slate-500">
+            <dt className="font-mono text-[10px] uppercase tracking-[0.12em] text-stone-500">
               Compliance contact
             </dt>
             <dd>
@@ -283,7 +283,7 @@ export default function FCADisclosurePage() {
           </dl>
         </section>
 
-        <p className="mt-16 font-mono text-[10px] uppercase tracking-[0.22em] text-slate-400">
+        <p className="mt-16 font-mono text-[10px] uppercase tracking-[0.22em] text-stone-400">
           Nothing on this page constitutes financial or legal advice.
         </p>
       </div>

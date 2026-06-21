@@ -34,7 +34,7 @@ export async function POST(request: Request) {
   const subject = `[Proof of funds] ${name} <${email}>`;
   const html = `
     <div style="font-family:Inter,Arial,sans-serif;max-width:560px">
-      <p style="font-family:Georgia,serif;font-size:18px;color:#0A2540">New proof-of-funds request</p>
+      <p style="font-family:Georgia,serif;font-size:18px;color:#874646">New proof-of-funds request</p>
       <p><strong>Name:</strong> ${escapeHtml(name)}</p>
       <p><strong>Email:</strong> <a href="mailto:${email}">${escapeHtml(email)}</a></p>
       ${context ? `<p><strong>Context:</strong><br/>${escapeHtml(context).replace(/\n/g, '<br/>')}</p>` : ''}

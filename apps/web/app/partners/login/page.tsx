@@ -27,15 +27,15 @@ export default async function LoginPage({
           className="font-serif text-xl font-semibold tracking-tight"
         >
           BELLWOODS
-          <span className="mx-2 inline-block h-px w-8 bg-[#C6A664] align-middle" />
-          <span className="text-sm font-normal tracking-widest text-slate-500">
+          <span className="mx-2 inline-block h-px w-8 bg-[#DB5C5C] align-middle" />
+          <span className="text-sm font-normal tracking-widest text-stone-500">
             LANE
           </span>
         </Link>
         <h1 className="mt-10 font-serif text-4xl font-semibold">
           Claim your partner dashboard.
         </h1>
-        <p className="mt-3 text-slate-600">
+        <p className="mt-3 text-stone-600">
           Already used our instant-offer tool as an agent? Your account is
           already there. Enter your work email — we&apos;ll send you a
           one-click sign-in link.
@@ -48,15 +48,15 @@ export default async function LoginPage({
         </div>
       )}
 
-      <div className="mt-10 rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
+      <div className="mt-10 rounded-3xl border border-stone-200 bg-white p-8 shadow-sm">
         <LoginForm />
       </div>
 
-      <p className="mt-8 text-center text-sm text-slate-500">
+      <p className="mt-8 text-center text-sm text-stone-500">
         Not a partner yet?{' '}
         <Link
           href="/partners/signup"
-          className="font-medium text-[#0A2540] underline underline-offset-4 hover:text-[#C6A664]"
+          className="font-medium text-[#874646] underline underline-offset-4 hover:text-[#DB5C5C]"
         >
           Apply →
         </Link>

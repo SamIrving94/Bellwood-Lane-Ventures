@@ -101,29 +101,29 @@ const SITUATIONS_WE_BUY_FROM: Array<{ situation: string; route: string; href: st
 export default function WhyWeWontBuyAnyHomePage() {
   return (
     <div
-      className={`${fraunces.variable} ${inter.variable} min-h-screen bg-[#FAFAF7] font-sans text-[#0A1020] antialiased`}
+      className={`${fraunces.variable} ${inter.variable} min-h-screen bg-[#FBF8F5] font-sans text-[#2B2220] antialiased`}
     >
       {/* ————— HEADER ————— */}
-      <header className="border-b border-slate-200/60 bg-white">
+      <header className="border-b border-stone-200/60 bg-white">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4 md:px-10">
           <Link
             href="/"
             className="font-serif text-xl font-semibold tracking-tight"
           >
             BELLWOODS
-            <span className="mx-2 inline-block h-px w-8 bg-[#C6A664] align-middle" />
-            <span className="text-sm font-normal tracking-[0.22em] text-slate-500">
+            <span className="mx-2 inline-block h-px w-8 bg-[#DB5C5C] align-middle" />
+            <span className="text-sm font-normal tracking-[0.22em] text-stone-500">
               LANE
             </span>
           </Link>
-          <nav className="hidden items-center gap-6 text-[13px] text-slate-600 md:flex">
-            <Link href="/agents" className="hover:text-[#0A2540]">
+          <nav className="hidden items-center gap-6 text-[13px] text-stone-600 md:flex">
+            <Link href="/agents" className="hover:text-[#874646]">
               For agents
             </Link>
-            <Link href="/sell" className="hover:text-[#0A2540]">
+            <Link href="/sell" className="hover:text-[#874646]">
               For sellers
             </Link>
-            <Link href="/save-the-sale" className="hover:text-[#0A2540]">
+            <Link href="/save-the-sale" className="hover:text-[#874646]">
               Save a sale
             </Link>
           </nav>
@@ -133,18 +133,18 @@ export default function WhyWeWontBuyAnyHomePage() {
       {/* ————— HERO ————— */}
       <section className="px-6 pt-16 pb-12 md:px-12 md:pt-24 md:pb-16">
         <div className="mx-auto max-w-4xl">
-          <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-[#C6A664]">
+          <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-[#DB5C5C]">
             Our line
           </p>
           <h1
-            className="mt-4 font-serif font-semibold leading-[0.98] tracking-[-0.025em] text-[#0A1020]"
+            className="mt-4 font-serif font-semibold leading-[0.98] tracking-[-0.025em] text-[#2B2220]"
             style={{ fontSize: 'clamp(40px, 6.5vw, 76px)' }}
           >
             Some companies will buy any home.
             <br />
-            <span className="italic text-[#C6A664]">We won&rsquo;t.</span>
+            <span className="italic text-[#DB5C5C]">We won&rsquo;t.</span>
           </h1>
-          <p className="mt-8 max-w-2xl text-lg leading-relaxed text-slate-600">
+          <p className="mt-8 max-w-2xl text-lg leading-relaxed text-stone-600">
             We&rsquo;re a UK direct-to-vendor cash buyer. We buy six specific
             kinds of property situations &mdash; the ones where speed and
             certainty matter more than maximum price. If your situation
@@ -155,15 +155,15 @@ export default function WhyWeWontBuyAnyHomePage() {
       </section>
 
       {/* ————— WHAT WE BUY ————— */}
-      <section className="border-y border-slate-200/60 bg-white px-6 py-20 md:px-12 md:py-24">
+      <section className="border-y border-stone-200/60 bg-white px-6 py-20 md:px-12 md:py-24">
         <div className="mx-auto max-w-6xl">
-          <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-[#C6A664]">
+          <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-[#DB5C5C]">
             What we buy
           </p>
           <h2 className="mt-3 font-serif text-3xl font-semibold leading-[1.05] tracking-[-0.02em] md:text-5xl">
             Six situations. That&rsquo;s the list.
           </h2>
-          <p className="mt-5 max-w-2xl text-[15px] leading-relaxed text-slate-600">
+          <p className="mt-5 max-w-2xl text-[15px] leading-relaxed text-stone-600">
             We&rsquo;ve built a business around being good at these specific
             problems. We invest in the data, the legal workflow, the
             insurance, and the operational speed each one needs. Outside this
@@ -173,10 +173,10 @@ export default function WhyWeWontBuyAnyHomePage() {
             {SITUATIONS_WE_BUY.map((s) => (
               <div
                 key={s.k}
-                className="rounded-2xl border border-slate-200 bg-white p-7"
+                className="rounded-2xl border border-stone-200 bg-white p-7"
               >
                 <p className="font-serif text-xl font-semibold">{s.k}</p>
-                <p className="mt-3 text-[14px] leading-relaxed text-slate-600">
+                <p className="mt-3 text-[14px] leading-relaxed text-stone-600">
                   {s.b}
                 </p>
               </div>
@@ -186,31 +186,31 @@ export default function WhyWeWontBuyAnyHomePage() {
       </section>
 
       {/* ————— WHAT WE WON'T BUY ————— */}
-      <section className="border-b border-slate-200/60 bg-[#FAF6EA] px-6 py-20 md:px-12 md:py-28">
+      <section className="border-b border-stone-200/60 bg-[#F6ECE7] px-6 py-20 md:px-12 md:py-28">
         <div className="mx-auto max-w-4xl">
-          <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-[#C6A664]">
+          <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-[#DB5C5C]">
             What we won&rsquo;t buy
           </p>
           <h2 className="mt-3 font-serif text-3xl font-semibold leading-[1.05] tracking-[-0.02em] md:text-5xl">
             And here&rsquo;s when we&rsquo;ll tell you to talk to someone else.
           </h2>
-          <p className="mt-5 max-w-2xl text-[15px] leading-relaxed text-slate-600">
+          <p className="mt-5 max-w-2xl text-[15px] leading-relaxed text-stone-600">
             We make money when we buy properties we can resell or hold
             confidently. If your situation doesn&rsquo;t fit, our offer will
             be too low to be useful, or we won&rsquo;t make one at all.
             That&rsquo;s not a sales technique &mdash; it&rsquo;s the maths.
           </p>
-          <dl className="mt-12 divide-y divide-slate-200 border-y border-slate-200">
+          <dl className="mt-12 divide-y divide-stone-200 border-y border-stone-200">
             {SITUATIONS_WE_WONT_BUY.map((s) => (
               <div key={s.k} className="py-7">
-                <dt className="font-serif text-xl font-semibold text-[#0A1020]">
+                <dt className="font-serif text-xl font-semibold text-[#2B2220]">
                   {s.k}
                 </dt>
-                <dd className="mt-3 text-[15px] leading-relaxed text-slate-700">
+                <dd className="mt-3 text-[15px] leading-relaxed text-stone-700">
                   {s.b}
                 </dd>
-                <dd className="mt-4 rounded-xl border-l-2 border-[#C6A664] bg-white px-5 py-4 text-[14px] leading-relaxed text-slate-700">
-                  <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-[#C6A664]">
+                <dd className="mt-4 rounded-xl border-l-2 border-[#DB5C5C] bg-white px-5 py-4 text-[14px] leading-relaxed text-stone-700">
+                  <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-[#DB5C5C]">
                     What we recommend instead
                   </span>
                   <p className="mt-2">{s.recommend}</p>
@@ -222,15 +222,15 @@ export default function WhyWeWontBuyAnyHomePage() {
       </section>
 
       {/* ————— WHY SELECTIVITY HELPS YOU ————— */}
-      <section className="border-b border-slate-200/60 px-6 py-20 md:px-12 md:py-24">
+      <section className="border-b border-stone-200/60 px-6 py-20 md:px-12 md:py-24">
         <div className="mx-auto max-w-3xl">
-          <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-[#C6A664]">
+          <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-[#DB5C5C]">
             Why this matters to you
           </p>
           <h2 className="mt-3 font-serif text-3xl font-semibold leading-[1.1] tracking-[-0.02em] md:text-4xl">
             Selectivity is in your interest, not ours.
           </h2>
-          <div className="mt-8 space-y-5 text-[15px] leading-relaxed text-slate-700">
+          <div className="mt-8 space-y-5 text-[15px] leading-relaxed text-stone-700">
             <p>
               The UK quick-sale market is full of firms that promise to buy
               anything and then drop the offer £20&ndash;40k right before
@@ -255,9 +255,9 @@ export default function WhyWeWontBuyAnyHomePage() {
       </section>
 
       {/* ————— ROUTING ————— */}
-      <section className="border-b border-slate-200/60 bg-[#0A2540] px-6 py-20 text-white md:px-12 md:py-24">
+      <section className="border-b border-stone-200/60 bg-[#874646] px-6 py-20 text-white md:px-12 md:py-24">
         <div className="mx-auto max-w-4xl">
-          <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-[#C6A664]">
+          <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-[#DB5C5C]">
             Where to go from here
           </p>
           <h2 className="mt-3 font-serif text-3xl font-semibold leading-[1.05] tracking-[-0.02em] md:text-4xl">
@@ -272,7 +272,7 @@ export default function WhyWeWontBuyAnyHomePage() {
                 <p className="text-[15px] text-white/90">{s.situation}</p>
                 <Link
                   href={s.href}
-                  className="rounded-full border border-white/30 px-5 py-2 text-[13px] text-white/90 transition hover:border-[#C6A664] hover:text-white"
+                  className="rounded-full border border-white/30 px-5 py-2 text-[13px] text-white/90 transition hover:border-[#DB5C5C] hover:text-white"
                 >
                   {s.route} →
                 </Link>
@@ -304,10 +304,10 @@ export default function WhyWeWontBuyAnyHomePage() {
       </section>
 
       {/* ————— ESTATE AGENTS ————— */}
-      <section className="border-b border-slate-200/60 bg-slate-50 px-6 py-12 md:px-12">
+      <section className="border-b border-stone-200/60 bg-stone-50 px-6 py-12 md:px-12">
         <div className="mx-auto flex max-w-5xl flex-col items-center justify-between gap-4 text-center md:flex-row md:text-left">
           <div>
-            <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-slate-500">
+            <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-stone-500">
               Estate agent reading this?
             </p>
             <p className="mt-1 font-serif text-xl">
@@ -316,7 +316,7 @@ export default function WhyWeWontBuyAnyHomePage() {
           </div>
           <Link
             href="/agents"
-            className="inline-flex items-center gap-2 rounded-full border border-slate-300 bg-white px-6 py-3 text-sm text-slate-700 transition hover:border-slate-400"
+            className="inline-flex items-center gap-2 rounded-full border border-stone-300 bg-white px-6 py-3 text-sm text-stone-700 transition hover:border-stone-400"
           >
             See the agent partner programme →
           </Link>
@@ -330,16 +330,16 @@ export default function WhyWeWontBuyAnyHomePage() {
             <div>
               <p className="font-serif text-xl font-semibold tracking-tight">
                 BELLWOODS
-                <span className="mx-2 inline-block h-px w-8 bg-[#C6A664] align-middle" />
-                <span className="text-sm font-normal tracking-[0.22em] text-slate-500">
+                <span className="mx-2 inline-block h-px w-8 bg-[#DB5C5C] align-middle" />
+                <span className="text-sm font-normal tracking-[0.22em] text-stone-500">
                   LANE
                 </span>
               </p>
-              <p className="mt-2 text-sm text-slate-500">
+              <p className="mt-2 text-sm text-stone-500">
                 Direct-to-vendor property buyers · UK
               </p>
             </div>
-            <nav className="flex flex-wrap items-center gap-6 text-sm text-slate-600">
+            <nav className="flex flex-wrap items-center gap-6 text-sm text-stone-600">
               <Link href="/sell">For sellers</Link>
               <Link href="/agents">For agents</Link>
               <Link href="/save-the-sale">Save a sale</Link>
@@ -347,14 +347,14 @@ export default function WhyWeWontBuyAnyHomePage() {
               <Link href="/legal/fca-disclosure">Regulatory</Link>
             </nav>
           </div>
-          <p className="mt-10 font-mono text-[11px] leading-relaxed text-slate-500">
+          <p className="mt-10 font-mono text-[11px] leading-relaxed text-stone-500">
             Bellwoods Lane Ltd is a UK cash property buyer, not an
             FCA-authorised firm. We do not provide financial or legal
             advice. Seek independent legal and debt advice before accepting
             any offer. All offers are subject to satisfactory survey and
             title searches.
           </p>
-          <p className="mt-4 font-mono text-[11px] text-slate-400">
+          <p className="mt-4 font-mono text-[11px] text-stone-400">
             © {new Date().getFullYear()} Bellwoods Lane Ltd.
           </p>
         </div>

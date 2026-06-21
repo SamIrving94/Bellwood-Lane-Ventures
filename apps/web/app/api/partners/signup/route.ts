@@ -56,13 +56,13 @@ export async function POST(request: Request) {
   // Send the email (gracefully skips if no Resend token)
   const subject = 'Your Bellwoods Lane partner portal link';
   const html = `
-    <div style="font-family:Inter,Arial,sans-serif;max-width:560px;margin:0 auto;padding:32px;background:#FAFAF7">
-      <p style="font-family:Georgia,serif;font-size:24px;font-weight:600;color:#0A2540;letter-spacing:-0.02em">BELLWOODS LANE</p>
-      <p style="color:#0A1020;font-size:16px;line-height:1.6;margin-top:32px">Hi ${contactName},</p>
-      <p style="color:#0A1020;font-size:16px;line-height:1.6">Click the link below to sign in to your Bellwoods Lane agent portal. The link is valid for 15 minutes.</p>
-      <p style="margin:32px 0"><a href="${link}" style="display:inline-block;background:#C6A664;color:#0A1020;padding:14px 32px;border-radius:999px;text-decoration:none;font-weight:600">Sign in to the portal →</a></p>
-      <p style="color:#6B7280;font-size:13px;line-height:1.6">Or paste this link into your browser: <br/><a href="${link}" style="color:#0A2540">${link}</a></p>
-      <p style="color:#6B7280;font-size:13px;line-height:1.6;margin-top:40px">Your referral code is <strong style="color:#0A1020">${agent.referralCode}</strong> — any seller who uses it on our indicative-offer tool is automatically credited to you.</p>
+    <div style="font-family:Inter,Arial,sans-serif;max-width:560px;margin:0 auto;padding:32px;background:#FBF8F5">
+      <p style="font-family:Georgia,serif;font-size:24px;font-weight:600;color:#874646;letter-spacing:-0.02em">BELLWOODS LANE</p>
+      <p style="color:#2B2220;font-size:16px;line-height:1.6;margin-top:32px">Hi ${contactName},</p>
+      <p style="color:#2B2220;font-size:16px;line-height:1.6">Click the link below to sign in to your Bellwoods Lane agent portal. The link is valid for 15 minutes.</p>
+      <p style="margin:32px 0"><a href="${link}" style="display:inline-block;background:#DB5C5C;color:#2B2220;padding:14px 32px;border-radius:999px;text-decoration:none;font-weight:600">Sign in to the portal →</a></p>
+      <p style="color:#6B7280;font-size:13px;line-height:1.6">Or paste this link into your browser: <br/><a href="${link}" style="color:#874646">${link}</a></p>
+      <p style="color:#6B7280;font-size:13px;line-height:1.6;margin-top:40px">Your referral code is <strong style="color:#2B2220">${agent.referralCode}</strong> — any seller who uses it on our indicative-offer tool is automatically credited to you.</p>
       <p style="color:#6B7280;font-size:12px;margin-top:40px;border-top:1px solid #e5e7eb;padding-top:16px">Bellwoods Lane Ltd · Property Redress Scheme (PRS) · HMRC AML supervised · ICO registered</p>
     </div>
   `;

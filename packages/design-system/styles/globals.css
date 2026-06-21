@@ -7,78 +7,97 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* ───────────────────────────────────────────────────────────────────────
+   Bellwoods Lane Ventures — brand design tokens
+   Brand palette (from the logo kit):
+     terracotta  #DB5C5C   warm, living accent
+     brick       #874646   deep, sophisticated anchor — primary UI + headings
+     white       #FFFFFF
+   Extended into a warm, editorial, trust-first system: porcelain + sand
+   neutrals (never cold grey), brick-led actions for contrast/credibility,
+   terracotta reserved as the highlight. This is intentionally NOT the
+   stock zero-chroma SaaS theme.
+   ─────────────────────────────────────────────────────────────────────── */
 :root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --destructive-foreground: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.646 0.222 41.116);
-  --chart-2: oklch(0.6 0.118 184.704);
-  --chart-3: oklch(0.398 0.07 227.392);
-  --chart-4: oklch(0.828 0.189 84.429);
-  --chart-5: oklch(0.769 0.188 70.08);
+  --background: #fcfaf8; /* warm porcelain */
+  --foreground: #2b2220; /* warm ink */
+  --card: #ffffff;
+  --card-foreground: #2b2220;
+  --popover: #ffffff;
+  --popover-foreground: #2b2220;
+  --primary: #874646; /* brick — primary actions, AA on white */
+  --primary-foreground: #fbf6f4;
+  --secondary: #f3ebe7; /* warm sand */
+  --secondary-foreground: #5a4742;
+  --muted: #f3ebe7;
+  --muted-foreground: #8c7a73;
+  --accent: #f6e3df; /* soft terracotta tint — hover/active surfaces */
+  --accent-foreground: #874646;
+  --destructive: #b3261e; /* true red, distinct from brand terracotta */
+  --destructive-foreground: #ffffff;
+  --border: #ebe1db; /* warm taupe */
+  --input: #e4d8d1;
+  --ring: #db5c5c; /* terracotta focus */
+  --chart-1: #db5c5c; /* terracotta */
+  --chart-2: #874646; /* brick */
+  --chart-3: #c98a6b; /* warm clay */
+  --chart-4: #e0a24e; /* amber */
+  --chart-5: #6e8b7e; /* muted sage — positive/contrast */
   --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  --brand: #db5c5c; /* terracotta */
+  --brand-deep: #874646; /* brick */
+  --sidebar: #874646; /* deep brick rail — branded + distinctive */
+  --sidebar-foreground: #f0e3df;
+  --sidebar-primary: #db5c5c;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #743a3a; /* active item */
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: #743a3a;
+  --sidebar-ring: #db5c5c;
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.145 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.145 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.985 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.396 0.141 25.723);
-  --destructive-foreground: oklch(0.637 0.237 25.331);
-  --border: oklch(0.269 0 0);
-  --input: oklch(0.269 0 0);
-  --ring: oklch(0.439 0 0);
-  --chart-1: oklch(0.488 0.243 264.376);
-  --chart-2: oklch(0.696 0.17 162.48);
-  --chart-3: oklch(0.769 0.188 70.08);
-  --chart-4: oklch(0.627 0.265 303.9);
-  --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(0.269 0 0);
-  --sidebar-ring: oklch(0.439 0 0);
+  --background: #1a1413; /* warm charcoal, not pure black */
+  --foreground: #f2e9e5;
+  --card: #221a18;
+  --card-foreground: #f2e9e5;
+  --popover: #221a18;
+  --popover-foreground: #f2e9e5;
+  --primary: #db5c5c; /* terracotta pops on dark */
+  --primary-foreground: #241312;
+  --secondary: #2e2421;
+  --secondary-foreground: #f2e9e5;
+  --muted: #2e2421;
+  --muted-foreground: #b6a39b;
+  --accent: #3a2a27;
+  --accent-foreground: #f2e9e5;
+  --destructive: #e5484d;
+  --destructive-foreground: #1a1413;
+  --border: #352824;
+  --input: #352824;
+  --ring: #db5c5c;
+  --chart-1: #db5c5c;
+  --chart-2: #c98a6b;
+  --chart-3: #e0a24e;
+  --chart-4: #6e8b7e;
+  --chart-5: #b97a86;
+  --brand: #db5c5c;
+  --brand-deep: #c98a6b;
+  --sidebar: #150f0e;
+  --sidebar-foreground: #f2e9e5;
+  --sidebar-primary: #db5c5c;
+  --sidebar-primary-foreground: #150f0e;
+  --sidebar-accent: #2e2421;
+  --sidebar-accent-foreground: #f2e9e5;
+  --sidebar-border: #2e2421;
+  --sidebar-ring: #db5c5c;
 }
 
 @theme inline {
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-serif: var(--font-fraunces), ui-serif, Georgia, serif;
+  --font-display: var(--font-fraunces), ui-serif, Georgia, serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -98,6 +117,8 @@
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
+  --color-brand: var(--brand);
+  --color-brand-deep: var(--brand-deep);
   --color-chart-1: var(--chart-1);
   --color-chart-2: var(--chart-2);
   --color-chart-3: var(--chart-3);

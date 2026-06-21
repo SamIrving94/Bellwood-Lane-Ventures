@@ -68,8 +68,8 @@ export default async function OfferCertificatePage({
         }
       `}</style>
 
-      <div className="no-print mb-10 flex items-center justify-between rounded-xl bg-slate-100 p-4 text-sm">
-        <span className="text-slate-600">
+      <div className="no-print mb-10 flex items-center justify-between rounded-xl bg-stone-100 p-4 text-sm">
+        <span className="text-stone-600">
           Press{' '}
           <kbd className="rounded bg-white px-2 py-1 text-xs">Ctrl + P</kbd>{' '}
           (or <kbd className="rounded bg-white px-2 py-1 text-xs">⌘ + P</kbd>)
@@ -77,33 +77,33 @@ export default async function OfferCertificatePage({
         </span>
         <a
           href="/instant-offer"
-          className="text-sm text-slate-600 underline underline-offset-4"
+          className="text-sm text-stone-600 underline underline-offset-4"
         >
           ← Back
         </a>
       </div>
 
-      <header className="border-b-2 border-[#C6A664] pb-6">
+      <header className="border-b-2 border-[#DB5C5C] pb-6">
         <p className="font-serif text-xl font-semibold tracking-tight">
           BELLWOODS
-          <span className="mx-2 inline-block h-px w-8 bg-[#C6A664] align-middle" />
-          <span className="text-sm font-normal tracking-widest text-slate-500">
+          <span className="mx-2 inline-block h-px w-8 bg-[#DB5C5C] align-middle" />
+          <span className="text-sm font-normal tracking-widest text-stone-500">
             LANE
           </span>
         </p>
         <div className="mt-6 flex items-end justify-between">
           <div>
-            <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-[#C6A664]">
+            <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-[#DB5C5C]">
               Binding cash offer
             </p>
             <h1 className="mt-2 font-serif text-3xl font-semibold leading-tight">
               Certificate of offer
             </h1>
           </div>
-          <div className="text-right font-mono text-[11px] text-slate-500">
+          <div className="text-right font-mono text-[11px] text-stone-500">
             <p>
               Reference{' '}
-              <span className="text-[#0A2540]">{ref}</span>
+              <span className="text-[#874646]">{ref}</span>
             </p>
             <p className="mt-1">Issued {issuedAt}</p>
           </div>
@@ -112,20 +112,20 @@ export default async function OfferCertificatePage({
 
       <section className="mt-10 grid grid-cols-2 gap-x-8 gap-y-6">
         <div>
-          <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-slate-500">
+          <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-stone-500">
             Property
           </p>
           <p className="mt-2 font-serif text-lg leading-snug">
             {quote.address}
           </p>
-          <p className="font-mono text-[12px] text-slate-500">
+          <p className="font-mono text-[12px] text-stone-500">
             {quote.postcode}
             {quote.bedrooms ? ` · ${quote.bedrooms} bed` : ''}
             {quote.propertyType ? ` · ${quote.propertyType.replace('_', ' ')}` : ''}
           </p>
         </div>
         <div>
-          <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-slate-500">
+          <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-stone-500">
             Seller situation
           </p>
           <p className="mt-2 font-serif text-lg capitalize">
@@ -134,25 +134,25 @@ export default async function OfferCertificatePage({
         </div>
       </section>
 
-      <section className="mt-10 rounded-2xl border-2 border-[#C6A664] bg-[#FAF6EA] p-8">
-        <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-slate-500">
+      <section className="mt-10 rounded-2xl border-2 border-[#DB5C5C] bg-[#F6ECE7] p-8">
+        <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-stone-500">
           Our cash offer
         </p>
         <p
-          className="mt-2 font-serif font-semibold tracking-[-0.025em] text-[#0A2540]"
+          className="mt-2 font-serif font-semibold tracking-[-0.025em] text-[#874646]"
           style={{ fontSize: 'clamp(56px, 8vw, 88px)', lineHeight: 1 }}
         >
           {formatGBP(o.offerPence)}
         </p>
         <div className="mt-3 flex flex-wrap items-center gap-x-4 font-mono text-[12px]">
-          <span className="text-slate-500">
+          <span className="text-stone-500">
             AVM mid {formatGBP(avmMid)}
           </span>
-          <span className="text-slate-300">·</span>
-          <span className="text-[#0A1020]">
+          <span className="text-stone-300">·</span>
+          <span className="text-[#2B2220]">
             {Math.round(o.offerPercentOfAvm * 100)}% of AVM
           </span>
-          <span className="text-slate-300">·</span>
+          <span className="text-stone-300">·</span>
           <span className="text-[#1F6B3A]">
             confidence {Math.round(o.confidenceScore * 100)}%
           </span>
@@ -160,10 +160,10 @@ export default async function OfferCertificatePage({
       </section>
 
       <section className="mt-10">
-        <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-slate-500">
+        <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-stone-500">
           Terms
         </p>
-        <dl className="mt-3 divide-y divide-slate-200 border-y border-slate-200">
+        <dl className="mt-3 divide-y divide-stone-200 border-y border-stone-200">
           {[
             [
               'Validity',
@@ -186,10 +186,10 @@ export default async function OfferCertificatePage({
               key={k}
               className="grid grid-cols-1 gap-1 py-3 sm:grid-cols-[180px_1fr] sm:gap-6"
             >
-              <dt className="font-mono text-[11px] uppercase tracking-[0.12em] text-slate-500">
+              <dt className="font-mono text-[11px] uppercase tracking-[0.12em] text-stone-500">
                 {k}
               </dt>
-              <dd className="text-[14px] text-[#0A1020]">{v}</dd>
+              <dd className="text-[14px] text-[#2B2220]">{v}</dd>
             </div>
           ))}
         </dl>
@@ -197,10 +197,10 @@ export default async function OfferCertificatePage({
 
       {reasoningLines.length > 0 && (
         <section className="mt-10">
-          <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-slate-500">
+          <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-stone-500">
             How we got to this number
           </p>
-          <ul className="mt-3 space-y-2 text-[13px] text-slate-700">
+          <ul className="mt-3 space-y-2 text-[13px] text-stone-700">
             {reasoningLines.map((line, i) => (
               <li key={i}>· {line}</li>
             ))}
@@ -210,26 +210,26 @@ export default async function OfferCertificatePage({
 
       <section className="mt-12 grid grid-cols-2 gap-6">
         <div>
-          <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-slate-500">
+          <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-stone-500">
             For the seller
           </p>
-          <div className="mt-2 h-16 border-b-2 border-slate-400" />
-          <p className="mt-2 text-xs text-slate-500">
+          <div className="mt-2 h-16 border-b-2 border-stone-400" />
+          <p className="mt-2 text-xs text-stone-500">
             Signature · {quote.contactName}
           </p>
         </div>
         <div>
-          <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-slate-500">
+          <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-stone-500">
             For Bellwoods Lane Ltd
           </p>
-          <div className="mt-2 h-16 border-b-2 border-slate-400" />
-          <p className="mt-2 text-xs text-slate-500">
+          <div className="mt-2 h-16 border-b-2 border-stone-400" />
+          <p className="mt-2 text-xs text-stone-500">
             Authorised signatory
           </p>
         </div>
       </section>
 
-      <footer className="mt-12 border-t border-slate-200 pt-6 font-mono text-[10px] leading-relaxed text-slate-500">
+      <footer className="mt-12 border-t border-stone-200 pt-6 font-mono text-[10px] leading-relaxed text-stone-500">
         <p>
           Bellwoods Lane Ltd · Registered in England &amp; Wales · Property
           Redress Scheme (PRS) · HMRC AML supervised · ICO registered.

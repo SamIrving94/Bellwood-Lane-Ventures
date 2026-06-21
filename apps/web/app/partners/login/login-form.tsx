@@ -30,11 +30,11 @@ export function LoginForm() {
   if (status.state === 'success') {
     return (
       <div className="text-center">
-        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-[#C6A664]/20 text-xl text-[#C6A664]">
+        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-[#DB5C5C]/20 text-xl text-[#DB5C5C]">
           ✓
         </div>
         <p className="mt-5 font-serif text-xl">Check your inbox.</p>
-        <p className="mt-2 text-sm text-slate-600">
+        <p className="mt-2 text-sm text-stone-600">
           If your email is registered, we&apos;ve sent a sign-in link.
         </p>
         {status.devMagicLink && (
@@ -42,7 +42,7 @@ export function LoginForm() {
             <p className="font-semibold">Dev mode — magic link</p>
             <a
               href={status.devMagicLink}
-              className="mt-2 block break-all text-[#0A2540] underline"
+              className="mt-2 block break-all text-[#874646] underline"
             >
               {status.devMagicLink}
             </a>
@@ -55,7 +55,7 @@ export function LoginForm() {
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <label className="block">
-        <span className="text-xs uppercase tracking-widest text-slate-500">
+        <span className="text-xs uppercase tracking-widest text-stone-500">
           Work email
         </span>
         <input
@@ -63,7 +63,7 @@ export function LoginForm() {
           type="email"
           required
           autoFocus
-          className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-[#C6A664]"
+          className="mt-1 w-full rounded-xl border border-stone-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-[#DB5C5C]"
         />
       </label>
       {status.state === 'error' && (
@@ -74,7 +74,7 @@ export function LoginForm() {
       <button
         type="submit"
         disabled={status.state === 'submitting'}
-        className="w-full rounded-full bg-[#0A2540] px-6 py-4 text-sm font-medium text-white transition hover:bg-[#13365c] disabled:opacity-50"
+        className="w-full rounded-full bg-[#874646] px-6 py-4 text-sm font-medium text-white transition hover:bg-[#6F3A3A] disabled:opacity-50"
       >
         {status.state === 'submitting'
           ? 'Sending link...'

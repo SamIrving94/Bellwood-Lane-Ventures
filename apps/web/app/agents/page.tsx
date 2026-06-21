@@ -45,64 +45,64 @@ const FAQ: Array<{ q: string; a: string }> = [
 
 function SampleOfferDocument() {
   return (
-    <div className="relative mx-auto max-w-md rotate-[-1.5deg] rounded-2xl border border-slate-200 bg-white p-7 shadow-xl">
-      <div className="absolute right-5 top-5 rounded-full border border-[#C6A664] px-3 py-1 font-mono text-[9px] uppercase tracking-[0.2em] text-[#C6A664]">
+    <div className="relative mx-auto max-w-md rotate-[-1.5deg] rounded-2xl border border-stone-200 bg-white p-7 shadow-xl">
+      <div className="absolute right-5 top-5 rounded-full border border-[#DB5C5C] px-3 py-1 font-mono text-[9px] uppercase tracking-[0.2em] text-[#DB5C5C]">
         Sample
       </div>
       <p className="font-serif text-base font-semibold tracking-tight">
         BELLWOODS
-        <span className="mx-1.5 inline-block h-px w-5 bg-[#C6A664] align-middle" />
-        <span className="text-[10px] font-normal tracking-[0.22em] text-slate-500">
+        <span className="mx-1.5 inline-block h-px w-5 bg-[#DB5C5C] align-middle" />
+        <span className="text-[10px] font-normal tracking-[0.22em] text-stone-500">
           LANE
         </span>
       </p>
-      <p className="mt-1 font-mono text-[9px] uppercase tracking-[0.18em] text-slate-400">
+      <p className="mt-1 font-mono text-[9px] uppercase tracking-[0.18em] text-stone-400">
         Binding offer document &middot; Ref BW-2026-0142
       </p>
 
-      <div className="mt-6 space-y-1 border-t border-slate-100 pt-5">
-        <p className="font-mono text-[9px] uppercase tracking-[0.18em] text-slate-400">
+      <div className="mt-6 space-y-1 border-t border-stone-100 pt-5">
+        <p className="font-mono text-[9px] uppercase tracking-[0.18em] text-stone-400">
           Property
         </p>
-        <p className="font-serif text-[15px] leading-snug text-slate-700">
+        <p className="font-serif text-[15px] leading-snug text-stone-700">
           14 Acacia Avenue, Stockport, SK4 3HQ
         </p>
       </div>
 
-      <div className="mt-5 rounded-xl bg-[#FAF6EA] px-5 py-4">
-        <p className="font-mono text-[9px] uppercase tracking-[0.18em] text-[#C6A664]">
+      <div className="mt-5 rounded-xl bg-[#F6ECE7] px-5 py-4">
+        <p className="font-mono text-[9px] uppercase tracking-[0.18em] text-[#DB5C5C]">
           Our cash offer
         </p>
-        <p className="mt-1 font-serif text-4xl font-semibold tracking-[-0.025em] text-[#0A1020]">
+        <p className="mt-1 font-serif text-4xl font-semibold tracking-[-0.025em] text-[#2B2220]">
           £244,000
         </p>
-        <p className="mt-1 text-[10px] text-slate-500">
+        <p className="mt-1 text-[10px] text-stone-500">
           83% of mid AVM &middot; locked 72h
         </p>
       </div>
 
       <dl className="mt-5 space-y-2 text-[12px]">
         <div className="flex justify-between">
-          <dt className="text-slate-500">Completion</dt>
-          <dd className="font-medium text-slate-700">Weeks not months</dd>
+          <dt className="text-stone-500">Completion</dt>
+          <dd className="font-medium text-stone-700">Weeks not months</dd>
         </div>
         <div className="flex justify-between">
-          <dt className="text-slate-500">Survey adjustment</dt>
-          <dd className="font-medium text-slate-700">
+          <dt className="text-stone-500">Survey adjustment</dt>
+          <dd className="font-medium text-stone-700">
             RICS material defect only
           </dd>
         </div>
         <div className="flex justify-between">
-          <dt className="text-slate-500">Walk-away cover</dt>
-          <dd className="font-medium text-slate-700">£1,000 + costs</dd>
+          <dt className="text-stone-500">Walk-away cover</dt>
+          <dd className="font-medium text-stone-700">£1,000 + costs</dd>
         </div>
         <div className="flex justify-between">
-          <dt className="text-slate-500">Introducer (your firm)</dt>
-          <dd className="font-medium text-slate-700">Agreed per deal</dd>
+          <dt className="text-stone-500">Introducer (your firm)</dt>
+          <dd className="font-medium text-stone-700">Agreed per deal</dd>
         </div>
       </dl>
 
-      <p className="mt-6 border-t border-slate-100 pt-4 font-serif text-[11px] italic leading-relaxed text-slate-500">
+      <p className="mt-6 border-t border-stone-100 pt-4 font-serif text-[11px] italic leading-relaxed text-stone-500">
         Signed for and on behalf of Bellwoods Lane Ltd. This offer is legally
         binding upon Bellwoods Lane Ltd for 72 hours from issue.
       </p>
@@ -117,9 +117,9 @@ export default function AgentsPage() {
       {/* Pinned at the very top for agents arriving in crisis. */}
       <a
         href="/save-the-sale"
-        className="block bg-[#0A2540] px-6 py-3 text-center text-[13px] text-white/90 transition hover:bg-[#13365c] md:px-12"
+        className="block bg-[#874646] px-6 py-3 text-center text-[13px] text-white/90 transition hover:bg-[#6F3A3A] md:px-12"
       >
-        <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-[#C6A664]">
+        <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-[#DB5C5C]">
           Sale fallen through?
         </span>
         <span className="ml-3">
@@ -129,40 +129,38 @@ export default function AgentsPage() {
       </a>
 
       {/* ————— NAV ————— */}
-      <header className="sticky top-0 z-40 border-b border-slate-200/60 bg-[#FAFAF7]/85 backdrop-blur-md">
+      <header className="sticky top-0 z-40 border-b border-stone-200/60 bg-[#FBF8F5]/85 backdrop-blur-md">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4 md:px-10">
-          <Link
-            href="/agents"
-            className="font-serif text-xl font-semibold tracking-tight"
-          >
-            BELLWOODS
-            <span className="mx-2 inline-block h-px w-8 bg-[#C6A664] align-middle" />
-            <span className="text-sm font-normal tracking-[0.22em] text-slate-500">
-              LANE
-            </span>
+          <Link href="/agents" className="flex items-center" aria-label="Bellwoods Lane Ventures — home">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/brand/bellwoods-logo.svg"
+              alt="Bellwoods Lane Ventures"
+              className="h-9 w-auto md:h-10"
+            />
           </Link>
-          <nav className="hidden items-center gap-6 text-[13px] text-slate-600 md:flex">
-            <Link href="/agents/score" className="hover:text-[#0A2540]">
+          <nav className="hidden items-center gap-6 text-[13px] text-stone-600 md:flex">
+            <Link href="/agents/score" className="hover:text-[#874646]">
               Bellwood Score
             </Link>
-            <a href="#how" className="hover:text-[#0A2540]">
+            <a href="#how" className="hover:text-[#874646]">
               How it works
             </a>
-            <a href="#faq" className="hover:text-[#0A2540]">
+            <a href="#faq" className="hover:text-[#874646]">
               FAQ
             </a>
-            <Link href="/sell" className="hover:text-[#0A2540]">
+            <Link href="/sell" className="hover:text-[#874646]">
               For sellers
             </Link>
             <Link
               href="/partners/login"
-              className="hover:text-[#0A2540]"
+              className="hover:text-[#874646]"
             >
               Partner sign in
             </Link>
             <a
               href="#refer"
-              className="rounded-full bg-[#0A2540] px-5 py-2 text-white transition hover:bg-[#13365c]"
+              className="rounded-full bg-[#874646] px-5 py-2 text-white transition hover:bg-[#6F3A3A]"
             >
               Send a deal
             </a>
@@ -174,18 +172,18 @@ export default function AgentsPage() {
       <section className="px-6 pt-20 pb-16 md:px-12 md:pt-24 md:pb-20">
         <div className="mx-auto max-w-4xl">
           <LivePill>For UK estate agents</LivePill>
-          <p className="mt-8 font-mono text-[12px] uppercase tracking-[0.22em] text-slate-500">
+          <p className="mt-8 font-mono text-[12px] uppercase tracking-[0.22em] text-stone-500">
             Sale fallen through?
           </p>
           <h1
-            className="mt-3 font-serif font-semibold leading-[0.98] tracking-[-0.025em] text-[#0A1020]"
+            className="mt-3 font-serif font-semibold leading-[0.98] tracking-[-0.025em] text-[#2B2220]"
             style={{ fontSize: 'clamp(40px, 6vw, 72px)' }}
           >
             Save it.
             <br />
-            <span className="italic text-[#C6A664]">Before you re-list.</span>
+            <span className="italic text-[#DB5C5C]">Before you re-list.</span>
           </h1>
-          <p className="mt-8 max-w-xl text-lg leading-relaxed text-slate-600">
+          <p className="mt-8 max-w-xl text-lg leading-relaxed text-stone-600">
             Buyer pulled out, mortgage refused, survey down-valued, chain
             broken. We&rsquo;re the replacement buyer agents call{' '}
             <em>before</em> they relist &mdash; not after weeks of trying. A
@@ -195,12 +193,12 @@ export default function AgentsPage() {
           <div className="mt-10 flex flex-wrap items-center gap-4">
             <a
               href="#refer"
-              className="inline-flex items-center gap-2 rounded-full bg-[#0A2540] px-8 py-4 text-[15px] font-medium text-white shadow-sm transition hover:bg-[#13365c]"
+              className="inline-flex items-center gap-2 rounded-full bg-[#874646] px-8 py-4 text-[15px] font-medium text-white shadow-sm transition hover:bg-[#6F3A3A]"
             >
               Send the address
               <span aria-hidden>→</span>
             </a>
-            <span className="text-[13px] text-slate-500">
+            <span className="text-[13px] text-stone-500">
               Five fields. No portal login.
             </span>
           </div>
@@ -208,15 +206,15 @@ export default function AgentsPage() {
       </section>
 
       {/* ————— TWO OPTIONS. BOTH BAD. ————— */}
-      <section className="border-y border-slate-200/60 bg-[#0A2540] px-6 py-24 text-white md:px-12 md:py-28">
+      <section className="border-y border-stone-200/60 bg-[#874646] px-6 py-24 text-white md:px-12 md:py-28">
         <div className="mx-auto max-w-6xl">
-          <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-[#C6A664]">
+          <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-[#DB5C5C]">
             The agent&rsquo;s dilemma
           </p>
           <h2 className="mt-3 font-serif text-4xl font-semibold leading-[1.05] tracking-[-0.02em] md:text-6xl">
             When a sale collapses, you have two options.
             <br />
-            <span className="italic text-[#C6A664]">Both are bad.</span>
+            <span className="italic text-[#DB5C5C]">Both are bad.</span>
           </h2>
           <p className="mt-6 max-w-2xl text-[15px] leading-relaxed text-white/70">
             6,200 UK sales collapse every week. £3,000 commission gone per
@@ -253,8 +251,8 @@ export default function AgentsPage() {
               </ul>
             </div>
           </div>
-          <div className="mt-12 rounded-3xl border-2 border-[#C6A664] bg-[#C6A664]/10 p-8 md:p-10">
-            <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-[#C6A664]">
+          <div className="mt-12 rounded-3xl border-2 border-[#DB5C5C] bg-[#DB5C5C]/10 p-8 md:p-10">
+            <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-[#DB5C5C]">
               We&rsquo;re trying to be Option 3
             </p>
             <h3 className="mt-3 font-serif text-3xl font-semibold leading-[1.1] md:text-4xl">
@@ -271,70 +269,70 @@ export default function AgentsPage() {
       {/* ————— THE WEDGE: TWO COMMISSIONS ————— */}
       <section
         id="how"
-        className="border-y border-slate-200/60 bg-[#FAF6EA] px-6 py-24 md:px-12 md:py-28"
+        className="border-y border-stone-200/60 bg-[#F6ECE7] px-6 py-24 md:px-12 md:py-28"
       >
         <div className="mx-auto grid max-w-6xl grid-cols-1 gap-12 lg:grid-cols-[1fr_1.2fr] lg:gap-20">
           <div>
-            <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-[#C6A664]">
+            <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-[#DB5C5C]">
               The honest version
             </p>
             <h2 className="mt-3 font-serif text-4xl font-semibold leading-[1.05] tracking-[-0.02em] md:text-5xl">
               You don&rsquo;t lose a commission.
               <br />
-              <span className="italic text-[#C6A664]">You earn two.</span>
+              <span className="italic text-[#DB5C5C]">You earn two.</span>
             </h2>
-            <p className="mt-6 text-[15px] leading-relaxed text-slate-600">
+            <p className="mt-6 text-[15px] leading-relaxed text-stone-600">
               The reason agents avoid cash-buyer referrals isn&rsquo;t the
               fee &mdash; it&rsquo;s the second commission they lose: the
               onward purchase, the part-exchange chain, the resale instruction.
             </p>
-            <p className="mt-4 text-[15px] leading-relaxed text-slate-600">
+            <p className="mt-4 text-[15px] leading-relaxed text-stone-600">
               We solve that one explicit way:{' '}
-              <strong className="text-[#0A1020]">
+              <strong className="text-[#2B2220]">
                 when we resell the property, you list it.
               </strong>{' '}
               One referral, two transactions on your books.
             </p>
           </div>
-          <div className="rounded-2xl border border-slate-200 bg-white p-8 md:p-10">
-            <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-slate-500">
+          <div className="rounded-2xl border border-stone-200 bg-white p-8 md:p-10">
+            <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-stone-500">
               Worked example, £280k chain-break sale
             </p>
             <dl className="mt-6 space-y-5">
-              <div className="flex items-baseline justify-between gap-6 border-b border-slate-100 pb-4">
+              <div className="flex items-baseline justify-between gap-6 border-b border-stone-100 pb-4">
                 <dt>
                   <p className="font-serif text-[17px]">Sale fee</p>
-                  <p className="text-[12px] text-slate-500">
+                  <p className="text-[12px] text-stone-500">
                     Paid on our purchase completion
                   </p>
                 </dt>
-                <dd className="font-serif text-2xl font-semibold text-[#0A1020]">
+                <dd className="font-serif text-2xl font-semibold text-[#2B2220]">
                   £2,800
                 </dd>
               </div>
-              <div className="flex items-baseline justify-between gap-6 border-b border-slate-100 pb-4">
+              <div className="flex items-baseline justify-between gap-6 border-b border-stone-100 pb-4">
                 <dt>
                   <p className="font-serif text-[17px]">Resale instruction</p>
-                  <p className="text-[12px] text-slate-500">
+                  <p className="text-[12px] text-stone-500">
                     Paid on resale &mdash; conditional
                   </p>
                 </dt>
-                <dd className="font-serif text-2xl font-semibold text-slate-400">
+                <dd className="font-serif text-2xl font-semibold text-stone-400">
                   £4,480
                 </dd>
               </div>
               <div className="flex items-baseline justify-between gap-6 pt-2">
                 <dt>
-                  <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-[#C6A664]">
+                  <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-[#DB5C5C]">
                     Total earnings
                   </p>
                 </dt>
-                <dd className="font-serif text-3xl font-semibold text-[#C6A664]">
+                <dd className="font-serif text-3xl font-semibold text-[#DB5C5C]">
                   Up to £7,280
                 </dd>
               </div>
             </dl>
-            <p className="mt-6 text-[11px] leading-relaxed text-slate-500">
+            <p className="mt-6 text-[11px] leading-relaxed text-stone-500">
               All figures + VAT. All disclosed to the seller in writing per
               NTSELAT guidance.
             </p>
@@ -345,36 +343,36 @@ export default function AgentsPage() {
       {/* ————— THE PROMISE ————— */}
       <section
         id="promise"
-        className="border-b border-slate-200/60 px-6 py-24 md:px-12 md:py-28"
+        className="border-b border-stone-200/60 px-6 py-24 md:px-12 md:py-28"
       >
         <div className="mx-auto max-w-4xl">
-          <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-[#C6A664]">
+          <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-[#DB5C5C]">
             The written promise
           </p>
           <h2 className="mt-3 font-serif text-4xl font-semibold leading-[1.05] tracking-[-0.02em] md:text-5xl">
             No re-trade. In writing.
           </h2>
-          <p className="mt-6 max-w-2xl text-[15px] leading-relaxed text-slate-600">
+          <p className="mt-6 max-w-2xl text-[15px] leading-relaxed text-stone-600">
             Quietly cutting the offer days before exchange is the most-cited
             complaint UK estate agents have about cash buyers. We make it
             contractually impossible &mdash; with one transparent exception.
           </p>
-          <dl className="mt-12 divide-y divide-slate-200 border-y border-slate-200">
+          <dl className="mt-12 divide-y divide-stone-200 border-y border-stone-200">
             <div className="grid grid-cols-1 gap-2 py-6 sm:grid-cols-[260px_1fr] sm:gap-12">
-              <dt className="font-mono text-[11px] uppercase tracking-[0.18em] text-slate-500">
+              <dt className="font-mono text-[11px] uppercase tracking-[0.18em] text-stone-500">
                 The price is the price
               </dt>
-              <dd className="text-[15px] leading-relaxed text-slate-700">
+              <dd className="text-[15px] leading-relaxed text-stone-700">
                 The figure in your client&rsquo;s offer document is the figure
                 at completion. We are contractually liable for £1,000 plus
                 your costs if we walk without cause.
               </dd>
             </div>
             <div className="grid grid-cols-1 gap-2 py-6 sm:grid-cols-[260px_1fr] sm:gap-12">
-              <dt className="font-mono text-[11px] uppercase tracking-[0.18em] text-slate-500">
+              <dt className="font-mono text-[11px] uppercase tracking-[0.18em] text-stone-500">
                 The only three exceptions
               </dt>
-              <dd className="text-[15px] leading-relaxed text-slate-700">
+              <dd className="text-[15px] leading-relaxed text-stone-700">
                 The confirmed price can only change for three documented
                 reasons: (1) a structural survey reveals a material defect
                 that was not visible or disclosed at viewing; (2) a title
@@ -386,10 +384,10 @@ export default function AgentsPage() {
               </dd>
             </div>
             <div className="grid grid-cols-1 gap-2 py-6 sm:grid-cols-[260px_1fr] sm:gap-12">
-              <dt className="font-mono text-[11px] uppercase tracking-[0.18em] text-slate-500">
+              <dt className="font-mono text-[11px] uppercase tracking-[0.18em] text-stone-500">
                 Published quarterly
               </dt>
-              <dd className="text-[15px] leading-relaxed text-slate-700">
+              <dd className="text-[15px] leading-relaxed text-stone-700">
                 We commit to publishing our completion rate every quarter
                 &mdash; including failures. No competitor in the UK does
                 this.
@@ -402,18 +400,18 @@ export default function AgentsPage() {
       {/* ————— THE 5-STEP PROCESS ————— */}
       <section
         id="process"
-        className="border-b border-slate-200/60 bg-white px-6 py-24 md:px-12 md:py-28"
+        className="border-b border-stone-200/60 bg-white px-6 py-24 md:px-12 md:py-28"
       >
         <div className="mx-auto max-w-5xl">
-          <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-[#C6A664]">
+          <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-[#DB5C5C]">
             How the process actually runs
           </p>
           <h2 className="mt-3 font-serif text-4xl font-semibold leading-[1.05] tracking-[-0.02em] md:text-5xl">
             Five steps. Published timelines.
             <br />
-            <span className="italic text-[#C6A664]">Honest about what each one means.</span>
+            <span className="italic text-[#DB5C5C]">Honest about what each one means.</span>
           </h2>
-          <p className="mt-6 max-w-2xl text-[15px] leading-relaxed text-slate-600">
+          <p className="mt-6 max-w-2xl text-[15px] leading-relaxed text-stone-600">
             We never describe our offers as &ldquo;instant&rdquo; or
             &ldquo;guaranteed&rdquo; at enquiry &mdash; the indicative
             offer is a starting point, the confirmed offer comes after
@@ -455,20 +453,20 @@ export default function AgentsPage() {
             ].map((s) => (
               <li
                 key={s.n}
-                className="grid grid-cols-[60px_1fr] items-start gap-6 rounded-2xl border border-slate-200 bg-[#FAF6EA] p-7 md:grid-cols-[80px_1fr_220px] md:gap-8"
+                className="grid grid-cols-[60px_1fr] items-start gap-6 rounded-2xl border border-stone-200 bg-[#F6ECE7] p-7 md:grid-cols-[80px_1fr_220px] md:gap-8"
               >
-                <span className="font-serif text-[28px] italic text-[#C6A664]">
+                <span className="font-serif text-[28px] italic text-[#DB5C5C]">
                   {s.n}
                 </span>
                 <div>
                   <h3 className="font-serif text-xl font-semibold md:text-2xl">
                     {s.t}
                   </h3>
-                  <p className="mt-2 text-[14px] leading-relaxed text-slate-600">
+                  <p className="mt-2 text-[14px] leading-relaxed text-stone-600">
                     {s.d}
                   </p>
                 </div>
-                <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-[#C6A664] md:text-right">
+                <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-[#DB5C5C] md:text-right">
                   {s.sla}
                 </p>
               </li>
@@ -478,10 +476,10 @@ export default function AgentsPage() {
       </section>
 
       {/* ————— THE PROOF ————— */}
-      <section className="border-b border-slate-200/60 bg-[#0A2540] px-6 py-24 text-white md:px-12 md:py-28">
+      <section className="border-b border-stone-200/60 bg-[#874646] px-6 py-24 text-white md:px-12 md:py-28">
         <div className="mx-auto grid max-w-6xl grid-cols-1 items-center gap-16 lg:grid-cols-[1fr_1fr]">
           <div>
-            <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-[#C6A664]">
+            <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-[#DB5C5C]">
               What your client receives
             </p>
             <h2 className="mt-3 font-serif text-4xl font-semibold leading-[1.05] tracking-[-0.02em] md:text-5xl">
@@ -506,16 +504,16 @@ export default function AgentsPage() {
       {/* ————— REFER ————— */}
       <section
         id="refer"
-        className="border-b border-slate-200/60 px-6 py-24 md:px-12 md:py-28"
+        className="border-b border-stone-200/60 px-6 py-24 md:px-12 md:py-28"
       >
         <div className="mx-auto max-w-4xl">
-          <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-[#C6A664]">
+          <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-[#DB5C5C]">
             60 seconds to a real number
           </p>
           <h2 className="mt-3 font-serif text-4xl font-semibold md:text-5xl">
             Send the address.
           </h2>
-          <p className="mt-5 max-w-2xl text-[15px] leading-relaxed text-slate-600">
+          <p className="mt-5 max-w-2xl text-[15px] leading-relaxed text-stone-600">
             Five fields. The indicative figure appears on screen as soon as
             you submit &mdash; pulled from HM Land Registry comps. The signed
             binding offer document follows by email within 24 hours.
@@ -523,11 +521,11 @@ export default function AgentsPage() {
           <div className="mt-10">
             <AgentQuickForm />
           </div>
-          <p className="mt-6 text-center text-[13px] text-slate-500">
+          <p className="mt-6 text-center text-[13px] text-stone-500">
             Prefer email?{' '}
             <a
               href="mailto:hello@bellwoodslane.co.uk?subject=Agent%20referral"
-              className="text-[#0A2540] underline underline-offset-4"
+              className="text-[#874646] underline underline-offset-4"
             >
               hello@bellwoodslane.co.uk
             </a>
@@ -539,25 +537,25 @@ export default function AgentsPage() {
       {/* ————— FAQ ————— */}
       <section
         id="faq"
-        className="border-b border-slate-200/60 px-6 py-24 md:px-12 md:py-28"
+        className="border-b border-stone-200/60 px-6 py-24 md:px-12 md:py-28"
       >
         <div className="mx-auto max-w-3xl">
-          <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-[#C6A664]">
+          <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-[#DB5C5C]">
             Honest answers
           </p>
           <h2 className="mt-3 font-serif text-4xl font-semibold md:text-5xl">
             Questions agents ask first.
           </h2>
-          <div className="mt-12 divide-y divide-slate-200 border-y border-slate-200">
+          <div className="mt-12 divide-y divide-stone-200 border-y border-stone-200">
             {FAQ.map((item, i) => (
               <details key={item.q} className="group py-5" open={i === 0}>
                 <summary className="flex cursor-pointer items-center justify-between gap-4 font-serif text-[17px] font-semibold">
                   <span>{item.q}</span>
-                  <span className="ml-4 text-xl text-slate-400 transition group-open:rotate-45">
+                  <span className="ml-4 text-xl text-stone-400 transition group-open:rotate-45">
                     +
                   </span>
                 </summary>
-                <p className="mt-4 leading-relaxed text-slate-600">
+                <p className="mt-4 leading-relaxed text-stone-600">
                   {item.a}
                 </p>
               </details>
@@ -567,10 +565,10 @@ export default function AgentsPage() {
       </section>
 
       {/* ————— SELLERS LINK ————— */}
-      <section className="border-b border-slate-200/60 bg-slate-50 px-6 py-12 md:px-12">
+      <section className="border-b border-stone-200/60 bg-stone-50 px-6 py-12 md:px-12">
         <div className="mx-auto flex max-w-5xl flex-col items-center justify-between gap-4 text-center md:flex-row md:text-left">
           <div>
-            <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-slate-500">
+            <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-stone-500">
               Not an agent?
             </p>
             <p className="mt-1 font-serif text-xl">
@@ -579,7 +577,7 @@ export default function AgentsPage() {
           </div>
           <Link
             href="/sell"
-            className="inline-flex items-center gap-2 rounded-full border border-slate-300 bg-white px-6 py-3 text-sm text-slate-700 transition hover:border-slate-400"
+            className="inline-flex items-center gap-2 rounded-full border border-stone-300 bg-white px-6 py-3 text-sm text-stone-700 transition hover:border-stone-400"
           >
             Get a cash offer for your home →
           </Link>
@@ -591,18 +589,17 @@ export default function AgentsPage() {
         <div className="mx-auto max-w-6xl">
           <div className="flex flex-col items-start justify-between gap-8 md:flex-row md:items-center">
             <div>
-              <p className="font-serif text-xl font-semibold tracking-tight">
-                BELLWOODS
-                <span className="mx-2 inline-block h-px w-8 bg-[#C6A664] align-middle" />
-                <span className="text-sm font-normal tracking-[0.22em] text-slate-500">
-                  LANE
-                </span>
-              </p>
-              <p className="mt-2 text-sm text-slate-500">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/brand/bellwoods-logo.svg"
+                alt="Bellwoods Lane Ventures"
+                className="h-10 w-auto"
+              />
+              <p className="mt-3 text-sm text-stone-500">
                 Direct-to-vendor property buyers · UK
               </p>
             </div>
-            <nav className="flex flex-wrap items-center gap-6 text-sm text-slate-600">
+            <nav className="flex flex-wrap items-center gap-6 text-sm text-stone-600">
               <a href="#refer">Send a deal</a>
               <Link href="/instant-offer/methodology">Methodology</Link>
               <Link href="/why-we-wont-buy-any-home">What we won&rsquo;t buy</Link>
@@ -611,17 +608,17 @@ export default function AgentsPage() {
               <Link href="/partners/login">Partner sign in</Link>
             </nav>
           </div>
-          <p className="mt-10 font-mono text-[10px] uppercase tracking-[0.18em] text-slate-500">
+          <p className="mt-10 font-mono text-[10px] uppercase tracking-[0.18em] text-stone-500">
             Property Redress Scheme (PRS) &middot; HMRC AML supervised &middot; ICO registered
           </p>
-          <p className="mt-6 font-mono text-[11px] leading-relaxed text-slate-500">
+          <p className="mt-6 font-mono text-[11px] leading-relaxed text-stone-500">
             Bellwoods Lane Ltd is a UK cash property buyer, not an
             FCA-authorised firm. We do not provide financial or legal
             advice. Seek independent legal advice before accepting any
             offer. All offers are subject to satisfactory survey and title
             searches.
           </p>
-          <p className="mt-4 font-mono text-[11px] text-slate-400">
+          <p className="mt-4 font-mono text-[11px] text-stone-400">
             © {new Date().getFullYear()} Bellwoods Lane Ltd.
           </p>
         </div>

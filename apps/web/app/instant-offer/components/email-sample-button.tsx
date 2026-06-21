@@ -52,7 +52,7 @@ export function EmailSampleButton() {
         <div
           role="dialog"
           aria-modal="true"
-          className="fixed inset-0 z-50 flex items-center justify-center bg-[#0A1020]/40 p-4 backdrop-blur-sm"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-[#2B2220]/40 p-4 backdrop-blur-sm"
           onClick={close}
         >
           <div
@@ -61,30 +61,30 @@ export function EmailSampleButton() {
           >
             {status.kind === 'success' ? (
               <div className="text-center">
-                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-[#C6A664]/20 text-2xl text-[#C6A664]">
+                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-[#DB5C5C]/20 text-2xl text-[#DB5C5C]">
                   ✓
                 </div>
                 <p className="mt-5 font-serif text-xl">On its way.</p>
-                <p className="mt-2 text-sm text-slate-600">
+                <p className="mt-2 text-sm text-stone-600">
                   Check your inbox in the next few minutes.
                 </p>
                 <button
                   type="button"
                   onClick={close}
-                  className="mt-6 rounded-full border border-slate-300 px-5 py-2 text-sm text-slate-700 hover:border-slate-400"
+                  className="mt-6 rounded-full border border-stone-300 px-5 py-2 text-sm text-stone-700 hover:border-stone-400"
                 >
                   Close
                 </button>
               </div>
             ) : (
               <>
-                <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-[#C6A664]">
+                <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-[#DB5C5C]">
                   Sample offer pack
                 </p>
                 <h3 className="mt-2 font-serif text-2xl font-semibold">
                   Reviewed before you commit?
                 </h3>
-                <p className="mt-3 text-sm text-slate-600">
+                <p className="mt-3 text-sm text-stone-600">
                   We&apos;ll email an anonymised sample offer document plus
                   the methodology. No follow-up unless you ask.
                 </p>
@@ -94,14 +94,14 @@ export function EmailSampleButton() {
                     name="name"
                     placeholder="Your name"
                     required
-                    className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-[#C6A664]"
+                    className="w-full rounded-xl border border-stone-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-[#DB5C5C]"
                   />
                   <input
                     name="email"
                     type="email"
                     placeholder="Email"
                     required
-                    className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-[#C6A664]"
+                    className="w-full rounded-xl border border-stone-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-[#DB5C5C]"
                   />
                   {status.kind === 'error' && (
                     <p className="rounded-lg bg-red-50 p-3 text-sm text-red-700">
@@ -111,7 +111,7 @@ export function EmailSampleButton() {
                   <button
                     type="submit"
                     disabled={status.kind === 'submitting'}
-                    className="w-full rounded-full bg-[#0A2540] px-6 py-3 text-sm font-medium text-white transition hover:bg-[#13365c] disabled:opacity-50"
+                    className="w-full rounded-full bg-[#874646] px-6 py-3 text-sm font-medium text-white transition hover:bg-[#6F3A3A] disabled:opacity-50"
                   >
                     {status.kind === 'submitting'
                       ? 'Sending...'

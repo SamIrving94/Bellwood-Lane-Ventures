@@ -120,8 +120,8 @@ function Bubble({
       <div
         className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full font-serif text-sm font-semibold ${
           isBot
-            ? 'bg-[#C6A664] text-[#0A1020]'
-            : 'bg-[#0A2540] text-white'
+            ? 'bg-[#DB5C5C] text-[#2B2220]'
+            : 'bg-[#874646] text-white'
         }`}
       >
         {isBot ? 'B' : 'You'.charAt(0)}
@@ -129,8 +129,8 @@ function Bubble({
       <div
         className={`max-w-[85%] rounded-2xl px-5 py-3 text-sm md:text-base ${
           isBot
-            ? 'bg-white text-[#0A1020] shadow-sm'
-            : 'bg-[#0A2540] text-white'
+            ? 'bg-white text-[#2B2220] shadow-sm'
+            : 'bg-[#874646] text-white'
         }`}
       >
         {children}
@@ -153,7 +153,7 @@ function Chips({
           key={String(o.value)}
           type="button"
           onClick={() => onSelect(o.value, o.label)}
-          className="rounded-full border border-slate-300 bg-white px-4 py-2 text-sm transition hover:border-[#C6A664] hover:bg-[#FAF6EA]"
+          className="rounded-full border border-stone-300 bg-white px-4 py-2 text-sm transition hover:border-[#DB5C5C] hover:bg-[#F6ECE7]"
         >
           {o.label}
         </button>
@@ -372,7 +372,7 @@ export function ChatFlow({ defaultRole }: ChatFlowProps = {}) {
   })();
 
   return (
-    <div className="rounded-3xl border border-slate-200 bg-[#F5F2EC] p-4 shadow-sm md:p-6">
+    <div className="rounded-3xl border border-stone-200 bg-[#F5F2EC] p-4 shadow-sm md:p-6">
       {/* Progress */}
       {step !== 'thinking' && step !== 'result' && step !== 'error' && (
         <div className="mb-6 flex items-center gap-1.5 px-2">
@@ -380,11 +380,11 @@ export function ChatFlow({ defaultRole }: ChatFlowProps = {}) {
             <div
               key={i}
               className={`h-1 flex-1 rounded-full transition ${
-                i < stepNumber ? 'bg-[#C6A664]' : 'bg-slate-200'
+                i < stepNumber ? 'bg-[#DB5C5C]' : 'bg-stone-200'
               }`}
             />
           ))}
-          <span className="ml-3 text-xs text-slate-500">
+          <span className="ml-3 text-xs text-stone-500">
             {stepNumber} of 10
           </span>
         </div>
@@ -406,7 +406,7 @@ export function ChatFlow({ defaultRole }: ChatFlowProps = {}) {
               placeholder="Street address"
               value={addressInput}
               onChange={(e) => setAddressInput(e.target.value)}
-              className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-[#C6A664]"
+              className="w-full rounded-xl border border-stone-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-[#DB5C5C]"
             />
             <div className="flex gap-2">
               <input
@@ -414,11 +414,11 @@ export function ChatFlow({ defaultRole }: ChatFlowProps = {}) {
                 placeholder="Postcode (e.g. M1 5AB)"
                 value={postcodeInput}
                 onChange={(e) => setPostcodeInput(e.target.value)}
-                className="flex-1 rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm uppercase outline-none transition focus:border-[#C6A664]"
+                className="flex-1 rounded-xl border border-stone-300 bg-white px-4 py-3 text-sm uppercase outline-none transition focus:border-[#DB5C5C]"
               />
               <button
                 type="submit"
-                className="rounded-xl bg-[#0A2540] px-6 py-3 text-sm font-medium text-white transition hover:bg-[#13365c]"
+                className="rounded-xl bg-[#874646] px-6 py-3 text-sm font-medium text-white transition hover:bg-[#6F3A3A]"
               >
                 Continue
               </button>
@@ -453,11 +453,11 @@ export function ChatFlow({ defaultRole }: ChatFlowProps = {}) {
                 name="firm"
                 type="text"
                 placeholder="Firm name"
-                className="flex-1 rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-[#C6A664]"
+                className="flex-1 rounded-xl border border-stone-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-[#DB5C5C]"
               />
               <button
                 type="submit"
-                className="rounded-xl bg-[#0A2540] px-6 py-3 text-sm font-medium text-white transition hover:bg-[#13365c]"
+                className="rounded-xl bg-[#874646] px-6 py-3 text-sm font-medium text-white transition hover:bg-[#6F3A3A]"
               >
                 Continue
               </button>
@@ -471,7 +471,7 @@ export function ChatFlow({ defaultRole }: ChatFlowProps = {}) {
 
         {step === 'condition' && (
           <div className="pl-11">
-            <div className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-white p-4">
+            <div className="flex items-center gap-2 rounded-2xl border border-stone-200 bg-white p-4">
               <input
                 type="range"
                 min={1}
@@ -483,9 +483,9 @@ export function ChatFlow({ defaultRole }: ChatFlowProps = {}) {
                   const label = (e.target.nextElementSibling as HTMLElement);
                   if (label) label.textContent = `${v}/10 — ${CONDITION_LABELS[v]}`;
                 }}
-                className="w-full accent-[#C6A664]"
+                className="w-full accent-[#DB5C5C]"
               />
-              <span className="min-w-[140px] text-right text-xs text-slate-600">
+              <span className="min-w-[140px] text-right text-xs text-stone-600">
                 5/10 — {CONDITION_LABELS[5]}
               </span>
             </div>
@@ -495,7 +495,7 @@ export function ChatFlow({ defaultRole }: ChatFlowProps = {}) {
                   key={v}
                   type="button"
                   onClick={() => handleCondition(v)}
-                  className="flex-1 rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs transition hover:border-[#C6A664]"
+                  className="flex-1 rounded-xl border border-stone-300 bg-white px-3 py-2 text-xs transition hover:border-[#DB5C5C]"
                 >
                   {v}
                 </button>
@@ -512,26 +512,26 @@ export function ChatFlow({ defaultRole }: ChatFlowProps = {}) {
           <div className="pl-11 space-y-2">
             <div className="flex gap-2">
               <div className="relative flex-1">
-                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">£</span>
+                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-stone-400">£</span>
                 <input
                   type="text"
                   placeholder="Asking price (optional)"
                   value={askingInput}
                   onChange={(e) => setAskingInput(e.target.value)}
-                  className="w-full rounded-xl border border-slate-300 bg-white pl-8 pr-4 py-3 text-sm outline-none transition focus:border-[#C6A664]"
+                  className="w-full rounded-xl border border-stone-300 bg-white pl-8 pr-4 py-3 text-sm outline-none transition focus:border-[#DB5C5C]"
                 />
               </div>
               <button
                 type="button"
                 onClick={() => handleAskingPrice(false)}
-                className="rounded-xl bg-[#0A2540] px-6 py-3 text-sm font-medium text-white transition hover:bg-[#13365c]"
+                className="rounded-xl bg-[#874646] px-6 py-3 text-sm font-medium text-white transition hover:bg-[#6F3A3A]"
               >
                 Continue
               </button>
               <button
                 type="button"
                 onClick={() => handleAskingPrice(true)}
-                className="rounded-xl border border-slate-300 px-6 py-3 text-sm text-slate-600 transition hover:border-slate-400"
+                className="rounded-xl border border-stone-300 px-6 py-3 text-sm text-stone-600 transition hover:border-stone-400"
               >
                 Skip
               </button>
@@ -547,24 +547,24 @@ export function ChatFlow({ defaultRole }: ChatFlowProps = {}) {
               type="text"
               required
               placeholder="Your name"
-              className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-[#C6A664]"
+              className="w-full rounded-xl border border-stone-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-[#DB5C5C]"
             />
             <input
               name="contactEmail"
               type="email"
               required
               placeholder="Email"
-              className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-[#C6A664]"
+              className="w-full rounded-xl border border-stone-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-[#DB5C5C]"
             />
             <input
               name="contactPhone"
               type="tel"
               placeholder="Phone (optional)"
-              className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-[#C6A664]"
+              className="w-full rounded-xl border border-stone-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-[#DB5C5C]"
             />
             <button
               type="submit"
-              className="w-full rounded-xl bg-[#C6A664] px-6 py-3 text-sm font-medium text-[#0A1020] transition hover:bg-[#b08f52]"
+              className="w-full rounded-xl bg-[#DB5C5C] px-6 py-3 text-sm font-medium text-[#2B2220] transition hover:bg-[#b08f52]"
             >
               Generate offer →
             </button>
@@ -573,8 +573,8 @@ export function ChatFlow({ defaultRole }: ChatFlowProps = {}) {
 
         {/* Thinking sequence */}
         {step === 'thinking' && (
-          <div className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
-            <p className="mb-6 text-center font-serif text-xl text-[#0A2540]">
+          <div className="rounded-2xl border border-stone-200 bg-white p-8 shadow-sm">
+            <p className="mb-6 text-center font-serif text-xl text-[#874646]">
               Crunching the numbers...
             </p>
             <ul className="space-y-3">
@@ -583,17 +583,17 @@ export function ChatFlow({ defaultRole }: ChatFlowProps = {}) {
                   key={line}
                   className={`flex items-center gap-3 text-sm transition ${
                     i < thinkingProgress
-                      ? 'text-[#0A1020]'
-                      : 'text-slate-300'
+                      ? 'text-[#2B2220]'
+                      : 'text-stone-300'
                   }`}
                 >
                   <span className="flex h-5 w-5 shrink-0 items-center justify-center">
                     {i < thinkingProgress ? (
                       <span className="text-[#1F6B3A]">✓</span>
                     ) : i === thinkingProgress ? (
-                      <span className="h-4 w-4 animate-spin rounded-full border-2 border-[#C6A664] border-t-transparent" />
+                      <span className="h-4 w-4 animate-spin rounded-full border-2 border-[#DB5C5C] border-t-transparent" />
                     ) : (
-                      <span className="h-2 w-2 rounded-full bg-slate-300" />
+                      <span className="h-2 w-2 rounded-full bg-stone-300" />
                     )}
                   </span>
                   {line}
@@ -645,14 +645,14 @@ function OfferCard({ offer }: { offer: OfferResult }) {
 
   if (offer.requiresReview) {
     return (
-      <div className="rounded-3xl border border-[#C6A664]/40 bg-white p-8 shadow-sm">
-        <p className="text-xs uppercase tracking-widest text-[#C6A664]">
+      <div className="rounded-3xl border border-[#DB5C5C]/40 bg-white p-8 shadow-sm">
+        <p className="text-xs uppercase tracking-widest text-[#DB5C5C]">
           Manual review
         </p>
         <h3 className="mt-2 font-serif text-3xl font-semibold">
           Your property needs a human look.
         </h3>
-        <p className="mt-4 text-slate-600">
+        <p className="mt-4 text-stone-600">
           Based on the details you shared, we want our senior appraiser to
           personally verify before we commit. Expect a firm written offer
           within 2 hours — no obligation.
@@ -667,7 +667,7 @@ function OfferCard({ offer }: { offer: OfferResult }) {
         <p className="font-serif text-2xl text-[#1F6B3A]">
           Offer reserved. Welcome to Bellwoods Lane.
         </p>
-        <p className="mt-3 text-sm text-slate-700">
+        <p className="mt-3 text-sm text-stone-700">
           We’ve emailed you the signed offer. Our team will be in touch within
           24 hours to start the process.
         </p>
@@ -676,45 +676,45 @@ function OfferCard({ offer }: { offer: OfferResult }) {
   }
 
   return (
-    <div className="rounded-3xl border border-slate-200 bg-white p-8 shadow-md">
-      <p className="text-xs uppercase tracking-widest text-[#C6A664]">
+    <div className="rounded-3xl border border-stone-200 bg-white p-8 shadow-md">
+      <p className="text-xs uppercase tracking-widest text-[#DB5C5C]">
         Your offer is ready
       </p>
       <div className="mt-6 grid grid-cols-1 gap-8 md:grid-cols-2">
         <div>
-          <p className="text-sm text-slate-500">Market value range</p>
-          <p className="mt-1 font-serif text-xl text-slate-700">
+          <p className="text-sm text-stone-500">Market value range</p>
+          <p className="mt-1 font-serif text-xl text-stone-700">
             {formatGBP(offer.estimatedMarketValueMinPence)} —{' '}
             {formatGBP(offer.estimatedMarketValueMaxPence)}
           </p>
-          <p className="mt-8 text-sm text-slate-500">Our cash offer</p>
-          <p className="mt-1 font-serif text-6xl font-semibold text-[#0A2540]">
+          <p className="mt-8 text-sm text-stone-500">Our cash offer</p>
+          <p className="mt-1 font-serif text-6xl font-semibold text-[#874646]">
             {formatGBP(offer.offerPence)}
           </p>
-          <p className="mt-2 text-xs text-slate-500">
+          <p className="mt-2 text-xs text-stone-500">
             {Math.round(offer.offerPercentOfAvm * 100)}% of AVM mid
           </p>
         </div>
         <div className="space-y-6">
           <div>
-            <p className="text-sm text-slate-500">Completion</p>
+            <p className="text-sm text-stone-500">Completion</p>
             <p className="mt-1 font-serif text-2xl">
               {offer.completionDays} days
             </p>
           </div>
           <div>
-            <p className="text-sm text-slate-500">Confidence</p>
-            <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-slate-100">
+            <p className="text-sm text-stone-500">Confidence</p>
+            <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-stone-100">
               <div
-                className="h-full bg-[#C6A664] transition-all"
+                className="h-full bg-[#DB5C5C] transition-all"
                 style={{ width: `${offer.confidenceScore * 100}%` }}
               />
             </div>
-            <p className="mt-1 text-xs text-slate-500">
+            <p className="mt-1 text-xs text-stone-500">
               {Math.round(offer.confidenceScore * 100)}%
             </p>
           </div>
-          <div className="rounded-xl bg-[#FAF6EA] px-4 py-3 text-xs text-slate-700">
+          <div className="rounded-xl bg-[#F6ECE7] px-4 py-3 text-xs text-stone-700">
             🔒 Legally binding if accepted. Locked until{' '}
             {new Date(offer.lockedUntil).toLocaleString('en-GB', {
               dateStyle: 'medium',
@@ -724,11 +724,11 @@ function OfferCard({ offer }: { offer: OfferResult }) {
         </div>
       </div>
 
-      <details className="mt-8 rounded-xl border border-slate-200 bg-slate-50 p-4">
+      <details className="mt-8 rounded-xl border border-stone-200 bg-stone-50 p-4">
         <summary className="cursor-pointer text-sm font-medium">
           See the reasoning
         </summary>
-        <ul className="mt-3 space-y-2 text-sm text-slate-600">
+        <ul className="mt-3 space-y-2 text-sm text-stone-600">
           {offer.reasoning.map((line, i) => (
             <li key={i}>· {line}</li>
           ))}
@@ -739,7 +739,7 @@ function OfferCard({ offer }: { offer: OfferResult }) {
         <button
           onClick={handleReserve}
           disabled={accepting}
-          className="flex-1 rounded-full bg-[#C6A664] px-6 py-4 text-sm font-medium text-[#0A1020] transition hover:bg-[#b08f52] disabled:opacity-50"
+          className="flex-1 rounded-full bg-[#DB5C5C] px-6 py-4 text-sm font-medium text-[#2B2220] transition hover:bg-[#b08f52] disabled:opacity-50"
         >
           {accepting ? 'Reserving...' : 'Reserve this offer →'}
         </button>
@@ -747,18 +747,18 @@ function OfferCard({ offer }: { offer: OfferResult }) {
           href={`/instant-offer/offer/${offer.quoteId}`}
           target="_blank"
           rel="noopener noreferrer"
-          className="rounded-full border border-slate-300 px-6 py-4 text-sm text-slate-700 transition hover:border-slate-400 text-center"
+          className="rounded-full border border-stone-300 px-6 py-4 text-sm text-stone-700 transition hover:border-stone-400 text-center"
         >
           View certificate
         </a>
       </div>
 
       {offer.trackUrl && (
-        <div className="mt-5 rounded-xl border border-slate-200 bg-[#FAFAF7] p-4">
-          <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-[#C6A664]">
+        <div className="mt-5 rounded-xl border border-stone-200 bg-[#FBF8F5] p-4">
+          <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-[#DB5C5C]">
             Live timeline
           </p>
-          <p className="mt-2 text-sm text-slate-700">
+          <p className="mt-2 text-sm text-stone-700">
             Bookmark this URL — every party in the chain sees the same
             updates here, no login required.
           </p>
@@ -766,7 +766,7 @@ function OfferCard({ offer }: { offer: OfferResult }) {
             href={offer.trackUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="mt-2 inline-block break-all font-mono text-xs text-[#0A2540] underline underline-offset-4"
+            className="mt-2 inline-block break-all font-mono text-xs text-[#874646] underline underline-offset-4"
           >
             {offer.trackUrl}
           </a>
@@ -801,14 +801,14 @@ function AgentReferralCard({
   };
 
   return (
-    <div className="mt-6 rounded-2xl border-2 border-[#C6A664]/40 bg-[#FAF6EA] p-6">
+    <div className="mt-6 rounded-2xl border-2 border-[#DB5C5C]/40 bg-[#F6ECE7] p-6">
       <div className="flex items-start gap-3">
         <div className="mt-0.5 text-2xl">🎁</div>
         <div className="flex-1">
-          <p className="font-serif text-lg font-semibold text-[#0A1020]">
+          <p className="font-serif text-lg font-semibold text-[#2B2220]">
             Your referral is logged.
           </p>
-          <p className="mt-1 text-sm text-slate-700">
+          <p className="mt-1 text-sm text-stone-700">
             Every seller you send to the link below is credited to{' '}
             <strong>{account.firmName}</strong> automatically. Partner fee
             agreed in writing per deal. No signup. Just bookmark and share.
@@ -816,27 +816,27 @@ function AgentReferralCard({
         </div>
       </div>
 
-      <div className="mt-5 rounded-xl bg-white p-4 ring-1 ring-slate-200">
-        <p className="text-xs uppercase tracking-widest text-slate-500">
+      <div className="mt-5 rounded-xl bg-white p-4 ring-1 ring-stone-200">
+        <p className="text-xs uppercase tracking-widest text-stone-500">
           Your personal referral link
         </p>
         <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-center">
           <input
             readOnly
             value={link}
-            className="flex-1 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 font-mono text-xs text-[#0A2540]"
+            className="flex-1 rounded-lg border border-stone-200 bg-stone-50 px-3 py-2 font-mono text-xs text-[#874646]"
           />
           <button
             type="button"
             onClick={handleCopy}
-            className="rounded-lg bg-[#0A2540] px-4 py-2 text-xs font-medium text-white transition hover:bg-[#13365c]"
+            className="rounded-lg bg-[#874646] px-4 py-2 text-xs font-medium text-white transition hover:bg-[#6F3A3A]"
           >
             {copied ? 'Copied ✓' : 'Copy link'}
           </button>
         </div>
-        <p className="mt-3 text-xs text-slate-500">
+        <p className="mt-3 text-xs text-stone-500">
           Referral code:{' '}
-          <span className="font-mono font-semibold text-[#0A2540]">
+          <span className="font-mono font-semibold text-[#874646]">
             {account.referralCode}
           </span>
         </p>
@@ -844,7 +844,7 @@ function AgentReferralCard({
 
       <a
         href="/partners/login"
-        className="mt-4 inline-block text-xs text-slate-600 underline underline-offset-4 hover:text-[#C6A664]"
+        className="mt-4 inline-block text-xs text-stone-600 underline underline-offset-4 hover:text-[#DB5C5C]"
       >
         Want a full dashboard of your referrals, deal stages, and
         partner-fee status? Claim your account →

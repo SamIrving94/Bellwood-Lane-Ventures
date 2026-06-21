@@ -141,11 +141,11 @@ export function AgentQuickForm({ defaultTriggerLabel }: AgentQuickFormProperties
   return (
     <form
       onSubmit={handleSubmit}
-      className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm md:p-8"
+      className="rounded-3xl border border-stone-200 bg-white p-6 shadow-sm md:p-8"
     >
       <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
         <label className="block md:col-span-2">
-          <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-slate-500">
+          <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-stone-500">
             Property address
           </span>
           <input
@@ -153,11 +153,11 @@ export function AgentQuickForm({ defaultTriggerLabel }: AgentQuickFormProperties
             value={address}
             onChange={(e) => setAddress(e.target.value)}
             placeholder="14 Acacia Avenue, Stockport"
-            className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-[#C6A664]"
+            className="mt-2 w-full rounded-xl border border-stone-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-[#DB5C5C]"
           />
         </label>
         <label className="block">
-          <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-slate-500">
+          <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-stone-500">
             Postcode
           </span>
           <input
@@ -165,11 +165,11 @@ export function AgentQuickForm({ defaultTriggerLabel }: AgentQuickFormProperties
             value={postcode}
             onChange={(e) => setPostcode(e.target.value)}
             placeholder="SK4 3HQ"
-            className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm uppercase outline-none transition focus:border-[#C6A664]"
+            className="mt-2 w-full rounded-xl border border-stone-300 bg-white px-4 py-3 text-sm uppercase outline-none transition focus:border-[#DB5C5C]"
           />
         </label>
         <label className="block">
-          <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-slate-500">
+          <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-stone-500">
             Your firm
           </span>
           <input
@@ -177,13 +177,13 @@ export function AgentQuickForm({ defaultTriggerLabel }: AgentQuickFormProperties
             value={firmName}
             onChange={(e) => setFirmName(e.target.value)}
             placeholder="Acme Estates"
-            className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-[#C6A664]"
+            className="mt-2 w-full rounded-xl border border-stone-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-[#DB5C5C]"
           />
         </label>
       </div>
 
       <div className="mt-6">
-        <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-slate-500">
+        <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-stone-500">
           What&rsquo;s happened?
         </span>
         <div className="mt-2 flex flex-wrap gap-2">
@@ -194,8 +194,8 @@ export function AgentQuickForm({ defaultTriggerLabel }: AgentQuickFormProperties
               onClick={() => setTrigger(t)}
               className={`rounded-full border px-4 py-2 text-sm transition ${
                 trigger.ui === t.ui
-                  ? 'border-[#C6A664] bg-[#FAF6EA] text-[#0A1020]'
-                  : 'border-slate-300 bg-white text-slate-600 hover:border-slate-400'
+                  ? 'border-[#DB5C5C] bg-[#F6ECE7] text-[#2B2220]'
+                  : 'border-stone-300 bg-white text-stone-600 hover:border-stone-400'
               }`}
             >
               {t.ui}
@@ -206,37 +206,37 @@ export function AgentQuickForm({ defaultTriggerLabel }: AgentQuickFormProperties
 
       <div className="mt-6 grid grid-cols-1 gap-5 md:grid-cols-2">
         <label className="block">
-          <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-slate-500">
+          <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-stone-500">
             Your name
           </span>
           <input
             type="text"
             value={contactName}
             onChange={(e) => setContactName(e.target.value)}
-            className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-[#C6A664]"
+            className="mt-2 w-full rounded-xl border border-stone-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-[#DB5C5C]"
           />
         </label>
         <label className="block">
-          <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-slate-500">
+          <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-stone-500">
             Email
           </span>
           <input
             type="email"
             value={contactEmail}
             onChange={(e) => setContactEmail(e.target.value)}
-            className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-[#C6A664]"
+            className="mt-2 w-full rounded-xl border border-stone-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-[#DB5C5C]"
           />
         </label>
         <label className="block md:col-span-2">
-          <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-slate-500">
-            Work mobile <span className="text-slate-400 normal-case tracking-normal">(WhatsApp · optional but faster)</span>
+          <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-stone-500">
+            Work mobile <span className="text-stone-400 normal-case tracking-normal">(WhatsApp · optional but faster)</span>
           </span>
           <input
             type="tel"
             value={contactPhone}
             onChange={(e) => setContactPhone(e.target.value)}
             placeholder="07700 900000"
-            className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-[#C6A664]"
+            className="mt-2 w-full rounded-xl border border-stone-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-[#DB5C5C]"
           />
         </label>
       </div>
@@ -248,7 +248,7 @@ export function AgentQuickForm({ defaultTriggerLabel }: AgentQuickFormProperties
       )}
 
       <div className="mt-7 flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
-        <p className="text-xs text-slate-500">
+        <p className="text-xs text-stone-500">
           Indicative offer on screen in 60 seconds.
           <br />
           Confirmed price in writing within 24 hours of viewing.
@@ -256,7 +256,7 @@ export function AgentQuickForm({ defaultTriggerLabel }: AgentQuickFormProperties
         <button
           type="submit"
           disabled={state.kind === 'submitting'}
-          className="inline-flex items-center gap-2 rounded-full bg-[#0A2540] px-7 py-3 text-sm font-medium text-white transition hover:bg-[#13365c] disabled:opacity-50"
+          className="inline-flex items-center gap-2 rounded-full bg-[#874646] px-7 py-3 text-sm font-medium text-white transition hover:bg-[#6F3A3A] disabled:opacity-50"
         >
           {state.kind === 'submitting' ? 'Pulling comps\u2026' : 'See the number'}
           <span aria-hidden>→</span>
@@ -280,14 +280,14 @@ function SuccessView({
 
   if (offer.requiresReview) {
     return (
-      <div className="rounded-3xl border border-[#C6A664]/40 bg-white p-10 shadow-sm">
-        <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-[#C6A664]">
+      <div className="rounded-3xl border border-[#DB5C5C]/40 bg-white p-10 shadow-sm">
+        <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-[#DB5C5C]">
           Manual review
         </p>
-        <h3 className="mt-3 font-serif text-3xl font-semibold text-[#0A1020]">
+        <h3 className="mt-3 font-serif text-3xl font-semibold text-[#2B2220]">
           This one needs a human look.
         </h3>
-        <p className="mt-5 max-w-lg text-[15px] leading-relaxed text-slate-700">
+        <p className="mt-5 max-w-lg text-[15px] leading-relaxed text-stone-700">
           We have your details. Our senior appraiser will personally verify
           before issuing a binding figure. Expect a written offer in{' '}
           <strong>{vendorEmail}</strong> within 2 working hours, no obligation.
@@ -298,47 +298,47 @@ function SuccessView({
 
   return (
     <div className="space-y-5">
-      <div className="rounded-3xl border-2 border-[#C6A664]/50 bg-white p-7 shadow-md md:p-9">
+      <div className="rounded-3xl border-2 border-[#DB5C5C]/50 bg-white p-7 shadow-md md:p-9">
         <div className="flex items-baseline justify-between">
-          <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-[#C6A664]">
+          <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-[#DB5C5C]">
             Indicative offer
           </p>
-          <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-slate-400">
+          <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-stone-400">
             Ref {offer.quoteId?.slice(-8).toUpperCase()}
           </p>
         </div>
         <p
-          className="mt-3 font-serif font-semibold tracking-[-0.025em] text-[#0A1020]"
+          className="mt-3 font-serif font-semibold tracking-[-0.025em] text-[#2B2220]"
           style={{ fontSize: 'clamp(48px, 8vw, 88px)', lineHeight: 1 }}
         >
           {formatGBP(offer.offerPence)}
         </p>
         <div className="mt-6 grid grid-cols-2 gap-6 text-sm md:grid-cols-3">
           <div>
-            <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-slate-400">
+            <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-stone-400">
               AVM range
             </p>
-            <p className="mt-1 text-slate-700">
+            <p className="mt-1 text-stone-700">
               {formatGBP(offer.estimatedMarketValueMinPence)} —{' '}
               {formatGBP(offer.estimatedMarketValueMaxPence)}
             </p>
           </div>
           <div>
-            <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-slate-400">
+            <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-stone-400">
               Completion
             </p>
-            <p className="mt-1 text-slate-700">
+            <p className="mt-1 text-stone-700">
               {offer.completionDays ?? 21} days
             </p>
           </div>
           <div>
-            <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-slate-400">
+            <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-stone-400">
               Locked
             </p>
-            <p className="mt-1 text-slate-700">72 hours from now</p>
+            <p className="mt-1 text-stone-700">72 hours from now</p>
           </div>
         </div>
-        <p className="mt-6 rounded-xl bg-[#FAF6EA] px-5 py-4 text-[13px] leading-relaxed text-slate-700">
+        <p className="mt-6 rounded-xl bg-[#F6ECE7] px-5 py-4 text-[13px] leading-relaxed text-stone-700">
           This is the indicative figure from our AVM (HM Land Registry comps,
           last 24 months, adjusted for HPI). We'll acknowledge within 4
           business hours, arrange a viewing, then send the confirmed price
@@ -356,9 +356,9 @@ function SuccessView({
       )}
 
       {offer.agentAccount?.referralCode && (
-        <p className="text-center text-[12px] text-slate-500">
+        <p className="text-center text-[12px] text-stone-500">
           Referral code{' '}
-          <span className="font-mono font-semibold text-[#0A2540]">
+          <span className="font-mono font-semibold text-[#874646]">
             {offer.agentAccount.referralCode}
           </span>
           {' '}has been auto-issued to {offer.agentAccount.firmName}.
@@ -402,11 +402,11 @@ function VendorShareCard({
   );
 
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-6">
-      <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-[#C6A664]">
+    <div className="rounded-2xl border border-stone-200 bg-white p-6">
+      <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-[#DB5C5C]">
         Share with your vendor
       </p>
-      <p className="mt-2 text-[14px] leading-relaxed text-slate-600">
+      <p className="mt-2 text-[14px] leading-relaxed text-stone-600">
         One link, no login. Your vendor sees the offer, our methodology, and
         the walk-away cover. Most agents send via WhatsApp.
       </p>
@@ -415,23 +415,23 @@ function VendorShareCard({
           href={`https://api.whatsapp.com/send?text=${whatsAppBody}`}
           target="_blank"
           rel="noopener noreferrer"
-          className="flex items-center justify-center gap-2 rounded-xl border-2 border-[#C6A664] bg-[#FAF6EA] px-4 py-3 text-sm font-medium text-[#0A1020] transition hover:bg-[#f5edd7]"
+          className="flex items-center justify-center gap-2 rounded-xl border-2 border-[#DB5C5C] bg-[#F6ECE7] px-4 py-3 text-sm font-medium text-[#2B2220] transition hover:bg-[#f5edd7]"
         >
           <span aria-hidden>📱</span>
           WhatsApp vendor
         </a>
         <a
           href={`mailto:?subject=${emailSubject}&body=${emailBody}`}
-          className="flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-[#0A1020] transition hover:border-[#C6A664] hover:bg-[#FAF6EA]"
+          className="flex items-center justify-center gap-2 rounded-xl border border-stone-200 bg-white px-4 py-3 text-sm font-medium text-[#2B2220] transition hover:border-[#DB5C5C] hover:bg-[#F6ECE7]"
         >
           <span aria-hidden>✉</span>
           Email vendor
         </a>
         <CopyButton value={trackUrl} label="Copy link" copiedLabel="Copied ✓" />
       </div>
-      <details className="mt-4 text-xs text-slate-500">
+      <details className="mt-4 text-xs text-stone-500">
         <summary className="cursor-pointer">Show the raw link</summary>
-        <p className="mt-2 break-all font-mono text-[11px] text-slate-600">
+        <p className="mt-2 break-all font-mono text-[11px] text-stone-600">
           {trackUrl}
         </p>
       </details>
@@ -462,7 +462,7 @@ function CopyButton({
     <button
       type="button"
       onClick={handleCopy}
-      className="flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-[#0A1020] transition hover:border-[#C6A664] hover:bg-[#FAF6EA]"
+      className="flex items-center justify-center gap-2 rounded-xl border border-stone-200 bg-white px-4 py-3 text-sm font-medium text-[#2B2220] transition hover:border-[#DB5C5C] hover:bg-[#F6ECE7]"
     >
       <span aria-hidden>🔗</span>
       {copied ? copiedLabel : label}

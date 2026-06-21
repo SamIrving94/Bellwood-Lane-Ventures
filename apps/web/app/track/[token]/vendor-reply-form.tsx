@@ -50,7 +50,7 @@ export function VendorReplyForm({ token }: { token: string }) {
         <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-[#1F6B3A]">
           Message received
         </p>
-        <p className="mt-3 text-[15px] leading-relaxed text-slate-700">
+        <p className="mt-3 text-[15px] leading-relaxed text-stone-700">
           Thank you. Anthony or someone on the team will reply within one
           working day. Anything urgent — phone 0203 488 5612.
         </p>
@@ -61,7 +61,7 @@ export function VendorReplyForm({ token }: { token: string }) {
   return (
     <form onSubmit={onSubmit} className="mt-6 space-y-4">
       <label className="block">
-        <span className="font-mono text-[11px] uppercase tracking-[0.18em] text-slate-600">
+        <span className="font-mono text-[11px] uppercase tracking-[0.18em] text-stone-600">
           Message
         </span>
         <textarea
@@ -70,7 +70,7 @@ export function VendorReplyForm({ token }: { token: string }) {
           required
           rows={4}
           maxLength={2000}
-          className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-[15px] text-slate-900 focus:border-[#0A2540] focus:outline-none"
+          className="mt-2 w-full rounded-xl border border-stone-300 bg-white px-4 py-3 text-[15px] text-stone-900 focus:border-[#874646] focus:outline-none"
           placeholder="What would you like us to know? Question, concern, status request — anything."
         />
       </label>
@@ -81,7 +81,7 @@ export function VendorReplyForm({ token }: { token: string }) {
           onChange={(e) => setName(e.target.value)}
           placeholder="Your name (optional)"
           maxLength={120}
-          className="rounded-xl border border-slate-300 bg-white px-4 py-3 text-[15px] text-slate-900 focus:border-[#0A2540] focus:outline-none"
+          className="rounded-xl border border-stone-300 bg-white px-4 py-3 text-[15px] text-stone-900 focus:border-[#874646] focus:outline-none"
         />
         <input
           type="email"
@@ -89,7 +89,7 @@ export function VendorReplyForm({ token }: { token: string }) {
           onChange={(e) => setEmail(e.target.value)}
           placeholder="Email (optional)"
           maxLength={200}
-          className="rounded-xl border border-slate-300 bg-white px-4 py-3 text-[15px] text-slate-900 focus:border-[#0A2540] focus:outline-none"
+          className="rounded-xl border border-stone-300 bg-white px-4 py-3 text-[15px] text-stone-900 focus:border-[#874646] focus:outline-none"
         />
         <input
           type="tel"
@@ -97,7 +97,7 @@ export function VendorReplyForm({ token }: { token: string }) {
           onChange={(e) => setPhone(e.target.value)}
           placeholder="Phone (optional)"
           maxLength={40}
-          className="rounded-xl border border-slate-300 bg-white px-4 py-3 text-[15px] text-slate-900 focus:border-[#0A2540] focus:outline-none"
+          className="rounded-xl border border-stone-300 bg-white px-4 py-3 text-[15px] text-stone-900 focus:border-[#874646] focus:outline-none"
         />
       </div>
 
@@ -119,12 +119,12 @@ export function VendorReplyForm({ token }: { token: string }) {
       <button
         type="submit"
         disabled={status === 'submitting' || !message.trim()}
-        className="inline-flex items-center gap-2 rounded-full bg-[#0A2540] px-6 py-3 font-mono text-[11px] uppercase tracking-[0.18em] text-white transition hover:bg-[#0A1020] disabled:cursor-not-allowed disabled:opacity-50"
+        className="inline-flex items-center gap-2 rounded-full bg-[#874646] px-6 py-3 font-mono text-[11px] uppercase tracking-[0.18em] text-white transition hover:bg-[#2B2220] disabled:cursor-not-allowed disabled:opacity-50"
       >
         {status === 'submitting' ? 'Sending…' : 'Send message'}
       </button>
 
-      <p className="font-mono text-[11px] text-slate-500">
+      <p className="font-mono text-[11px] text-stone-500">
         Goes straight to Anthony. We read every message and reply by hand —
         usually within a working day.
       </p>

@@ -109,49 +109,49 @@ export default async function TrackPage({
   const offer = trackToken.quoteRequest?.offer;
 
   return (
-    <main className="min-h-screen bg-[#FAFAF7] px-6 py-16 md:px-12 md:py-24">
+    <main className="min-h-screen bg-[#FBF8F5] px-6 py-16 md:px-12 md:py-24">
       <div className="mx-auto max-w-3xl">
         <Link
           href="/instant-offer"
-          className="inline-flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.2em] text-slate-500 transition hover:text-[#0A2540]"
+          className="inline-flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.2em] text-stone-500 transition hover:text-[#874646]"
         >
           <span aria-hidden>←</span> bellwoodslane.co.uk
         </Link>
 
-        <p className="mt-12 font-mono text-[11px] uppercase tracking-[0.22em] text-[#C6A664]">
+        <p className="mt-12 font-mono text-[11px] uppercase tracking-[0.22em] text-[#DB5C5C]">
           Live timeline · transparent
         </p>
         <h1
-          className="mt-3 font-serif font-semibold leading-[1.05] tracking-[-0.025em] text-[#0A1020]"
+          className="mt-3 font-serif font-semibold leading-[1.05] tracking-[-0.025em] text-[#2B2220]"
           style={{ fontSize: 'clamp(36px, 5vw, 56px)' }}
         >
           {property?.address ?? 'Your sale'}
         </h1>
         {property && (
-          <p className="mt-2 font-mono text-[12px] text-slate-500">
+          <p className="mt-2 font-mono text-[12px] text-stone-500">
             {property.postcode}
           </p>
         )}
 
         {/* Headline offer card */}
         {offer && (
-          <div className="mt-10 rounded-2xl border-2 border-[#C6A664]/40 bg-[#FAF6EA] p-7">
-            <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-slate-500">
+          <div className="mt-10 rounded-2xl border-2 border-[#DB5C5C]/40 bg-[#F6ECE7] p-7">
+            <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-stone-500">
               Cash offer
             </p>
-            <p className="mt-2 font-serif text-[48px] font-semibold leading-none tracking-[-0.025em] text-[#0A2540] md:text-[64px]">
+            <p className="mt-2 font-serif text-[48px] font-semibold leading-none tracking-[-0.025em] text-[#874646] md:text-[64px]">
               {formatGBP(offer.offerPence)}
             </p>
             <div className="mt-3 flex flex-wrap items-center gap-x-4 font-mono text-[12px]">
-              <span className="text-slate-500">
+              <span className="text-stone-500">
                 Locked until{' '}
                 {offer.lockedUntil.toLocaleString('en-GB', {
                   dateStyle: 'long',
                   timeStyle: 'short',
                 })}
               </span>
-              <span className="text-slate-300">·</span>
-              <span className="text-[#0A1020]">
+              <span className="text-stone-300">·</span>
+              <span className="text-[#2B2220]">
                 Target {offer.completionDays} days to completion
               </span>
             </div>
@@ -164,15 +164,15 @@ export default async function TrackPage({
             <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#1F6B3A] opacity-70" />
             <span className="relative inline-flex h-2 w-2 rounded-full bg-[#1F6B3A]" />
           </span>
-          <span className="font-mono text-[11px] uppercase tracking-[0.18em] text-slate-600">
+          <span className="font-mono text-[11px] uppercase tracking-[0.18em] text-stone-600">
             Live · refresh any time to see new events
           </span>
         </div>
 
         {/* Timeline */}
-        <ol className="mt-10 space-y-0 border-l-2 border-slate-200">
+        <ol className="mt-10 space-y-0 border-l-2 border-stone-200">
           {updates.length === 0 ? (
-            <li className="ml-6 py-6 text-sm text-slate-500">
+            <li className="ml-6 py-6 text-sm text-stone-500">
               No updates yet. New events will appear here as the deal
               progresses.
             </li>
@@ -185,26 +185,26 @@ export default async function TrackPage({
                 <span
                   className={`absolute -left-[33px] top-8 flex h-4 w-4 items-center justify-center rounded-full border-2 ${
                     i === 0
-                      ? 'border-[#C6A664] bg-[#C6A664]'
-                      : 'border-slate-300 bg-[#FAFAF7]'
+                      ? 'border-[#DB5C5C] bg-[#DB5C5C]'
+                      : 'border-stone-300 bg-[#FBF8F5]'
                   }`}
                 >
                   {i === 0 && (
                     <span className="block h-1.5 w-1.5 rounded-full bg-white" />
                   )}
                 </span>
-                <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-[#C6A664]">
+                <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-[#DB5C5C]">
                   {KIND_LABEL[u.kind] ?? u.kind}
                 </p>
                 <h2 className="mt-2 font-serif text-2xl font-semibold leading-tight">
                   {u.title}
                 </h2>
                 {u.detail && (
-                  <p className="mt-3 text-[15px] leading-relaxed text-slate-700">
+                  <p className="mt-3 text-[15px] leading-relaxed text-stone-700">
                     {u.detail}
                   </p>
                 )}
-                <p className="mt-3 font-mono text-[11px] text-slate-500">
+                <p className="mt-3 font-mono text-[11px] text-stone-500">
                   {u.createdAt.toLocaleString('en-GB', {
                     dateStyle: 'long',
                     timeStyle: 'short',
@@ -215,22 +215,22 @@ export default async function TrackPage({
           )}
         </ol>
 
-        <hr className="my-16 border-slate-200" />
+        <hr className="my-16 border-stone-200" />
 
         <section>
-          <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-slate-500">
+          <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-stone-500">
             Why this page exists
           </p>
-          <p className="mt-4 text-[15px] leading-relaxed text-slate-700">
+          <p className="mt-4 text-[15px] leading-relaxed text-stone-700">
             Most cash buyers go silent between offer and completion. We
             don&rsquo;t. Every party in the chain — seller, agent,
             solicitor — sees this same timeline at the same moment.
           </p>
-          <p className="mt-4 text-[15px] leading-relaxed text-slate-700">
+          <p className="mt-4 text-[15px] leading-relaxed text-stone-700">
             If anything looks wrong, reply to any of our emails or contact{' '}
             <a
               href="mailto:anthony@bellwoodslane.co.uk"
-              className="text-[#0A2540] underline"
+              className="text-[#874646] underline"
             >
               anthony@bellwoodslane.co.uk
             </a>{' '}
@@ -240,7 +240,7 @@ export default async function TrackPage({
           <VendorReplyForm token={token} />
         </section>
 
-        <p className="mt-12 font-mono text-[10px] uppercase tracking-[0.22em] text-slate-400">
+        <p className="mt-12 font-mono text-[10px] uppercase tracking-[0.22em] text-stone-400">
           Bellwoods Lane Ltd · Property Redress Scheme (PRS) · HMRC AML supervised · ICO registered
         </p>
       </div>

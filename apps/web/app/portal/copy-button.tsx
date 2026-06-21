@@ -17,7 +17,7 @@ export function CopyButton({ text }: { text: string }) {
           /* ignore */
         }
       }}
-      className="rounded-xl bg-[#0A2540] px-6 py-3 text-sm font-medium text-white transition hover:bg-[#13365c]"
+      className="rounded-xl bg-[#874646] px-6 py-3 text-sm font-medium text-white transition hover:bg-[#6F3A3A]"
     >
       {copied ? 'Copied' : 'Copy link'}
     </button>

@@ -23,7 +23,7 @@ export function LedgerTicker() {
   return (
     <section
       aria-label="Recent activity"
-      className="relative overflow-hidden border-b border-slate-200/60 bg-[#0A2540] py-3 text-white"
+      className="relative overflow-hidden border-b border-stone-200/60 bg-[#874646] py-3 text-white"
     >
       <div className="ticker-track flex w-max items-center gap-12 whitespace-nowrap">
         {ITEMS.map((item, i) => (
@@ -34,7 +34,7 @@ export function LedgerTicker() {
             <span
               className="inline-block h-1 w-1 rounded-full"
               style={{
-                background: item.kind === 'deal' ? '#C6A664' : '#1F6B3A',
+                background: item.kind === 'deal' ? '#DB5C5C' : '#1F6B3A',
               }}
             />
             <span className="text-white/80">{item.text}</span>

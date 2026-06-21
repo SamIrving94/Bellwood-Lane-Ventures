@@ -10,21 +10,21 @@ export const metadata: Metadata = {
 export default function MethodologyPage() {
   return (
     <>
-      <header className="border-b border-slate-200/60">
+      <header className="border-b border-stone-200/60">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
           <Link
             href="/instant-offer"
             className="font-serif text-xl font-semibold tracking-tight"
           >
             BELLWOODS
-            <span className="mx-2 inline-block h-px w-8 bg-[#C6A664] align-middle" />
-            <span className="text-sm font-normal tracking-widest text-slate-500">
+            <span className="mx-2 inline-block h-px w-8 bg-[#DB5C5C] align-middle" />
+            <span className="text-sm font-normal tracking-widest text-stone-500">
               LANE
             </span>
           </Link>
           <Link
             href="/instant-offer#chat"
-            className="rounded-full bg-[#0A2540] px-5 py-2 text-sm text-white transition hover:bg-[#13365c]"
+            className="rounded-full bg-[#874646] px-5 py-2 text-sm text-white transition hover:bg-[#6F3A3A]"
           >
             Get an offer
           </Link>
@@ -32,13 +32,13 @@ export default function MethodologyPage() {
       </header>
 
       <article className="mx-auto max-w-3xl px-6 py-20">
-        <p className="mb-3 text-xs uppercase tracking-widest text-[#C6A664]">
+        <p className="mb-3 text-xs uppercase tracking-widest text-[#DB5C5C]">
           Methodology
         </p>
         <h1 className="font-serif text-5xl font-semibold leading-tight">
           How we price your property.
         </h1>
-        <p className="mt-6 text-lg text-slate-600">
+        <p className="mt-6 text-lg text-stone-600">
           No black box. Every number in our offer has a line of reasoning you
           can see. Here is the exact process, in order.
         </p>
@@ -101,9 +101,9 @@ export default function MethodologyPage() {
                     ].map(([row, val]) => (
                       <tr
                         key={row}
-                        className="border-b border-slate-100 last:border-0"
+                        className="border-b border-stone-100 last:border-0"
                       >
-                        <td className="py-2 text-slate-600">{row}</td>
+                        <td className="py-2 text-stone-600">{row}</td>
                         <td className="py-2 text-right font-medium">{val}</td>
                       </tr>
                     ))}
@@ -129,8 +129,8 @@ export default function MethodologyPage() {
             n="06"
             title="Worked example"
             body={
-              <div className="rounded-2xl border border-slate-200 bg-[#FAF6EA] p-6">
-                <p className="text-sm text-slate-600">
+              <div className="rounded-2xl border border-stone-200 bg-[#F6ECE7] p-6">
+                <p className="text-sm text-stone-600">
                   Manchester M40, 3-bed terrace, probate, EPC D, flood zone 1.
                 </p>
                 <dl className="mt-4 space-y-2 text-sm">
@@ -143,20 +143,20 @@ export default function MethodologyPage() {
                   ].map(([k, v]) => (
                     <div
                       key={k}
-                      className="flex justify-between border-b border-slate-200 py-1 last:border-0"
+                      className="flex justify-between border-b border-stone-200 py-1 last:border-0"
                     >
-                      <dt className="text-slate-600">{k}</dt>
+                      <dt className="text-stone-600">{k}</dt>
                       <dd className="font-medium">{v}</dd>
                     </div>
                   ))}
                 </dl>
-                <div className="mt-4 flex items-baseline justify-between border-t-2 border-[#C6A664] pt-4">
-                  <span className="text-sm text-slate-600">Cash offer</span>
+                <div className="mt-4 flex items-baseline justify-between border-t-2 border-[#DB5C5C] pt-4">
+                  <span className="text-sm text-stone-600">Cash offer</span>
                   <span className="font-serif text-3xl font-semibold">
                     £150,700
                   </span>
                 </div>
-                <p className="mt-3 text-xs text-slate-500">
+                <p className="mt-3 text-xs text-stone-500">
                   (78.3% of AVM mid, completion in weeks not months)
                 </p>
               </div>
@@ -164,13 +164,13 @@ export default function MethodologyPage() {
           />
         </div>
 
-        <div className="mt-20 rounded-3xl bg-[#0A2540] p-10 text-center text-white">
+        <div className="mt-20 rounded-3xl bg-[#874646] p-10 text-center text-white">
           <h2 className="font-serif text-3xl font-semibold">
             See your number in 60 seconds.
           </h2>
           <Link
             href="/instant-offer#chat"
-            className="mt-6 inline-flex items-center gap-2 rounded-full bg-[#C6A664] px-8 py-3 text-sm font-medium text-[#0A1020] transition hover:bg-[#b08f52]"
+            className="mt-6 inline-flex items-center gap-2 rounded-full bg-[#DB5C5C] px-8 py-3 text-sm font-medium text-[#2B2220] transition hover:bg-[#b08f52]"
           >
             Get an indicative offer →
           </Link>
@@ -191,9 +191,9 @@ function Section({
 }) {
   return (
     <div>
-      <p className="font-serif text-sm text-[#C6A664]">{n}</p>
+      <p className="font-serif text-sm text-[#DB5C5C]">{n}</p>
       <h2 className="mt-2 font-serif text-3xl font-semibold">{title}</h2>
-      <div className="mt-4 text-slate-700">{body}</div>
+      <div className="mt-4 text-stone-700">{body}</div>
     </div>
   );
 }

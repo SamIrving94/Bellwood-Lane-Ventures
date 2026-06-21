@@ -52,7 +52,7 @@ export function ProofOfFundsButton() {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="rounded-full bg-[#0A2540] px-6 py-3 text-sm text-white transition hover:bg-[#13365c]"
+        className="rounded-full bg-[#874646] px-6 py-3 text-sm text-white transition hover:bg-[#6F3A3A]"
       >
         Request proof of funds
       </button>
@@ -62,7 +62,7 @@ export function ProofOfFundsButton() {
           role="dialog"
           aria-modal="true"
           aria-labelledby="pof-title"
-          className="fixed inset-0 z-50 flex items-center justify-center bg-[#0A1020]/40 p-4 backdrop-blur-sm"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-[#2B2220]/40 p-4 backdrop-blur-sm"
           onClick={close}
         >
           <div
@@ -80,21 +80,21 @@ export function ProofOfFundsButton() {
                 >
                   Request received.
                 </h3>
-                <p className="mt-3 text-sm text-slate-600">
+                <p className="mt-3 text-sm text-stone-600">
                   We&apos;ll send you a signed bank letter within 2 hours
                   during business hours, or first thing next morning.
                 </p>
                 <button
                   type="button"
                   onClick={close}
-                  className="mt-6 rounded-full border border-slate-300 px-5 py-2 text-sm text-slate-700 hover:border-slate-400"
+                  className="mt-6 rounded-full border border-stone-300 px-5 py-2 text-sm text-stone-700 hover:border-stone-400"
                 >
                   Close
                 </button>
               </div>
             ) : (
               <>
-                <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-[#C6A664]">
+                <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-[#DB5C5C]">
                   Proof of funds
                 </p>
                 <h3
@@ -103,7 +103,7 @@ export function ProofOfFundsButton() {
                 >
                   Signed bank letter, within two hours.
                 </h3>
-                <p className="mt-3 text-sm text-slate-600">
+                <p className="mt-3 text-sm text-stone-600">
                   Tell us where to send it. No automated chasers — one
                   human will email you a single PDF.
                 </p>
@@ -117,14 +117,14 @@ export function ProofOfFundsButton() {
                     required
                   />
                   <label className="block">
-                    <span className="text-xs uppercase tracking-widest text-slate-500">
+                    <span className="text-xs uppercase tracking-widest text-stone-500">
                       Context (optional)
                     </span>
                     <textarea
                       name="context"
                       rows={3}
                       placeholder="e.g. negotiating a Manchester probate sale, vendor wants assurance"
-                      className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-[#C6A664]"
+                      className="mt-1 w-full rounded-xl border border-stone-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-[#DB5C5C]"
                     />
                   </label>
 
@@ -138,14 +138,14 @@ export function ProofOfFundsButton() {
                     <button
                       type="button"
                       onClick={close}
-                      className="text-sm text-slate-500 hover:text-[#0A2540]"
+                      className="text-sm text-stone-500 hover:text-[#874646]"
                     >
                       Cancel
                     </button>
                     <button
                       type="submit"
                       disabled={status.kind === 'submitting'}
-                      className="rounded-full bg-[#C6A664] px-6 py-3 text-sm font-medium text-[#0A1020] transition hover:bg-[#b08f52] disabled:opacity-50"
+                      className="rounded-full bg-[#DB5C5C] px-6 py-3 text-sm font-medium text-[#2B2220] transition hover:bg-[#b08f52] disabled:opacity-50"
                     >
                       {status.kind === 'submitting'
                         ? 'Sending...'
@@ -175,14 +175,14 @@ function Input({
 }) {
   return (
     <label className="block">
-      <span className="text-xs uppercase tracking-widest text-slate-500">
+      <span className="text-xs uppercase tracking-widest text-stone-500">
         {label}
       </span>
       <input
         name={name}
         type={type}
         required={required}
-        className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-[#C6A664]"
+        className="mt-1 w-full rounded-xl border border-stone-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-[#DB5C5C]"
       />
     </label>
   );

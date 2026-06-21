@@ -48,20 +48,20 @@ export function SignupForm() {
   if (status.state === 'success') {
     return (
       <div className="text-center">
-        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-[#C6A664]/20 text-2xl text-[#C6A664]">
+        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-[#DB5C5C]/20 text-2xl text-[#DB5C5C]">
           ✓
         </div>
         <h3 className="mt-6 font-serif text-2xl font-semibold">
           Check your email.
         </h3>
-        <p className="mt-3 text-slate-600">
+        <p className="mt-3 text-stone-600">
           We&apos;ve sent you a sign-in link. Valid for 15 minutes.
         </p>
-        <div className="mt-6 rounded-xl bg-[#FAF6EA] p-4 text-sm">
-          <p className="text-xs uppercase tracking-widest text-slate-500">
+        <div className="mt-6 rounded-xl bg-[#F6ECE7] p-4 text-sm">
+          <p className="text-xs uppercase tracking-widest text-stone-500">
             Your referral code
           </p>
-          <p className="mt-1 font-mono text-xl font-semibold text-[#0A2540]">
+          <p className="mt-1 font-mono text-xl font-semibold text-[#874646]">
             {status.referralCode}
           </p>
         </div>
@@ -70,7 +70,7 @@ export function SignupForm() {
             <p className="font-semibold">Dev mode — magic link</p>
             <a
               href={status.devMagicLink}
-              className="mt-2 block break-all text-[#0A2540] underline"
+              className="mt-2 block break-all text-[#874646] underline"
             >
               {status.devMagicLink}
             </a>
@@ -97,14 +97,14 @@ export function SignupForm() {
       <button
         type="submit"
         disabled={status.state === 'submitting'}
-        className="w-full rounded-full bg-[#C6A664] px-6 py-4 text-sm font-medium text-[#0A1020] transition hover:bg-[#b08f52] disabled:opacity-50"
+        className="w-full rounded-full bg-[#DB5C5C] px-6 py-4 text-sm font-medium text-[#2B2220] transition hover:bg-[#b08f52] disabled:opacity-50"
       >
         {status.state === 'submitting'
           ? 'Creating account...'
           : 'Create partner account →'}
       </button>
 
-      <p className="text-center text-xs text-slate-500">
+      <p className="text-center text-xs text-stone-500">
         No credit card. No contract. Start referring in 60 seconds.
       </p>
     </form>
@@ -124,14 +124,14 @@ function Field({
 }) {
   return (
     <label className="block">
-      <span className="text-xs uppercase tracking-widest text-slate-500">
+      <span className="text-xs uppercase tracking-widest text-stone-500">
         {label}
       </span>
       <input
         name={name}
         type={type}
         required={required}
-        className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-[#C6A664]"
+        className="mt-1 w-full rounded-xl border border-stone-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-[#DB5C5C]"
       />
     </label>
   );
