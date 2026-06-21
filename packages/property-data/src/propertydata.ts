@@ -1686,12 +1686,44 @@ export type SoldPrices = {
   transactions: SoldTransaction[];
 };
 
+export type SoldPricesOptions = {
+  /** Sale-age window in months. PropertyData allows 3-84; default 18. */
+  maxAgeMonths?: number;
+  /** Restrict to a single AVM property type. */
+  type?: 'detached' | 'semi-detached' | 'terraced' | 'flat';
+  /** Restrict to a bedroom count (0-5). */
+  bedrooms?: number;
+  /** How many comparable data points to pull (15-100). Higher = wider net. */
+  points?: number;
+};
+
 export async function getSoldPrices(
   postcode: string,
+  opts: SoldPricesOptions = {},
 ): Promise<SoldPrices | null> {
+  // Clamp to PropertyData's documented ranges so a bad caller value can't 4xx.
+  const maxAge =
+    opts.maxAgeMonths != null
+      ? Math.min(84, Math.max(3, Math.round(opts.maxAgeMonths)))
+      : undefined;
+  const points =
+    opts.points != null
+      ? Math.min(100, Math.max(15, Math.round(opts.points)))
+      : undefined;
+  const bedrooms =
+    opts.bedrooms != null
+      ? Math.min(5, Math.max(0, Math.round(opts.bedrooms)))
+      : undefined;
+
   const data = await fetchPropertyData(
     '/sold-prices',
-    { postcode: postcode.replace(/\s/g, '') },
+    {
+      postcode: postcode.replace(/\s/g, ''),
+      max_age: maxAge,
+      type: opts.type,
+      bedrooms,
+      points,
+    },
     {
       ttlMs: 7 * 24 * 60 * 60 * 1000,
       estimatedCredits: 2,

@@ -118,14 +118,24 @@ export const POST = async (request: Request) => {
         },
       });
 
-      // Update deal with valuation data
+      // Update deal with valuation data.
+      // AVM engine works in POUNDS (HMLR is recorded in pounds); DB money
+      // columns are integer PENCE — convert at this boundary.
       const resultJson = avmResult.resultJson;
+      // Margin = how far our offer sits below the AVM (discount to market),
+      // matching the deal-page "Generate offer" action so both writers agree.
+      const marginPercent =
+        resultJson.avmPointEstimate > 0
+          ? ((resultJson.avmPointEstimate - resultJson.finalOffer) /
+              resultJson.avmPointEstimate) *
+            100
+          : null;
       await database.deal.update({
         where: { id: deal.id },
         data: {
-          estimatedMarketValuePence: resultJson.avmPointEstimate,
-          ourOfferPence: resultJson.finalOffer,
-          marginPercent: resultJson.baseAcquisitionMargin * 100,
+          estimatedMarketValuePence: Math.round(resultJson.avmPointEstimate * 100),
+          ourOfferPence: Math.round(resultJson.finalOffer * 100),
+          marginPercent,
           verdict: resultJson.requiresCeoEscalation ? 'THIN' :
                    resultJson.confidenceLevel === 'high' ? 'STRONG' : 'VIABLE',
         },
@@ -136,7 +146,7 @@ export const POST = async (request: Request) => {
         data: {
           dealId: deal.id,
           action: 'avm_completed',
-          detail: `Auto-valuation: risk ${avmResult.riskScore}/100, offer ${(resultJson.finalOffer / 100).toLocaleString('en-GB', { style: 'currency', currency: 'GBP' })}`,
+          detail: `Auto-valuation: risk ${avmResult.riskScore}/100, offer ${resultJson.finalOffer.toLocaleString('en-GB', { style: 'currency', currency: 'GBP', maximumFractionDigits: 0 })}`,
         },
       });
 
@@ -150,15 +160,15 @@ export const POST = async (request: Request) => {
           priority: actionPriority as any,
           title: resultJson.requiresCeoEscalation
             ? `CEO escalation: offer < 60% AVM on ${deal.address}`
-            : `Approve offer on ${deal.address} — ${(resultJson.finalOffer / 100).toLocaleString('en-GB', { style: 'currency', currency: 'GBP' })} (margin ${(resultJson.baseAcquisitionMargin * 100).toFixed(1)}%)`,
+            : `Approve offer on ${deal.address} — ${resultJson.finalOffer.toLocaleString('en-GB', { style: 'currency', currency: 'GBP', maximumFractionDigits: 0 })} (margin ${marginPercent !== null ? marginPercent.toFixed(1) : '—'}%)`,
           description: `Auto-valuation complete. Risk: ${avmResult.riskScore}/100. ${resultJson.preRicsFlags.length > 0 ? `Pre-RICS flags: ${resultJson.preRicsFlags.join(', ')}` : 'No pre-RICS flags.'}`,
           agent: 'appraiser',
           dealId: deal.id,
           metadata: {
             riskScore: avmResult.riskScore,
-            estimatedValue: resultJson.avmPointEstimate,
-            finalOffer: resultJson.finalOffer,
-            marginPercent: resultJson.baseAcquisitionMargin * 100,
+            estimatedValuePence: Math.round(resultJson.avmPointEstimate * 100),
+            finalOfferPence: Math.round(resultJson.finalOffer * 100),
+            marginPercent,
             preRicsFlags: resultJson.preRicsFlags,
           },
         },
@@ -170,7 +180,7 @@ export const POST = async (request: Request) => {
         address: deal.address,
         riskScore: avmResult.riskScore,
         verdict: resultJson.requiresCeoEscalation ? 'CEO_ESCALATION' : 'OK',
-        offerPence: resultJson.finalOffer,
+        offerPence: Math.round(resultJson.finalOffer * 100),
       });
     } catch (error) {
       results.push({

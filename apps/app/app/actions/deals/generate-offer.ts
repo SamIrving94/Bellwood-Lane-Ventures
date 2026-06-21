@@ -103,17 +103,19 @@ export async function generateDealOffer(dealId: string) {
       ? 'STRONG'
       : 'VIABLE';
 
+  // The AVM engine works in POUNDS (HMLR Price Paid is recorded in pounds).
+  // Every DB money column is integer PENCE, so convert at this boundary.
   await database.deal.update({
     where: { id: deal.id },
     data: {
-      estimatedMarketValuePence: Math.round(r.avmPointEstimate),
-      ourOfferPence: Math.round(r.finalOffer),
+      estimatedMarketValuePence: Math.round(r.avmPointEstimate * 100),
+      ourOfferPence: Math.round(r.finalOffer * 100),
       marginPercent,
       verdict,
     },
   });
 
-  const offerLabel = (r.finalOffer / 100).toLocaleString('en-GB', {
+  const offerLabel = r.finalOffer.toLocaleString('en-GB', {
     style: 'currency',
     currency: 'GBP',
     maximumFractionDigits: 0,
@@ -133,8 +135,8 @@ export async function generateDealOffer(dealId: string) {
   revalidatePath(`/deals/${deal.id}`);
 
   return {
-    offerPence: Math.round(r.finalOffer),
-    estimatedMarketValuePence: Math.round(r.avmPointEstimate),
+    offerPence: Math.round(r.finalOffer * 100),
+    estimatedMarketValuePence: Math.round(r.avmPointEstimate * 100),
     marginPercent,
     riskScore: avm.riskScore,
     verdict,

@@ -22,6 +22,10 @@ import {
   type Epc,
   type Hpi,
 } from '@repo/property-data';
+import {
+  getDistanceWeightedValuation,
+  type DistanceWeightedValuation,
+} from './distance-comps';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -63,6 +67,8 @@ export interface BaseValuation {
   floorAreaSqm: number | null;
   pricePerSqm: number | null;
   source: string;
+  /** Present when the distance-weighted PropertyData path produced the CSA. */
+  distanceWeighted?: DistanceWeightedValuation | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -209,7 +215,7 @@ export async function getBaseValuation(
 ): Promise<BaseValuation> {
   const { postcode, propertyType, floorAreaSqm, bedrooms, address } = input;
 
-  const [pricePaid, hpi, epc, externalAvm] = await Promise.all([
+  const [pricePaid, hpi, epc, externalAvm, distanceWeighted] = await Promise.all([
     getPricePaid(postcode, 20),
     getHousepriceIndex(postcode),
     getEpcData(postcode, address),
@@ -223,24 +229,57 @@ export async function getBaseValuation(
       bedrooms: bedrooms ?? undefined,
       internalArea: floorAreaSqm ?? undefined,
     }),
+    // Distance-weighted sold comps (last 12mo, 0.25mi=60% / 0.5mi=40%).
+    // Returns null when the subject can't be geolocated or there are no
+    // comps — we then fall back to the Land-Registry exact-postcode path.
+    getDistanceWeightedValuation({
+      postcode,
+      propertyType,
+      bedrooms: bedrooms ?? undefined,
+      maxAgeMonths: 12,
+    }),
   ]);
 
-  const comps = filterComps(pricePaid.transactions, propertyType, floorAreaSqm);
+  const hmlrComps = filterComps(pricePaid.transactions, propertyType, floorAreaSqm);
 
   const effectiveFloorArea = floorAreaSqm ?? epc.floorAreaSqm;
   const effectiveBedrooms = bedrooms ?? epc.totalBedrooms ?? undefined;
 
-  // CSA value — median of adjusted comps
+  // CSA value — comparable sales adjusted value. Priority:
+  //   1. Distance-weighted PropertyData comps (the real radius — best)
+  //   2. Land Registry exact-postcode comps (median of adjusted)
+  //   3. Area-average fallback with a type discount (deterministic, low conf.)
   let csaValue: number;
-  if (comps.length > 0) {
-    const sorted = [...comps].sort((a, b) => a.adjustedPrice - b.adjustedPrice);
+  let comparables: ComparableSale[];
+  let csaSource: 'distance' | 'hmlr' | 'fallback';
+
+  if (distanceWeighted) {
+    csaValue = Math.round(distanceWeighted.estimatePence / 100);
+    comparables = distanceWeighted.comps.map((c) => ({
+      price: Math.round(c.pricePence / 100),
+      date: c.date,
+      propertyType,
+      adjustedPrice: Math.round(c.adjustedPricePence / 100),
+      monthsAgo: c.monthsAgo,
+    }));
+    csaSource = 'distance';
+  } else if (hmlrComps.length > 0) {
+    const sorted = [...hmlrComps].sort((a, b) => a.adjustedPrice - b.adjustedPrice);
     const mid = Math.floor(sorted.length / 2);
     csaValue =
       sorted.length % 2 === 0
         ? Math.round(((sorted[mid - 1]?.adjustedPrice ?? 0) + (sorted[mid]?.adjustedPrice ?? 0)) / 2)
         : (sorted[mid]?.adjustedPrice ?? 0);
+    comparables = hmlrComps.map((c) => ({
+      price: c.price,
+      date: c.date,
+      propertyType: c.propertyType,
+      adjustedPrice: c.adjustedPrice,
+      monthsAgo: c.monthsAgo,
+    }));
+    csaSource = 'hmlr';
   } else {
-    // No same-type comps: use overall avg with type discount
+    // No same-type comps anywhere: use overall avg with type discount.
     const fallback = pricePaid.avgPrice ?? 250_000;
     const typeDiscount: Record<PropertyType, number> = {
       detached: 1.35,
@@ -249,6 +288,8 @@ export async function getBaseValuation(
       flat: 0.72,
     };
     csaValue = Math.round(fallback * (typeDiscount[propertyType] ?? 1.0));
+    comparables = [];
+    csaSource = 'fallback';
   }
 
   // Hedonic estimate — anchored to CSA, adjusted for size/bedrooms
@@ -258,24 +299,53 @@ export async function getBaseValuation(
   const hpiNudge = 1 + (hpi.annualChange / 100) * 0.15;
   const hpiAdjustedHedonic = Math.round(hedonicValue * hpiNudge);
 
-  // Weighted triangulation per BELA-12 spec.
-  // With external AVM:    HMLR-CSA 40%, Hedonic 40%, External 20%
-  // Without external AVM: HMLR-CSA 50%, Hedonic 50% (degraded gracefully)
-  const pointEstimate = externalAvm
-    ? Math.round(
-        csaValue * 0.40 +
-          hpiAdjustedHedonic * 0.40 +
-          externalAvm.estimate * 0.20,
-      )
-    : Math.round(csaValue * 0.50 + hpiAdjustedHedonic * 0.50);
+  // Weighted triangulation.
+  //   Distance CSA present:  CSA 60%, Hedonic 25%, External 15% (or 70/30)
+  //   HMLR CSA, with ext:    CSA 40%, Hedonic 40%, External 20%
+  //   HMLR CSA, no ext:      CSA 50%, Hedonic 50%
+  let pointEstimate: number;
+  if (csaSource === 'distance') {
+    pointEstimate = externalAvm
+      ? Math.round(csaValue * 0.6 + hpiAdjustedHedonic * 0.25 + externalAvm.estimate * 0.15)
+      : Math.round(csaValue * 0.7 + hpiAdjustedHedonic * 0.3);
+  } else {
+    pointEstimate = externalAvm
+      ? Math.round(csaValue * 0.4 + hpiAdjustedHedonic * 0.4 + externalAvm.estimate * 0.2)
+      : Math.round(csaValue * 0.5 + hpiAdjustedHedonic * 0.5);
+  }
 
-  const { level: confidenceLevel, interval: confidenceInterval } =
-    calcConfidence(hpiAdjustedHedonic, csaValue);
+  // Confidence. Distance comps carry their own confidence; a synthetic /
+  // fallback valuation is never presented as better than low confidence.
+  const DISTANCE_INTERVAL: Record<DistanceWeightedValuation['confidence'], number> = {
+    high: 0.03,
+    medium: 0.05,
+    low: 0.08,
+  };
+  let confidenceLevel: ConfidenceLevel;
+  let confidenceInterval: number;
+  if (csaSource === 'distance' && distanceWeighted) {
+    confidenceLevel = distanceWeighted.confidence;
+    confidenceInterval = DISTANCE_INTERVAL[distanceWeighted.confidence];
+  } else if (pricePaid.source === 'synthetic' || csaSource === 'fallback') {
+    confidenceLevel = 'low';
+    confidenceInterval = 0.08;
+  } else {
+    const c = calcConfidence(hpiAdjustedHedonic, csaValue);
+    confidenceLevel = c.level;
+    confidenceInterval = c.interval;
+  }
 
   const pricePerSqm =
     effectiveFloorArea && effectiveFloorArea > 0
       ? Math.round(pointEstimate / effectiveFloorArea)
       : null;
+
+  const source =
+    csaSource === 'distance' && distanceWeighted
+      ? `propertydata_sold_distance(${distanceWeighted.nearCount}@0.25mi/${distanceWeighted.farCount}@0.5mi)+hmlr_hpi+epc`
+      : pricePaid.source === 'synthetic'
+        ? 'synthetic'
+        : 'hmlr_ppd+hmlr_hpi+epc';
 
   return {
     postcode,
@@ -285,18 +355,12 @@ export async function getBaseValuation(
     confidenceLevel,
     hedonicValue: hpiAdjustedHedonic,
     csaValue,
-    comparables: comps.map((c) => ({
-      price: c.price,
-      date: c.date,
-      propertyType: c.propertyType,
-      adjustedPrice: c.adjustedPrice,
-      monthsAgo: c.monthsAgo,
-    })),
+    comparables,
     hpi,
     epc,
     floorAreaSqm: effectiveFloorArea ?? null,
     pricePerSqm,
-    source:
-      pricePaid.source === 'synthetic' ? 'synthetic' : 'hmlr_ppd+hmlr_hpi+epc',
+    source,
+    distanceWeighted: distanceWeighted ?? null,
   };
 }

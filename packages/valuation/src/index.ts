@@ -32,6 +32,12 @@ import { projectTrend, type TrendProjection } from './trend-projection';
 // ---------------------------------------------------------------------------
 
 export type { PropertyType, BaseValuation, ComparableSale, ConfidenceLevel } from './base-valuation';
+export { getDistanceWeightedValuation } from './distance-comps';
+export type {
+  DistanceWeightedValuation,
+  WeightedComp,
+  DistanceCompInput,
+} from './distance-comps';
 export { generateCompRationale } from './comp-rationale-llm';
 export { runDeepAppraisal, DeepAppraisalSchema } from './deep-appraisal';
 export type { DeepAppraisal, DeepAppraisalInput } from './deep-appraisal';

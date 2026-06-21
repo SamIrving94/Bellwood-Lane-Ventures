@@ -26,11 +26,26 @@ vi.mock('@repo/property-data', () => ({
   getHousepriceIndex: vi.fn(),
   getEpcData: vi.fn(),
   getPropertyDataValuation: vi.fn(),
+  // Distance-weighted path dependencies. These golden tests lock the
+  // Land-Registry fallback math, so we disable the distance path by making
+  // the subject ungeocodable (geocodePostcode → null). getSoldPrices is also
+  // stubbed so no real network call can leak through.
+  geocodePostcode: vi.fn(),
+  geocodePostcodes: vi.fn(),
+  getSoldPrices: vi.fn(),
+  distanceMiles: vi.fn(),
 }));
 
 // Imported AFTER vi.mock so the mocked module is in scope.
-const { getPricePaid, getHousepriceIndex, getEpcData, getPropertyDataValuation } =
-  await import('@repo/property-data');
+const {
+  getPricePaid,
+  getHousepriceIndex,
+  getEpcData,
+  getPropertyDataValuation,
+  geocodePostcode,
+  geocodePostcodes,
+  getSoldPrices,
+} = await import('@repo/property-data');
 const { runAVM } = await import('../index');
 
 function applyScenario(scn: {
@@ -43,6 +58,10 @@ function applyScenario(scn: {
   vi.mocked(getHousepriceIndex).mockResolvedValue(scn.hpi as never);
   vi.mocked(getEpcData).mockResolvedValue(scn.epc as never);
   vi.mocked(getPropertyDataValuation).mockResolvedValue(scn.externalAvm as never);
+  // Disable the distance path for the golden (HMLR fallback) scenarios.
+  vi.mocked(geocodePostcode).mockResolvedValue(null as never);
+  vi.mocked(geocodePostcodes).mockResolvedValue(new Map() as never);
+  vi.mocked(getSoldPrices).mockResolvedValue(null as never);
 }
 
 beforeEach(() => {

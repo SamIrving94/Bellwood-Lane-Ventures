@@ -42,6 +42,7 @@ export * from './epc';
 export * from './companies-house';
 export * from './os-places';
 export * from './propertydata';
+export * from './postcodes-io';
 
 // ---------------------------------------------------------------------------
 // Constants

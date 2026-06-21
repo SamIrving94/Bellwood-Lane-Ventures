@@ -44,14 +44,31 @@ export type PpdTransaction = z.infer<typeof PpdTransactionSchema>;
 // Synthetic fallback
 // ---------------------------------------------------------------------------
 
+// Deterministic hash so the same postcode always yields the same fallback.
+// A random fallback (the old behaviour) meant a property could value
+// differently on every run — the source of "the AVM drifted" complaints.
+// This output is still flagged source: 'synthetic' so callers treat it as
+// low-confidence, but at least it is stable and reproducible.
+function hashPostcode(postcode: string): number {
+  let h = 0;
+  const s = postcode.toUpperCase();
+  for (let i = 0; i < s.length; i++) {
+    h = (h * 31 + s.charCodeAt(i)) >>> 0;
+  }
+  return h;
+}
+
 function syntheticPricePaid(postcode: string): PricePaid {
-  const base = 200_000 + Math.floor(Math.random() * 300_000);
+  const hash = hashPostcode(postcode);
+  const base = 200_000 + (hash % 300_000);
+  const types = ['D', 'S', 'T', 'F'];
   const transactions: PpdTransaction[] = Array.from({ length: 5 }, (_, i) => ({
-    price: Math.round(base * (0.85 + Math.random() * 0.3)),
+    // Deterministic spread around the base from the hash + index.
+    price: Math.round(base * (0.85 + (((hash >> (i + 1)) % 31) / 100))),
     date: new Date(Date.now() - (i + 1) * 18 * 30 * 86_400_000)
       .toISOString()
       .slice(0, 10),
-    propertyType: ['D', 'S', 'T', 'F'][Math.floor(Math.random() * 4)] ?? 'S',
+    propertyType: types[(hash + i) % 4] ?? 'S',
     newBuild: false,
     tenure: 'F',
   }));
