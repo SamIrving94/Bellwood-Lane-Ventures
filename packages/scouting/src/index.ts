@@ -141,6 +141,17 @@ export interface ScoutingPipelineOptions {
    * Cost-safe: STRONG-only means typically <20 calls per cron run.
    */
   enrichRationaleLlm?: boolean;
+  /**
+   * Skip the slow, low-yield PropertyData sources (planning-applications +
+   * national-HMO-register) and the Companies-House dissolved-company scan.
+   * Each planning/HMO loop carries ~11s + 2.7s/seed of MANDATORY rate-limit
+   * sleeps plus serial API calls, for sources that in practice produce almost
+   * no qualified leads (sourced-properties is the productive feed). The daily
+   * cron sets this true so the pipeline reliably finishes — and persists +
+   * surfaces leads — inside the function's time budget. HMCTS + Gazette +
+   * sourced-properties still run.
+   */
+  skipSlowSources?: boolean;
 }
 
 export interface ScoutingPipelineResult {
@@ -210,6 +221,7 @@ export async function runScoutingPipeline(
     scorerConfig = DEFAULT_SCORER_CONFIG,
     evalConfigVersion = null,
     enrichRationaleLlm = false,
+    skipSlowSources = false,
   } = options;
 
   const runDate = new Date();
@@ -402,7 +414,7 @@ export async function runScoutingPipeline(
 
   // ── /planning-applications — serial after sourced ───────────────────
   const planningGrants: RawGrant[] = [];
-  for (let i = 0; i < allSeeds.length; i++) {
+  for (let i = 0; !skipSlowSources && i < allSeeds.length; i++) {
     const seed = allSeeds[i]!;
     // First iteration: wait long enough for the sourced phase's rate-limit
     // window to clear (PropertyData allows 4 calls / 10s).
@@ -450,7 +462,7 @@ export async function runScoutingPipeline(
 
   // ── /national-hmo-register — serial after planning ──────────────────
   const hmoGrants: RawGrant[] = [];
-  for (let i = 0; i < allSeeds.length; i++) {
+  for (let i = 0; !skipSlowSources && i < allSeeds.length; i++) {
     const seed = allSeeds[i]!;
     await sleep(i === 0 ? 11000 : 2700);
     try {
@@ -496,7 +508,7 @@ export async function runScoutingPipeline(
   // Distinct rate-limit pool from PropertyData (different API), runs in
   // parallel with HMO loop safely. No-ops if COMPANIES_HOUSE_API_KEY unset.
   const dissolvedGrants: RawGrant[] = [];
-  try {
+  if (!skipSlowSources) try {
     const targetDistricts = Array.from(
       new Set(
         allSeeds.map((s) => {

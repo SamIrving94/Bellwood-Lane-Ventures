@@ -158,12 +158,17 @@ export const POST = async (request: Request) => {
   }
 
   const result = await runScoutingPipeline({
-    limit: 50,
+    limit: 30,
     minScore: 30,
     sourcedPropertyPostcodes,
     scanSeeds,
     scorerConfig,
     evalConfigVersion,
+    // Skip the slow, low-yield planning / HMO / dissolved-company sources.
+    // Their mandatory rate-limit sleeps (~80–120s) were pushing the run past
+    // the function budget so persist + founder-surfacing never ran. Every
+    // qualified lead to date came from sourced-properties anyway.
+    skipSlowSources: true,
   });
 
   // ── Persist leads FIRST (cheap, durable) ─────────────────────────────
