@@ -29,6 +29,7 @@ import {
   MegaphoneIcon,
   SearchIcon,
   Settings2Icon,
+  SheetIcon,
   TargetIcon,
   UsersIcon,
 } from 'lucide-react';
@@ -62,6 +63,7 @@ const data = {
     { title: 'Quotes', url: '/quotes', icon: FileTextIcon },
     { title: 'Leads', url: '/leads', icon: TargetIcon },
     { title: 'Appraisals', url: '/appraisals', icon: GavelIcon },
+    { title: 'Batch', url: '/batch', icon: SheetIcon },
     { title: 'Pipeline', url: '/pipeline', icon: KanbanIcon },
   ],
   money: [
@@ -96,6 +98,7 @@ const TOUR_SLUGS: Record<string, string> = {
   '/quotes': 'quotes',
   '/leads': 'leads',
   '/appraisals': 'appraisals',
+  '/batch': 'batch',
   '/pipeline': 'pipeline',
   '/book': 'book',
   '/investors': 'investors',

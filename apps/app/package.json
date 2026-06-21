@@ -12,10 +12,10 @@
   },
   "dependencies": {
     "@prisma/client": "6.4.1",
+    "@repo/ai": "workspace:*",
     "@repo/auctions": "workspace:*",
     "@repo/auth": "workspace:*",
     "@repo/calendly": "workspace:*",
-    "@repo/ai": "workspace:*",
     "@repo/database": "workspace:*",
     "@repo/deal-updates": "workspace:*",
     "@repo/design-system": "workspace:*",
@@ -38,6 +38,7 @@
     "react-dom": "19.0.0",
     "recharts": "^2.15.1",
     "sonner": "^2.0.1",
+    "xlsx": "0.18.5",
     "zod": "^3.24.2"
   },
   "devDependencies": {

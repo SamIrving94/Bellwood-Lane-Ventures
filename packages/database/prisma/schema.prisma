@@ -902,3 +902,76 @@ model DocumentExtract {
   @@index([uploadedBy])
   @@index([sourceType])
 }
+
+// ---------------------------------------------------------------------------
+// Batch appraisal — founder uploads a bi-weekly Excel pipeline list, we run
+// the AVM over every row and rank by discount-to-market-value.
+//
+// PropertyBatch is one uploaded spreadsheet. PropertyBatchItem is one row.
+// Money stored as integer pence to match the rest of the schema. No FK
+// constraints enforced (relationMode = "prisma"); dedupeKey carries
+// change-tracking across weekly uploads so the UI can show new /
+// carried-over / gone-out.
+// ---------------------------------------------------------------------------
+
+model PropertyBatch {
+  id             String   @id @default(cuid())
+  createdAt      DateTime @default(now())
+  label          String // human label, e.g. "WBAH Ready to Complete 02/06/26"
+  sourceFile     String // original filename
+  uploadedBy     String // Clerk userId
+  status         String   @default("processing") // processing | complete | failed
+  totalItems     Int      @default(0)
+  processedItems Int      @default(0)
+  priorBatchId   String? // prior batch we diffed against (null for first upload)
+
+  items PropertyBatchItem[]
+
+  @@index([createdAt])
+  @@index([uploadedBy])
+}
+
+model PropertyBatchItem {
+  id        String        @id @default(cuid())
+  createdAt DateTime      @default(now())
+  batchId   String
+  batch     PropertyBatch @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  rowIndex  Int // 0-based row position in source sheet (stable export order)
+
+  // Parsed from the sheet
+  opportunityName           String
+  address                   String
+  postcode                  String?
+  dedupeKey                 String // normalised address+postcode for week-over-week diff
+  propertyType              String // raw sheet value
+  mappedType                String? // AVM type: detached | semi-detached | terraced | flat
+  occupancy                 String? // "Who lives in the property"
+  condition                 String?
+  bedrooms                  Int?
+  bathrooms                 Int?
+  acceptableTradeOfferPence Int?
+  signOffPricePence         Int?
+
+  // AVM results
+  estimatedMarketValuePence Int?
+  avmLowPence               Int?
+  avmHighPence              Int?
+  avmConfidence             String?
+  comparableCount           Int?
+  avmSources                String?
+
+  // Derived
+  discountPercent Float? // (EMV - benchmark) / EMV * 100; null when no benchmark
+  benchmarkUsed   String? // 'trade_offer' | 'sign_off' | 'none'
+
+  status     String  @default("pending") // pending | done | error | skipped
+  error      String?
+  resultJson Json?
+
+  // Change tracking vs prior batch
+  changeStatus         String? // 'new' | 'carried'
+  priorTradeOfferPence Int?
+
+  @@index([batchId])
+  @@index([dedupeKey])
+}
