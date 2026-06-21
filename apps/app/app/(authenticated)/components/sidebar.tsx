@@ -26,6 +26,7 @@ import {
   KanbanIcon,
   LineChartIcon,
   MailIcon,
+  MapIcon,
   MegaphoneIcon,
   SearchIcon,
   Settings2Icon,
@@ -78,6 +79,7 @@ const data = {
     { title: 'Documents', url: '/documents', icon: FileTextIcon },
   ],
   system: [
+    { title: 'Strategy', url: '/strategy', icon: MapIcon },
     { title: 'Guide', url: '/guide', icon: CompassIcon },
     { title: 'Settings', url: '/settings', icon: Settings2Icon },
     { title: 'LLM usage', url: '/admin/llm-usage', icon: GaugeIcon },
@@ -100,6 +102,7 @@ const TOUR_SLUGS: Record<string, string> = {
   '/appraisals': 'appraisals',
   '/batch': 'batch',
   '/pipeline': 'pipeline',
+  '/strategy': 'strategy',
   '/book': 'book',
   '/investors': 'investors',
   '/research': 'research',
