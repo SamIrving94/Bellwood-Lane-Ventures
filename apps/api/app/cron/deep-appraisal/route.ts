@@ -1,4 +1,5 @@
 import { env } from '@/env';
+import { recordCronHeartbeat } from '../_lib/heartbeat';
 import { database, Prisma } from '@repo/database';
 import { runDeepAppraisal, type DeepAppraisal } from '@repo/valuation';
 import { NextResponse } from 'next/server';
@@ -247,6 +248,10 @@ async function handle(request: Request) {
   } catch (err) {
     console.warn('[deep-appraisal] AgentEvent create failed', err);
   }
+
+  await recordCronHeartbeat('deep-appraisal', {
+    note: `${produced} produced, ${failed} failed`,
+  });
 
   return NextResponse.json({
     success: true,

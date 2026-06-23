@@ -49,11 +49,41 @@ export interface EnrichedLead {
 // Tier 1 — ProbateData (automated, 85–95% accuracy)
 // ---------------------------------------------------------------------------
 
-interface Tier1Result {
+export interface Tier1Result {
   contactName: string | null;
   contactPhone: string | null;
   contactEmail: string | null;
   found: boolean;
+}
+
+/** Documented ProbateData.com /v2/lookup response shape. */
+export type ProbateDataResponse = {
+  contact?: { name?: string; phone?: string; email?: string };
+  found?: boolean;
+};
+
+/**
+ * Pure parser for the ProbateData response — extracted so the contract can be
+ * unit-tested without a live API. Tolerates missing/partial fields by design:
+ * a malformed response degrades to `found: false` rather than throwing.
+ */
+export function parseProbateDataResponse(
+  data: ProbateDataResponse | null | undefined
+): Tier1Result {
+  if (!data?.found || !data.contact) {
+    return {
+      contactName: null,
+      contactPhone: null,
+      contactEmail: null,
+      found: false,
+    };
+  }
+  return {
+    contactName: data.contact.name ?? null,
+    contactPhone: data.contact.phone ?? null,
+    contactEmail: data.contact.email ?? null,
+    found: true,
+  };
 }
 
 /**
@@ -84,25 +114,7 @@ async function enrichTier1(lead: ProbateLead): Promise<Tier1Result> {
 
     if (!res.ok) throw new Error(`ProbateData API ${res.status}`);
 
-    const data = (await res.json()) as {
-      contact?: {
-        name?: string;
-        phone?: string;
-        email?: string;
-      };
-      found?: boolean;
-    };
-
-    if (!data.found || !data.contact) {
-      return { contactName: null, contactPhone: null, contactEmail: null, found: false };
-    }
-
-    return {
-      contactName: data.contact.name ?? null,
-      contactPhone: data.contact.phone ?? null,
-      contactEmail: data.contact.email ?? null,
-      found: true,
-    };
+    return parseProbateDataResponse((await res.json()) as ProbateDataResponse);
   } finally {
     clearTimeout(timer);
   }
@@ -112,10 +124,33 @@ async function enrichTier1(lead: ProbateLead): Promise<Tier1Result> {
 // Tier 2 — BatchData / ATTOM hybrid enrichment
 // ---------------------------------------------------------------------------
 
-interface Tier2Result {
+export interface Tier2Result {
   contactPhone: string | null;
   contactEmail: string | null;
   found: boolean;
+}
+
+/** Documented BatchData /property/lookup response shape. */
+export type BatchDataResponse = {
+  results?: Array<{ owner?: { phone?: string; email?: string } }>;
+};
+
+/**
+ * Pure parser for the BatchData response — extracted for unit testing. Takes
+ * the first result's owner; a missing owner degrades to `found: false`.
+ */
+export function parseBatchDataResponse(
+  data: BatchDataResponse | null | undefined
+): Tier2Result {
+  const owner = data?.results?.[0]?.owner;
+  if (!owner) {
+    return { contactPhone: null, contactEmail: null, found: false };
+  }
+  return {
+    contactPhone: owner.phone ?? null,
+    contactEmail: owner.email ?? null,
+    found: true,
+  };
 }
 
 /**
@@ -130,35 +165,25 @@ async function enrichTier2(lead: ProbateLead): Promise<Tier2Result> {
   const timer = setTimeout(() => controller.abort(), 10_000);
 
   try {
-    const res = await fetch('https://api.batchdata.com/api/v1/property/lookup', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        address: lead.address,
-        zip: lead.postcode.replace(/\s+/g, ''),
-      }),
-      signal: controller.signal,
-    });
+    const res = await fetch(
+      'https://api.batchdata.com/api/v1/property/lookup',
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+          address: lead.address,
+          zip: lead.postcode.replace(/\s+/g, ''),
+        }),
+        signal: controller.signal,
+      }
+    );
 
     if (!res.ok) throw new Error(`BatchData API ${res.status}`);
 
-    const data = (await res.json()) as {
-      results?: Array<{
-        owner?: { phone?: string; email?: string };
-      }>;
-    };
-
-    const owner = data.results?.[0]?.owner;
-    if (!owner) return { contactPhone: null, contactEmail: null, found: false };
-
-    return {
-      contactPhone: owner.phone ?? null,
-      contactEmail: owner.email ?? null,
-      found: true,
-    };
+    return parseBatchDataResponse((await res.json()) as BatchDataResponse);
   } finally {
     clearTimeout(timer);
   }
@@ -191,12 +216,19 @@ function flagForManualResearch(lead: ProbateLead): void {
 export async function enrichLead(lead: ProbateLead): Promise<EnrichedLead> {
   const base: Omit<
     EnrichedLead,
-    'contactName' | 'contactPhone' | 'contactEmail' | 'enrichmentTier' | 'sourceTrail'
+    | 'contactName'
+    | 'contactPhone'
+    | 'contactEmail'
+    | 'enrichmentTier'
+    | 'sourceTrail'
   > = {
     probateRef: lead.probateRef,
     address: lead.address,
     postcode: lead.postcode,
-    leadType: lead.grantType === 'letters_of_administration' ? 'probate_admin' : 'probate',
+    leadType:
+      lead.grantType === 'letters_of_administration'
+        ? 'probate_admin'
+        : 'probate',
     grantDate: lead.grantDate,
     grantType: lead.grantType,
     daysSinceGrant: lead.daysSinceGrant,
@@ -219,7 +251,9 @@ export async function enrichLead(lead: ProbateLead): Promise<EnrichedLead> {
       };
     }
   } catch (err) {
-    console.warn(`[scouting/enrichment] Tier 1 failed: ${(err as Error).message}`);
+    console.warn(
+      `[scouting/enrichment] Tier 1 failed: ${(err as Error).message}`
+    );
   }
 
   // --- Tier 2 ---
@@ -237,7 +271,9 @@ export async function enrichLead(lead: ProbateLead): Promise<EnrichedLead> {
       };
     }
   } catch (err) {
-    console.warn(`[scouting/enrichment] Tier 2 failed: ${(err as Error).message}`);
+    console.warn(
+      `[scouting/enrichment] Tier 2 failed: ${(err as Error).message}`
+    );
   }
 
   // --- Tier 3 — manual queue ---
@@ -253,10 +289,86 @@ export async function enrichLead(lead: ProbateLead): Promise<EnrichedLead> {
   };
 }
 
+// ---------------------------------------------------------------------------
+// Pre-flight health + hit-rate observability
+// ---------------------------------------------------------------------------
+
+export type TierHealth = 'ok' | 'no_key';
+
+export interface EnrichmentHealth {
+  /** ProbateData.com (Tier 1) */
+  tier1: TierHealth;
+  /** BatchData (Tier 2) */
+  tier2: TierHealth;
+  /** Count of automated tiers with credentials configured (0–2). */
+  configuredTiers: number;
+  /**
+   * True when NO automated tier is configured — every lead would fall straight
+   * to the Tier 3 manual queue, i.e. the funnel produces contact-less leads.
+   */
+  degraded: boolean;
+}
+
+/**
+ * Pre-flight credential check for the enrichment cascade, mirroring the
+ * PropertyData `/account/credits` pre-flight in the scouting pipeline. This
+ * checks credential *presence* only — a reachability probe is intentionally
+ * NOT done here because the ProbateData/BatchData API contracts are not yet
+ * verified against live accounts (see plan "Inputs needed"). Once confirmed,
+ * extend each tier with a lightweight ping.
+ */
+export function checkEnrichmentHealth(
+  env: Record<string, string | undefined> = process.env
+): EnrichmentHealth {
+  const tier1: TierHealth = env.PROBATE_DATA_API_KEY ? 'ok' : 'no_key';
+  const tier2: TierHealth = env.BATCH_DATA_API_KEY ? 'ok' : 'no_key';
+  const configuredTiers = (tier1 === 'ok' ? 1 : 0) + (tier2 === 'ok' ? 1 : 0);
+  return { tier1, tier2, configuredTiers, degraded: configuredTiers === 0 };
+}
+
+export interface EnrichmentSummary {
+  total: number;
+  tier1: number;
+  tier2: number;
+  tier3: number;
+  /** Fraction (0–1) of leads that got a phone or email from any tier. */
+  contactHitRate: number;
+}
+
+/**
+ * Summarise a batch of enriched leads for monitoring — tier distribution and
+ * the contact hit-rate. A persistently low hit-rate is the early-warning sign
+ * that an enrichment API has silently broken (every lead falling to Tier 3).
+ */
+export function summariseEnrichment(
+  results: EnrichedLead[]
+): EnrichmentSummary {
+  let tier1 = 0;
+  let tier2 = 0;
+  let tier3 = 0;
+  let withContact = 0;
+  for (const r of results) {
+    if (r.enrichmentTier === 1) tier1++;
+    else if (r.enrichmentTier === 2) tier2++;
+    else tier3++;
+    if (r.contactPhone || r.contactEmail) withContact++;
+  }
+  const total = results.length;
+  return {
+    total,
+    tier1,
+    tier2,
+    tier3,
+    contactHitRate: total === 0 ? 0 : withContact / total,
+  };
+}
+
 /**
  * Enrich a batch of probate leads concurrently (capped at 10 parallel).
  */
-export async function enrichLeads(leads: ProbateLead[]): Promise<EnrichedLead[]> {
+export async function enrichLeads(
+  leads: ProbateLead[]
+): Promise<EnrichedLead[]> {
   const CONCURRENCY = 10;
   const results: EnrichedLead[] = [];
 

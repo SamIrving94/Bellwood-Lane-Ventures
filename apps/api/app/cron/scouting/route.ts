@@ -3,6 +3,7 @@ import { database, Prisma } from '@repo/database';
 import { mergeScorerConfig, runScoutingPipeline } from '@repo/scouting';
 import { getPropertySnapshot } from '@repo/property-data/src/propertydata';
 import { NextResponse } from 'next/server';
+import { recordCronHeartbeat } from '../_lib/heartbeat';
 
 // Snapshot enrichment is slow (~27s per unique postcode). Allow more time
 // than the default 60s — bumps to Vercel Pro plan cap.
@@ -343,6 +344,41 @@ export const POST = async (request: Request) => {
     }
   }
 
+  // ── Surface source failures so silent degradation can't hide ──────────
+  // The pipeline gracefully returns partial results when a source errors, but
+  // that means a dead feed (e.g. Gazette timing out, PropertyData credits
+  // exhausted, enrichment APIs down) is invisible unless someone reads the
+  // response JSON. Raise one deduped founder action per day listing the
+  // failing sources. Dedup bucket is the UTC day, so a persistently-broken
+  // source alerts at most once per day.
+  const failingSources = Object.entries(result.sourceErrors ?? {}).filter(
+    ([, msg]) => Boolean(msg)
+  );
+  if (failingSources.length > 0) {
+    const dayBucket = new Date().toISOString().slice(0, 10);
+    try {
+      await database.founderAction.create({
+        data: {
+          type: 'general',
+          priority: result.leads.length === 0 ? 'high' : 'medium',
+          status: 'pending',
+          agent: 'system',
+          dedupKey: `scouting-source-error:${dayBucket}`,
+          title: `Scouting source${failingSources.length === 1 ? '' : 's'} failing: ${failingSources.map(([s]) => s).join(', ')}`,
+          description: `The daily scout run completed but ${failingSources.length} source${failingSources.length === 1 ? '' : 's'} errored, so lead volume may be degraded${result.leads.length === 0 ? ' (zero leads found this run)' : ''}:\n\n${failingSources.map(([s, msg]) => `• ${s}: ${msg}`).join('\n')}`,
+          metadata: {
+            source: 'cron_scouting',
+            failingSources: Object.fromEntries(failingSources),
+            leadsThisRun: result.leads.length,
+            dayBucket,
+          },
+        },
+      });
+    } catch {
+      // Unique violation on dedupKey == already alerted today. Non-fatal.
+    }
+  }
+
   // ── Best-effort: enrich top persisted leads with property snapshot ──
   // Deferred to the very end on purpose (see note above): founder surfacing
   // has already run, so a timeout here only costs un-enriched snapshots — never
@@ -425,6 +461,10 @@ export const POST = async (request: Request) => {
       );
     }
   }
+
+  await recordCronHeartbeat('scouting', {
+    note: `${createdCount} persisted, ${result.leads.length} qualified`,
+  });
 
   return NextResponse.json({
     success: true,

@@ -1,4 +1,5 @@
 import { env } from '@/env';
+import { recordCronHeartbeat } from '../_lib/heartbeat';
 import { database } from '@repo/database';
 import { mergeOfferConfig, runAVM } from '@repo/valuation';
 import { NextResponse } from 'next/server';
@@ -206,6 +207,8 @@ export const POST = async (request: Request) => {
       payload: { results, topLeadsSkipped: topLeads.length },
     },
   });
+
+  await recordCronHeartbeat('pipeline-appraise', { runId: pipelineRunId });
 
   return NextResponse.json({
     success: true,
