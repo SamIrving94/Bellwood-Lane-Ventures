@@ -255,6 +255,10 @@ export const POST = async (request: Request) => {
           strong: strongLeads.length,
           highScore: highScoreLeads.length,
           gdprFieldsStripped: result.gdprStripped.length,
+          // Contact-enrichment health for this run — tier split + hit-rate.
+          // Persisted per run so a falling hit-rate (the early sign that an
+          // enrichment API has silently broken) is trendable over time.
+          enrichment: result.enrichment,
         },
       },
     });

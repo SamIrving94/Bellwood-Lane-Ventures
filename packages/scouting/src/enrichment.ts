@@ -326,14 +326,17 @@ export function checkEnrichmentHealth(
   return { tier1, tier2, configuredTiers, degraded: configuredTiers === 0 };
 }
 
-export interface EnrichmentSummary {
+// A `type` (not `interface`) so it stays assignable to Prisma's
+// InputJsonValue when logged into an AgentEvent payload — interfaces lack the
+// implicit index signature Prisma's JSON input type requires.
+export type EnrichmentSummary = {
   total: number;
   tier1: number;
   tier2: number;
   tier3: number;
   /** Fraction (0–1) of leads that got a phone or email from any tier. */
   contactHitRate: number;
-}
+};
 
 /**
  * Summarise a batch of enriched leads for monitoring — tier distribution and

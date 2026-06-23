@@ -33,6 +33,7 @@ import { fetchProbateGrants } from './probate-data';
 import { fetchGazetteProbateNotices } from './gazette';
 import {
   checkEnrichmentHealth,
+  type EnrichmentSummary,
   enrichLeads,
   summariseEnrichment,
 } from './enrichment';
@@ -205,6 +206,8 @@ export interface ScoutingPipelineResult {
     staleListings?: string;
     enrichment?: string;
   };
+  /** Contact-enrichment tier distribution + hit-rate for this run. */
+  enrichment: EnrichmentSummary;
 }
 
 // ---------------------------------------------------------------------------
@@ -860,5 +863,6 @@ export async function runScoutingPipeline(
       postcodesScanned: allSeeds.length,
     },
     sourceErrors,
+    enrichment: enrichmentSummary,
   };
 }

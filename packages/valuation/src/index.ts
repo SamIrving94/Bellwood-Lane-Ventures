@@ -50,6 +50,11 @@ export type { SellerType, InvestmentGrade, OfferResult, DiscountLine } from './o
 export { DEFAULT_OFFER_CONFIG, mergeOfferConfig } from './offer-config';
 export type { OfferConfig } from './offer-config';
 export type { TrendProjection, TrendForecastPoint } from './trend-projection';
+export {
+  computeBacktest,
+  computeBacktestBySegment,
+} from './backtest';
+export type { BacktestSample, BacktestReport } from './backtest';
 
 // ---------------------------------------------------------------------------
 // Input type
