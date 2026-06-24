@@ -13,7 +13,23 @@ type Lot = {
   guidePriceMinPence: number | null;
   guidePriceMaxPence: number | null;
   lotUrl: string | null;
+  /** Photo-inferred condition (from the auction vision screener), if any. */
+  condition: string | null;
+  conditionFlags: string[];
+  conditionRationale: string | null;
 };
+
+const CONDITION_STYLES: Record<string, string> = {
+  pristine: 'bg-emerald-100 text-emerald-800 border-emerald-200',
+  fair: 'bg-sky-100 text-sky-800 border-sky-200',
+  tired: 'bg-amber-100 text-amber-800 border-amber-200',
+  distressed: 'bg-orange-100 text-orange-800 border-orange-200',
+  derelict: 'bg-rose-100 text-rose-800 border-rose-200',
+};
+
+function flagLabel(flag: string): string {
+  return flag.replace(/_/g, ' ');
+}
 
 type Props = {
   lots: Lot[];
@@ -132,6 +148,7 @@ export function AuctionsTable({ lots }: Props) {
               <th className="px-4 py-3 font-medium">Postcode</th>
               <th className="px-4 py-3 font-medium">Type</th>
               <th className="px-4 py-3 font-medium">Guide</th>
+              <th className="px-4 py-3 font-medium">Condition</th>
               <th className="px-4 py-3 font-medium">Source</th>
               <th className="px-4 py-3 font-medium">Lot</th>
             </tr>
@@ -149,6 +166,33 @@ export function AuctionsTable({ lots }: Props) {
                 </td>
                 <td className="px-4 py-3 whitespace-nowrap">
                   {formatGuide(l.guidePriceMinPence, l.guidePriceMaxPence)}
+                </td>
+                <td className="px-4 py-3">
+                  {l.condition ? (
+                    <span
+                      className={`inline-flex rounded-full border px-2 py-0.5 text-[11px] font-medium capitalize ${
+                        CONDITION_STYLES[l.condition] ??
+                        'border-gray-200 bg-gray-100 text-gray-700'
+                      }`}
+                      title={
+                        [
+                          l.conditionRationale,
+                          l.conditionFlags.length
+                            ? `Flags: ${l.conditionFlags.map(flagLabel).join(', ')}`
+                            : null,
+                        ]
+                          .filter(Boolean)
+                          .join(' · ') || undefined
+                      }
+                    >
+                      {l.condition}
+                      {l.conditionFlags.length > 0
+                        ? ` · ⚠ ${l.conditionFlags.length}`
+                        : ''}
+                    </span>
+                  ) : (
+                    <span className="text-gray-400 text-xs">—</span>
+                  )}
                 </td>
                 <td className="px-4 py-3 text-gray-600 text-xs dark:text-gray-400">
                   {sourceLabels[l.sourceHouse] ?? l.sourceHouse}

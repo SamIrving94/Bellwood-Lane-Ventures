@@ -5,6 +5,10 @@
       "schedule": "0 7 * * *"
     },
     {
+      "path": "/cron/lead-appraise",
+      "schedule": "50 7 * * *"
+    },
+    {
       "path": "/cron/pipeline-appraise",
       "schedule": "15 7 * * *"
     },
@@ -31,6 +35,10 @@
     {
       "path": "/cron/sla-alerts",
       "schedule": "0 9 * * *"
+    },
+    {
+      "path": "/cron/watchdog",
+      "schedule": "0 * * * *"
     },
     {
       "path": "/cron/keep-alive",

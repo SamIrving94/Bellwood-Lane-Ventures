@@ -170,9 +170,9 @@ model Deal {
   updatedAt                 DateTime   @updatedAt
 
   // Founder Action Centre fields
-  suggestedNextAction   String?   @db.Text   // JSON: { action, reasoning, agent }
-  goldenWindowExpiresAt DateTime?            // Probate/chain break deadline
-  mortgageExpiryDate    DateTime?            // Vendor mortgage expiry for chain breaks
+  suggestedNextAction   String?   @db.Text // JSON: { action, reasoning, agent }
+  goldenWindowExpiresAt DateTime? // Probate/chain break deadline
+  mortgageExpiryDate    DateTime? // Vendor mortgage expiry for chain breaks
 
   // Calendly booking
   calendlyBookingLink String?
@@ -185,38 +185,38 @@ model Deal {
   releasedAt        DateTime?
   releasedBy        String?
   resaleReason      String?   @db.Text // why Bellwood passed (shown internally)
-  resalePricePence  Int?               // optional referral/lead asking price
+  resalePricePence  Int? // optional referral/lead asking price
 
   // Line 1 — trade economics (deals Bellwood buys for its own book). These are
   // the *actuals*, distinct from ourOfferPence (what we offered). Captured when
   // a deal is acquired and again when it's exited, so we can show realised P&L
   // and validate the AVM against the real sale price.
-  acquisitionPricePence Int?      // what we actually paid
+  acquisitionPricePence Int? // what we actually paid
   acquiredAt            DateTime? // our purchase completion date
-  refurbCostPence       Int?      // refurbishment spend
-  legalFeesPence        Int?      // legal / SDLT / conveyancing
-  otherCostsPence       Int?      // holding, finance, misc
-  exitPricePence        Int?      // what we sold it for
+  refurbCostPence       Int? // refurbishment spend
+  legalFeesPence        Int? // legal / SDLT / conveyancing
+  otherCostsPence       Int? // holding, finance, misc
+  exitPricePence        Int? // what we sold it for
   exitedAt              DateTime? // date sold
-  realisedProfitPence   Int?      // exit − acquisition − all costs (stored)
+  realisedProfitPence   Int? // exit − acquisition − all costs (stored)
 
   // Line 2 — investor sourcing fee. Only meaningful once a deal is released to
   // the investor feed and an investor takes it. Tracks the money outcome of
   // the sourcing channel, distinct from the trade P&L above.
   sourcingFeePence   Int?
   sourcingFeeStatus  SourcingFeeStatus @default(none)
-  sourcedToName      String?           // investor who took the deal
+  sourcedToName      String? // investor who took the deal
   sourcedToEmail     String?
   sourcingAgreedAt   DateTime?
   sourcingInvoicedAt DateTime?
   sourcingPaidAt     DateTime?
 
-  activities     DealActivity[]
-  legalSteps     LegalStep[]
-  legalDocuments LegalDocument[]
-  avmResults     AvmResult[]
-  dealUpdates    DealUpdate[]
-  trackToken     TrackToken?
+  activities        DealActivity[]
+  legalSteps        LegalStep[]
+  legalDocuments    LegalDocument[]
+  avmResults        AvmResult[]
+  dealUpdates       DealUpdate[]
+  trackToken        TrackToken?
   investorInterests InvestorInterest[]
 
   @@index([status])
@@ -257,7 +257,7 @@ model ScoutLead {
   convertedDealId      String?
   createdAt            DateTime @default(now())
 
-  evalConfigVersion Int?     // version of lead_scoring eval used
+  evalConfigVersion Int? // version of lead_scoring eval used
 
   // Calendly booking (pre-conversion — once we send the link to a lead)
   calendlyBookingLink String?
@@ -280,7 +280,7 @@ model ScoutLead {
 
 model WhatsAppIntake {
   id               String      @id @default(cuid())
-  source           String      // "bridge" | "paste" | "share_sheet" | "email"
+  source           String // "bridge" | "paste" | "share_sheet" | "email"
   groupName        String?
   senderName       String?
   senderPhone      String?
@@ -312,7 +312,7 @@ model AvmResult {
   expiresAt    DateTime
   createdAt    DateTime @default(now())
 
-  evalConfigVersion Int?     // version of avm_confidence eval used
+  evalConfigVersion Int? // version of avm_confidence eval used
 
   @@index([dealId])
   @@index([postcode, propertyType])
@@ -348,15 +348,15 @@ model LegalDocument {
 }
 
 model Contact {
-  id       String   @id @default(cuid())
-  type     String
-  name     String
-  company  String?
-  email    String?
-  phone    String?
-  location String?
-  notes    String?  @db.Text
-  tags     String[]
+  id        String   @id @default(cuid())
+  type      String
+  name      String
+  company   String?
+  email     String?
+  phone     String?
+  location  String?
+  notes     String?  @db.Text
+  tags      String[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -401,14 +401,14 @@ model Campaign {
   name             String
   createdBy        String
   status           CampaignStatus @default(draft)
-  postcodeArea     String         // e.g. "M1", "B15", "LS6"
+  postcodeArea     String // e.g. "M1", "B15", "LS6"
   radiusMiles      Int            @default(3)
-  propertyTypes    String[]       // ["terraced_house", "semi_detached", "flat"]
+  propertyTypes    String[] // ["terraced_house", "semi_detached", "flat"]
   minPricePence    Int?
   maxPricePence    Int?
-  sellerTypes      String[]       // ["probate", "chain_break", ...]
+  sellerTypes      String[] // ["probate", "chain_break", ...]
   minLeadScore     Int            @default(50)
-  outreachChannels String[]       // ["estate_agents", "solicitors", "direct_mail"]
+  outreachChannels String[] // ["estate_agents", "solicitors", "direct_mail"]
   budgetPence      Int?
   dailyCap         Int            @default(20)
   targetEndDate    DateTime?
@@ -453,12 +453,12 @@ model OutreachRecipient {
 model AgentEvent {
   id            String    @id @default(cuid())
   agent         AgentName
-  eventType     String              // e.g. "leads_created", "avm_completed"
-  summary       String              // human-readable: "Scout created 12 leads (8 STRONG)"
-  payload       Json?               // structured data for downstream use
-  dealId        String?             // optional link to deal
+  eventType     String // e.g. "leads_created", "avm_completed"
+  summary       String // human-readable: "Scout created 12 leads (8 STRONG)"
+  payload       Json? // structured data for downstream use
+  dealId        String? // optional link to deal
   count         Int       @default(1)
-  pipelineRunId String?             // groups events from one overnight run
+  pipelineRunId String? // groups events from one overnight run
   createdAt     DateTime  @default(now())
 
   @@index([agent])
@@ -476,8 +476,8 @@ model FounderAction {
   description  String?        @db.Text
   agent        AgentName
   dealId       String?
-  metadata     Json?          // type-specific structured data
-  assignedTo   String?        // Clerk userId (null = both founders)
+  metadata     Json? // type-specific structured data
+  assignedTo   String? // Clerk userId (null = both founders)
   resolvedBy   String?
   resolvedAt   DateTime?
   expiresAt    DateTime?
@@ -500,13 +500,13 @@ model FounderAction {
 model FounderFeedback {
   id               String             @id @default(cuid())
   targetType       FeedbackTargetType
-  targetId         String              // polymorphic FK to the rated entity
-  founderId        String              // Clerk userId
-  rating           Int                 // 1-5 stars
-  overrides        Json?               // { leadScore: 85, verdict: "STRONG", ... }
-  notes            String?             @db.Text
-  markedAsTemplate Boolean             @default(false) // "perfect template" flag
-  createdAt        DateTime            @default(now())
+  targetId         String // polymorphic FK to the rated entity
+  founderId        String // Clerk userId
+  rating           Int // 1-5 stars
+  overrides        Json? // { leadScore: 85, verdict: "STRONG", ... }
+  notes            String?            @db.Text
+  markedAsTemplate Boolean            @default(false) // "perfect template" flag
+  createdAt        DateTime           @default(now())
 
   @@index([targetType, targetId])
   @@index([founderId])
@@ -517,10 +517,10 @@ model EvalConfig {
   id          String    @id @default(cuid())
   evalType    EvalType
   version     Int
-  config      Json      // the weights/thresholds/params
+  config      Json // the weights/thresholds/params
   description String?
   activatedAt DateTime? // null = draft, set = live version
-  activatedBy String?   // Clerk userId
+  activatedBy String? // Clerk userId
   createdAt   DateTime  @default(now())
 
   @@unique([evalType, version])
@@ -532,7 +532,7 @@ model OutreachHold {
   recipientId     String
   campaignId      String?
   templateId      String?
-  recipientType   String    // "individual" | "estate_agent" | "solicitor"
+  recipientType   String // "individual" | "estate_agent" | "solicitor"
   recipientName   String?
   recipientEmail  String?
   renderedSubject String
@@ -551,17 +551,20 @@ model OutreachHold {
 
 model AuctionLot {
   id                 String   @id @default(cuid())
-  sourceHouse        String              // e.g. "auction_house_uk", "savills", "clive_emson"
-  sourceLotRef       String              // the auction house's own lot ref / number
+  sourceHouse        String // e.g. "auction_house_uk", "savills", "clive_emson"
+  sourceLotRef       String // the auction house's own lot ref / number
   auctionDate        DateTime
   address            String
   postcode           String
-  propertyType       String              // terraced_house | semi_detached | detached | flat | commercial | land | other
+  propertyType       String // terraced_house | semi_detached | detached | flat | commercial | land | other
   guidePriceMinPence Int?
   guidePriceMaxPence Int?
   sold               Boolean  @default(false)
   soldPricePence     Int?
   lotUrl             String?
+  // Claude-vision condition screen (condition, conditionScore, flags,
+  // rationale, confidence). Computed by /cron/auction-scan via screenAuctionLot.
+  visualAssessment   Json?
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 
@@ -588,31 +591,31 @@ enum QuoteRole {
 }
 
 model QuoteRequest {
-  id              String      @id @default(cuid())
-  source          String      // "public_web", "agent_portal", "api"
-  referralCode    String?
-  contactName     String
-  contactEmail    String
-  contactPhone    String?
-  role            QuoteRole
-  firmName        String?
-  address         String
-  postcode        String
-  propertyType    String?
-  bedrooms        Int?
-  condition       Int?        // 1-10
+  id               String       @id @default(cuid())
+  source           String // "public_web", "agent_portal", "api"
+  referralCode     String?
+  contactName      String
+  contactEmail     String
+  contactPhone     String?
+  role             QuoteRole
+  firmName         String?
+  address          String
+  postcode         String
+  propertyType     String?
+  bedrooms         Int?
+  condition        Int? // 1-10
   askingPricePence Int?
-  sellerSituation String?     // probate / chain_break / etc
-  urgencyDays     Int?
-  notes           String?     @db.Text
-  chatTranscript  Json?
-  status          QuoteStatus @default(draft)
-  offerId         String?     @unique
-  offer           QuoteOffer? @relation(fields: [offerId], references: [id])
-  dealUpdates     DealUpdate[]
-  trackToken      TrackToken?
-  createdAt       DateTime    @default(now())
-  updatedAt       DateTime    @updatedAt
+  sellerSituation  String? // probate / chain_break / etc
+  urgencyDays      Int?
+  notes            String?      @db.Text
+  chatTranscript   Json?
+  status           QuoteStatus  @default(draft)
+  offerId          String?      @unique
+  offer            QuoteOffer?  @relation(fields: [offerId], references: [id])
+  dealUpdates      DealUpdate[]
+  trackToken       TrackToken?
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
 
   @@index([status])
   @@index([postcode])
@@ -639,19 +642,19 @@ model QuoteOffer {
 // solicitor would care about is written here and emailed to all
 // parties on the deal. Visible publicly via /track/<trackToken>.
 model DealUpdate {
-  id            String           @id @default(cuid())
-  dealId        String?
-  deal          Deal?            @relation(fields: [dealId], references: [id])
+  id             String               @id @default(cuid())
+  dealId         String?
+  deal           Deal?                @relation(fields: [dealId], references: [id])
   quoteRequestId String?
-  quoteRequest  QuoteRequest?    @relation(fields: [quoteRequestId], references: [id])
-  kind          DealUpdateKind
-  title         String           // 1-line public-friendly summary
-  detail        String?          @db.Text
-  metadata      Json?            // structured data (e.g. survey result, ETA)
-  visibility    DealUpdateVisibility @default(public)
-  notifiedTo    String[]         @default([])  // emails dispatched to
-  notifiedBy    String?          // user/agent id that triggered the update
-  createdAt     DateTime         @default(now())
+  quoteRequest   QuoteRequest?        @relation(fields: [quoteRequestId], references: [id])
+  kind           DealUpdateKind
+  title          String // 1-line public-friendly summary
+  detail         String?              @db.Text
+  metadata       Json? // structured data (e.g. survey result, ETA)
+  visibility     DealUpdateVisibility @default(public)
+  notifiedTo     String[]             @default([]) // emails dispatched to
+  notifiedBy     String? // user/agent id that triggered the update
+  createdAt      DateTime             @default(now())
 
   @@index([dealId, createdAt])
   @@index([quoteRequestId, createdAt])
@@ -681,23 +684,23 @@ enum DealUpdateKind {
 }
 
 enum DealUpdateVisibility {
-  public          // visible on /track/<token>
-  agent_only      // dashboard only, agents
-  internal        // founder + Paperclip agents only
+  public // visible on /track/<token>
+  agent_only // dashboard only, agents
+  internal // founder + Paperclip agents only
 }
 
 // Public tracker token — sellers / agents share this URL to see live
 // deal status without logging in.
 model TrackToken {
-  id            String   @id @default(cuid())
-  token         String   @unique           // url-safe, 32 chars
-  quoteRequestId String?  @unique
-  quoteRequest  QuoteRequest? @relation(fields: [quoteRequestId], references: [id])
-  dealId        String?  @unique
-  deal          Deal?    @relation(fields: [dealId], references: [id])
-  createdAt     DateTime @default(now())
-  lastViewedAt  DateTime?
-  viewCount     Int      @default(0)
+  id             String        @id @default(cuid())
+  token          String        @unique // url-safe, 32 chars
+  quoteRequestId String?       @unique
+  quoteRequest   QuoteRequest? @relation(fields: [quoteRequestId], references: [id])
+  dealId         String?       @unique
+  deal           Deal?         @relation(fields: [dealId], references: [id])
+  createdAt      DateTime      @default(now())
+  lastViewedAt   DateTime?
+  viewCount      Int           @default(0)
 
   @@index([quoteRequestId])
   @@index([dealId])
@@ -709,7 +712,7 @@ model TrackToken {
 model InvestorAccessToken {
   id           String    @id @default(cuid())
   token        String    @unique // url-safe, generated
-  label        String    // who this link is for (investor / firm name)
+  label        String // who this link is for (investor / firm name)
   email        String?
   revoked      Boolean   @default(false)
   createdBy    String
@@ -794,7 +797,7 @@ model Setting {
   id        String   @id @default(cuid())
   key       String   @unique
   value     Json
-  updatedBy String?  // Clerk userId
+  updatedBy String? // Clerk userId
   updatedAt DateTime @updatedAt
   createdAt DateTime @default(now())
 
@@ -814,8 +817,8 @@ model Setting {
 model LlmCallLog {
   id           String   @id @default(cuid())
   createdAt    DateTime @default(now())
-  feature      String   // e.g. "morning_briefing", "offer_narrative"
-  model        String   // e.g. "claude-haiku-4-5", "claude-sonnet-4-5"
+  feature      String // e.g. "morning_briefing", "offer_narrative"
+  model        String // e.g. "claude-haiku-4-5", "claude-sonnet-4-5"
   inputTokens  Int      @default(0)
   outputTokens Int      @default(0)
   durationMs   Int      @default(0)
@@ -847,15 +850,15 @@ model LlmCallLog {
 // skip re-embedding unchanged docs.
 
 model KnowledgeChunk {
-  id           String                  @id @default(cuid())
+  id           String                      @id @default(cuid())
   sourcePath   String
   headingTrail String
-  body         String                  @db.Text
+  body         String                      @db.Text
   embedding    Unsupported("vector(1024)")
   model        String
   contentHash  String
-  updatedAt    DateTime                @updatedAt
-  createdAt    DateTime                @default(now())
+  updatedAt    DateTime                    @updatedAt
+  createdAt    DateTime                    @default(now())
 
   @@index([sourcePath])
   @@index([contentHash])
@@ -886,7 +889,7 @@ model DocumentExtract {
   filename           String
   docType            String
   dealId             String?
-  uploadedBy         String   // Clerk userId for manual uploads, "email_forward" for inbound emails
+  uploadedBy         String // Clerk userId for manual uploads, "email_forward" for inbound emails
   confidence         Float
   deceasedName       String?
   primaryAddress     String?

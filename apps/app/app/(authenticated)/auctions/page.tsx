@@ -30,18 +30,28 @@ const AuctionsPage = async () => {
       <Header pages={[]} page="Auctions" />
       <div className="flex flex-1 flex-col gap-4 p-6">
         <AuctionsTable
-          lots={lots.map((l) => ({
-            id: l.id,
-            sourceHouse: l.sourceHouse,
-            sourceLotRef: l.sourceLotRef,
-            auctionDate: l.auctionDate.toISOString(),
-            address: l.address,
-            postcode: l.postcode,
-            propertyType: l.propertyType,
-            guidePriceMinPence: l.guidePriceMinPence,
-            guidePriceMaxPence: l.guidePriceMaxPence,
-            lotUrl: l.lotUrl,
-          }))}
+          lots={lots.map((l) => {
+            const va = (l.visualAssessment ?? null) as {
+              condition?: string;
+              flags?: string[];
+              rationale?: string;
+            } | null;
+            return {
+              id: l.id,
+              sourceHouse: l.sourceHouse,
+              sourceLotRef: l.sourceLotRef,
+              auctionDate: l.auctionDate.toISOString(),
+              address: l.address,
+              postcode: l.postcode,
+              propertyType: l.propertyType,
+              guidePriceMinPence: l.guidePriceMinPence,
+              guidePriceMaxPence: l.guidePriceMaxPence,
+              lotUrl: l.lotUrl,
+              condition: va?.condition ?? null,
+              conditionFlags: Array.isArray(va?.flags) ? va.flags : [],
+              conditionRationale: va?.rationale ?? null,
+            };
+          })}
         />
       </div>
     </>

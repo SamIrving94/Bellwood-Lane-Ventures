@@ -14,6 +14,7 @@ import { log } from '@repo/observability/log';
 
 export type CronName =
   | 'scouting'
+  | 'lead-appraise'
   | 'pipeline-appraise'
   | 'pipeline-outreach'
   | 'pipeline-summary'
@@ -24,6 +25,7 @@ export type CronName =
 // the documented daily schedules with head-room for timezone/retry jitter.
 export const CRON_MAX_STALENESS_HOURS: Record<CronName, number> = {
   scouting: 28,
+  'lead-appraise': 28,
   'pipeline-appraise': 28,
   'pipeline-outreach': 28,
   'pipeline-summary': 28,
