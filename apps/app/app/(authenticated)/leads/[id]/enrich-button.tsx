@@ -3,7 +3,13 @@
 import { useState, useTransition } from 'react';
 import { enrichLeadById } from '@/app/actions/leads/enrich';
 
-export function EnrichLeadButton({ leadId }: { leadId: string }) {
+export function EnrichLeadButton({
+  leadId,
+  label = '✨ Enrich this property',
+}: {
+  leadId: string;
+  label?: string;
+}) {
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
@@ -36,7 +42,7 @@ export function EnrichLeadButton({ leadId }: { leadId: string }) {
         disabled={pending}
         className="inline-flex items-center gap-1.5 rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-800 disabled:opacity-60"
       >
-        {pending ? 'Fetching property data… (~25s)' : '✨ Enrich this property'}
+        {pending ? 'Appraising… (~25s)' : label}
       </button>
       {error && <p className="text-xs text-rose-700">{error}</p>}
     </div>

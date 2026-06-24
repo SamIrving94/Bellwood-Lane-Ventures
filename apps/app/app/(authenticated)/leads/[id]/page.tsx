@@ -8,6 +8,7 @@ import { FeedbackPanel } from '../../components/feedback-panel';
 import { CalendlyButton } from './calendly-button';
 import { ConvertButton } from './convert-button';
 import { EnrichLeadButton } from './enrich-button';
+import { PropertyImage } from './property-image';
 
 export const metadata: Metadata = {
   title: 'Lead Detail — Bellwood Ventures',
@@ -273,6 +274,65 @@ const LeadDetailPage = async ({
       ? Math.round(((avmEstimate - askingPrice) / avmEstimate) * 100)
       : null;
 
+  // ── Strong in-house AVM (runAVM), written by the appraise action. This is
+  // the buy-vs-share decision core: a defensible market value, our risk-
+  // adjusted offer, the discount that offer represents, and a confidence read.
+  type AvmFull = {
+    pointEstimatePence: number | null;
+    lowPence: number | null;
+    highPence: number | null;
+    finalOfferPence: number | null;
+    offerDiscountPct: number | null;
+    confidenceLevel: string | null;
+    comparableCount: number | null;
+    requiresReview: boolean;
+    riskScore: number | null;
+    assumedPropertyType: string | null;
+    fetchedAt: string;
+  };
+  const avmFull = (raw.avmFull as AvmFull | undefined) ?? null;
+  // Asking sits this far below our modelled market value (the "is this BMV?"
+  // headline), computed from the stronger runAVM estimate when present.
+  const askingVsAvm =
+    avmFull?.pointEstimatePence && askingPrice && avmFull.pointEstimatePence > 0
+      ? Math.round(
+          ((avmFull.pointEstimatePence - askingPrice) /
+            avmFull.pointEstimatePence) *
+            100,
+        )
+      : null;
+  // Plain-English go/no-go read, driven by asking-vs-market and AVM confidence.
+  // Deliberately avoids invented "BMV tier" thresholds (those were unverifiable);
+  // it just describes the headroom and how much to trust it.
+  let verdictLabel = 'Review';
+  let verdictReason = '';
+  let verdictTone = 'border-slate-200 bg-slate-50 text-slate-700';
+  if (avmFull?.pointEstimatePence) {
+    const lowConf = avmFull.confidenceLevel !== 'high';
+    if (askingVsAvm === null) {
+      verdictReason = 'No asking price to compare against market value.';
+    } else if (askingVsAvm >= 15) {
+      verdictLabel = lowConf ? 'Promising — verify' : 'Strong opportunity';
+      verdictReason = lowConf
+        ? `Asking is ${askingVsAvm}% below modelled market value, but AVM confidence is ${avmFull.confidenceLevel} — sense-check the sold comps before acting.`
+        : `Asking is ${askingVsAvm}% below modelled market value, on ${avmFull.comparableCount ?? 'several'} comparables.`;
+      verdictTone = lowConf
+        ? 'border-amber-200 bg-amber-50 text-amber-900'
+        : 'border-emerald-200 bg-emerald-50 text-emerald-900';
+    } else if (askingVsAvm >= 5) {
+      verdictLabel = 'Worth a look';
+      verdictReason = `Asking is ${askingVsAvm}% below market — moderate headroom; hinges on condition and the offer the seller accepts.`;
+      verdictTone = 'border-amber-200 bg-amber-50 text-amber-900';
+    } else if (askingVsAvm >= 0) {
+      verdictLabel = 'Thin';
+      verdictReason = `Asking is only ${askingVsAvm}% below market — little headroom unless the seller will move on price.`;
+    } else {
+      verdictLabel = 'Above market';
+      verdictReason = `Asking is ${Math.abs(askingVsAvm)}% above modelled market value — unlikely to work without a large reduction.`;
+      verdictTone = 'border-rose-200 bg-rose-50 text-rose-900';
+    }
+  }
+
   // Property lat/lng from PropertyData rawPayload (saved when sourced-properties returned it)
   const lat = (pd?.lat as string | number | undefined) ?? null;
   const lng = (pd?.lng as string | number | undefined) ?? null;
@@ -288,18 +348,7 @@ const LeadDetailPage = async ({
         {/* Hero — image + price + key facts */}
         <div className="overflow-hidden rounded-2xl border bg-card">
           <div className="grid gap-0 md:grid-cols-[2fr_3fr]">
-            {imageUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={imageUrl}
-                alt={lead.address}
-                className="h-64 w-full object-cover md:h-full"
-              />
-            ) : (
-              <div className="flex h-64 items-center justify-center bg-gradient-to-br from-slate-100 to-slate-200 text-slate-400 md:h-full">
-                <span className="text-sm">No image available</span>
-              </div>
-            )}
+            <PropertyImage src={imageUrl} alt={lead.address} />
 
             <div className="p-6">
               <div className="flex flex-wrap items-center gap-1.5">
@@ -424,6 +473,95 @@ const LeadDetailPage = async ({
             </div>
           </div>
         </div>
+
+        {/* ── DEAL DECISION — strong in-house AVM, the buy-vs-share call ── */}
+        {avmFull?.pointEstimatePence ? (
+          <section className="rounded-2xl border-2 border-slate-900/10 bg-white p-5">
+            <div className="flex items-center justify-between gap-3">
+              <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
+                Deal decision
+              </p>
+              <EnrichLeadButton leadId={lead.id} label="↻ Re-appraise" />
+            </div>
+
+            <div className="mt-3 grid gap-4 sm:grid-cols-4">
+              <div>
+                <p className="text-[11px] text-muted-foreground">Asking</p>
+                <p className="font-mono font-bold text-2xl tabular-nums leading-none">
+                  {askingPrice ? formatGBP(askingPrice) : '—'}
+                </p>
+              </div>
+              <div>
+                <p className="text-[11px] text-muted-foreground">
+                  Market value (AVM)
+                </p>
+                <p className="font-mono font-bold text-2xl tabular-nums leading-none">
+                  {formatGBP(avmFull.pointEstimatePence)}
+                </p>
+                {avmFull.lowPence && avmFull.highPence && (
+                  <p className="mt-0.5 font-mono text-[11px] text-muted-foreground">
+                    {formatGBP(avmFull.lowPence)} – {formatGBP(avmFull.highPence)}
+                  </p>
+                )}
+              </div>
+              <div>
+                <p className="text-[11px] text-muted-foreground">Our offer</p>
+                <p className="font-mono font-bold text-2xl tabular-nums leading-none">
+                  {avmFull.finalOfferPence
+                    ? formatGBP(avmFull.finalOfferPence)
+                    : '—'}
+                </p>
+                {avmFull.offerDiscountPct !== null && (
+                  <p className="mt-0.5 text-[11px] text-muted-foreground">
+                    {avmFull.offerDiscountPct.toFixed(0)}% below market
+                  </p>
+                )}
+              </div>
+              <div>
+                <p className="text-[11px] text-muted-foreground">Confidence</p>
+                <p className="font-semibold text-lg capitalize leading-none">
+                  {avmFull.confidenceLevel ?? '—'}
+                </p>
+                {avmFull.comparableCount !== null && (
+                  <p className="mt-1 text-[11px] text-muted-foreground">
+                    {avmFull.comparableCount} sold comps
+                  </p>
+                )}
+              </div>
+            </div>
+
+            {/* Asking vs market headline + plain-English read */}
+            <div className={`mt-4 rounded-lg border p-3 text-sm ${verdictTone}`}>
+              <span className="font-semibold">{verdictLabel}</span> —{' '}
+              {verdictReason}
+            </div>
+
+            {avmFull.assumedPropertyType && (
+              <p className="mt-2 text-[11px] text-amber-700">
+                ⚠ Property type was missing — assumed{' '}
+                {avmFull.assumedPropertyType}. Confirm before acting.
+              </p>
+            )}
+            {avmFull.requiresReview && (
+              <p className="mt-1 text-[11px] text-amber-700">
+                ⚠ Flagged for manual review (offer capped / escalation).
+              </p>
+            )}
+          </section>
+        ) : (
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50 p-5">
+            <div>
+              <h2 className="font-semibold">Appraise this deal</h2>
+              <p className="mt-0.5 max-w-xl text-sm text-muted-foreground">
+                Run the valuation to see market value, our offer, the discount,
+                confidence, sold comps, yield, EPC, tenure, council tax &amp;
+                flood band — the full read on whether this is worth acting on
+                (~25s, ~22 credits).
+              </p>
+            </div>
+            <EnrichLeadButton leadId={lead.id} label="Appraise deal" />
+          </div>
+        )}
 
         {/* ── NEXT STEP: MAKE CONTACT ────────────────────────────────────
             The whole point of a lead is to reach the vendor. Scouted leads
@@ -582,17 +720,6 @@ const LeadDetailPage = async ({
         )}
 
         {/* ── PROPERTY SNAPSHOT — Tier 1 + Tier 2 enrichment ─────────────── */}
-
-        {!snapshot && !isSparseData && (
-          <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-300 bg-amber-50 p-4">
-            <p className="text-sm text-amber-900">
-              No property snapshot yet. Click to fetch AVM, sold
-              comparables, yield, EPC, tenure, council tax & flood band in
-              one go (~25s, 22 credits).
-            </p>
-            <EnrichLeadButton leadId={lead.id} />
-          </div>
-        )}
 
         {snapshot && (
           <>
