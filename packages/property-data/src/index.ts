@@ -43,6 +43,7 @@ export * from './companies-house';
 export * from './os-places';
 export * from './propertydata';
 export * from './postcodes-io';
+export * from './registered-leases';
 
 // ---------------------------------------------------------------------------
 // Constants
