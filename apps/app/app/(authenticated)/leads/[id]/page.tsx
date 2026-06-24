@@ -1,12 +1,14 @@
 import { auth } from '@repo/auth/server';
 import { getBookingLink } from '@repo/calendly';
 import { database } from '@repo/database';
+import { mergeValuationConfig } from '@repo/valuation';
 import type { Metadata } from 'next';
 import { notFound, redirect } from 'next/navigation';
 import { Header } from '../../components/header';
 import { FeedbackPanel } from '../../components/feedback-panel';
 import { CalendlyButton } from './calendly-button';
 import { ConvertButton } from './convert-button';
+import { DealModelPanel } from './deal-model-panel';
 import { EnrichLeadButton } from './enrich-button';
 import { PropertyImage } from './property-image';
 
@@ -55,21 +57,27 @@ const LeadDetailPage = async ({
 
   const { id } = await params;
 
-  const [lead, existingFeedback] = await Promise.all([
+  const [lead, existingFeedback, valuationRow] = await Promise.all([
     database.scoutLead.findUnique({ where: { id } }),
     database.founderFeedback.findFirst({
       where: { targetType: 'scout_lead', targetId: id },
       orderBy: { createdAt: 'desc' },
     }),
+    database.setting.findUnique({ where: { key: 'valuation.config' } }),
   ]);
 
   if (!lead) notFound();
+
+  // Founder-tuned valuation levers (condition discounts + target ROI feed the
+  // live deal panel below; refurb levers are applied server-side at appraisal).
+  const valuationConfig = mergeValuationConfig(valuationRow?.value ?? null);
 
   // Unpack rich data from rawPayload
   const raw = (lead.rawPayload ?? {}) as Record<string, unknown>;
   const pd = raw.propertyData as Record<string, unknown> | undefined;
   const planning = raw.planning as Record<string, unknown> | undefined;
   const hmo = raw.hmo as Record<string, unknown> | undefined;
+  const lease = raw.leaseSignal as Record<string, unknown> | undefined;
   const riskFlags = (raw.riskFlags as string[] | undefined) ?? [];
   const scoreBreakdown = raw.scoreBreakdown as
     | Record<string, number>
@@ -103,6 +111,9 @@ const LeadDetailPage = async ({
   const isPropertyData = lead.source.startsWith('propertydata_');
   const isPlanning = lead.source.startsWith('planning_');
   const isHmo = lead.source.startsWith('hmo_');
+  const isShortLease = lead.source.startsWith('short_lease');
+  const leaseRemainingYears =
+    (lease?.remainingLeaseYears as number | undefined) ?? null;
 
   const imageUrl = (pd?.imageUrl as string | undefined) ?? null;
   const summary = (pd?.summary as string | undefined) ?? null;
@@ -201,16 +212,22 @@ const LeadDetailPage = async ({
         ? hmoLicenceExpiringSoon
           ? 'HMO · licence expiring'
           : 'HMO register'
-        : lead.source;
+        : isShortLease
+          ? leaseRemainingYears
+            ? `Short lease · ${leaseRemainingYears}y left`
+            : 'Short lease'
+          : lead.source;
   const sourceTechnical = isPropertyData
     ? 'PropertyData /sourced-properties'
     : isPlanning
       ? 'PropertyData /planning-applications'
       : isHmo
         ? 'PropertyData /national-hmo-register'
-        : lead.source.startsWith('companies_house')
-          ? 'Companies House dissolved companies'
-          : lead.source;
+        : isShortLease
+          ? 'PropertyData /freeholds (lease term)'
+          : lead.source.startsWith('companies_house')
+            ? 'Companies House dissolved companies'
+            : lead.source;
 
   // True when this lead lacks the rich PropertyData enrichment (likely
   // scouted before the schema upgrade). Used to surface a clear refresh CTA.
@@ -289,6 +306,15 @@ const LeadDetailPage = async ({
     riskScore: number | null;
     assumedPropertyType: string | null;
     fetchedAt: string;
+    /** Photo-inferred condition (deal-model level) + the vision read. */
+    inferredCondition?: string | null;
+    conditionVisual?: string | null;
+    conditionRationale?: string | null;
+    conditionConfidence?: number | null;
+    /** Transparent photo-driven refurb estimate. */
+    refurbEstimatePence?: number | null;
+    refurbLines?: { label: string; pence: number }[] | null;
+    refurbBasis?: string | null;
   };
   const avmFull = (raw.avmFull as AvmFull | undefined) ?? null;
   // Asking sits this far below our modelled market value (the "is this BMV?"
@@ -562,6 +588,22 @@ const LeadDetailPage = async ({
             <EnrichLeadButton leadId={lead.id} label="Appraise deal" />
           </div>
         )}
+
+        {/* ── DEAL MODEL — bottom-up ROI, GDV auto-derived from the AVM ── */}
+        {avmFull?.pointEstimatePence ? (
+          <DealModelPanel
+            avmPointEstimatePence={avmFull.pointEstimatePence}
+            askingPricePence={askingPrice}
+            inferredCondition={avmFull.inferredCondition ?? null}
+            conditionRationale={avmFull.conditionRationale ?? null}
+            conditionConfidence={avmFull.conditionConfidence ?? null}
+            refurbEstimatePence={avmFull.refurbEstimatePence ?? null}
+            refurbLines={avmFull.refurbLines ?? null}
+            refurbBasis={avmFull.refurbBasis ?? null}
+            conditionDiscounts={valuationConfig.conditionDiscounts}
+            targetCashRoi={valuationConfig.targetCashRoi}
+          />
+        ) : null}
 
         {/* ── NEXT STEP: MAKE CONTACT ────────────────────────────────────
             The whole point of a lead is to reach the vendor. Scouted leads

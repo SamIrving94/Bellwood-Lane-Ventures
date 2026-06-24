@@ -1,0 +1,381 @@
+'use client';
+
+/**
+ * Deal-model panel — the founder's bottom-up underwrite, pre-filled from the AVM.
+ *
+ * The AVM point estimate is the comp-typical ("done-up") market value, so it is
+ * the anchor for the after-refurb GDV. From one AVM run we show:
+ *   - AVM market value (the comp anchor)
+ *   - As-is value today (AVM minus the current-condition discount)
+ *   - GDV after refurb (the end value the deal is underwritten against)
+ * …then the cash / financed ROI at a given offer and the walk-away max offer to
+ * hit the target return. All maths is the pure @repo/valuation deal model, run
+ * live client-side — no GDV to punch in by hand.
+ */
+
+import type { AcquisitionRoute } from '@repo/valuation/src/deal-model';
+import {
+  type ConditionLevel,
+  appraiseDealFromAvm,
+} from '@repo/valuation/src/gdv';
+import { useMemo, useState } from 'react';
+
+function formatGBP(pence: number): string {
+  return new Intl.NumberFormat('en-GB', {
+    style: 'currency',
+    currency: 'GBP',
+    maximumFractionDigits: 0,
+  }).format(pence / 100);
+}
+
+function poundsToPence(pounds: string): number {
+  const n = Number(pounds.trim());
+  return Number.isFinite(n) && n > 0 ? Math.round(n * 100) : 0;
+}
+
+const CONDITIONS: { value: ConditionLevel; label: string }[] = [
+  { value: 'turnkey', label: 'Turnkey' },
+  { value: 'dated', label: 'Dated' },
+  { value: 'tired', label: 'Tired' },
+  { value: 'unmodernised', label: 'Unmodernised' },
+  { value: 'derelict', label: 'Derelict' },
+];
+
+const ROUTES: { value: AcquisitionRoute; label: string }[] = [
+  { value: 'private_treaty', label: 'Private treaty' },
+  { value: 'auction_traditional', label: 'Auction (traditional)' },
+  { value: 'auction_modern', label: 'Auction (modern)' },
+];
+
+const VERDICT_TONE: Record<string, string> = {
+  pass: 'bg-emerald-100 text-emerald-800 border-emerald-200',
+  marginal: 'bg-amber-100 text-amber-800 border-amber-200',
+  fail: 'bg-rose-100 text-rose-800 border-rose-200',
+};
+
+const CONDITION_VALUES = new Set<ConditionLevel>([
+  'turnkey',
+  'dated',
+  'tired',
+  'unmodernised',
+  'derelict',
+]);
+
+export function DealModelPanel({
+  avmPointEstimatePence,
+  askingPricePence,
+  inferredCondition,
+  conditionRationale,
+  conditionConfidence,
+  refurbEstimatePence,
+  refurbLines,
+  refurbBasis,
+  conditionDiscounts,
+  targetCashRoi,
+}: {
+  avmPointEstimatePence: number;
+  askingPricePence: number | null;
+  /** Photo-inferred condition (from the vision screener), if any. */
+  inferredCondition?: string | null;
+  conditionRationale?: string | null;
+  conditionConfidence?: number | null;
+  /** Transparent photo-driven refurb estimate. */
+  refurbEstimatePence?: number | null;
+  refurbLines?: { label: string; pence: number }[] | null;
+  refurbBasis?: string | null;
+  /** Founder-tuned levers from the valuation methodology page. */
+  conditionDiscounts?: Partial<Record<ConditionLevel, number>>;
+  targetCashRoi?: number;
+}) {
+  // Default the condition to the photo-inferred value when the vision screener
+  // returned a valid one; otherwise fall back to 'tired'.
+  const initialCondition: ConditionLevel =
+    inferredCondition &&
+    CONDITION_VALUES.has(inferredCondition as ConditionLevel)
+      ? (inferredCondition as ConditionLevel)
+      : 'tired';
+  const [condition, setCondition] = useState<ConditionLevel>(initialCondition);
+  const [route, setRoute] = useState<AcquisitionRoute>('private_treaty');
+  // Default the refurb to the transparent photo-driven estimate when we have
+  // one; otherwise fall back to ~12% of the AVM.
+  const [refurb, setRefurb] = useState<string>(
+    String(
+      Math.round((refurbEstimatePence ?? avmPointEstimatePence * 0.12) / 100)
+    )
+  );
+  const [showRefurbWorking, setShowRefurbWorking] = useState(false);
+  const [premiumPct, setPremiumPct] = useState<string>('0');
+  const [targetPct, setTargetPct] = useState<string>(
+    String(Math.round((targetCashRoi ?? 0.2) * 100)),
+  );
+  // Pre-fill "our offer" with the asking price when we have it.
+  const [offer, setOffer] = useState<string>(
+    askingPricePence ? String(Math.round(askingPricePence / 100)) : ''
+  );
+
+  const result = useMemo(
+    () =>
+      appraiseDealFromAvm({
+        avmPointEstimatePence,
+        conditionLevel: condition,
+        conditionDiscounts,
+        premiumUpliftFraction: (Number(premiumPct) || 0) / 100,
+        refurbPence: poundsToPence(refurb),
+        route,
+        offerPence: offer ? poundsToPence(offer) : undefined,
+        targetRoi: (Number(targetPct) || 20) / 100,
+      }),
+    [
+      avmPointEstimatePence,
+      condition,
+      conditionDiscounts,
+      premiumPct,
+      refurb,
+      route,
+      offer,
+      targetPct,
+    ]
+  );
+
+  const { gdv, appraisal, maxOfferPence, targetRoi } = result;
+
+  return (
+    <section className="rounded-2xl border-2 border-slate-900/10 bg-white p-5">
+      <p className="font-mono text-[10px] text-muted-foreground uppercase tracking-[0.22em]">
+        Deal model · bottom-up ROI
+      </p>
+
+      {/* Value ladder: AVM → as-is → GDV */}
+      <div className="mt-3 grid gap-4 sm:grid-cols-3">
+        <div>
+          <p className="text-[11px] text-muted-foreground">AVM market value</p>
+          <p className="font-bold font-mono text-2xl tabular-nums leading-none">
+            {formatGBP(gdv.avmPointEstimatePence)}
+          </p>
+          <p className="mt-0.5 text-[11px] text-muted-foreground">
+            comp-typical (done up)
+          </p>
+        </div>
+        <div>
+          <p className="text-[11px] text-muted-foreground">As-is today</p>
+          <p className="font-bold font-mono text-2xl tabular-nums leading-none">
+            {formatGBP(gdv.asIsValuePence)}
+          </p>
+          <p className="mt-0.5 text-[11px] text-muted-foreground">
+            current condition
+          </p>
+        </div>
+        <div>
+          <p className="text-[11px] text-muted-foreground">GDV after refurb</p>
+          <p className="font-bold font-mono text-2xl text-emerald-700 tabular-nums leading-none">
+            {formatGBP(gdv.gdvPence)}
+          </p>
+          <p className="mt-0.5 text-[11px] text-muted-foreground">end value</p>
+        </div>
+      </div>
+
+      {/* Inputs */}
+      <div className="mt-5 grid gap-3 sm:grid-cols-3">
+        <label className="block">
+          <span className="text-[11px] text-muted-foreground">
+            Condition
+            {inferredCondition ? (
+              <span
+                className="ml-1 text-emerald-700"
+                title={
+                  conditionRationale
+                    ? `From photos: ${conditionRationale}${
+                        typeof conditionConfidence === 'number'
+                          ? ` (${Math.round(conditionConfidence * 100)}% confident)`
+                          : ''
+                      }`
+                    : 'Inferred from the listing photos'
+                }
+              >
+                · 📷 from photos
+              </span>
+            ) : null}
+          </span>
+          <select
+            className="mt-1 w-full rounded-md border bg-background px-2 py-1.5 text-sm"
+            value={condition}
+            onChange={(e) => setCondition(e.target.value as ConditionLevel)}
+          >
+            {CONDITIONS.map((c) => (
+              <option key={c.value} value={c.value}>
+                {c.label}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="block">
+          <span className="flex items-center justify-between text-[11px] text-muted-foreground">
+            <span>
+              Refurb (£)
+              {refurbEstimatePence != null ? (
+                <span className="ml-1 text-emerald-700">· 📷 estimated</span>
+              ) : null}
+            </span>
+            {refurbLines && refurbLines.length > 0 ? (
+              <button
+                type="button"
+                className="text-[11px] text-sky-700 underline"
+                onClick={() => setShowRefurbWorking((v) => !v)}
+              >
+                {showRefurbWorking ? 'hide' : 'show working'}
+              </button>
+            ) : null}
+          </span>
+          <input
+            className="mt-1 w-full rounded-md border bg-background px-2 py-1.5 text-sm tabular-nums"
+            inputMode="numeric"
+            value={refurb}
+            onChange={(e) => setRefurb(e.target.value)}
+          />
+        </label>
+        <label className="block">
+          <span className="text-[11px] text-muted-foreground">Route</span>
+          <select
+            className="mt-1 w-full rounded-md border bg-background px-2 py-1.5 text-sm"
+            value={route}
+            onChange={(e) => setRoute(e.target.value as AcquisitionRoute)}
+          >
+            {ROUTES.map((r) => (
+              <option key={r.value} value={r.value}>
+                {r.label}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="block">
+          <span className="text-[11px] text-muted-foreground">
+            Refurb uplift (%)
+          </span>
+          <input
+            className="mt-1 w-full rounded-md border bg-background px-2 py-1.5 text-sm tabular-nums"
+            inputMode="numeric"
+            value={premiumPct}
+            onChange={(e) => setPremiumPct(e.target.value)}
+            title="How far above comp-typical the finished product lands. 0% = a standard refurb that restores it to the comp baseline."
+          />
+        </label>
+        <label className="block">
+          <span className="text-[11px] text-muted-foreground">
+            Target cash ROI (%)
+          </span>
+          <input
+            className="mt-1 w-full rounded-md border bg-background px-2 py-1.5 text-sm tabular-nums"
+            inputMode="numeric"
+            value={targetPct}
+            onChange={(e) => setTargetPct(e.target.value)}
+          />
+        </label>
+        <label className="block">
+          <span className="text-[11px] text-muted-foreground">
+            Our offer (£)
+          </span>
+          <input
+            className="mt-1 w-full rounded-md border bg-background px-2 py-1.5 text-sm tabular-nums"
+            inputMode="numeric"
+            placeholder="optional"
+            value={offer}
+            onChange={(e) => setOffer(e.target.value)}
+          />
+        </label>
+      </div>
+
+      {/* Transparent refurb breakdown — "show your working" so the founder can
+          trust (and edit) the estimate rather than seeing a black-box number. */}
+      {showRefurbWorking && refurbLines && refurbLines.length > 0 ? (
+        <div className="mt-3 rounded-lg border bg-amber-50/60 p-3 text-sm">
+          <p className="mb-1 font-medium text-[11px] text-amber-800 uppercase tracking-wide">
+            How the refurb estimate was built
+          </p>
+          <ul className="divide-y divide-amber-100">
+            {refurbLines.map((line) => (
+              <li
+                key={line.label}
+                className="flex items-center justify-between py-1"
+              >
+                <span className="text-muted-foreground">{line.label}</span>
+                <span className="font-mono tabular-nums">
+                  {formatGBP(line.pence)}
+                </span>
+              </li>
+            ))}
+            <li className="flex items-center justify-between py-1 font-semibold">
+              <span>Total estimate</span>
+              <span className="font-mono tabular-nums">
+                {formatGBP(refurbLines.reduce((s, l) => s + l.pence, 0))}
+              </span>
+            </li>
+          </ul>
+          {refurbBasis ? (
+            <p className="mt-2 text-[11px] text-muted-foreground">
+              {refurbBasis} These are starting figures — edit the refurb box
+              above to override.
+            </p>
+          ) : null}
+        </div>
+      ) : null}
+
+      {/* Outputs */}
+      <div className="mt-5 grid gap-4 sm:grid-cols-3">
+        <div className="rounded-lg border bg-slate-50 p-3">
+          <p className="text-[11px] text-muted-foreground">
+            Max offer · {Math.round(targetRoi * 100)}% cash
+          </p>
+          <p className="font-bold font-mono text-2xl tabular-nums leading-none">
+            {maxOfferPence > 0 ? formatGBP(maxOfferPence) : '—'}
+          </p>
+          <p className="mt-0.5 text-[11px] text-muted-foreground">
+            walk-away ceiling
+          </p>
+        </div>
+        <div className="rounded-lg border bg-slate-50 p-3">
+          <p className="text-[11px] text-muted-foreground">
+            At our offer · cash ROI
+          </p>
+          <p className="font-bold font-mono text-2xl tabular-nums leading-none">
+            {appraisal ? `${Math.round(appraisal.cash.roi * 100)}%` : '—'}
+          </p>
+          <p className="mt-0.5 text-[11px] text-muted-foreground">
+            {appraisal
+              ? `${formatGBP(appraisal.cash.profitPence)} profit`
+              : 'enter an offer'}
+          </p>
+        </div>
+        <div className="rounded-lg border bg-slate-50 p-3">
+          <p className="text-[11px] text-muted-foreground">
+            At our offer · financed ROI
+          </p>
+          <p className="font-bold font-mono text-2xl tabular-nums leading-none">
+            {appraisal ? `${Math.round(appraisal.financed.roi * 100)}%` : '—'}
+          </p>
+          <p className="mt-0.5 text-[11px] text-muted-foreground">
+            bridging upside
+          </p>
+        </div>
+      </div>
+
+      {appraisal && (
+        <div className="mt-4 flex items-center gap-2">
+          <span
+            className={`inline-flex rounded-full border px-2.5 py-0.5 font-medium text-xs capitalize ${VERDICT_TONE[appraisal.verdict] ?? ''}`}
+          >
+            {appraisal.verdict}
+          </span>
+          <span className="text-[11px] text-muted-foreground">
+            All-in outlay {formatGBP(appraisal.cash.totalOutlayPence)} · hurdle{' '}
+            {Math.round(appraisal.targetCashRoi * 100)}%
+          </span>
+        </div>
+      )}
+
+      <p className="mt-4 text-[11px] text-muted-foreground">
+        {gdv.basis} The margin is made buying below the as-is value — not from
+        the refurb alone.
+      </p>
+    </section>
+  );
+}

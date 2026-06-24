@@ -225,10 +225,15 @@ export async function enrichLead(lead: ProbateLead): Promise<EnrichedLead> {
     probateRef: lead.probateRef,
     address: lead.address,
     postcode: lead.postcode,
+    // Sources that aren't probate (e.g. the short-lease scout) carry an
+    // explicit leadType hint so the scorer credits them the right motivation
+    // weight instead of mislabelling them as probate. Probate leads carry no
+    // hint and keep the grant-type-derived default.
     leadType:
-      lead.grantType === 'letters_of_administration'
+      (lead as { leadTypeHint?: string }).leadTypeHint ??
+      (lead.grantType === 'letters_of_administration'
         ? 'probate_admin'
-        : 'probate',
+        : 'probate'),
     grantDate: lead.grantDate,
     grantType: lead.grantType,
     daysSinceGrant: lead.daysSinceGrant,

@@ -80,6 +80,12 @@ export interface LeadSignals {
   remainingLeaseYears?: number | null;
   tenure?: 'freehold' | 'leasehold' | 'unknown' | null;
   planningRefusalCount?: number;
+  /** Set by the short-lease source: the lease is under the 80-year
+   *  marriage-value line, which is itself a seller-motivation signal. */
+  marriageValueLease?: boolean;
+  /** 0–1 urgency from the lease assessment — scales the marriage-value
+   *  motivation bonus (a 55-year lease is hotter than a 79-year one). */
+  leaseUrgency?: number;
 }
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -203,6 +209,24 @@ function scoreMotivation(
   } else if (signals?.daysOnMarket && signals.daysOnMarket >= 60) {
     score += 2;
     add(factors, `On market ${signals.daysOnMarket}d`, 2, 'motivation');
+  }
+
+  // Short-lease motivation (marriage value). Distinct from the lease *risk*
+  // penalty in scoreRisk: a short lease both costs money to extend (risk) AND
+  // makes the owner motivated to sell (motivation) — the founder's Milton Court
+  // play. Only fires for leads the short-lease source flagged, so existing
+  // leads are unaffected. Scaled 10→18 by lease urgency, capped by the
+  // motivation dimension cap.
+  if (signals?.marriageValueLease) {
+    const urgency = Math.min(1, Math.max(0, signals.leaseUrgency ?? 0));
+    const pts = 10 + Math.round(urgency * 8);
+    score += pts;
+    add(
+      factors,
+      'Short lease motivates sale (marriage value)',
+      pts,
+      'motivation',
+    );
   }
 
   // Pre-probate area

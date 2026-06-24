@@ -1,10 +1,13 @@
 /**
- * Auction-lot vision screener.
+ * Property-photo vision screener.
  *
- * Given the public photos of an auction lot, ask Claude Sonnet to produce
- * a structured condition assessment. The output is attached to AuctionLot
- * .visualAssessment so the downstream appraiser flow can downgrade
- * visibly-distressed lots automatically.
+ * Given the public photos of a property (an auction lot OR a scouted lead's
+ * estate-agent listing), ask Claude Sonnet to produce a structured condition
+ * assessment. For auction lots the output is attached to
+ * AuctionLot.visualAssessment so the appraiser can downgrade visibly-distressed
+ * lots; for leads it pre-fills the deal-model condition so the founder doesn't
+ * have to eyeball it. `screenAuctionLot` is the original auction-named entry
+ * point and now delegates to the generic `screenPropertyCondition`.
  *
  * TODO: wire this into LlmCallLog via setLlmLogger (or whatever the
  * canonical observability hook is in @repo/ai) so vision spend is tracked
@@ -72,13 +75,13 @@ const AssessmentSchema = z.object({
   confidence: z.number().min(0).max(1),
 });
 
-const SYSTEM_PROMPT = `You are a chartered surveyor scoring UK residential auction lot photos.
+const SYSTEM_PROMPT = `You are a chartered surveyor scoring UK residential property photos.
 
 Property types: terraced houses, semi-detached, detached, flats. Photos come
-from public auction catalogues (Auction House UK, Savills, Clive Emson) and
-are often a mix of exterior, kitchen, bathroom, and living rooms. Vendors
-sometimes only publish exteriors for distressed stock — be honest and lower
-your confidence when interiors are missing.
+from public auction catalogues (Auction House UK, Savills, Clive Emson) or
+estate-agent listings, and are often a mix of exterior, kitchen, bathroom, and
+living rooms. Vendors sometimes only publish exteriors for distressed stock —
+be honest and lower your confidence when interiors are missing.
 
 Output JSON ONLY matching this schema:
 {
@@ -102,17 +105,19 @@ Rules:
 - Return JSON only. No prose, no markdown fences.`;
 
 /**
- * Vision-screen an auction lot's public photos.
+ * Vision-screen a property's public photos (auction lot or estate-agent
+ * listing) into a structured condition assessment.
  *
  * Graceful by design: returns `null` on missing API key, network error, or
  * schema-validation failure. NEVER throws.
  */
-export async function screenAuctionLot(input: {
-  lotRef: string;
+export async function screenPropertyCondition(input: {
+  /** A label for logs (auction lot ref, lead id, etc.). */
+  ref: string;
   address: string;
   photoUrls: string[];
 }): Promise<VisualAssessment | null> {
-  const { lotRef, address, photoUrls } = input;
+  const { ref, address, photoUrls } = input;
 
   if (!photoUrls || photoUrls.length === 0) {
     return null;
@@ -122,7 +127,7 @@ export async function screenAuctionLot(input: {
   if (!apiKey) {
     console.warn(
       '[@repo/auctions/lot-screener] ANTHROPIC_API_KEY not set — skipping vision screen for',
-      lotRef
+      ref
     );
     return null;
   }
@@ -138,12 +143,12 @@ export async function screenAuctionLot(input: {
   if (fetched.length === 0) {
     console.warn(
       '[@repo/auctions/lot-screener] no images fetched successfully for',
-      lotRef
+      ref
     );
     return null;
   }
 
-  const userText = `Lot: ${lotRef}\nAddress: ${address}\nPhotos provided: ${fetched.length} of ${photoUrls.length} available.\n\nAssess the property condition from these photos and return the JSON object.`;
+  const userText = `Ref: ${ref}\nAddress: ${address}\nPhotos provided: ${fetched.length} of ${photoUrls.length} available.\n\nAssess the property condition from these photos and return the JSON object.`;
 
   const client = new Anthropic({ apiKey });
 
@@ -172,14 +177,14 @@ export async function screenAuctionLot(input: {
         },
       ],
       // Feature tag for downstream log routing once setLlmLogger is wired.
-      metadata: { user_id: `auction_lot_vision:${lotRef}` },
+      metadata: { user_id: `property_vision:${ref}` },
     });
 
     const textBlock = response.content.find((c) => c.type === 'text');
     if (!textBlock || textBlock.type !== 'text') {
       console.warn(
         '[@repo/auctions/lot-screener] no text block in response for',
-        lotRef
+        ref
       );
       return null;
     }
@@ -188,7 +193,7 @@ export async function screenAuctionLot(input: {
     if (!raw) {
       console.warn(
         '[@repo/auctions/lot-screener] could not extract JSON for',
-        lotRef
+        ref
       );
       return null;
     }
@@ -197,7 +202,7 @@ export async function screenAuctionLot(input: {
     if (!parsed.success) {
       console.warn(
         '[@repo/auctions/lot-screener] schema validation failed for',
-        lotRef,
+        ref,
         parsed.error.message
       );
       return null;
@@ -218,11 +223,28 @@ export async function screenAuctionLot(input: {
   } catch (err) {
     console.error(
       '[@repo/auctions/lot-screener] Claude vision call failed for',
-      lotRef,
+      ref,
       err
     );
     return null;
   }
+}
+
+/**
+ * Back-compat entry point for the auction-scan path. Delegates to the generic
+ * `screenPropertyCondition`; kept so existing callers that pass `lotRef` keep
+ * working unchanged.
+ */
+export function screenAuctionLot(input: {
+  lotRef: string;
+  address: string;
+  photoUrls: string[];
+}): Promise<VisualAssessment | null> {
+  return screenPropertyCondition({
+    ref: input.lotRef,
+    address: input.address,
+    photoUrls: input.photoUrls,
+  });
 }
 
 /**

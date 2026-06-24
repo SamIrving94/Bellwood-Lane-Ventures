@@ -32,7 +32,7 @@ export type {
   VisualFlag,
 } from './types';
 
-export { screenAuctionLot } from './lot-screener';
+export { screenAuctionLot, screenPropertyCondition } from './lot-screener';
 
 /**
  * Fetch upcoming auction lots across all free sources, apply filters,

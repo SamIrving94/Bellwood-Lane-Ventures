@@ -64,12 +64,13 @@ export default async function AppraisalsPage() {
   return (
     <div className="mx-auto max-w-6xl space-y-8 p-6">
       <header className="space-y-1">
-        <h1 className="text-2xl font-semibold">Appraisals</h1>
+        <h1 className="text-2xl font-semibold">Deep appraisals (AI)</h1>
         <p className="text-sm text-slate-500">
-          Decision-grade structured appraisals. Each item is a single
-          bid/walk/offer call backed by HMLR comparables, environmental risk,
-          and a discount-stacked cap. Produced daily by{' '}
-          <code>/cron/deep-appraisal</code>.
+          Decision-grade AI appraisals — distinct from the quick AVM on each
+          lead. Each item is a single bid/walk/offer call backed by HMLR
+          comparables, environmental risk, and a discount-stacked cap. Produced
+          daily by <code>/cron/deep-appraisal</code> for strong leads &amp;
+          upcoming auction lots.
         </p>
       </header>
 

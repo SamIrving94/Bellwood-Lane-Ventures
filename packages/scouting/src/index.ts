@@ -31,6 +31,7 @@ import {
 
 import { fetchProbateGrants } from './probate-data';
 import { fetchGazetteProbateNotices } from './gazette';
+import { fetchShortLeaseLeads } from './short-lease';
 import {
   checkEnrichmentHealth,
   type EnrichmentSummary,
@@ -64,6 +65,12 @@ function mostCommon<T extends string>(items: T[]): T | null {
 
 export { fetchProbateGrants } from './probate-data';
 export { fetchGazetteProbateNotices } from './gazette';
+export { fetchShortLeaseLeads } from './short-lease';
+export type {
+  ShortLeaseSeed,
+  ShortLeaseRawLead,
+  ShortLeaseScoutResult,
+} from './short-lease';
 export {
   checkEnrichmentHealth,
   enrichLeads,
@@ -136,6 +143,21 @@ export interface ScoutingPipelineOptions {
    */
   scanSeeds?: Array<{ label?: string; postcode: string; radiusMiles: number }>;
   /**
+   * Full UK postcodes to scan for short-lease leads (PropertyData /freeholds).
+   * When omitted, the postcodes from `scanSeeds` are reused. Pass an explicit
+   * empty array to disable the short-lease source entirely.
+   */
+  shortLeaseSeeds?: Array<{ label?: string; postcode: string }>;
+  /**
+   * Opt-in switch for the short-lease scout. When true, the pipeline scans
+   * `shortLeaseSeeds` (or the scanSeeds postcodes) for leasehold properties
+   * near/under the 80-year marriage-value line and emits them as lease-expiry
+   * leads. Defaults false to preserve existing behaviour exactly.
+   */
+  scanShortLeases?: boolean;
+  /** Upper bound (remaining years) for a short-lease lead. Default 85. */
+  shortLeaseCeilingYears?: number;
+  /**
    * Active scorer config (weights/thresholds) loaded from the EvalConfig table.
    * When omitted, the scorer uses its hard-coded DEFAULT_SCORER_CONFIG.
    */
@@ -191,6 +213,7 @@ export interface ScoutingPipelineResult {
     planning: number;
     hmo: number;
     dissolved: number;
+    shortLease: number;
     staleListings: number;
     afterDedupe: number;
     postcodesScanned: number;
@@ -204,6 +227,7 @@ export interface ScoutingPipelineResult {
     hmo?: string;
     dissolved?: string;
     staleListings?: string;
+    shortLease?: string;
     enrichment?: string;
   };
   /** Contact-enrichment tier distribution + hit-rate for this run. */
@@ -234,6 +258,9 @@ export async function runScoutingPipeline(
     includeRawPayload = true,
     sourcedPropertyPostcodes = [],
     scanSeeds = [],
+    shortLeaseSeeds,
+    scanShortLeases = false,
+    shortLeaseCeilingYears,
     scorerConfig = DEFAULT_SCORER_CONFIG,
     evalConfigVersion = null,
     enrichRationaleLlm = false,
@@ -252,6 +279,7 @@ export async function runScoutingPipeline(
     hmo?: string;
     dissolved?: string;
     staleListings?: string;
+    shortLease?: string;
     enrichment?: string;
   } = {};
 
@@ -572,6 +600,57 @@ export async function runScoutingPipeline(
     sourceErrors.dissolved = msg.slice(0, 200);
   }
 
+  // ── Short-lease scout — opt-in (PropertyData /freeholds) ────────────
+  // Surfaces leasehold flats near/under the 80-year marriage-value line: a
+  // strong motivated-seller signal (hard to mortgage → hard to sell on-market
+  // → open to a fast direct sale). Off by default; runs only when the caller
+  // sets scanShortLeases, reusing the scanSeeds postcodes unless given its own.
+  // Each /freeholds call is PropertyData rate-limited, so we throttle like the
+  // other PropertyData loops.
+  type ShortLeaseGrant = {
+    probateRef: string;
+    address: string;
+    postcode: string;
+    grantDate: string;
+    executorName: null;
+    solicitorFirm: string | null;
+    estateValuePence: number | null;
+    grantType: 'unknown';
+    source: string;
+    daysSinceGrant: number;
+    leadTypeHint: 'lease_expiry';
+    leaseSignal: {
+      remainingLeaseYears: number;
+      band: string;
+      marriageValue: boolean;
+      urgency: number;
+      groundRentPerYear: number | null;
+      serviceChargePerYear: number | null;
+      label: string;
+    };
+  };
+  let shortLeaseGrants: ShortLeaseGrant[] = [];
+  if (scanShortLeases) {
+    const leaseSeeds =
+      shortLeaseSeeds ??
+      allSeeds.map((s) => ({ label: s.label, postcode: s.postcode }));
+    const collected: ShortLeaseGrant[] = [];
+    for (let i = 0; i < leaseSeeds.length; i++) {
+      // Space calls to respect the 4-calls/10s PropertyData limit (mirrors the
+      // planning/HMO loops).
+      if (i > 0) await sleep(2700);
+      const res = await fetchShortLeaseLeads([leaseSeeds[i]!], {
+        ceilingYears: shortLeaseCeilingYears,
+        asOf: runDate,
+      });
+      collected.push(...(res.leads as ShortLeaseGrant[]));
+      if (res.error && !sourceErrors.shortLease) {
+        sourceErrors.shortLease = res.error;
+      }
+    }
+    shortLeaseGrants = collected;
+  }
+
   // If we have no seeds at all, flag it as a config issue.
   if (allSeeds.length === 0 && !sourceErrors.propertydata) {
     sourceErrors.propertydata = 'no scan seeds configured — add full-postcode seeds in /settings/scouting';
@@ -586,6 +665,7 @@ export async function runScoutingPipeline(
     ...planningGrants,
     ...hmoGrants,
     ...dissolvedGrants,
+    ...shortLeaseGrants,
   ].filter((g) => {
     const key = `${g.address.toLowerCase()}|${g.postcode.toLowerCase()}`;
     if (seen.has(key)) return false;
@@ -594,7 +674,7 @@ export async function runScoutingPipeline(
   }).slice(0, limit);
 
   console.info(
-    `[scouting] sources: hmcts=${hmctsGrants.length} gazette=${gazetteGrants.length} propertydata=${sourcedFromPostcodes.length} planning=${planningGrants.length} hmo=${hmoGrants.length} (after dedupe: ${rawGrants.length})`,
+    `[scouting] sources: hmcts=${hmctsGrants.length} gazette=${gazetteGrants.length} propertydata=${sourcedFromPostcodes.length} planning=${planningGrants.length} hmo=${hmoGrants.length} shortLease=${shortLeaseGrants.length} (after dedupe: ${rawGrants.length})`,
   );
 
   // Step 2 — GDPR sanitise raw payloads
@@ -617,9 +697,34 @@ export async function runScoutingPipeline(
       daysOnMarket?: number | null;
       discountPercent?: number | null;
       listingType?: string;
+      /** Per-lead lease data (from the short-lease source) — takes precedence
+       *  over postcode-level tenure enrichment when scoring. */
+      tenure?: 'freehold' | 'leasehold' | 'unknown';
+      remainingLeaseYears?: number | null;
+      marriageValueLease?: boolean;
+      leaseUrgency?: number;
     }
   >();
   for (const g of rawGrants) {
+    const lease = (
+      g as {
+        leaseSignal?: {
+          remainingLeaseYears?: number;
+          marriageValue?: boolean;
+          urgency?: number;
+        };
+      }
+    ).leaseSignal;
+    if (lease && typeof lease.remainingLeaseYears === 'number') {
+      signalsByRef.set(g.probateRef, {
+        listingType: 'short-lease-properties',
+        tenure: 'leasehold',
+        remainingLeaseYears: lease.remainingLeaseYears,
+        marriageValueLease: lease.marriageValue ?? false,
+        leaseUrgency: typeof lease.urgency === 'number' ? lease.urgency : 0,
+      });
+      continue;
+    }
     const pd = (g as { propertyData?: Record<string, unknown> }).propertyData;
     if (pd) {
       signalsByRef.set(g.probateRef, {
@@ -760,8 +865,12 @@ export async function runScoutingPipeline(
         percentOver75: pc?.percentOver75 ?? null,
         floodRisk: pc?.floodRisk ?? null,
         epcRating: pc?.epcRating ?? null,
-        tenure: pc?.tenure ?? null,
-        remainingLeaseYears: pc?.remainingLeaseYears ?? null,
+        // Prefer per-lead lease data (short-lease source) over the
+        // postcode-level average, which would otherwise clobber an
+        // address-specific remaining term.
+        tenure: baseSignals.tenure ?? pc?.tenure ?? null,
+        remainingLeaseYears:
+          baseSignals.remainingLeaseYears ?? pc?.remainingLeaseYears ?? null,
       };
       const breakdown = scoreLead(lead, pricePaid, hpi, signals, scorerConfig);
 
@@ -858,6 +967,7 @@ export async function runScoutingPipeline(
       planning: planningGrants.length,
       hmo: hmoGrants.length,
       dissolved: dissolvedGrants.length,
+      shortLease: shortLeaseGrants.length,
       staleListings: 0,
       afterDedupe: rawGrants.length,
       postcodesScanned: allSeeds.length,

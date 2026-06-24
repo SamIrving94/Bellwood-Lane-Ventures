@@ -1,9 +1,17 @@
 'use server';
 
+import { screenPropertyCondition } from '@repo/auctions';
 import { auth } from '@repo/auth/server';
 import { database, Prisma } from '@repo/database';
 import { getPropertySnapshot } from '@repo/property-data/src/propertydata';
-import { mergeOfferConfig, runAVM } from '@repo/valuation';
+import {
+  estimateRefurb,
+  mapVisualConditionToLevel,
+  mergeOfferConfig,
+  mergeValuationConfig,
+  runAVM,
+} from '@repo/valuation';
+import { VALUATION_CONFIG_KEY } from '@/app/actions/valuation-config/constants';
 import { revalidatePath } from 'next/cache';
 
 type PropertyType =
@@ -129,12 +137,66 @@ export async function enrichLeadById(leadId: string): Promise<{
       requiresReview: Boolean(r.requiresCeoEscalation || r.discountCapped),
       riskScore: avm.riskScore,
       assumedPropertyType: normalised ? null : avmPropertyType, // flag a guess
+      floorAreaSqm: r.floorAreaSqm ?? null,
       fetchedAt: new Date().toISOString(),
     };
   } catch {
     // AVM failure must not block snapshot enrichment — leave avmFull null and
     // keep whatever was there before.
     avmFull = (raw.avmFull as Record<string, unknown> | undefined) ?? null;
+  }
+
+  // ── Vision: infer condition from the listing photo(s). ────────────────
+  // Reuses the auction-lot vision screener (screenPropertyCondition) so the
+  // deal-model's condition is pre-filled from the actual photos instead of a
+  // guess — the founder can still override it. Graceful: returns null on no
+  // photo / no ANTHROPIC_API_KEY / any error, leaving condition manual.
+  if (avmFull) {
+    const photoUrls = [
+      typeof pd?.imageUrl === 'string' ? (pd.imageUrl as string) : null,
+    ].filter((u): u is string => !!u);
+    if (photoUrls.length > 0) {
+      const assessment = await screenPropertyCondition({
+        ref: leadId,
+        address: lead.address,
+        photoUrls,
+      });
+      if (assessment) {
+        avmFull.inferredCondition = mapVisualConditionToLevel(
+          assessment.condition,
+        );
+        avmFull.conditionVisual = assessment.condition;
+        avmFull.conditionFlags = assessment.flags;
+        avmFull.conditionRationale = assessment.rationale;
+        avmFull.conditionConfidence = assessment.confidence;
+      }
+    }
+
+    // Transparent refurb estimate from the photo read (condition + flags) and
+    // EPC floor area. Always computed — even with no photo it gives an
+    // area-based number, far better than a flat "% of value" guess. The panel
+    // pre-fills its refurb input with this and shows the line-by-line breakdown.
+    const valuationRow = await database.setting.findUnique({
+      where: { key: VALUATION_CONFIG_KEY },
+    });
+    const valuationConfig = mergeValuationConfig(valuationRow?.value ?? null);
+    const refurb = estimateRefurb(
+      {
+        condition: (avmFull.conditionVisual as string | undefined) ?? null,
+        flags: (avmFull.conditionFlags as string[] | undefined) ?? null,
+        floorAreaSqm:
+          (avmFull.floorAreaSqm as number | null | undefined) ?? null,
+      },
+      {
+        perSqm: valuationConfig.refurbPerSqm,
+        flagCost: valuationConfig.refurbFlagCosts,
+        defaultFloorAreaSqm: valuationConfig.defaultFloorAreaSqm,
+      },
+    );
+    avmFull.refurbEstimatePence = refurb.totalPence;
+    avmFull.refurbLines = refurb.lines;
+    avmFull.refurbBasis = refurb.basis;
+    avmFull.refurbAssumedFloorArea = refurb.assumedFloorArea;
   }
 
   const updatedRaw = {

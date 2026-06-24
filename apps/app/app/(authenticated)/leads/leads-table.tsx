@@ -37,6 +37,13 @@ type Lead = {
   hmoLicenceExpiry: string | null;
   dissolvedCompanyName: string | null;
   dissolvedAt: string | null;
+  // Short-lease signal
+  leaseRemainingYears: number | null;
+  leaseMarriageValue: boolean;
+  // Appraisal status
+  appraised: boolean;
+  avmValuePence: number | null;
+  avmConfidence: string | null;
   riskFlags: string[];
   rationale: string | null;
   topPositiveFactors: string[];
@@ -90,15 +97,21 @@ type FilterKey =
   | 'propertydata'
   | 'planning'
   | 'hmo'
-  | 'dissolved';
+  | 'dissolved'
+  | 'shortlease'
+  | 'appraised'
+  | 'unappraised';
 
 // Source-type filters are analyst tools, not part of the daily "what do I
 // act on" job — they live behind a "More filters" disclosure.
 const SECONDARY_FILTERS: FilterKey[] = [
+  'appraised',
+  'unappraised',
   'propertydata',
   'planning',
   'hmo',
   'dissolved',
+  'shortlease',
 ];
 
 export function LeadsTable({ leads, unratedCount, initialFilter }: Props) {
@@ -142,6 +155,12 @@ export function LeadsTable({ leads, unratedCount, initialFilter }: Props) {
         return lead.source.startsWith('hmo_');
       case 'dissolved':
         return lead.source === 'companies_house_dissolved';
+      case 'shortlease':
+        return lead.source.startsWith('short_lease');
+      case 'appraised':
+        return lead.appraised;
+      case 'unappraised':
+        return !lead.appraised;
       default:
         return true;
     }
@@ -199,6 +218,21 @@ export function LeadsTable({ leads, unratedCount, initialFilter }: Props) {
       label: 'Dissolved Co.',
       count: leads.filter((l) => l.source === 'companies_house_dissolved')
         .length,
+    },
+    {
+      key: 'shortlease',
+      label: 'Short lease',
+      count: leads.filter((l) => l.source.startsWith('short_lease')).length,
+    },
+    {
+      key: 'appraised',
+      label: 'Appraised',
+      count: leads.filter((l) => l.appraised).length,
+    },
+    {
+      key: 'unappraised',
+      label: 'Not appraised',
+      count: leads.filter((l) => !l.appraised).length,
     },
   ];
 
@@ -322,6 +356,7 @@ function LeadCard({
   const isPlanning = lead.source.startsWith('planning_');
   const isHmo = lead.source.startsWith('hmo_');
   const isDissolved = lead.source === 'companies_house_dissolved';
+  const isShortLease = lead.source.startsWith('short_lease');
 
   const sourceBadge = isPropertyData
     ? (lead.listingType
@@ -335,7 +370,9 @@ function LeadCard({
           : 'HMO register'
         : isDissolved
           ? 'Dissolved company'
-          : lead.source;
+          : isShortLease
+            ? 'Short lease'
+            : lead.source;
 
   const sourceBadgeColor = isPropertyData
     ? 'bg-purple-100 text-purple-800 border-purple-200'
@@ -347,7 +384,9 @@ function LeadCard({
         ? 'bg-teal-100 text-teal-800 border-teal-200'
         : isDissolved
           ? 'bg-indigo-100 text-indigo-800 border-indigo-200'
-          : 'bg-slate-100 text-slate-700 border-slate-200';
+          : isShortLease
+            ? 'bg-amber-100 text-amber-800 border-amber-200'
+            : 'bg-slate-100 text-slate-700 border-slate-200';
 
   const externalUrl = lead.listingUrl ?? lead.planningUrl ?? null;
 
@@ -380,6 +419,15 @@ function LeadCard({
       label: 'HMO licence expiring',
       cls: 'border-rose-200 bg-rose-100 text-rose-800',
       title: lead.hmoLicenceExpiry ? `Expires ${lead.hmoLicenceExpiry}` : undefined,
+    });
+  }
+  if (typeof lead.leaseRemainingYears === 'number') {
+    highlights.push({
+      label: `${lead.leaseRemainingYears}y lease left`,
+      cls: 'border-amber-200 bg-amber-100 text-amber-800',
+      title: lead.leaseMarriageValue
+        ? 'Under the 80-year marriage-value line — hard to mortgage, so the owner is often motivated to sell fast.'
+        : 'Lease approaching the 80-year marriage-value line.',
     });
   }
   const topHighlights = highlights.slice(0, 2);
@@ -432,6 +480,25 @@ function LeadCard({
                 >
                   {sourceBadge}
                 </span>
+                {lead.appraised ? (
+                  <span
+                    className="inline-flex rounded-full border border-emerald-200 bg-emerald-100 px-2 py-0.5 text-[11px] font-medium text-emerald-800"
+                    title={
+                      lead.avmConfidence
+                        ? `AVM run · ${lead.avmConfidence} confidence`
+                        : 'AVM appraisal run'
+                    }
+                  >
+                    ✓ Appraised
+                    {lead.avmValuePence
+                      ? ` · ${formatGBP(lead.avmValuePence)}`
+                      : ''}
+                  </span>
+                ) : (
+                  <span className="inline-flex rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-medium text-slate-500">
+                    Not appraised
+                  </span>
+                )}
                 {topHighlights.map((h) => (
                   <span
                     key={h.label}

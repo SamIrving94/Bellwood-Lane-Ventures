@@ -158,6 +158,24 @@ export const POST = async (request: Request) => {
     console.warn('[cron/scouting] failed to load active scorer config', err);
   }
 
+  // ── Short-lease scout toggle ─────────────────────────────────────────
+  // Surfaces leasehold flats near/under the 80-year marriage-value line as
+  // motivated-seller leads (the Milton Court pattern). One PropertyData
+  // /freeholds call per scanned postcode (throttled), well inside the budget.
+  // On by default; the founder can disable it via the `scouting.scanShortLeases`
+  // setting (value: false) if credits get tight.
+  let scanShortLeases = true;
+  try {
+    const row = await database.setting.findUnique({
+      where: { key: 'scouting.scanShortLeases' },
+    });
+    if (row && typeof row.value === 'boolean') {
+      scanShortLeases = row.value;
+    }
+  } catch (err) {
+    console.warn('[cron/scouting] failed to read scanShortLeases setting', err);
+  }
+
   const result = await runScoutingPipeline({
     limit: 30,
     minScore: 30,
@@ -165,6 +183,8 @@ export const POST = async (request: Request) => {
     scanSeeds,
     scorerConfig,
     evalConfigVersion,
+    // Reuse the scanned-area postcodes to look for short leases.
+    scanShortLeases,
     // Skip the slow, low-yield planning / HMO / dissolved-company sources.
     // Their mandatory rate-limit sleeps (~80–120s) were pushing the run past
     // the function budget so persist + founder-surfacing never ran. Every

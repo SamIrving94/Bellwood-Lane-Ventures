@@ -1,4 +1,4 @@
-import { database } from '@repo/database';
+import { database, Prisma } from '@repo/database';
 import { NextResponse } from 'next/server';
 import { validateAgentAuth, unauthorizedResponse } from '../_lib/auth';
 
@@ -38,6 +38,8 @@ export const POST = async (request: Request) => {
       guidePriceMinPence?: number | null;
       guidePriceMaxPence?: number | null;
       lotUrl?: string | null;
+      /** Claude-vision condition screen from the auction-scan cron. */
+      visualAssessment?: unknown;
     }>;
     runSummary?: { totalFetched?: number; source?: string; summary?: string };
   };
@@ -63,6 +65,10 @@ export const POST = async (request: Request) => {
       guidePriceMinPence: lot.guidePriceMinPence ?? null,
       guidePriceMaxPence: lot.guidePriceMaxPence ?? null,
       lotUrl: lot.lotUrl ?? null,
+      // Persist the vision screen so the per-lot Claude spend isn't thrown away.
+      visualAssessment:
+        (lot.visualAssessment as Prisma.InputJsonValue | undefined) ??
+        Prisma.JsonNull,
     };
     const existing = await database.auctionLot.findUnique({
       where: {

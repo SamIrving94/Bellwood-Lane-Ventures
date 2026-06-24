@@ -142,6 +142,10 @@ async function LeadsTabContent({ filter }: { filter?: string }) {
         const dissolved = raw.dissolvedCompany as
           | Record<string, unknown>
           | undefined;
+        const lease = raw.leaseSignal as
+          | Record<string, unknown>
+          | undefined;
+        const avm = raw.avmFull as Record<string, unknown> | undefined;
         return {
           id: l.id,
           address: l.address,
@@ -189,6 +193,15 @@ async function LeadsTabContent({ filter }: { filter?: string }) {
             (dissolved?.companyName as string | undefined) ?? null,
           dissolvedAt:
             (dissolved?.dissolvedAt as string | undefined) ?? null,
+          leaseRemainingYears:
+            (lease?.remainingLeaseYears as number | undefined) ?? null,
+          leaseMarriageValue:
+            (lease?.marriageValue as boolean | undefined) ?? false,
+          appraised: typeof avm?.pointEstimatePence === 'number',
+          avmValuePence:
+            (avm?.pointEstimatePence as number | undefined) ?? null,
+          avmConfidence:
+            (avm?.confidenceLevel as string | undefined) ?? null,
           riskFlags:
             (raw.riskFlags as string[] | undefined) ?? [],
           rationale:
