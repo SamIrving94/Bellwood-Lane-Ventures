@@ -70,6 +70,7 @@ const LeadDetailPage = async ({
   const pd = raw.propertyData as Record<string, unknown> | undefined;
   const planning = raw.planning as Record<string, unknown> | undefined;
   const hmo = raw.hmo as Record<string, unknown> | undefined;
+  const lease = raw.leaseSignal as Record<string, unknown> | undefined;
   const riskFlags = (raw.riskFlags as string[] | undefined) ?? [];
   const scoreBreakdown = raw.scoreBreakdown as
     | Record<string, number>
@@ -103,6 +104,9 @@ const LeadDetailPage = async ({
   const isPropertyData = lead.source.startsWith('propertydata_');
   const isPlanning = lead.source.startsWith('planning_');
   const isHmo = lead.source.startsWith('hmo_');
+  const isShortLease = lead.source.startsWith('short_lease');
+  const leaseRemainingYears =
+    (lease?.remainingLeaseYears as number | undefined) ?? null;
 
   const imageUrl = (pd?.imageUrl as string | undefined) ?? null;
   const summary = (pd?.summary as string | undefined) ?? null;
@@ -201,16 +205,22 @@ const LeadDetailPage = async ({
         ? hmoLicenceExpiringSoon
           ? 'HMO · licence expiring'
           : 'HMO register'
-        : lead.source;
+        : isShortLease
+          ? leaseRemainingYears
+            ? `Short lease · ${leaseRemainingYears}y left`
+            : 'Short lease'
+          : lead.source;
   const sourceTechnical = isPropertyData
     ? 'PropertyData /sourced-properties'
     : isPlanning
       ? 'PropertyData /planning-applications'
       : isHmo
         ? 'PropertyData /national-hmo-register'
-        : lead.source.startsWith('companies_house')
-          ? 'Companies House dissolved companies'
-          : lead.source;
+        : isShortLease
+          ? 'PropertyData /freeholds (lease term)'
+          : lead.source.startsWith('companies_house')
+            ? 'Companies House dissolved companies'
+            : lead.source;
 
   // True when this lead lacks the rich PropertyData enrichment (likely
   // scouted before the schema upgrade). Used to surface a clear refresh CTA.

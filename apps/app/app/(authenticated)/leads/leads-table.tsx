@@ -37,6 +37,9 @@ type Lead = {
   hmoLicenceExpiry: string | null;
   dissolvedCompanyName: string | null;
   dissolvedAt: string | null;
+  // Short-lease signal
+  leaseRemainingYears: number | null;
+  leaseMarriageValue: boolean;
   riskFlags: string[];
   rationale: string | null;
   topPositiveFactors: string[];
@@ -90,7 +93,8 @@ type FilterKey =
   | 'propertydata'
   | 'planning'
   | 'hmo'
-  | 'dissolved';
+  | 'dissolved'
+  | 'shortlease';
 
 // Source-type filters are analyst tools, not part of the daily "what do I
 // act on" job — they live behind a "More filters" disclosure.
@@ -99,6 +103,7 @@ const SECONDARY_FILTERS: FilterKey[] = [
   'planning',
   'hmo',
   'dissolved',
+  'shortlease',
 ];
 
 export function LeadsTable({ leads, unratedCount, initialFilter }: Props) {
@@ -142,6 +147,8 @@ export function LeadsTable({ leads, unratedCount, initialFilter }: Props) {
         return lead.source.startsWith('hmo_');
       case 'dissolved':
         return lead.source === 'companies_house_dissolved';
+      case 'shortlease':
+        return lead.source.startsWith('short_lease');
       default:
         return true;
     }
@@ -199,6 +206,11 @@ export function LeadsTable({ leads, unratedCount, initialFilter }: Props) {
       label: 'Dissolved Co.',
       count: leads.filter((l) => l.source === 'companies_house_dissolved')
         .length,
+    },
+    {
+      key: 'shortlease',
+      label: 'Short lease',
+      count: leads.filter((l) => l.source.startsWith('short_lease')).length,
     },
   ];
 
@@ -322,6 +334,7 @@ function LeadCard({
   const isPlanning = lead.source.startsWith('planning_');
   const isHmo = lead.source.startsWith('hmo_');
   const isDissolved = lead.source === 'companies_house_dissolved';
+  const isShortLease = lead.source.startsWith('short_lease');
 
   const sourceBadge = isPropertyData
     ? (lead.listingType
@@ -335,7 +348,9 @@ function LeadCard({
           : 'HMO register'
         : isDissolved
           ? 'Dissolved company'
-          : lead.source;
+          : isShortLease
+            ? 'Short lease'
+            : lead.source;
 
   const sourceBadgeColor = isPropertyData
     ? 'bg-purple-100 text-purple-800 border-purple-200'
@@ -347,7 +362,9 @@ function LeadCard({
         ? 'bg-teal-100 text-teal-800 border-teal-200'
         : isDissolved
           ? 'bg-indigo-100 text-indigo-800 border-indigo-200'
-          : 'bg-slate-100 text-slate-700 border-slate-200';
+          : isShortLease
+            ? 'bg-amber-100 text-amber-800 border-amber-200'
+            : 'bg-slate-100 text-slate-700 border-slate-200';
 
   const externalUrl = lead.listingUrl ?? lead.planningUrl ?? null;
 
@@ -380,6 +397,15 @@ function LeadCard({
       label: 'HMO licence expiring',
       cls: 'border-rose-200 bg-rose-100 text-rose-800',
       title: lead.hmoLicenceExpiry ? `Expires ${lead.hmoLicenceExpiry}` : undefined,
+    });
+  }
+  if (typeof lead.leaseRemainingYears === 'number') {
+    highlights.push({
+      label: `${lead.leaseRemainingYears}y lease left`,
+      cls: 'border-amber-200 bg-amber-100 text-amber-800',
+      title: lead.leaseMarriageValue
+        ? 'Under the 80-year marriage-value line — hard to mortgage, so the owner is often motivated to sell fast.'
+        : 'Lease approaching the 80-year marriage-value line.',
     });
   }
   const topHighlights = highlights.slice(0, 2);

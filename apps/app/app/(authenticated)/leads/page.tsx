@@ -67,6 +67,9 @@ const LeadsPage = async ({
             const dissolved = raw.dissolvedCompany as
               | Record<string, unknown>
               | undefined;
+            const lease = raw.leaseSignal as
+              | Record<string, unknown>
+              | undefined;
             return {
               id: l.id,
               address: l.address,
@@ -116,6 +119,11 @@ const LeadsPage = async ({
                 (dissolved?.companyName as string | undefined) ?? null,
               dissolvedAt:
                 (dissolved?.dissolvedAt as string | undefined) ?? null,
+              // Short-lease signal (when source is short_lease_*)
+              leaseRemainingYears:
+                (lease?.remainingLeaseYears as number | undefined) ?? null,
+              leaseMarriageValue:
+                (lease?.marriageValue as boolean | undefined) ?? false,
               // Risk flags + score factors (computed scorer-side, stored on
               // rawPayload by the cron — pull defensively for older leads)
               riskFlags:
