@@ -1,4 +1,5 @@
 import { env } from '@/env';
+import { recordCronHeartbeat } from '../_lib/heartbeat';
 import { database } from '@repo/database';
 import { NextResponse } from 'next/server';
 
@@ -88,6 +89,10 @@ export const POST = async (request: Request) => {
       },
     });
   }
+
+  await recordCronHeartbeat('sla-alerts', {
+    note: `${breaches.length} breaches`,
+  });
 
   return NextResponse.json({
     success: true,

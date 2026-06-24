@@ -1,4 +1,5 @@
 import { env } from '@/env';
+import { recordCronHeartbeat } from '../_lib/heartbeat';
 import { callClaude, CLAUDE_HAIKU } from '@repo/ai/claude';
 import { database } from '@repo/database';
 import { NextResponse } from 'next/server';
@@ -177,6 +178,8 @@ export const POST = async (request: Request) => {
       },
     },
   });
+
+  await recordCronHeartbeat('pipeline-summary');
 
   return NextResponse.json({
     success: true,

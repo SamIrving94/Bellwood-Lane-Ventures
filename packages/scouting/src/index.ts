@@ -31,7 +31,12 @@ import {
 
 import { fetchProbateGrants } from './probate-data';
 import { fetchGazetteProbateNotices } from './gazette';
-import { enrichLeads } from './enrichment';
+import {
+  checkEnrichmentHealth,
+  type EnrichmentSummary,
+  enrichLeads,
+  summariseEnrichment,
+} from './enrichment';
 import { scoreLead } from './scorer';
 import { DEFAULT_SCORER_CONFIG, type ScorerConfig } from './scorer-config';
 import { sanitisePayload, auditProtectedFields } from './rbac';
@@ -59,7 +64,11 @@ function mostCommon<T extends string>(items: T[]): T | null {
 
 export { fetchProbateGrants } from './probate-data';
 export { fetchGazetteProbateNotices } from './gazette';
-export { enrichLeads } from './enrichment';
+export {
+  checkEnrichmentHealth,
+  enrichLeads,
+  summariseEnrichment,
+} from './enrichment';
 export { scoreLead } from './scorer';
 export {
   DEFAULT_SCORER_CONFIG,
@@ -70,7 +79,11 @@ export { sanitisePayload, auditProtectedFields } from './rbac';
 export { enrichRationaleWithLlm } from './rationale-llm';
 
 export type { ProbateLead } from './probate-data';
-export type { EnrichedLead } from './enrichment';
+export type {
+  EnrichedLead,
+  EnrichmentHealth,
+  EnrichmentSummary,
+} from './enrichment';
 export type { ScoreBreakdown, Verdict } from './scorer';
 
 // ---------------------------------------------------------------------------
@@ -191,7 +204,10 @@ export interface ScoutingPipelineResult {
     hmo?: string;
     dissolved?: string;
     staleListings?: string;
+    enrichment?: string;
   };
+  /** Contact-enrichment tier distribution + hit-rate for this run. */
+  enrichment: EnrichmentSummary;
 }
 
 // ---------------------------------------------------------------------------
@@ -236,6 +252,7 @@ export async function runScoutingPipeline(
     hmo?: string;
     dissolved?: string;
     staleListings?: string;
+    enrichment?: string;
   } = {};
 
   // Pre-flight: if we have postcodes to scan, verify PropertyData is reachable
@@ -630,8 +647,30 @@ export async function runScoutingPipeline(
     }
   }
 
-  // Step 3 — Enrich via tier cascade
+  // Step 3 — Enrich via tier cascade.
+  // Pre-flight: if no automated enrichment tier is configured, every probate
+  // lead falls to the manual queue with no contact. Surface that as a source
+  // error so the scouting cron raises a founder alert rather than silently
+  // shipping contact-less leads (a lead with no reachable contact is dead).
+  const enrichmentHealth = checkEnrichmentHealth();
+  if (enrichmentHealth.degraded && rawGrants.length > 0) {
+    sourceErrors.enrichment =
+      'no automated enrichment tier configured (PROBATE_DATA_API_KEY / BATCH_DATA_API_KEY missing) — probate leads will have no contact details';
+  }
+
   const enriched = await enrichLeads(rawGrants);
+
+  // Post-flight: a zero contact hit-rate across a non-trivial batch is the
+  // classic signature of a silently-broken enrichment API (everything falling
+  // straight to Tier 3 manual).
+  const enrichmentSummary = summariseEnrichment(enriched);
+  if (
+    !sourceErrors.enrichment &&
+    enrichmentSummary.total >= 3 &&
+    enrichmentSummary.contactHitRate === 0
+  ) {
+    sourceErrors.enrichment = `enrichment returned no contacts for any of ${enrichmentSummary.total} leads — Tier 1/2 APIs may be down`;
+  }
 
   // Pre-fetch per-postcode enrichment ONCE per unique postcode to save
   // credits (each call cached). These drive the demographic boost
@@ -824,5 +863,6 @@ export async function runScoutingPipeline(
       postcodesScanned: allSeeds.length,
     },
     sourceErrors,
+    enrichment: enrichmentSummary,
   };
 }

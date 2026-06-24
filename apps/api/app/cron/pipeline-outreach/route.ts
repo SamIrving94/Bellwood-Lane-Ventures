@@ -3,6 +3,7 @@ import { database } from '@repo/database';
 import { sendEmail } from '@repo/email';
 import { log } from '@repo/observability/log';
 import { NextResponse } from 'next/server';
+import { recordCronHeartbeat } from '../_lib/heartbeat';
 
 // Pipeline Stage 3: Auto-outreach (7:30am daily)
 // Sends comms to estate agents and solicitors. HOLDS vendor comms for founder review.
@@ -78,7 +79,22 @@ export const POST = async (request: Request) => {
       }
 
       if (isIndividual) {
-        // HOLD — vendor comms always need founder review
+        // HOLD — vendor comms always need founder review.
+        //
+        // Atomically claim the recipient (pending → held) BEFORE creating the
+        // hold. The conditional updateMany is the idempotency guard: if a
+        // concurrent run or a Vercel retry already processed this recipient,
+        // `count` is 0 and we skip — so we never create a duplicate
+        // OutreachHold for the same vendor. (Previously the recipient was left
+        // `pending`, so every run re-held the same vendor.)
+        const claim = await database.outreachRecipient.updateMany({
+          where: { id: recipient.id, status: 'pending' },
+          data: { status: 'held' },
+        });
+        if (claim.count === 0) {
+          continue;
+        }
+
         await database.outreachHold.create({
           data: {
             recipientId: recipient.id,
@@ -95,7 +111,20 @@ export const POST = async (request: Request) => {
 
         heldForReview++;
       } else {
-        // AUTO-SEND — B2B comms to agents and solicitors
+        // AUTO-SEND — B2B comms to agents and solicitors.
+        //
+        // Atomically claim the recipient (pending → sending) BEFORE dispatch.
+        // The conditional updateMany is the idempotency guard: a Vercel retry
+        // mid-batch (or a concurrent run) cannot double-send, because only one
+        // caller can flip the row out of `pending`.
+        const claim = await database.outreachRecipient.updateMany({
+          where: { id: recipient.id, status: 'pending' },
+          data: { status: 'sending' },
+        });
+        if (claim.count === 0) {
+          continue;
+        }
+
         try {
           const result = await sendEmail({
             to: contact.email,
@@ -146,7 +175,11 @@ export const POST = async (request: Request) => {
             to: contact.email,
             error: message,
           });
-          // Leave recipient in `pending` so the next run retries.
+          // Revert the claim (sending → pending) so the next run retries.
+          await database.outreachRecipient.updateMany({
+            where: { id: recipient.id, status: 'sending' },
+            data: { status: 'pending' },
+          });
         }
       }
     }
@@ -190,6 +223,8 @@ export const POST = async (request: Request) => {
       },
     },
   });
+
+  await recordCronHeartbeat('pipeline-outreach', { runId: pipelineRunId });
 
   return NextResponse.json({
     success: true,
