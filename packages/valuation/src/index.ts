@@ -21,17 +21,40 @@
 
 import 'server-only';
 
-import { getBaseValuation, type BaseValuationInput, type PropertyType } from './base-valuation';
-import { scoreRisk, type RiskScoringInput, type RadonCategory, type CoalMiningZone, type KnotweedProximity, type FloodZone, type NoiseBand, type ConstructionType } from './risk-scoring';
-import { calculateOffer, type SellerType, type InvestmentGrade, type OfferResult } from './offer-calculation';
+import {
+  type BaseValuationInput,
+  type PropertyType,
+  getBaseValuation,
+} from './base-valuation';
+import {
+  type InvestmentGrade,
+  type OfferResult,
+  type SellerType,
+  calculateOffer,
+} from './offer-calculation';
 import { DEFAULT_OFFER_CONFIG, type OfferConfig } from './offer-config';
-import { projectTrend, type TrendProjection } from './trend-projection';
+import {
+  type CoalMiningZone,
+  type ConstructionType,
+  type FloodZone,
+  type KnotweedProximity,
+  type NoiseBand,
+  type RadonCategory,
+  type RiskScoringInput,
+  scoreRisk,
+} from './risk-scoring';
+import { type TrendProjection, projectTrend } from './trend-projection';
 
 // ---------------------------------------------------------------------------
 // Re-exports for consumers
 // ---------------------------------------------------------------------------
 
-export type { PropertyType, BaseValuation, ComparableSale, ConfidenceLevel } from './base-valuation';
+export type {
+  PropertyType,
+  BaseValuation,
+  ComparableSale,
+  ConfidenceLevel,
+} from './base-valuation';
 export { getDistanceWeightedValuation } from './distance-comps';
 export type {
   DistanceWeightedValuation,
@@ -42,11 +65,23 @@ export { generateCompRationale } from './comp-rationale-llm';
 export { runDeepAppraisal, DeepAppraisalSchema } from './deep-appraisal';
 export type { DeepAppraisal, DeepAppraisalInput } from './deep-appraisal';
 export type {
-  RadonCategory, CoalMiningZone, KnotweedProximity, FloodZone, NoiseBand,
-  ConstructionType, RiskScore, EnvironmentalScores, BuildingCharacteristics,
+  RadonCategory,
+  CoalMiningZone,
+  KnotweedProximity,
+  FloodZone,
+  NoiseBand,
+  ConstructionType,
+  RiskScore,
+  EnvironmentalScores,
+  BuildingCharacteristics,
   FactorScore,
 } from './risk-scoring';
-export type { SellerType, InvestmentGrade, OfferResult, DiscountLine } from './offer-calculation';
+export type {
+  SellerType,
+  InvestmentGrade,
+  OfferResult,
+  DiscountLine,
+} from './offer-calculation';
 export { DEFAULT_OFFER_CONFIG, mergeOfferConfig } from './offer-config';
 export type { OfferConfig } from './offer-config';
 export type { TrendProjection, TrendForecastPoint } from './trend-projection';
@@ -55,6 +90,24 @@ export {
   computeBacktestBySegment,
 } from './backtest';
 export type { BacktestSample, BacktestReport } from './backtest';
+export {
+  appraiseDeal,
+  maxOfferForRoi,
+  computeSdltPence,
+  DEFAULT_DEAL_COSTS,
+} from './deal-model';
+export type {
+  AcquisitionRoute,
+  SdltBand,
+  DealCostConfig,
+  DealInput,
+  DealCostBreakdown,
+  CashScenario,
+  FinancedScenario,
+  DealVerdict,
+  DealAppraisal,
+  MaxOfferResult,
+} from './deal-model';
 
 // ---------------------------------------------------------------------------
 // Input type
@@ -188,17 +241,32 @@ export interface AvmResultPayload {
 
 export async function runAVM(input: AvmInput): Promise<AvmResultPayload> {
   const {
-    postcode, propertyType, address, floorAreaSqm, bedrooms,
-    sellerType, dealId,
-    radonCategory, coalMiningZone, knotweedProximity, floodZone, noiseBand,
+    postcode,
+    propertyType,
+    address,
+    floorAreaSqm,
+    bedrooms,
+    sellerType,
+    dealId,
+    radonCategory,
+    coalMiningZone,
+    knotweedProximity,
+    floodZone,
+    noiseBand,
     constructionType,
-    remainingLeaseYears, grossRentalYield, investmentGrade,
+    remainingLeaseYears,
+    grossRentalYield,
+    investmentGrade,
     offerConfig = DEFAULT_OFFER_CONFIG,
   } = input;
 
   // Step 1: Base valuation
   const baseValuationInput: BaseValuationInput = {
-    postcode, propertyType, floorAreaSqm, bedrooms, address,
+    postcode,
+    propertyType,
+    floorAreaSqm,
+    bedrooms,
+    address,
   };
   const baseValuation = await getBaseValuation(baseValuationInput);
 
@@ -216,7 +284,10 @@ export async function runAVM(input: AvmInput): Promise<AvmResultPayload> {
   const riskScore = scoreRisk(riskInput);
 
   // Step 3: 36-month trend projection
-  const trend: TrendProjection = projectTrend(baseValuation.pointEstimate, baseValuation.hpi);
+  const trend: TrendProjection = projectTrend(
+    baseValuation.pointEstimate,
+    baseValuation.hpi
+  );
 
   // Step 4: Offer calculation
   const offer: OfferResult = calculateOffer(
@@ -228,7 +299,7 @@ export async function runAVM(input: AvmInput): Promise<AvmResultPayload> {
       remainingLeaseYears,
       grossRentalYield,
     },
-    offerConfig,
+    offerConfig
   );
 
   // Step 5: Assemble AvmResultJson
@@ -247,8 +318,12 @@ export async function runAVM(input: AvmInput): Promise<AvmResultPayload> {
     constructionType: bld.constructionType,
 
     avmPointEstimate: baseValuation.pointEstimate,
-    avmLow: Math.round(baseValuation.pointEstimate * (1 - baseValuation.confidenceInterval)),
-    avmHigh: Math.round(baseValuation.pointEstimate * (1 + baseValuation.confidenceInterval)),
+    avmLow: Math.round(
+      baseValuation.pointEstimate * (1 - baseValuation.confidenceInterval)
+    ),
+    avmHigh: Math.round(
+      baseValuation.pointEstimate * (1 + baseValuation.confidenceInterval)
+    ),
     confidenceLevel: baseValuation.confidenceLevel,
     comparableCount: baseValuation.comparables.length,
     avmSources: baseValuation.source,
@@ -299,7 +374,7 @@ export async function runAVM(input: AvmInput): Promise<AvmResultPayload> {
     runAt,
   };
 
-  const expiresAt = new Date(offer.validUntil + 'T23:59:59Z');
+  const expiresAt = new Date(`${offer.validUntil}T23:59:59Z`);
 
   return {
     dealId,
