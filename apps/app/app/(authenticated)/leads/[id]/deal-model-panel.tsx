@@ -67,6 +67,9 @@ export function DealModelPanel({
   inferredCondition,
   conditionRationale,
   conditionConfidence,
+  refurbEstimatePence,
+  refurbLines,
+  refurbBasis,
 }: {
   avmPointEstimatePence: number;
   askingPricePence: number | null;
@@ -74,19 +77,28 @@ export function DealModelPanel({
   inferredCondition?: string | null;
   conditionRationale?: string | null;
   conditionConfidence?: number | null;
+  /** Transparent photo-driven refurb estimate. */
+  refurbEstimatePence?: number | null;
+  refurbLines?: { label: string; pence: number }[] | null;
+  refurbBasis?: string | null;
 }) {
   // Default the condition to the photo-inferred value when the vision screener
   // returned a valid one; otherwise fall back to 'tired'.
   const initialCondition: ConditionLevel =
-    inferredCondition && CONDITION_VALUES.has(inferredCondition as ConditionLevel)
+    inferredCondition &&
+    CONDITION_VALUES.has(inferredCondition as ConditionLevel)
       ? (inferredCondition as ConditionLevel)
       : 'tired';
   const [condition, setCondition] = useState<ConditionLevel>(initialCondition);
   const [route, setRoute] = useState<AcquisitionRoute>('private_treaty');
-  // Sensible refurb default scales with the property: ~12% of AVM.
+  // Default the refurb to the transparent photo-driven estimate when we have
+  // one; otherwise fall back to ~12% of the AVM.
   const [refurb, setRefurb] = useState<string>(
-    String(Math.round((avmPointEstimatePence * 0.12) / 100))
+    String(
+      Math.round((refurbEstimatePence ?? avmPointEstimatePence * 0.12) / 100)
+    )
   );
+  const [showRefurbWorking, setShowRefurbWorking] = useState(false);
   const [premiumPct, setPremiumPct] = useState<string>('0');
   const [targetPct, setTargetPct] = useState<string>('20');
   // Pre-fill "our offer" with the asking price when we have it.
@@ -188,7 +200,23 @@ export function DealModelPanel({
           </select>
         </label>
         <label className="block">
-          <span className="text-[11px] text-muted-foreground">Refurb (£)</span>
+          <span className="flex items-center justify-between text-[11px] text-muted-foreground">
+            <span>
+              Refurb (£)
+              {refurbEstimatePence != null ? (
+                <span className="ml-1 text-emerald-700">· 📷 estimated</span>
+              ) : null}
+            </span>
+            {refurbLines && refurbLines.length > 0 ? (
+              <button
+                type="button"
+                className="text-[11px] text-sky-700 underline"
+                onClick={() => setShowRefurbWorking((v) => !v)}
+              >
+                {showRefurbWorking ? 'hide' : 'show working'}
+              </button>
+            ) : null}
+          </span>
           <input
             className="mt-1 w-full rounded-md border bg-background px-2 py-1.5 text-sm tabular-nums"
             inputMode="numeric"
@@ -246,6 +274,41 @@ export function DealModelPanel({
           />
         </label>
       </div>
+
+      {/* Transparent refurb breakdown — "show your working" so the founder can
+          trust (and edit) the estimate rather than seeing a black-box number. */}
+      {showRefurbWorking && refurbLines && refurbLines.length > 0 ? (
+        <div className="mt-3 rounded-lg border bg-amber-50/60 p-3 text-sm">
+          <p className="mb-1 font-medium text-[11px] text-amber-800 uppercase tracking-wide">
+            How the refurb estimate was built
+          </p>
+          <ul className="divide-y divide-amber-100">
+            {refurbLines.map((line) => (
+              <li
+                key={line.label}
+                className="flex items-center justify-between py-1"
+              >
+                <span className="text-muted-foreground">{line.label}</span>
+                <span className="font-mono tabular-nums">
+                  {formatGBP(line.pence)}
+                </span>
+              </li>
+            ))}
+            <li className="flex items-center justify-between py-1 font-semibold">
+              <span>Total estimate</span>
+              <span className="font-mono tabular-nums">
+                {formatGBP(refurbLines.reduce((s, l) => s + l.pence, 0))}
+              </span>
+            </li>
+          </ul>
+          {refurbBasis ? (
+            <p className="mt-2 text-[11px] text-muted-foreground">
+              {refurbBasis} These are starting figures — edit the refurb box
+              above to override.
+            </p>
+          ) : null}
+        </div>
+      ) : null}
 
       {/* Outputs */}
       <div className="mt-5 grid gap-4 sm:grid-cols-3">

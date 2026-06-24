@@ -3,6 +3,7 @@ import { screenPropertyCondition } from '@repo/auctions';
 import { type Prisma, database } from '@repo/database';
 import { getPropertySnapshot } from '@repo/property-data/src/propertydata';
 import {
+  estimateRefurb,
   mapVisualConditionToLevel,
   mergeOfferConfig,
   runAVM,
@@ -141,6 +142,7 @@ export const POST = async (request: Request) => {
         requiresReview: Boolean(r.requiresCeoEscalation || r.discountCapped),
         riskScore: avm.riskScore,
         assumedPropertyType: normalised ? null : avmPropertyType,
+        floorAreaSqm: r.floorAreaSqm ?? null,
         fetchedAt: new Date().toISOString(),
       };
 
@@ -160,10 +162,23 @@ export const POST = async (request: Request) => {
             assessment.condition
           );
           avmFull.conditionVisual = assessment.condition;
+          avmFull.conditionFlags = assessment.flags;
           avmFull.conditionRationale = assessment.rationale;
           avmFull.conditionConfidence = assessment.confidence;
         }
       }
+
+      // Transparent refurb estimate from the photo read + EPC floor area.
+      const refurb = estimateRefurb({
+        condition: (avmFull.conditionVisual as string | undefined) ?? null,
+        flags: (avmFull.conditionFlags as string[] | undefined) ?? null,
+        floorAreaSqm:
+          (avmFull.floorAreaSqm as number | null | undefined) ?? null,
+      });
+      avmFull.refurbEstimatePence = refurb.totalPence;
+      avmFull.refurbLines = refurb.lines;
+      avmFull.refurbBasis = refurb.basis;
+      avmFull.refurbAssumedFloorArea = refurb.assumedFloorArea;
 
       await database.scoutLead.update({
         where: { id: lead.id },

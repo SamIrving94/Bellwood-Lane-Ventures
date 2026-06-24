@@ -305,6 +305,10 @@ const LeadDetailPage = async ({
     conditionVisual?: string | null;
     conditionRationale?: string | null;
     conditionConfidence?: number | null;
+    /** Transparent photo-driven refurb estimate. */
+    refurbEstimatePence?: number | null;
+    refurbLines?: { label: string; pence: number }[] | null;
+    refurbBasis?: string | null;
   };
   const avmFull = (raw.avmFull as AvmFull | undefined) ?? null;
   // Asking sits this far below our modelled market value (the "is this BMV?"
@@ -587,6 +591,9 @@ const LeadDetailPage = async ({
             inferredCondition={avmFull.inferredCondition ?? null}
             conditionRationale={avmFull.conditionRationale ?? null}
             conditionConfidence={avmFull.conditionConfidence ?? null}
+            refurbEstimatePence={avmFull.refurbEstimatePence ?? null}
+            refurbLines={avmFull.refurbLines ?? null}
+            refurbBasis={avmFull.refurbBasis ?? null}
           />
         ) : null}
 

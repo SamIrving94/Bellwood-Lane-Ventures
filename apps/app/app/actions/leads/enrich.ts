@@ -5,6 +5,7 @@ import { auth } from '@repo/auth/server';
 import { database, Prisma } from '@repo/database';
 import { getPropertySnapshot } from '@repo/property-data/src/propertydata';
 import {
+  estimateRefurb,
   mapVisualConditionToLevel,
   mergeOfferConfig,
   runAVM,
@@ -134,6 +135,7 @@ export async function enrichLeadById(leadId: string): Promise<{
       requiresReview: Boolean(r.requiresCeoEscalation || r.discountCapped),
       riskScore: avm.riskScore,
       assumedPropertyType: normalised ? null : avmPropertyType, // flag a guess
+      floorAreaSqm: r.floorAreaSqm ?? null,
       fetchedAt: new Date().toISOString(),
     };
   } catch {
@@ -162,10 +164,25 @@ export async function enrichLeadById(leadId: string): Promise<{
           assessment.condition,
         );
         avmFull.conditionVisual = assessment.condition;
+        avmFull.conditionFlags = assessment.flags;
         avmFull.conditionRationale = assessment.rationale;
         avmFull.conditionConfidence = assessment.confidence;
       }
     }
+
+    // Transparent refurb estimate from the photo read (condition + flags) and
+    // EPC floor area. Always computed — even with no photo it gives an
+    // area-based number, far better than a flat "% of value" guess. The panel
+    // pre-fills its refurb input with this and shows the line-by-line breakdown.
+    const refurb = estimateRefurb({
+      condition: (avmFull.conditionVisual as string | undefined) ?? null,
+      flags: (avmFull.conditionFlags as string[] | undefined) ?? null,
+      floorAreaSqm: (avmFull.floorAreaSqm as number | null | undefined) ?? null,
+    });
+    avmFull.refurbEstimatePence = refurb.totalPence;
+    avmFull.refurbLines = refurb.lines;
+    avmFull.refurbBasis = refurb.basis;
+    avmFull.refurbAssumedFloorArea = refurb.assumedFloorArea;
   }
 
   const updatedRaw = {

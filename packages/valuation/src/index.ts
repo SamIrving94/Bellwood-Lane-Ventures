@@ -122,6 +122,13 @@ export type {
   DealFromAvmInput,
   DealFromAvmResult,
 } from './gdv';
+export {
+  estimateRefurb,
+  CONDITION_COST_PER_SQM,
+  FLAG_COST,
+  DEFAULT_FLOOR_AREA_SQM,
+} from './refurb';
+export type { RefurbInput, RefurbLine, RefurbEstimate } from './refurb';
 
 // ---------------------------------------------------------------------------
 // Input type
