@@ -723,8 +723,11 @@ const LeadDetailPage = async ({
 
         {snapshot && (
           <>
-            {/* AVM + discount strip — top-of-mind 'is this BMV?' answer */}
-            {snapshot.avm?.estimatePence && (
+            {/* AVM + discount strip — fallback only. When the strong in-house
+                AVM (avmFull) is present, the Deal Decision panel above is the
+                single source of asking-vs-market, so we don't show a second,
+                divergent number from the weaker snapshot valuation. */}
+            {snapshot.avm?.estimatePence && !avmFull?.pointEstimatePence && (
               <div className="rounded-xl border bg-card p-5">
                 <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
                   Asking vs market

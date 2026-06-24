@@ -25,7 +25,10 @@ function toPence(pounds: string): number | null {
   const t = pounds.trim();
   if (t === '') return null;
   const n = Number(t);
-  return Number.isNaN(n) ? null : Math.round(n * 100);
+  // Treat invalid/negative as "not entered" so the live preview matches what
+  // the server will accept (the action rejects negatives).
+  if (Number.isNaN(n) || n < 0) return null;
+  return Math.round(n * 100);
 }
 // Date → yyyy-mm-dd for a date input
 function toDateInput(d: Date | null): string {

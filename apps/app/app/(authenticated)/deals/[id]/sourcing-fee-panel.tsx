@@ -39,7 +39,8 @@ function toPence(pounds: string): number | null {
   const t = pounds.trim();
   if (t === '') return null;
   const n = Number(t);
-  return Number.isNaN(n) ? null : Math.round(n * 100);
+  if (Number.isNaN(n) || n < 0) return null;
+  return Math.round(n * 100);
 }
 
 export function SourcingFeePanel({

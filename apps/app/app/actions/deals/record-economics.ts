@@ -28,7 +28,10 @@ export type DealEconomicsInput = {
 function money(v: number | null | undefined): number | null {
   if (v === null || v === undefined || Number.isNaN(v)) return null;
   const n = Math.round(v);
-  return n < 0 ? 0 : n;
+  // Reject negatives loudly rather than clamping to 0 — a clamped typo
+  // (e.g. -250000) would silently store a wrong realised profit on the Book.
+  if (n < 0) throw new Error('Amounts cannot be negative.');
+  return n;
 }
 
 function date(v: string | null | undefined): Date | null {

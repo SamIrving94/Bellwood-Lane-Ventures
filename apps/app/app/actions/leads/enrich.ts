@@ -27,16 +27,21 @@ function normalisePropertyType(raw: unknown): PropertyType | undefined {
   return undefined;
 }
 
-// Map a free-text lead.leadType onto the AVM's SellerType enum so the
-// risk-adjusted offer reflects the seller situation (probate, chain break…).
-const SELLER_TYPE_MAP: Record<string, string> = {
-  probate: 'probate',
-  chain_break: 'chain_break',
-  short_lease: 'short_lease',
-  repossession: 'repossession',
-  relocation: 'relocation',
-  standard: 'standard',
-};
+// Resolve the AVM's SellerType from a lead's free-text leadType so the
+// risk-adjusted offer reflects the seller situation. Uses substring matching
+// (not exact keys) to match the values leads actually carry — listing/source
+// categories like "repossessed-properties" or "short-lease-properties", not
+// the clean enum. Mirrors the deep-appraisal cron's resolver so the lead AVM,
+// the deep appraisal, and the deal offer all classify the same lead alike.
+function resolveSellerType(leadType: string | null | undefined): string {
+  const t = (leadType ?? '').toLowerCase();
+  if (t.includes('probate')) return 'probate';
+  if (t.includes('chain')) return 'chain_break';
+  if (t.includes('repos')) return 'repossession';
+  if (t.includes('lease')) return 'short_lease';
+  if (t.includes('reloc')) return 'relocation';
+  return 'standard';
+}
 
 /**
  * On-demand appraisal for a single lead. Fetches the full property snapshot
@@ -72,7 +77,7 @@ export async function enrichLeadById(leadId: string): Promise<{
   const avmPropertyType = normalised === 'bungalow' ? 'detached' : (normalised ?? 'terraced');
   const bedrooms =
     typeof pd?.bedrooms === 'number' ? (pd.bedrooms as number) : undefined;
-  const avmSellerType = SELLER_TYPE_MAP[lead.leadType] ?? 'standard';
+  const avmSellerType = resolveSellerType(lead.leadType);
 
   // ── Snapshot (facts/lens/comps). Skip the refetch if recent. ───────────
   const existing = raw.snapshot as { fetchedAt?: string } | undefined;

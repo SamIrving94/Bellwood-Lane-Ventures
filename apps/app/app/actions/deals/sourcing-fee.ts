@@ -24,7 +24,8 @@ export type SourcingFeeInput = {
 function money(v: number | null | undefined): number | null {
   if (v === null || v === undefined || Number.isNaN(v)) return null;
   const n = Math.round(v);
-  return n < 0 ? 0 : n;
+  if (n < 0) throw new Error('Fee cannot be negative.');
+  return n;
 }
 
 export async function recordSourcingFee(
