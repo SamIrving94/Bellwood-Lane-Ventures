@@ -40,6 +40,10 @@ type Lead = {
   // Short-lease signal
   leaseRemainingYears: number | null;
   leaseMarriageValue: boolean;
+  // Appraisal status
+  appraised: boolean;
+  avmValuePence: number | null;
+  avmConfidence: string | null;
   riskFlags: string[];
   rationale: string | null;
   topPositiveFactors: string[];
@@ -94,11 +98,15 @@ type FilterKey =
   | 'planning'
   | 'hmo'
   | 'dissolved'
-  | 'shortlease';
+  | 'shortlease'
+  | 'appraised'
+  | 'unappraised';
 
 // Source-type filters are analyst tools, not part of the daily "what do I
 // act on" job — they live behind a "More filters" disclosure.
 const SECONDARY_FILTERS: FilterKey[] = [
+  'appraised',
+  'unappraised',
   'propertydata',
   'planning',
   'hmo',
@@ -149,6 +157,10 @@ export function LeadsTable({ leads, unratedCount, initialFilter }: Props) {
         return lead.source === 'companies_house_dissolved';
       case 'shortlease':
         return lead.source.startsWith('short_lease');
+      case 'appraised':
+        return lead.appraised;
+      case 'unappraised':
+        return !lead.appraised;
       default:
         return true;
     }
@@ -211,6 +223,16 @@ export function LeadsTable({ leads, unratedCount, initialFilter }: Props) {
       key: 'shortlease',
       label: 'Short lease',
       count: leads.filter((l) => l.source.startsWith('short_lease')).length,
+    },
+    {
+      key: 'appraised',
+      label: 'Appraised',
+      count: leads.filter((l) => l.appraised).length,
+    },
+    {
+      key: 'unappraised',
+      label: 'Not appraised',
+      count: leads.filter((l) => !l.appraised).length,
     },
   ];
 
@@ -458,6 +480,25 @@ function LeadCard({
                 >
                   {sourceBadge}
                 </span>
+                {lead.appraised ? (
+                  <span
+                    className="inline-flex rounded-full border border-emerald-200 bg-emerald-100 px-2 py-0.5 text-[11px] font-medium text-emerald-800"
+                    title={
+                      lead.avmConfidence
+                        ? `AVM run · ${lead.avmConfidence} confidence`
+                        : 'AVM appraisal run'
+                    }
+                  >
+                    ✓ Appraised
+                    {lead.avmValuePence
+                      ? ` · ${formatGBP(lead.avmValuePence)}`
+                      : ''}
+                  </span>
+                ) : (
+                  <span className="inline-flex rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-medium text-slate-500">
+                    Not appraised
+                  </span>
+                )}
                 {topHighlights.map((h) => (
                   <span
                     key={h.label}

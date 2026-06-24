@@ -300,6 +300,11 @@ const LeadDetailPage = async ({
     riskScore: number | null;
     assumedPropertyType: string | null;
     fetchedAt: string;
+    /** Photo-inferred condition (deal-model level) + the vision read. */
+    inferredCondition?: string | null;
+    conditionVisual?: string | null;
+    conditionRationale?: string | null;
+    conditionConfidence?: number | null;
   };
   const avmFull = (raw.avmFull as AvmFull | undefined) ?? null;
   // Asking sits this far below our modelled market value (the "is this BMV?"
@@ -579,6 +584,9 @@ const LeadDetailPage = async ({
           <DealModelPanel
             avmPointEstimatePence={avmFull.pointEstimatePence}
             askingPricePence={askingPrice}
+            inferredCondition={avmFull.inferredCondition ?? null}
+            conditionRationale={avmFull.conditionRationale ?? null}
+            conditionConfidence={avmFull.conditionConfidence ?? null}
           />
         ) : null}
 

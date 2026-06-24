@@ -53,14 +53,35 @@ const VERDICT_TONE: Record<string, string> = {
   fail: 'bg-rose-100 text-rose-800 border-rose-200',
 };
 
+const CONDITION_VALUES = new Set<ConditionLevel>([
+  'turnkey',
+  'dated',
+  'tired',
+  'unmodernised',
+  'derelict',
+]);
+
 export function DealModelPanel({
   avmPointEstimatePence,
   askingPricePence,
+  inferredCondition,
+  conditionRationale,
+  conditionConfidence,
 }: {
   avmPointEstimatePence: number;
   askingPricePence: number | null;
+  /** Photo-inferred condition (from the vision screener), if any. */
+  inferredCondition?: string | null;
+  conditionRationale?: string | null;
+  conditionConfidence?: number | null;
 }) {
-  const [condition, setCondition] = useState<ConditionLevel>('tired');
+  // Default the condition to the photo-inferred value when the vision screener
+  // returned a valid one; otherwise fall back to 'tired'.
+  const initialCondition: ConditionLevel =
+    inferredCondition && CONDITION_VALUES.has(inferredCondition as ConditionLevel)
+      ? (inferredCondition as ConditionLevel)
+      : 'tired';
+  const [condition, setCondition] = useState<ConditionLevel>(initialCondition);
   const [route, setRoute] = useState<AcquisitionRoute>('private_treaty');
   // Sensible refurb default scales with the property: ~12% of AVM.
   const [refurb, setRefurb] = useState<string>(
@@ -135,7 +156,25 @@ export function DealModelPanel({
       {/* Inputs */}
       <div className="mt-5 grid gap-3 sm:grid-cols-3">
         <label className="block">
-          <span className="text-[11px] text-muted-foreground">Condition</span>
+          <span className="text-[11px] text-muted-foreground">
+            Condition
+            {inferredCondition ? (
+              <span
+                className="ml-1 text-emerald-700"
+                title={
+                  conditionRationale
+                    ? `From photos: ${conditionRationale}${
+                        typeof conditionConfidence === 'number'
+                          ? ` (${Math.round(conditionConfidence * 100)}% confident)`
+                          : ''
+                      }`
+                    : 'Inferred from the listing photos'
+                }
+              >
+                · 📷 from photos
+              </span>
+            ) : null}
+          </span>
           <select
             className="mt-1 w-full rounded-md border bg-background px-2 py-1.5 text-sm"
             value={condition}

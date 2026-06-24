@@ -69,6 +69,30 @@ export const CONDITION_DISCOUNTS: Record<ConditionLevel, number> = {
 
 export const DEFAULT_CONDITION: ConditionLevel = 'tired';
 
+/**
+ * Map the vision screener's condition label (pristine/fair/tired/distressed/
+ * derelict — see @repo/auctions screenPropertyCondition) onto the deal-model's
+ * ConditionLevel, so a photo-inferred condition can pre-fill the GDV inputs.
+ */
+export function mapVisualConditionToLevel(
+  visual: string | null | undefined,
+): ConditionLevel | null {
+  switch (visual) {
+    case 'pristine':
+      return 'turnkey';
+    case 'fair':
+      return 'dated';
+    case 'tired':
+      return 'tired';
+    case 'distressed':
+      return 'unmodernised';
+    case 'derelict':
+      return 'derelict';
+    default:
+      return null;
+  }
+}
+
 // ---------------------------------------------------------------------------
 // GDV estimate
 // ---------------------------------------------------------------------------

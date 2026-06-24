@@ -145,6 +145,7 @@ async function LeadsTabContent({ filter }: { filter?: string }) {
         const lease = raw.leaseSignal as
           | Record<string, unknown>
           | undefined;
+        const avm = raw.avmFull as Record<string, unknown> | undefined;
         return {
           id: l.id,
           address: l.address,
@@ -196,6 +197,11 @@ async function LeadsTabContent({ filter }: { filter?: string }) {
             (lease?.remainingLeaseYears as number | undefined) ?? null,
           leaseMarriageValue:
             (lease?.marriageValue as boolean | undefined) ?? false,
+          appraised: typeof avm?.pointEstimatePence === 'number',
+          avmValuePence:
+            (avm?.pointEstimatePence as number | undefined) ?? null,
+          avmConfidence:
+            (avm?.confidenceLevel as string | undefined) ?? null,
           riskFlags:
             (raw.riskFlags as string[] | undefined) ?? [],
           rationale:

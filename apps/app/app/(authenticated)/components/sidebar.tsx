@@ -63,7 +63,7 @@ const data = {
     { title: 'Today', url: '/', icon: InboxIcon, hasBadge: true },
     { title: 'Quotes', url: '/quotes', icon: FileTextIcon },
     { title: 'Leads', url: '/leads', icon: TargetIcon },
-    { title: 'Appraisals', url: '/appraisals', icon: GavelIcon },
+    { title: 'Deep appraisals', url: '/appraisals', icon: GavelIcon },
     { title: 'Batch', url: '/batch', icon: SheetIcon },
     { title: 'Pipeline', url: '/pipeline', icon: KanbanIcon },
   ],

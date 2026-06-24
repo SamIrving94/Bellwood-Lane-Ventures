@@ -111,6 +111,7 @@ export type {
 export {
   estimateGdv,
   appraiseDealFromAvm,
+  mapVisualConditionToLevel,
   CONDITION_DISCOUNTS,
   DEFAULT_CONDITION,
 } from './gdv';

@@ -1,9 +1,14 @@
 'use server';
 
+import { screenPropertyCondition } from '@repo/auctions';
 import { auth } from '@repo/auth/server';
 import { database, Prisma } from '@repo/database';
 import { getPropertySnapshot } from '@repo/property-data/src/propertydata';
-import { mergeOfferConfig, runAVM } from '@repo/valuation';
+import {
+  mapVisualConditionToLevel,
+  mergeOfferConfig,
+  runAVM,
+} from '@repo/valuation';
 import { revalidatePath } from 'next/cache';
 
 type PropertyType =
@@ -135,6 +140,32 @@ export async function enrichLeadById(leadId: string): Promise<{
     // AVM failure must not block snapshot enrichment — leave avmFull null and
     // keep whatever was there before.
     avmFull = (raw.avmFull as Record<string, unknown> | undefined) ?? null;
+  }
+
+  // ── Vision: infer condition from the listing photo(s). ────────────────
+  // Reuses the auction-lot vision screener (screenPropertyCondition) so the
+  // deal-model's condition is pre-filled from the actual photos instead of a
+  // guess — the founder can still override it. Graceful: returns null on no
+  // photo / no ANTHROPIC_API_KEY / any error, leaving condition manual.
+  if (avmFull) {
+    const photoUrls = [
+      typeof pd?.imageUrl === 'string' ? (pd.imageUrl as string) : null,
+    ].filter((u): u is string => !!u);
+    if (photoUrls.length > 0) {
+      const assessment = await screenPropertyCondition({
+        ref: leadId,
+        address: lead.address,
+        photoUrls,
+      });
+      if (assessment) {
+        avmFull.inferredCondition = mapVisualConditionToLevel(
+          assessment.condition,
+        );
+        avmFull.conditionVisual = assessment.condition;
+        avmFull.conditionRationale = assessment.rationale;
+        avmFull.conditionConfidence = assessment.confidence;
+      }
+    }
   }
 
   const updatedRaw = {
