@@ -70,6 +70,8 @@ export function DealModelPanel({
   refurbEstimatePence,
   refurbLines,
   refurbBasis,
+  conditionDiscounts,
+  targetCashRoi,
 }: {
   avmPointEstimatePence: number;
   askingPricePence: number | null;
@@ -81,6 +83,9 @@ export function DealModelPanel({
   refurbEstimatePence?: number | null;
   refurbLines?: { label: string; pence: number }[] | null;
   refurbBasis?: string | null;
+  /** Founder-tuned levers from the valuation methodology page. */
+  conditionDiscounts?: Partial<Record<ConditionLevel, number>>;
+  targetCashRoi?: number;
 }) {
   // Default the condition to the photo-inferred value when the vision screener
   // returned a valid one; otherwise fall back to 'tired'.
@@ -100,7 +105,9 @@ export function DealModelPanel({
   );
   const [showRefurbWorking, setShowRefurbWorking] = useState(false);
   const [premiumPct, setPremiumPct] = useState<string>('0');
-  const [targetPct, setTargetPct] = useState<string>('20');
+  const [targetPct, setTargetPct] = useState<string>(
+    String(Math.round((targetCashRoi ?? 0.2) * 100)),
+  );
   // Pre-fill "our offer" with the asking price when we have it.
   const [offer, setOffer] = useState<string>(
     askingPricePence ? String(Math.round(askingPricePence / 100)) : ''
@@ -111,6 +118,7 @@ export function DealModelPanel({
       appraiseDealFromAvm({
         avmPointEstimatePence,
         conditionLevel: condition,
+        conditionDiscounts,
         premiumUpliftFraction: (Number(premiumPct) || 0) / 100,
         refurbPence: poundsToPence(refurb),
         route,
@@ -120,6 +128,7 @@ export function DealModelPanel({
     [
       avmPointEstimatePence,
       condition,
+      conditionDiscounts,
       premiumPct,
       refurb,
       route,

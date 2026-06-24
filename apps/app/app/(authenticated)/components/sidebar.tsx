@@ -32,6 +32,7 @@ import {
   MegaphoneIcon,
   MessageSquareIcon,
   SearchIcon,
+  SlidersHorizontalIcon,
   Settings2Icon,
   SheetIcon,
   TargetIcon,
@@ -85,6 +86,11 @@ const data = {
   ],
   system: [
     { title: 'Agents', url: '/agents', icon: ActivityIcon },
+    {
+      title: 'Valuation method',
+      url: '/settings/valuation',
+      icon: SlidersHorizontalIcon,
+    },
     { title: 'Strategy', url: '/strategy', icon: MapIcon },
     { title: 'Guide', url: '/guide', icon: CompassIcon },
     { title: 'Settings', url: '/settings', icon: Settings2Icon },

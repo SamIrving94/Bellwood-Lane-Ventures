@@ -1,6 +1,7 @@
 import { auth } from '@repo/auth/server';
 import { getBookingLink } from '@repo/calendly';
 import { database } from '@repo/database';
+import { mergeValuationConfig } from '@repo/valuation';
 import type { Metadata } from 'next';
 import { notFound, redirect } from 'next/navigation';
 import { Header } from '../../components/header';
@@ -56,15 +57,20 @@ const LeadDetailPage = async ({
 
   const { id } = await params;
 
-  const [lead, existingFeedback] = await Promise.all([
+  const [lead, existingFeedback, valuationRow] = await Promise.all([
     database.scoutLead.findUnique({ where: { id } }),
     database.founderFeedback.findFirst({
       where: { targetType: 'scout_lead', targetId: id },
       orderBy: { createdAt: 'desc' },
     }),
+    database.setting.findUnique({ where: { key: 'valuation.config' } }),
   ]);
 
   if (!lead) notFound();
+
+  // Founder-tuned valuation levers (condition discounts + target ROI feed the
+  // live deal panel below; refurb levers are applied server-side at appraisal).
+  const valuationConfig = mergeValuationConfig(valuationRow?.value ?? null);
 
   // Unpack rich data from rawPayload
   const raw = (lead.rawPayload ?? {}) as Record<string, unknown>;
@@ -594,6 +600,8 @@ const LeadDetailPage = async ({
             refurbEstimatePence={avmFull.refurbEstimatePence ?? null}
             refurbLines={avmFull.refurbLines ?? null}
             refurbBasis={avmFull.refurbBasis ?? null}
+            conditionDiscounts={valuationConfig.conditionDiscounts}
+            targetCashRoi={valuationConfig.targetCashRoi}
           />
         ) : null}
 

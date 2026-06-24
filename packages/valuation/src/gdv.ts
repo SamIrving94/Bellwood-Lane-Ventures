@@ -110,6 +110,11 @@ export interface GdvInput {
    * already reflects. Raise it when the works add real value.
    */
   premiumUpliftFraction?: number;
+  /**
+   * Override the per-condition as-is discount table (from the saved valuation
+   * config). Falls back to CONDITION_DISCOUNTS when omitted.
+   */
+  conditionDiscounts?: Partial<Record<ConditionLevel, number>>;
 }
 
 export interface GdvEstimate {
@@ -144,9 +149,13 @@ export function estimateGdv(input: GdvInput): GdvEstimate {
       ? (input.conditionLevel ?? DEFAULT_CONDITION)
       : null;
 
+  const discountTable = {
+    ...CONDITION_DISCOUNTS,
+    ...(input.conditionDiscounts ?? {}),
+  };
   const conditionDiscountFraction = clampFraction(
     input.conditionDiscountFraction ??
-      CONDITION_DISCOUNTS[conditionLevel ?? DEFAULT_CONDITION],
+      discountTable[conditionLevel ?? DEFAULT_CONDITION],
     0.6
   );
   const premiumUpliftFraction = clampFraction(

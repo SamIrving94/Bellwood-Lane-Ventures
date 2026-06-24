@@ -128,7 +128,17 @@ export {
   FLAG_COST,
   DEFAULT_FLOOR_AREA_SQM,
 } from './refurb';
-export type { RefurbInput, RefurbLine, RefurbEstimate } from './refurb';
+export type {
+  RefurbInput,
+  RefurbLine,
+  RefurbEstimate,
+  RefurbConfig,
+} from './refurb';
+export {
+  DEFAULT_VALUATION_CONFIG,
+  mergeValuationConfig,
+} from './valuation-config';
+export type { ValuationConfig } from './valuation-config';
 
 // ---------------------------------------------------------------------------
 // Input type

@@ -6,6 +6,7 @@ import {
   estimateRefurb,
   mapVisualConditionToLevel,
   mergeOfferConfig,
+  mergeValuationConfig,
   runAVM,
 } from '@repo/valuation';
 import { NextResponse } from 'next/server';
@@ -90,6 +91,12 @@ export const POST = async (request: Request) => {
   });
   const offerConfig = mergeOfferConfig(activeConfig?.config);
 
+  // Founder-tuned valuation levers (refurb £/m² + defect costs).
+  const valuationRow = await database.setting.findUnique({
+    where: { key: 'valuation.config' },
+  });
+  const valuationConfig = mergeValuationConfig(valuationRow?.value ?? null);
+
   let appraised = 0;
   const errors: string[] = [];
 
@@ -169,12 +176,19 @@ export const POST = async (request: Request) => {
       }
 
       // Transparent refurb estimate from the photo read + EPC floor area.
-      const refurb = estimateRefurb({
-        condition: (avmFull.conditionVisual as string | undefined) ?? null,
-        flags: (avmFull.conditionFlags as string[] | undefined) ?? null,
-        floorAreaSqm:
-          (avmFull.floorAreaSqm as number | null | undefined) ?? null,
-      });
+      const refurb = estimateRefurb(
+        {
+          condition: (avmFull.conditionVisual as string | undefined) ?? null,
+          flags: (avmFull.conditionFlags as string[] | undefined) ?? null,
+          floorAreaSqm:
+            (avmFull.floorAreaSqm as number | null | undefined) ?? null,
+        },
+        {
+          perSqm: valuationConfig.refurbPerSqm,
+          flagCost: valuationConfig.refurbFlagCosts,
+          defaultFloorAreaSqm: valuationConfig.defaultFloorAreaSqm,
+        },
+      );
       avmFull.refurbEstimatePence = refurb.totalPence;
       avmFull.refurbLines = refurb.lines;
       avmFull.refurbBasis = refurb.basis;

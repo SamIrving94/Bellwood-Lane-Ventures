@@ -8,8 +8,10 @@ import {
   estimateRefurb,
   mapVisualConditionToLevel,
   mergeOfferConfig,
+  mergeValuationConfig,
   runAVM,
 } from '@repo/valuation';
+import { VALUATION_CONFIG_KEY } from '@/app/actions/valuation-config/save';
 import { revalidatePath } from 'next/cache';
 
 type PropertyType =
@@ -174,11 +176,23 @@ export async function enrichLeadById(leadId: string): Promise<{
     // EPC floor area. Always computed — even with no photo it gives an
     // area-based number, far better than a flat "% of value" guess. The panel
     // pre-fills its refurb input with this and shows the line-by-line breakdown.
-    const refurb = estimateRefurb({
-      condition: (avmFull.conditionVisual as string | undefined) ?? null,
-      flags: (avmFull.conditionFlags as string[] | undefined) ?? null,
-      floorAreaSqm: (avmFull.floorAreaSqm as number | null | undefined) ?? null,
+    const valuationRow = await database.setting.findUnique({
+      where: { key: VALUATION_CONFIG_KEY },
     });
+    const valuationConfig = mergeValuationConfig(valuationRow?.value ?? null);
+    const refurb = estimateRefurb(
+      {
+        condition: (avmFull.conditionVisual as string | undefined) ?? null,
+        flags: (avmFull.conditionFlags as string[] | undefined) ?? null,
+        floorAreaSqm:
+          (avmFull.floorAreaSqm as number | null | undefined) ?? null,
+      },
+      {
+        perSqm: valuationConfig.refurbPerSqm,
+        flagCost: valuationConfig.refurbFlagCosts,
+        defaultFloorAreaSqm: valuationConfig.defaultFloorAreaSqm,
+      },
+    );
     avmFull.refurbEstimatePence = refurb.totalPence;
     avmFull.refurbLines = refurb.lines;
     avmFull.refurbBasis = refurb.basis;

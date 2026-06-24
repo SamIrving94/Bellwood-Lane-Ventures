@@ -113,22 +113,38 @@ function roundTo100Pounds(pence: number): number {
   return Math.round(pence / 10_000) * 10_000;
 }
 
+/** Founder-tunable cost overrides (from the saved valuation config). */
+export interface RefurbConfig {
+  perSqm?: Record<string, number>;
+  flagCost?: Record<string, number>;
+  defaultFloorAreaSqm?: number;
+}
+
 /**
- * Build a transparent refurb estimate from a photo-condition read.
+ * Build a transparent refurb estimate from a photo-condition read. An optional
+ * config overrides the default cost tables (so the in-app methodology page can
+ * tune them).
  */
-export function estimateRefurb(input: RefurbInput): RefurbEstimate {
+export function estimateRefurb(
+  input: RefurbInput,
+  config: RefurbConfig = {},
+): RefurbEstimate {
+  const perSqmTable = config.perSqm ?? CONDITION_COST_PER_SQM;
+  const flagCostTable = config.flagCost ?? FLAG_COST;
+  const defaultArea = config.defaultFloorAreaSqm ?? DEFAULT_FLOOR_AREA_SQM;
+
   const conditionUsed =
-    input.condition && input.condition in CONDITION_COST_PER_SQM
+    input.condition && input.condition in perSqmTable
       ? input.condition
       : DEFAULT_REFURB_CONDITION;
 
   const assumedFloorArea =
     typeof input.floorAreaSqm !== 'number' || input.floorAreaSqm <= 0;
   const floorAreaSqm = assumedFloorArea
-    ? DEFAULT_FLOOR_AREA_SQM
+    ? defaultArea
     : (input.floorAreaSqm as number);
 
-  const perSqm = CONDITION_COST_PER_SQM[conditionUsed] ?? 0;
+  const perSqm = perSqmTable[conditionUsed] ?? 0;
   const lines: RefurbLine[] = [];
 
   const basePence = Math.round(perSqm * floorAreaSqm);
@@ -146,7 +162,7 @@ export function estimateRefurb(input: RefurbInput): RefurbEstimate {
     if (subsumeFittings && (flag === 'no_kitchen' || flag === 'no_bathroom')) {
       continue; // already in the heavy base cost
     }
-    const cost = FLAG_COST[flag];
+    const cost = flagCostTable[flag];
     if (cost && cost > 0) {
       lines.push({ label: FLAG_LABELS[flag] ?? flag, pence: cost });
     }
