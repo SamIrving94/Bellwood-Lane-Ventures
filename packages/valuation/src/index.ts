@@ -108,6 +108,19 @@ export type {
   DealAppraisal,
   MaxOfferResult,
 } from './deal-model';
+export {
+  estimateGdv,
+  appraiseDealFromAvm,
+  CONDITION_DISCOUNTS,
+  DEFAULT_CONDITION,
+} from './gdv';
+export type {
+  ConditionLevel,
+  GdvInput,
+  GdvEstimate,
+  DealFromAvmInput,
+  DealFromAvmResult,
+} from './gdv';
 
 // ---------------------------------------------------------------------------
 // Input type

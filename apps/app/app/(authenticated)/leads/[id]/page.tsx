@@ -7,6 +7,7 @@ import { Header } from '../../components/header';
 import { FeedbackPanel } from '../../components/feedback-panel';
 import { CalendlyButton } from './calendly-button';
 import { ConvertButton } from './convert-button';
+import { DealModelPanel } from './deal-model-panel';
 import { EnrichLeadButton } from './enrich-button';
 import { PropertyImage } from './property-image';
 
@@ -572,6 +573,14 @@ const LeadDetailPage = async ({
             <EnrichLeadButton leadId={lead.id} label="Appraise deal" />
           </div>
         )}
+
+        {/* ── DEAL MODEL — bottom-up ROI, GDV auto-derived from the AVM ── */}
+        {avmFull?.pointEstimatePence ? (
+          <DealModelPanel
+            avmPointEstimatePence={avmFull.pointEstimatePence}
+            askingPricePence={askingPrice}
+          />
+        ) : null}
 
         {/* ── NEXT STEP: MAKE CONTACT ────────────────────────────────────
             The whole point of a lead is to reach the vendor. Scouted leads
