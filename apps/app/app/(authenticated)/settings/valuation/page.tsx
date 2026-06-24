@@ -1,4 +1,4 @@
-import { VALUATION_CONFIG_KEY } from '@/app/actions/valuation-config/save';
+import { VALUATION_CONFIG_KEY } from '@/app/actions/valuation-config/constants';
 import { auth } from '@repo/auth/server';
 import { database } from '@repo/database';
 import { mergeValuationConfig } from '@repo/valuation';

@@ -11,7 +11,7 @@ import {
   mergeValuationConfig,
   runAVM,
 } from '@repo/valuation';
-import { VALUATION_CONFIG_KEY } from '@/app/actions/valuation-config/save';
+import { VALUATION_CONFIG_KEY } from '@/app/actions/valuation-config/constants';
 import { revalidatePath } from 'next/cache';
 
 type PropertyType =

@@ -4,8 +4,7 @@ import { auth } from '@repo/auth/server';
 import { type Prisma, database } from '@repo/database';
 import { mergeValuationConfig } from '@repo/valuation';
 import { revalidatePath } from 'next/cache';
-
-export const VALUATION_CONFIG_KEY = 'valuation.config';
+import { VALUATION_CONFIG_KEY } from './constants';
 
 /**
  * Save the valuation methodology levers (condition discounts, refurb £/m² +
