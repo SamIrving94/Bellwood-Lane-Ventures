@@ -3,8 +3,8 @@
 import {
   extractPostContent,
   platformsForActionType,
-  publishToSocial,
-} from '@/lib/social/ayrshare';
+} from '@/lib/social/post-mapping';
+import { getSocialProvider } from '@/lib/social/providers';
 import { auth } from '@repo/auth/server';
 import { type Prisma, database } from '@repo/database';
 import { revalidatePath } from 'next/cache';
@@ -49,7 +49,7 @@ export async function publishMarketingDraft(
     return { ok: false, error: 'No post text found on this draft.' };
   }
 
-  const result = await publishToSocial({
+  const result = await getSocialProvider().publish({
     platforms,
     text: content.text,
     mediaUrls: content.mediaUrls,

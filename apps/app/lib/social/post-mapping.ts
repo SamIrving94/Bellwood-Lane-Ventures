@@ -5,6 +5,29 @@
 
 export type SocialPlatform = 'linkedin' | 'instagram' | 'facebook';
 
+export type PublishStatus =
+  | 'published' // posted now
+  | 'scheduled' // queued for a future time
+  | 'skipped' // not configured — flow continues, nothing posted
+  | 'unsupported' // this draft type isn't a social post (e.g. blog, ad copy)
+  | 'error';
+
+export interface PublishResult {
+  status: PublishStatus;
+  platforms: SocialPlatform[];
+  /** Provider post id when published/scheduled. */
+  id?: string;
+  error?: string;
+}
+
+export interface PublishInput {
+  platforms: SocialPlatform[];
+  text: string;
+  mediaUrls?: string[];
+  /** ISO-8601 — when omitted, posts immediately. */
+  scheduleDate?: string;
+}
+
 /**
  * Which social platforms a marketing FounderAction publishes to, by type.
  * Returns null for drafts that aren't social posts (blog, case study, ad copy,

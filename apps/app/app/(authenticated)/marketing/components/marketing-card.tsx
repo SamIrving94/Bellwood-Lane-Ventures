@@ -123,7 +123,7 @@ export function MarketingCard({ action }: { action: MarketingAction }) {
       }
       toast.success(
         res.status === 'skipped'
-          ? 'Approved — connect Ayrshare to post automatically'
+          ? 'Approved — connect a social account (Settings → Social accounts) to post automatically'
           : res.status === 'scheduled'
             ? 'Scheduled'
             : 'Published'

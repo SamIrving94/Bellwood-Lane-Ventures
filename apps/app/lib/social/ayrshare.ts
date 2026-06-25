@@ -13,43 +13,23 @@ import 'server-only';
  * completes and stamps publishedAt — it goes live for real once the key is set.
  */
 
-import type { SocialPlatform } from './post-mapping';
+import type { PublishInput, PublishResult } from './post-mapping';
 
 export {
   extractPostContent,
   platformsForActionType,
   type SocialPlatform,
+  type PublishInput,
+  type PublishResult,
+  type PublishStatus,
 } from './post-mapping';
 
 const AYRSHARE_ENDPOINT = 'https://api.ayrshare.com/api/post';
 const REQUEST_TIMEOUT_MS = 12_000;
 
-export type PublishStatus =
-  | 'published' // posted now
-  | 'scheduled' // queued for a future time
-  | 'skipped' // no API key — flow continues, nothing posted
-  | 'unsupported' // this draft type isn't a social post (e.g. blog, ad copy)
-  | 'error';
-
-export interface PublishResult {
-  status: PublishStatus;
-  platforms: SocialPlatform[];
-  /** Ayrshare post id when published/scheduled. */
-  id?: string;
-  error?: string;
-}
-
 // ---------------------------------------------------------------------------
 // Publish
 // ---------------------------------------------------------------------------
-
-export interface PublishInput {
-  platforms: SocialPlatform[];
-  text: string;
-  mediaUrls?: string[];
-  /** ISO-8601 — when omitted, posts immediately. */
-  scheduleDate?: string;
-}
 
 export async function publishToSocial(
   input: PublishInput
