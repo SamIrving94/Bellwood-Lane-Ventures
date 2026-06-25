@@ -34,17 +34,23 @@ export type SendEmailResult =
  * - On Resend API error, throws — callers should handle (or swallow) as
  *   appropriate for their pipeline.
  */
-export async function sendEmail(input: SendEmailInput): Promise<SendEmailResult> {
+export async function sendEmail(
+  input: SendEmailInput
+): Promise<SendEmailResult> {
   if (!resend) {
     const msg = 'email skipped - no RESEND_TOKEN';
-    console.warn(`[@repo/email] ${msg} (to=${input.to}, subject="${input.subject}")`);
+    console.warn(
+      `[@repo/email] ${msg} (to=${input.to}, subject="${input.subject}")`
+    );
     return { skipped: true, reason: msg };
   }
 
   const from = input.from ?? env.RESEND_FROM;
   if (!from) {
     const msg = 'email skipped - no RESEND_FROM configured';
-    console.warn(`[@repo/email] ${msg} (to=${input.to}, subject="${input.subject}")`);
+    console.warn(
+      `[@repo/email] ${msg} (to=${input.to}, subject="${input.subject}")`
+    );
     return { skipped: true, reason: msg };
   }
 
@@ -72,4 +78,71 @@ export async function sendEmail(input: SendEmailInput): Promise<SendEmailResult>
 
   console.info(`[@repo/email] sent id=${data.id} to=${input.to}`);
   return { skipped: false, messageId: data.id };
+}
+
+// ---------------------------------------------------------------------------
+// Newsletter / broadcast (Resend Broadcasts) — for partner + seller nurture
+// ---------------------------------------------------------------------------
+
+export type SendBroadcastInput = {
+  subject: string;
+  html: string;
+  /** Resend Audience id. Falls back to RESEND_AUDIENCE_ID env when omitted. */
+  audienceId?: string;
+  from?: string;
+  /** ISO-8601 (or natural language) to schedule instead of sending now. */
+  scheduledAt?: string;
+};
+
+export type SendBroadcastResult =
+  | { skipped: true; reason: string }
+  | { skipped: false; broadcastId: string; scheduled: boolean };
+
+/**
+ * Create + send (or schedule) a newsletter broadcast to a Resend Audience.
+ *
+ * Graceful, like `sendEmail`: with no Resend token / from / audience it returns
+ * `{ skipped: true }` so the caller continues. This is the publishing leg for
+ * the partner ("completed in X days") and seller nurture newsletters — it
+ * reuses the Resend we already have, no new vendor.
+ */
+export async function sendBroadcast(
+  input: SendBroadcastInput
+): Promise<SendBroadcastResult> {
+  if (!resend) {
+    return { skipped: true, reason: 'no RESEND_TOKEN' };
+  }
+  const from = input.from ?? env.RESEND_FROM;
+  if (!from) {
+    return { skipped: true, reason: 'no RESEND_FROM configured' };
+  }
+  const audienceId = input.audienceId ?? process.env.RESEND_AUDIENCE_ID;
+  if (!audienceId) {
+    return { skipped: true, reason: 'no RESEND_AUDIENCE_ID configured' };
+  }
+
+  const created = await resend.broadcasts.create({
+    audienceId,
+    from,
+    subject: input.subject,
+    html: input.html,
+  });
+  if (created.error || !created.data?.id) {
+    throw new Error(
+      `Resend broadcast create failed: ${created.error?.message ?? 'no id'}`
+    );
+  }
+
+  const sent = await resend.broadcasts.send(created.data.id, {
+    scheduledAt: input.scheduledAt,
+  });
+  if (sent.error) {
+    throw new Error(`Resend broadcast send failed: ${sent.error.message}`);
+  }
+
+  return {
+    skipped: false,
+    broadcastId: created.data.id,
+    scheduled: Boolean(input.scheduledAt),
+  };
 }

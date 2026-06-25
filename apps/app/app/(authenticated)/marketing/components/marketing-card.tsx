@@ -1,5 +1,7 @@
 'use client';
 
+import { resolveAction } from '@/app/actions/founder-actions/resolve';
+import { publishMarketingDraft } from '@/app/actions/marketing/publish';
 import { Button } from '@repo/design-system/components/ui/button';
 import {
   CheckCircleIcon,
@@ -8,7 +10,8 @@ import {
   XCircleIcon,
 } from 'lucide-react';
 import { useState, useTransition } from 'react';
-import { resolveAction } from '@/app/actions/founder-actions/resolve';
+import { toast } from 'sonner';
+import { MARKETING_TYPE_LABELS } from '../lib/marketing-types';
 import {
   asMeta,
   getObjectArray,
@@ -16,7 +19,6 @@ import {
   getStringArray,
   readPublishNotBefore,
 } from '../lib/metadata';
-import { MARKETING_TYPE_LABELS } from '../lib/marketing-types';
 
 export type MarketingAction = {
   id: string;
@@ -86,7 +88,7 @@ function ComplianceBadge({ until }: { until: Date }) {
   return (
     <span
       data-tour="marketing-anonymisation"
-      className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-amber-800 dark:bg-amber-950 dark:text-amber-300"
+      className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 font-medium text-[10px] text-amber-800 uppercase tracking-wide dark:bg-amber-950 dark:text-amber-300"
     >
       Publishes after {formatPublishDate(until)}
     </span>
@@ -101,9 +103,31 @@ export function MarketingCard({ action }: { action: MarketingAction }) {
   const publishNotBefore = readPublishNotBefore(meta);
   const isGated = publishNotBefore && publishNotBefore.getTime() > Date.now();
 
+  // Which drafts can be auto-published to a social platform.
+  const isSocialPost =
+    action.type === 'approve_ig_post' ||
+    action.type === 'approve_linkedin_post';
+
   const handleResolve = (resolution: 'completed' | 'dismissed') => {
     startTransition(async () => {
       await resolveAction(action.id, resolution);
+    });
+  };
+
+  const handlePublish = () => {
+    startTransition(async () => {
+      const res = await publishMarketingDraft(action.id);
+      if (!res.ok) {
+        toast.error(res.error ?? 'Publish failed');
+        return;
+      }
+      toast.success(
+        res.status === 'skipped'
+          ? 'Approved — connect Ayrshare to post automatically'
+          : res.status === 'scheduled'
+            ? 'Scheduled'
+            : 'Published'
+      );
     });
   };
 
@@ -118,15 +142,16 @@ export function MarketingCard({ action }: { action: MarketingAction }) {
       {/* Header: priority + type + meta */}
       <div className="flex items-start gap-3">
         <div
-          className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${style.bg} ${style.text}`}
+          className={`shrink-0 rounded-full px-2 py-0.5 font-medium text-xs ${style.bg} ${style.text}`}
         >
           {style.label}
         </div>
         <div className="min-w-0 flex-1">
           <h3 className="font-medium leading-tight">{action.title}</h3>
-          <p className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+          <p className="mt-1 flex flex-wrap items-center gap-2 text-muted-foreground text-xs">
             <span className="capitalize">
-              {MARKETING_TYPE_LABELS[action.type] ?? action.type.replace(/_/g, ' ')}
+              {MARKETING_TYPE_LABELS[action.type] ??
+                action.type.replace(/_/g, ' ')}
             </span>
             <span>&middot;</span>
             <span>{timeAgo(action.createdAt)}</span>
@@ -152,7 +177,12 @@ export function MarketingCard({ action }: { action: MarketingAction }) {
 
       {/* Per-type body */}
       <div className="mt-3">
-        <TypeBody type={action.type} meta={meta} expanded={expanded} action={action} />
+        <TypeBody
+          type={action.type}
+          meta={meta}
+          expanded={expanded}
+          action={action}
+        />
       </div>
 
       {/* Resolve actions — always available, even on gated cards (founder
@@ -170,6 +200,7 @@ export function MarketingCard({ action }: { action: MarketingAction }) {
           Dismiss
         </Button>
         <Button
+          variant={isSocialPost ? 'ghost' : 'default'}
           size="sm"
           onClick={() => handleResolve('completed')}
           disabled={isPending || isGated}
@@ -178,6 +209,21 @@ export function MarketingCard({ action }: { action: MarketingAction }) {
           <CheckCircleIcon className="mr-1 h-3 w-3" />
           Approve
         </Button>
+        {isSocialPost && (
+          <Button
+            size="sm"
+            onClick={handlePublish}
+            disabled={isPending || isGated}
+            title={
+              isGated
+                ? 'Locked until publish window opens'
+                : 'Approve and publish to the social platform'
+            }
+          >
+            <CheckCircleIcon className="mr-1 h-3 w-3" />
+            Approve &amp; publish
+          </Button>
+        )}
       </div>
     </div>
   );
@@ -199,7 +245,13 @@ function TypeBody({
     case 'approve_case_study':
       return <ImageCaptionBody meta={meta} />;
     case 'approve_blog_draft':
-      return <BlogBody meta={meta} expanded={expanded} description={action.description} />;
+      return (
+        <BlogBody
+          meta={meta}
+          expanded={expanded}
+          description={action.description}
+        />
+      );
     case 'approve_linkedin_post':
       return <LinkedInBody meta={meta} />;
     case 'approve_solicitor_outreach':
@@ -208,7 +260,9 @@ function TypeBody({
     case 'approve_paid_ad_copy':
       return <PaidAdBody meta={meta} />;
     default:
-      return <GenericBody description={action.description} expanded={expanded} />;
+      return (
+        <GenericBody description={action.description} expanded={expanded} />
+      );
   }
 }
 
@@ -226,7 +280,7 @@ function ImageCaptionBody({ meta }: { meta: ReturnType<typeof asMeta> }) {
           // eslint-disable-next-line @next/next/no-img-element
           <img src={imageUrl} alt="" className="h-full w-full object-cover" />
         ) : (
-          <div className="flex h-full w-full items-center justify-center text-xs text-muted-foreground">
+          <div className="flex h-full w-full items-center justify-center text-muted-foreground text-xs">
             Image preview
           </div>
         )}
@@ -238,7 +292,7 @@ function ImageCaptionBody({ meta }: { meta: ReturnType<typeof asMeta> }) {
           </p>
         )}
         {hashtags.length > 0 && (
-          <p className="text-sm text-blue-600 dark:text-blue-400">
+          <p className="text-blue-600 text-sm dark:text-blue-400">
             {hashtags.map((h) => (h.startsWith('#') ? h : `#${h}`)).join(' ')}
           </p>
         )}
@@ -258,14 +312,16 @@ function BlogBody({
 }) {
   const title = getString(meta, 'title');
   const metaDescription = getString(meta, 'metaDescription');
-  const body = getString(meta, 'body') ?? getString(meta, 'draft') ?? description ?? '';
-  const truncated = body.length > 300 && !expanded ? `${body.slice(0, 300)}…` : body;
+  const body =
+    getString(meta, 'body') ?? getString(meta, 'draft') ?? description ?? '';
+  const truncated =
+    body.length > 300 && !expanded ? `${body.slice(0, 300)}…` : body;
 
   return (
     <div className="space-y-2">
       {title && <p className="font-medium text-base">{title}</p>}
       {metaDescription && (
-        <p className="text-xs italic text-muted-foreground">
+        <p className="text-muted-foreground text-xs italic">
           {metaDescription}
         </p>
       )}
@@ -278,11 +334,12 @@ function LinkedInBody({ meta }: { meta: ReturnType<typeof asMeta> }) {
   // metadata.topics is the canonical shape — array of { topic, hook } objects.
   // Fall back to a flat string[] if topics are simple strings.
   const topics = getObjectArray(meta, 'topics');
-  const stringTopics = topics.length === 0 ? getStringArray(meta, 'topics') : [];
+  const stringTopics =
+    topics.length === 0 ? getStringArray(meta, 'topics') : [];
 
   if (topics.length === 0 && stringTopics.length === 0) {
     return (
-      <p className="text-sm text-muted-foreground">
+      <p className="text-muted-foreground text-sm">
         No topics on this draft yet.
       </p>
     );
@@ -291,13 +348,17 @@ function LinkedInBody({ meta }: { meta: ReturnType<typeof asMeta> }) {
   return (
     <ol className="space-y-2 text-sm">
       {topics.map((t, i) => {
-        const topic = getString(t, 'topic') ?? getString(t, 'title') ?? `Topic ${i + 1}`;
+        const topic =
+          getString(t, 'topic') ?? getString(t, 'title') ?? `Topic ${i + 1}`;
         const hook = getString(t, 'hook') ?? getString(t, 'opener');
         return (
-          <li key={i} className="rounded border-l-2 border-blue-300 bg-slate-50/50 px-3 py-2 dark:bg-slate-900/30">
+          <li
+            key={i}
+            className="rounded border-blue-300 border-l-2 bg-slate-50/50 px-3 py-2 dark:bg-slate-900/30"
+          >
             <p className="font-medium">{topic}</p>
             {hook && (
-              <p className="mt-0.5 text-xs text-muted-foreground">{hook}</p>
+              <p className="mt-0.5 text-muted-foreground text-xs">{hook}</p>
             )}
           </li>
         );
@@ -305,7 +366,7 @@ function LinkedInBody({ meta }: { meta: ReturnType<typeof asMeta> }) {
       {stringTopics.map((t, i) => (
         <li
           key={i}
-          className="rounded border-l-2 border-blue-300 bg-slate-50/50 px-3 py-2 dark:bg-slate-900/30"
+          className="rounded border-blue-300 border-l-2 bg-slate-50/50 px-3 py-2 dark:bg-slate-900/30"
         >
           <p>{t}</p>
         </li>
@@ -317,7 +378,8 @@ function LinkedInBody({ meta }: { meta: ReturnType<typeof asMeta> }) {
 function OutreachBody({ meta }: { meta: ReturnType<typeof asMeta> }) {
   const subject = getString(meta, 'subject') ?? getString(meta, 'emailSubject');
   const body = getString(meta, 'body') ?? getString(meta, 'emailBody') ?? '';
-  const linkedinDm = getString(meta, 'linkedinDm') ?? getString(meta, 'linkedInDm');
+  const linkedinDm =
+    getString(meta, 'linkedinDm') ?? getString(meta, 'linkedInDm');
 
   const truncatedBody = body.length > 150 ? `${body.slice(0, 150)}…` : body;
 
@@ -325,7 +387,7 @@ function OutreachBody({ meta }: { meta: ReturnType<typeof asMeta> }) {
     <div className="space-y-3 text-sm">
       <div className="rounded-md border bg-slate-50/60 p-3 dark:bg-slate-900/30">
         {subject && (
-          <p className="mb-1 text-xs font-mono uppercase tracking-wider text-muted-foreground">
+          <p className="mb-1 font-mono text-muted-foreground text-xs uppercase tracking-wider">
             Subject
           </p>
         )}
@@ -338,7 +400,7 @@ function OutreachBody({ meta }: { meta: ReturnType<typeof asMeta> }) {
       </div>
       {linkedinDm && (
         <div className="rounded-md border border-blue-200 bg-blue-50/60 p-3 dark:border-blue-900 dark:bg-blue-950/30">
-          <p className="mb-1 text-xs font-mono uppercase tracking-wider text-blue-700 dark:text-blue-300">
+          <p className="mb-1 font-mono text-blue-700 text-xs uppercase tracking-wider dark:text-blue-300">
             LinkedIn DM
           </p>
           <p className="whitespace-pre-wrap text-muted-foreground">
@@ -353,7 +415,8 @@ function OutreachBody({ meta }: { meta: ReturnType<typeof asMeta> }) {
 function PaidAdBody({ meta }: { meta: ReturnType<typeof asMeta> }) {
   const headlines = getStringArray(meta, 'headlines');
   const bodyCopies = getStringArray(meta, 'bodyCopies');
-  const bodies = bodyCopies.length > 0 ? bodyCopies : getStringArray(meta, 'bodies');
+  const bodies =
+    bodyCopies.length > 0 ? bodyCopies : getStringArray(meta, 'bodies');
   const variants = getObjectArray(meta, 'variants');
 
   // Prefer explicit headline × body matrix when both present
@@ -363,13 +426,13 @@ function PaidAdBody({ meta }: { meta: ReturnType<typeof asMeta> }) {
         <table className="w-full border-collapse text-sm">
           <thead className="bg-slate-50/60 dark:bg-slate-900/30">
             <tr>
-              <th className="border px-2 py-1.5 text-left font-medium text-xs uppercase tracking-wider text-muted-foreground">
+              <th className="border px-2 py-1.5 text-left font-medium text-muted-foreground text-xs uppercase tracking-wider">
                 Headline / Body
               </th>
               {bodies.map((b, j) => (
                 <th
                   key={j}
-                  className="border px-2 py-1.5 text-left font-mono text-xs text-muted-foreground"
+                  className="border px-2 py-1.5 text-left font-mono text-muted-foreground text-xs"
                 >
                   B{j + 1}
                 </th>
@@ -385,7 +448,7 @@ function PaidAdBody({ meta }: { meta: ReturnType<typeof asMeta> }) {
                 {bodies.map((b, j) => (
                   <td
                     key={j}
-                    className="border px-2 py-1.5 text-xs text-muted-foreground"
+                    className="border px-2 py-1.5 text-muted-foreground text-xs"
                   >
                     {b}
                   </td>
@@ -408,7 +471,7 @@ function PaidAdBody({ meta }: { meta: ReturnType<typeof asMeta> }) {
               {getString(v, 'headline') ?? `Variant ${i + 1}`}
             </p>
             {getString(v, 'body') && (
-              <p className="mt-1 text-xs text-muted-foreground">
+              <p className="mt-1 text-muted-foreground text-xs">
                 {getString(v, 'body')}
               </p>
             )}
@@ -419,7 +482,7 @@ function PaidAdBody({ meta }: { meta: ReturnType<typeof asMeta> }) {
   }
 
   return (
-    <p className="text-sm text-muted-foreground">
+    <p className="text-muted-foreground text-sm">
       No ad variants supplied on this draft.
     </p>
   );
@@ -433,11 +496,11 @@ function GenericBody({
   expanded: boolean;
 }) {
   if (!description) return null;
-  const text = expanded || description.length <= 240
-    ? description
-    : `${description.slice(0, 240)}…`;
+  const text =
+    expanded || description.length <= 240
+      ? description
+      : `${description.slice(0, 240)}…`;
   return (
-    <p className="whitespace-pre-wrap text-sm text-muted-foreground">{text}</p>
+    <p className="whitespace-pre-wrap text-muted-foreground text-sm">{text}</p>
   );
 }
-

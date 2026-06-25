@@ -18,6 +18,7 @@ import {
 } from '@repo/design-system/components/ui/sidebar';
 import {
   ActivityIcon,
+  BookOpenIcon,
   BuildingIcon,
   CompassIcon,
   FileTextIcon,
@@ -92,6 +93,7 @@ const data = {
       icon: SlidersHorizontalIcon,
     },
     { title: 'Strategy', url: '/strategy', icon: MapIcon },
+    { title: 'Internal docs', url: '/internal-docs', icon: BookOpenIcon },
     { title: 'Guide', url: '/guide', icon: CompassIcon },
     { title: 'Settings', url: '/settings', icon: Settings2Icon },
     { title: 'LLM usage', url: '/admin/llm-usage', icon: GaugeIcon },
