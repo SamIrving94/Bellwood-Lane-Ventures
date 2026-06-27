@@ -9,7 +9,11 @@
  *   EPC_API_KEY    — API key from the dashboard
  *
  * Auth: HTTP Basic auth (email:key base64-encoded)
- * Falls back to synthetic data when credentials are absent or the call fails.
+ *
+ * When credentials are absent or the live call fails, returns an "unavailable"
+ * reading (all data fields null) so the AVM treats EPC as UNKNOWN rather than
+ * acting on a fabricated number. Synthetic data is opt-in for local dev only,
+ * via EPC_ALLOW_SYNTHETIC=true.
  */
 
 import { z } from 'zod';
@@ -66,6 +70,36 @@ const CONSTRUCTION_ERAS = [
 const RATING_SCORES: Record<string, number> = {
   A: 92, B: 82, C: 72, D: 60, E: 48, F: 36, G: 20,
 };
+
+/**
+ * Honest "no data" reading. Returned when EPC credentials are absent or the live
+ * call fails and synthetic data is not explicitly enabled. Every data field is
+ * null so downstream consumers (the AVM, the refurb/condition discount) treat EPC
+ * as UNKNOWN rather than acting on fabricated values.
+ */
+function unavailableEpc(postcode: string): Epc {
+  return {
+    postcode,
+    epcRating: null,
+    epcScore: null,
+    propertyType: null,
+    floorAreaSqm: null,
+    constructionAgeBand: null,
+    heatingType: null,
+    totalBedrooms: null,
+    inspectionDate: null,
+    source: 'unavailable',
+  };
+}
+
+/**
+ * Synthetic EPC data is fabricated (random rating, floor area, etc.) and must
+ * NEVER feed a real valuation — a random floor area drives the £/sqft AVM on a
+ * binding offer. It is opt-in for local dev only, via EPC_ALLOW_SYNTHETIC=true.
+ */
+function allowSynthetic(): boolean {
+  return process.env.EPC_ALLOW_SYNTHETIC === 'true';
+}
 
 function syntheticEpc(postcode: string): Epc {
   const ratingIdx = Math.floor(Math.random() * EPC_RATINGS.length);
@@ -188,9 +222,19 @@ export async function getEpcData(
       return await fetchEpcLive(postcode, address);
     } catch (err) {
       console.warn(
-        `[property-data/epc] live fetch failed (${(err as Error).message}), using synthetic`
+        `[property-data/epc] live fetch failed (${(err as Error).message}); ${
+          allowSynthetic()
+            ? 'using synthetic (dev only)'
+            : 'returning unavailable (synthetic disabled in production)'
+        }`
       );
     }
+  } else if (!allowSynthetic()) {
+    console.warn(
+      '[property-data/epc] no EPC credentials configured; returning unavailable (set EPC_ALLOW_SYNTHETIC=true for dev synthetic)'
+    );
   }
-  return syntheticEpc(postcode);
+  // Never fabricate EPC data in production: a random rating / floor area can
+  // drive the £/sqft AVM on a binding offer (Bet 2 — "never silently guessed").
+  return allowSynthetic() ? syntheticEpc(postcode) : unavailableEpc(postcode);
 }
