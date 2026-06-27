@@ -75,6 +75,65 @@ const NAV = [
   { href: '/agents', label: 'For agents' },
 ];
 
+/** The signed cash-offer letter, the hero artifact. A real typed document,
+ *  not type on a flat field: Caslon letterhead, Courier body, wax seal. */
+function OfferLetter() {
+  return (
+    <div className="relative w-[290px] -rotate-[1.6deg] rounded-[2px] border border-[#E2D7CF] bg-[#FFFEFB] p-6 shadow-[0_28px_52px_-24px_rgba(36,28,26,0.5)]">
+      <div className="absolute -right-5 -top-5 hidden sm:block">
+        <Seal />
+      </div>
+      <p className="font-serif text-[17px] font-bold tracking-[0.01em] text-brand-deep">
+        Bellwoods Lane
+      </p>
+      <p className="mt-1 text-[11px] text-stone-400 [font-family:var(--font-courier)]">
+        Binding offer &middot; Ref BW-2026-0142
+      </p>
+      <div className="mt-4 border-t border-[#EAE0D9] pt-3">
+        <p className="text-[11px] text-stone-400 [font-family:var(--font-courier)]">
+          PROPERTY
+        </p>
+        <p className="mt-1 font-serif text-[15px] leading-snug text-[#352B27]">
+          14 Acacia Avenue, Stockport SK4 3HQ
+        </p>
+      </div>
+      <div className="mt-3 border-t border-[#EAE0D9] pt-3">
+        <p className="text-[11px] text-brand [font-family:var(--font-courier)]">
+          OUR CASH OFFER
+        </p>
+        <p className="mt-1 font-serif text-[40px] font-bold leading-none text-[#241C1A]">
+          £244,000
+        </p>
+        <p className="mt-1.5 text-[11px] text-stone-500 [font-family:var(--font-courier)]">
+          83% of mid AVM &middot; locked 72 hours
+        </p>
+      </div>
+      <dl className="mt-3 space-y-2 border-t border-[#EAE0D9] pt-3 text-[12px] text-stone-600 [font-family:var(--font-courier)]">
+        <div className="flex justify-between gap-6">
+          <dt>Completion</dt>
+          <dd className="text-[#352B27]">Weeks, not months</dd>
+        </div>
+        <div className="flex justify-between gap-6">
+          <dt>Walk-away cover</dt>
+          <dd className="text-[#352B27]">£1,000 + costs</dd>
+        </div>
+      </dl>
+      <svg viewBox="0 0 130 30" className="mt-3 h-6 w-28" aria-hidden="true">
+        <path
+          d="M3 21 C 13 3, 22 5, 23 17 S 36 27, 43 13 C 47 5, 54 23, 64 14 C 74 5, 83 25, 102 7 C 111 1, 120 5, 127 11"
+          fill="none"
+          stroke="#2C2320"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+        />
+      </svg>
+      <p className="mt-1 font-serif text-[11px] italic text-stone-400">
+        Signed for Bellwoods Lane Ltd
+      </p>
+    </div>
+  );
+}
+
 export default function SellPage() {
   return (
     <>
