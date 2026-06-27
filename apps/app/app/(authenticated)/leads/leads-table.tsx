@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { StarRatingInline } from '../components/star-rating-inline';
+import { PropertyThumb } from './property-thumb';
 
 type Lead = {
   id: string;
@@ -116,7 +117,7 @@ const SECONDARY_FILTERS: FilterKey[] = [
 
 export function LeadsTable({ leads, unratedCount, initialFilter }: Props) {
   const [activeFilter, setActiveFilter] = useState<FilterKey>(
-    (initialFilter as FilterKey) ?? 'shortlist',
+    (initialFilter as FilterKey) ?? 'shortlist'
   );
   const [showMoreFilters, setShowMoreFilters] = useState(false);
   const [localRatings, setLocalRatings] = useState<Record<string, number>>({});
@@ -177,7 +178,7 @@ export function LeadsTable({ leads, unratedCount, initialFilter }: Props) {
     (l) =>
       l.status === 'new' &&
       (l.verdict === 'STRONG' || l.verdict === 'VIABLE') &&
-      !getRating(l),
+      !getRating(l)
   ).length;
 
   const filters: { key: FilterKey; label: string; count: number }[] = [
@@ -237,10 +238,10 @@ export function LeadsTable({ leads, unratedCount, initialFilter }: Props) {
   ];
 
   const primaryFilters = filters.filter(
-    (f) => !SECONDARY_FILTERS.includes(f.key),
+    (f) => !SECONDARY_FILTERS.includes(f.key)
   );
   const secondaryFilters = filters.filter((f) =>
-    SECONDARY_FILTERS.includes(f.key),
+    SECONDARY_FILTERS.includes(f.key)
   );
 
   return (
@@ -251,7 +252,7 @@ export function LeadsTable({ leads, unratedCount, initialFilter }: Props) {
             key={f.key}
             type="button"
             onClick={() => setActiveFilter(f.key)}
-            className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+            className={`rounded-full px-3 py-1 font-medium text-xs transition-colors ${
               activeFilter === f.key
                 ? 'bg-primary text-primary-foreground'
                 : 'bg-muted text-muted-foreground hover:bg-muted/80'
@@ -264,7 +265,7 @@ export function LeadsTable({ leads, unratedCount, initialFilter }: Props) {
         <button
           type="button"
           onClick={() => setShowMoreFilters((v) => !v)}
-          className="rounded-full px-3 py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted/80"
+          className="rounded-full px-3 py-1 font-medium text-muted-foreground text-xs transition-colors hover:bg-muted/80"
         >
           {showMoreFilters ? 'Fewer filters' : 'More filters'}
           <span aria-hidden className="ml-1">
@@ -275,7 +276,7 @@ export function LeadsTable({ leads, unratedCount, initialFilter }: Props) {
 
       {showMoreFilters && (
         <div className="flex flex-wrap items-center gap-1">
-          <span className="mr-1 font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+          <span className="mr-1 font-mono text-[10px] text-muted-foreground uppercase tracking-[0.18em]">
             By source
           </span>
           {secondaryFilters.map((f) => (
@@ -283,7 +284,7 @@ export function LeadsTable({ leads, unratedCount, initialFilter }: Props) {
               key={f.key}
               type="button"
               onClick={() => setActiveFilter(f.key)}
-              className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+              className={`rounded-full px-3 py-1 font-medium text-xs transition-colors ${
                 activeFilter === f.key
                   ? 'bg-primary text-primary-foreground'
                   : 'bg-muted text-muted-foreground hover:bg-muted/80'
@@ -359,9 +360,9 @@ function LeadCard({
   const isShortLease = lead.source.startsWith('short_lease');
 
   const sourceBadge = isPropertyData
-    ? (lead.listingType
-        ? LISTING_TYPE_LABELS[lead.listingType] ?? lead.listingType
-        : 'Distressed')
+    ? lead.listingType
+      ? (LISTING_TYPE_LABELS[lead.listingType] ?? lead.listingType)
+      : 'Distressed'
     : isPlanning
       ? `Planning · ${lead.planningRating ?? 'pending'}`
       : isHmo
@@ -418,7 +419,9 @@ function LeadCard({
     highlights.push({
       label: 'HMO licence expiring',
       cls: 'border-rose-200 bg-rose-100 text-rose-800',
-      title: lead.hmoLicenceExpiry ? `Expires ${lead.hmoLicenceExpiry}` : undefined,
+      title: lead.hmoLicenceExpiry
+        ? `Expires ${lead.hmoLicenceExpiry}`
+        : undefined,
     });
   }
   if (typeof lead.leaseRemainingYears === 'number') {
@@ -436,20 +439,19 @@ function LeadCard({
   return (
     <div className="overflow-hidden rounded-xl border bg-card transition hover:shadow-md">
       <div className="flex">
-        {/* Image (if PropertyData) */}
-        {lead.imageUrl && (
-          <a
-            href={`/leads/${lead.id}`}
-            className="hidden h-32 w-44 shrink-0 sm:block"
-          >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={lead.imageUrl}
-              alt={lead.address}
-              className="h-full w-full object-cover"
-            />
-          </a>
-        )}
+        {/* Property thumbnail — proxied (portal images are hotlink-protected)
+            with a clean placeholder when missing/blocked, so the list never
+            shows broken-image icons. */}
+        <a
+          href={`/leads/${lead.id}`}
+          className="hidden h-32 w-44 shrink-0 sm:block"
+        >
+          <PropertyThumb
+            src={lead.imageUrl}
+            alt={lead.address}
+            className="h-full w-full object-cover"
+          />
+        </a>
 
         {/* Content */}
         <div className="min-w-0 flex-1 p-4">
@@ -469,20 +471,20 @@ function LeadCard({
 
               <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
                 <span
-                  className={`inline-flex rounded-full border px-2 py-0.5 text-[11px] font-medium ${
+                  className={`inline-flex rounded-full border px-2 py-0.5 font-medium text-[11px] ${
                     verdictColors[lead.verdict] || ''
                   }`}
                 >
                   {lead.verdict}
                 </span>
                 <span
-                  className={`inline-flex rounded-full border px-2 py-0.5 text-[11px] font-medium ${sourceBadgeColor}`}
+                  className={`inline-flex rounded-full border px-2 py-0.5 font-medium text-[11px] ${sourceBadgeColor}`}
                 >
                   {sourceBadge}
                 </span>
                 {lead.appraised ? (
                   <span
-                    className="inline-flex rounded-full border border-emerald-200 bg-emerald-100 px-2 py-0.5 text-[11px] font-medium text-emerald-800"
+                    className="inline-flex rounded-full border border-emerald-200 bg-emerald-100 px-2 py-0.5 font-medium text-[11px] text-emerald-800"
                     title={
                       lead.avmConfidence
                         ? `AVM run · ${lead.avmConfidence} confidence`
@@ -495,7 +497,7 @@ function LeadCard({
                       : ''}
                   </span>
                 ) : (
-                  <span className="inline-flex rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-medium text-slate-500">
+                  <span className="inline-flex rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 font-medium text-[11px] text-slate-500">
                     Not appraised
                   </span>
                 )}
@@ -503,14 +505,14 @@ function LeadCard({
                   <span
                     key={h.label}
                     title={h.title}
-                    className={`inline-flex rounded-full border px-2 py-0.5 text-[11px] font-medium ${h.cls}`}
+                    className={`inline-flex rounded-full border px-2 py-0.5 font-medium text-[11px] ${h.cls}`}
                   >
                     {h.label}
                   </span>
                 ))}
                 {riskCount > 0 && (
                   <span
-                    className="inline-flex rounded-full border border-rose-200 bg-rose-50 px-2 py-0.5 text-[11px] font-medium text-rose-700"
+                    className="inline-flex rounded-full border border-rose-200 bg-rose-50 px-2 py-0.5 font-medium text-[11px] text-rose-700"
                     title={lead.riskFlags.join(' · ')}
                   >
                     ⚠ {riskCount} risk{riskCount === 1 ? '' : 's'}
@@ -545,7 +547,7 @@ function LeadCard({
 
               {/* Summary or proposal */}
               {(lead.summary || lead.planningProposal) && (
-                <p className="mt-2 line-clamp-2 text-[13px] leading-relaxed text-slate-600">
+                <p className="mt-2 line-clamp-2 text-[13px] text-slate-600 leading-relaxed">
                   {lead.summary ?? lead.planningProposal}
                 </p>
               )}
@@ -555,17 +557,17 @@ function LeadCard({
             <div className="flex flex-col items-end gap-2 text-right">
               <div>
                 <div
-                  className="font-mono text-2xl font-bold tabular-nums leading-none"
+                  className="font-bold font-mono text-2xl tabular-nums leading-none"
                   title={lead.rationale ?? undefined}
                 >
                   {lead.leadScore}
                 </div>
-                <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                <div className="text-[10px] text-muted-foreground uppercase tracking-wider">
                   Score
                 </div>
               </div>
               {lead.topPositiveFactors.length > 0 && (
-                <ul className="max-w-[180px] space-y-0.5 text-right text-[11px] leading-tight text-emerald-700">
+                <ul className="max-w-[180px] space-y-0.5 text-right text-[11px] text-emerald-700 leading-tight">
                   {lead.topPositiveFactors.map((f, i) => (
                     <li key={`${f}-${i}`}>+ {f}</li>
                   ))}
@@ -610,7 +612,7 @@ function LeadCard({
                 Est. equity: {formatGBP(lead.estimatedEquityPence)}
               </span>
             )}
-            <span className="ml-auto capitalize text-muted-foreground">
+            <span className="ml-auto text-muted-foreground capitalize">
               {lead.status}
             </span>
           </div>

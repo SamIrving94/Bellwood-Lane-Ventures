@@ -28,7 +28,7 @@ export function PropertyImage({
   return (
     // eslint-disable-next-line @next/next/no-img-element
     <img
-      src={src}
+      src={`/api/image-proxy?url=${encodeURIComponent(src)}`}
       alt={alt}
       className="h-64 w-full object-cover md:h-full"
       onError={() => setFailed(true)}
