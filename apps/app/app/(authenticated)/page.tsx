@@ -4,6 +4,7 @@ import { formatDistanceToNow } from 'date-fns';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
+import { DismissibleAction } from './components/dismissible-action';
 import { Header } from './components/header';
 
 export const metadata: Metadata = {
@@ -18,7 +19,10 @@ function formatGBP(pence?: number | null): string {
   return `£${Math.round(pence / 100).toLocaleString('en-GB')}`;
 }
 
-function slaCountdown(submittedAt: Date, slaHours = 24): {
+function slaCountdown(
+  submittedAt: Date,
+  slaHours = 24
+): {
   label: string;
   tone: 'fresh' | 'warning' | 'breach';
 } {
@@ -27,12 +31,14 @@ function slaCountdown(submittedAt: Date, slaHours = 24): {
   if (remaining <= 0) {
     const overMin = Math.round(-remaining / 60000);
     return {
-      label: overMin < 60 ? `${overMin}m late` : `${Math.round(overMin / 60)}h late`,
+      label:
+        overMin < 60 ? `${overMin}m late` : `${Math.round(overMin / 60)}h late`,
       tone: 'breach',
     };
   }
   const remainingMin = Math.round(remaining / 60000);
-  if (remainingMin < 60) return { label: `${remainingMin}m left`, tone: 'warning' };
+  if (remainingMin < 60)
+    return { label: `${remainingMin}m left`, tone: 'warning' };
   const h = Math.floor(remainingMin / 60);
   return {
     label: `${h}h ${remainingMin % 60}m left`,
@@ -84,7 +90,10 @@ export default async function TodayPage() {
     overnightLeads,
   ] = await Promise.all([
     database.founderAction.findMany({
-      where: { status: { in: ['pending', 'in_progress'] } },
+      where: {
+        status: { in: ['pending', 'in_progress'] },
+        OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
+      },
       orderBy: [{ priority: 'asc' }, { createdAt: 'desc' }],
       take: 20,
     }),
@@ -101,19 +110,27 @@ export default async function TodayPage() {
     database.deal.findMany({
       where: {
         status: {
-          in: ['new_lead', 'contacted', 'valuation', 'offer_made', 'under_offer'],
+          in: [
+            'new_lead',
+            'contacted',
+            'valuation',
+            'offer_made',
+            'under_offer',
+          ],
         },
       },
       select: { status: true, askingPricePence: true, ourOfferPence: true },
     }),
     database.quoteRequest.count({ where: { createdAt: { gte: last24h } } }),
     database.scoutLead.count({ where: { createdAt: { gte: last24h } } }),
-    database.outreachRecipient.count({
-      where: {
-        status: { in: ['replied'] },
-        updatedAt: { gte: last24h },
-      },
-    }).catch(() => 0),
+    database.outreachRecipient
+      .count({
+        where: {
+          status: { in: ['replied'] },
+          updatedAt: { gte: last24h },
+        },
+      })
+      .catch(() => 0),
     // Overnight harvest: the best new leads the scout found, surfaced where
     // the founder actually lands each morning. STRONG/VIABLE only, top 5.
     database.scoutLead.findMany({
@@ -146,12 +163,12 @@ export default async function TodayPage() {
   const actionsSorted = pendingActions.sort(
     (a, b) =>
       (priorityOrder[a.priority] ?? 4) - (priorityOrder[b.priority] ?? 4) ||
-      b.createdAt.getTime() - a.createdAt.getTime(),
+      b.createdAt.getTime() - a.createdAt.getTime()
   );
 
   const pipelineValue = activeDeals.reduce(
     (sum, d) => sum + (d.ourOfferPence ?? d.askingPricePence ?? 0),
-    0,
+    0
   );
 
   const stageCounts = activeDeals.reduce(
@@ -159,7 +176,7 @@ export default async function TodayPage() {
       acc[d.status] = (acc[d.status] ?? 0) + 1;
       return acc;
     },
-    {} as Record<string, number>,
+    {} as Record<string, number>
   );
 
   const stages: Array<{ key: string; label: string; color: string }> = [
@@ -179,7 +196,7 @@ export default async function TodayPage() {
       <main className="mx-auto w-full max-w-5xl space-y-10 p-6">
         {/* ─── Header ─────────────────────────────────────── */}
         <div>
-          <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
+          <p className="font-mono text-[10px] text-muted-foreground uppercase tracking-[0.22em]">
             {new Date().toLocaleDateString('en-GB', {
               weekday: 'long',
               day: 'numeric',
@@ -201,14 +218,14 @@ export default async function TodayPage() {
           <div className="mb-4 flex items-baseline justify-between">
             <h2 className="font-semibold text-lg">Needs your decision</h2>
             {decisionCount > 0 && (
-              <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
+              <span className="font-mono text-[10px] text-muted-foreground uppercase tracking-[0.22em]">
                 {decisionCount} item{decisionCount === 1 ? '' : 's'}
               </span>
             )}
           </div>
 
           {decisionCount === 0 ? (
-            <div className="rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50/50 p-10 text-center">
+            <div className="rounded-2xl border-2 border-slate-200 border-dashed bg-slate-50/50 p-10 text-center">
               <p className="font-serif text-2xl text-slate-700">All clear.</p>
               <p className="mt-2 text-muted-foreground text-sm">
                 Paperclip will surface new items here as they need you.
@@ -227,7 +244,7 @@ export default async function TodayPage() {
                   >
                     <div className="flex flex-wrap items-start justify-between gap-3">
                       <div className="min-w-0 flex-1">
-                        <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-amber-700">
+                        <p className="font-mono text-[10px] text-amber-700 uppercase tracking-[0.22em]">
                           Agent SLA · 24-hour signed PDF
                         </p>
                         <p className="mt-2 font-medium">
@@ -235,7 +252,8 @@ export default async function TodayPage() {
                         </p>
                         <p className="text-muted-foreground text-xs">
                           {q.firmName ?? 'Unknown firm'} · {q.contactName} ·{' '}
-                          {q.sellerSituation?.replace(/_/g, ' ') ?? 'situation unknown'}
+                          {q.sellerSituation?.replace(/_/g, ' ') ??
+                            'situation unknown'}
                         </p>
                       </div>
                       <div className="flex items-center gap-3">
@@ -255,43 +273,33 @@ export default async function TodayPage() {
                 );
               })}
 
-              {/* Founder Actions */}
+              {/* Founder Actions — each dismissable in place (stays cleared) */}
               {actionsSorted.slice(0, 12).map((a) => {
                 const meta = (a.metadata ?? {}) as Record<string, unknown>;
                 const link = (meta.link as string | undefined) ?? '/actions';
                 return (
-                  <Link
+                  <DismissibleAction
                     key={a.id}
-                    href={link}
-                    className={`block rounded-2xl border-2 p-5 transition hover:bg-white ${PRIORITY_CLASSES[a.priority] ?? PRIORITY_CLASSES.medium}`}
-                  >
-                    <div className="flex flex-wrap items-start justify-between gap-3">
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2">
-                          <span
-                            className={`inline-block h-2 w-2 rounded-full ${PRIORITY_DOT[a.priority] ?? PRIORITY_DOT.medium}`}
-                          />
-                          <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
-                            {a.type.replace(/_/g, ' ')} ·{' '}
-                            {formatDistanceToNow(a.createdAt, { addSuffix: true })}
-                          </span>
-                        </div>
-                        <p className="mt-2 font-medium">{a.title}</p>
-                        {a.description && (
-                          <p className="mt-1 line-clamp-2 text-muted-foreground text-xs">
-                            {a.description}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  </Link>
+                    id={a.id}
+                    priorityClass={
+                      PRIORITY_CLASSES[a.priority] ?? PRIORITY_CLASSES.medium
+                    }
+                    dotClass={PRIORITY_DOT[a.priority] ?? PRIORITY_DOT.medium}
+                    typeLabel={a.type.replace(/_/g, ' ')}
+                    ageLabel={formatDistanceToNow(a.createdAt, {
+                      addSuffix: true,
+                    })}
+                    title={a.title}
+                    description={a.description}
+                    link={link}
+                  />
                 );
               })}
 
               {actionsSorted.length > 12 && (
                 <Link
                   href="/actions"
-                  className="block rounded-xl border border-dashed border-slate-200 px-4 py-3 text-center text-muted-foreground text-xs hover:bg-accent"
+                  className="block rounded-xl border border-slate-200 border-dashed px-4 py-3 text-center text-muted-foreground text-xs hover:bg-accent"
                 >
                   View all {actionsSorted.length} actions →
                 </Link>
@@ -307,7 +315,7 @@ export default async function TodayPage() {
               <h2 className="font-semibold text-lg">New leads overnight</h2>
               <Link
                 href="/leads?filter=STRONG"
-                className="font-mono text-[10px] uppercase tracking-[0.22em] text-primary hover:underline"
+                className="font-mono text-[10px] text-primary uppercase tracking-[0.22em] hover:underline"
               >
                 Review all leads →
               </Link>
@@ -315,8 +323,7 @@ export default async function TodayPage() {
             <div className="space-y-3">
               {overnightLeads.map((lead) => {
                 const raw = (lead.rawPayload ?? {}) as Record<string, unknown>;
-                const rationale =
-                  (raw.rationale as string | undefined) ?? null;
+                const rationale = (raw.rationale as string | undefined) ?? null;
                 return (
                   <Link
                     key={lead.id}
@@ -325,7 +332,7 @@ export default async function TodayPage() {
                   >
                     <div className="flex flex-wrap items-start justify-between gap-3">
                       <div className="min-w-0 flex-1">
-                        <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-emerald-700">
+                        <p className="font-mono text-[10px] text-emerald-700 uppercase tracking-[0.22em]">
                           {lead.leadType.replace(/_/g, ' ')}
                         </p>
                         <p className="mt-2 truncate font-medium">
@@ -343,7 +350,7 @@ export default async function TodayPage() {
                         >
                           {lead.verdict}
                         </span>
-                        <p className="font-serif text-2xl font-semibold tabular-nums">
+                        <p className="font-semibold font-serif text-2xl tabular-nums">
                           {lead.leadScore}
                         </p>
                       </div>
@@ -361,18 +368,19 @@ export default async function TodayPage() {
             <h2 className="font-semibold text-lg">Pipeline pulse</h2>
             <Link
               href="/pipeline"
-              className="font-mono text-[10px] uppercase tracking-[0.22em] text-primary hover:underline"
+              className="font-mono text-[10px] text-primary uppercase tracking-[0.22em] hover:underline"
             >
               Open pipeline →
             </Link>
           </div>
           <div className="rounded-2xl border bg-card p-5">
             <div className="flex flex-wrap items-baseline gap-x-6 gap-y-2">
-              <p className="font-serif text-3xl font-semibold tracking-[-0.025em]">
+              <p className="font-semibold font-serif text-3xl tracking-[-0.025em]">
                 {pipelineValue > 0 ? formatGBP(pipelineValue) : '—'}
               </p>
               <p className="text-muted-foreground text-sm">
-                across {totalActiveDeals} active deal{totalActiveDeals === 1 ? '' : 's'}
+                across {totalActiveDeals} active deal
+                {totalActiveDeals === 1 ? '' : 's'}
               </p>
             </div>
             <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-5">
@@ -382,8 +390,12 @@ export default async function TodayPage() {
                   className="rounded-xl border border-slate-200 bg-white p-3"
                 >
                   <div className="flex items-center gap-1.5">
-                    <span className={`inline-block h-1.5 w-1.5 rounded-full ${s.color}`} />
-                    <p className="text-muted-foreground text-[11px]">{s.label}</p>
+                    <span
+                      className={`inline-block h-1.5 w-1.5 rounded-full ${s.color}`}
+                    />
+                    <p className="text-[11px] text-muted-foreground">
+                      {s.label}
+                    </p>
                   </div>
                   <p className="mt-1 font-semibold text-xl">
                     {stageCounts[s.key] ?? 0}
@@ -398,23 +410,38 @@ export default async function TodayPage() {
         <section>
           <h2 className="mb-4 font-semibold text-lg">In the last 24 hours</h2>
           <div className="grid grid-cols-3 gap-4">
-            <div data-tour="stat-pending" className="rounded-2xl border bg-card p-5">
+            <div
+              data-tour="stat-pending"
+              className="rounded-2xl border bg-card p-5"
+            >
               <p className="text-muted-foreground text-xs">Quote submissions</p>
-              <p className="mt-1 font-serif text-3xl font-semibold">{quotesLast24h}</p>
+              <p className="mt-1 font-semibold font-serif text-3xl">
+                {quotesLast24h}
+              </p>
             </div>
-            <div data-tour="stat-overdue" className="rounded-2xl border bg-card p-5">
+            <div
+              data-tour="stat-overdue"
+              className="rounded-2xl border bg-card p-5"
+            >
               <p className="text-muted-foreground text-xs">New leads</p>
-              <p className="mt-1 font-serif text-3xl font-semibold">{leadsLast24h}</p>
+              <p className="mt-1 font-semibold font-serif text-3xl">
+                {leadsLast24h}
+              </p>
             </div>
-            <div data-tour="stat-revenue" className="rounded-2xl border bg-card p-5">
+            <div
+              data-tour="stat-revenue"
+              className="rounded-2xl border bg-card p-5"
+            >
               <p className="text-muted-foreground text-xs">Outreach replies</p>
-              <p className="mt-1 font-serif text-3xl font-semibold">{repliesLast24h}</p>
+              <p className="mt-1 font-semibold font-serif text-3xl">
+                {repliesLast24h}
+              </p>
             </div>
           </div>
         </section>
 
         {/* ─── Concierge tip ────────────────────────────────── */}
-        <section className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/50 p-5 text-center">
+        <section className="rounded-2xl border border-slate-200 border-dashed bg-slate-50/50 p-5 text-center">
           <p className="text-muted-foreground text-sm">
             Need to research a postcode, agent, or deal? Press{' '}
             <kbd className="rounded border bg-background px-1.5 py-0.5 font-mono text-[11px]">

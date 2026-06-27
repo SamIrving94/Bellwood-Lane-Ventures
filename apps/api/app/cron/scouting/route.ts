@@ -1,7 +1,7 @@
 import { env } from '@/env';
-import { database, Prisma } from '@repo/database';
-import { mergeScorerConfig, runScoutingPipeline } from '@repo/scouting';
+import { Prisma, database } from '@repo/database';
 import { getPropertySnapshot } from '@repo/property-data/src/propertydata';
+import { mergeScorerConfig, runScoutingPipeline } from '@repo/scouting';
 import { NextResponse } from 'next/server';
 import { recordCronHeartbeat } from '../_lib/heartbeat';
 
@@ -52,7 +52,7 @@ export const POST = async (request: Request) => {
     });
     if (areasSetting && Array.isArray(areasSetting.value)) {
       areasRaw = (areasSetting.value as unknown[]).filter(
-        (r): r is Record<string, unknown> => !!r && typeof r === 'object',
+        (r): r is Record<string, unknown> => !!r && typeof r === 'object'
       );
       const areas = areasRaw.flatMap((a) => {
         const seedPostcode =
@@ -66,9 +66,9 @@ export const POST = async (request: Request) => {
         const lp = a.lastProbe as { checkedAt?: unknown } | null | undefined;
         const lastProbeAt =
           lp && typeof lp.checkedAt === 'string'
-            ? (Number.isFinite(Date.parse(lp.checkedAt))
-                ? Date.parse(lp.checkedAt)
-                : 0)
+            ? Number.isFinite(Date.parse(lp.checkedAt))
+              ? Date.parse(lp.checkedAt)
+              : 0
             : 0;
         if (!seedPostcode) return [];
         return [{ id, seedPostcode, radiusMiles, label, lastProbeAt }];
@@ -102,7 +102,7 @@ export const POST = async (request: Request) => {
       });
       if (districtsRow && Array.isArray(districtsRow.value)) {
         sourcedPropertyPostcodes = (districtsRow.value as unknown[]).filter(
-          (v): v is string => typeof v === 'string' && v.trim().length > 0,
+          (v): v is string => typeof v === 'string' && v.trim().length > 0
         );
       }
       const seedsRow = await database.setting.findUnique({
@@ -132,7 +132,7 @@ export const POST = async (request: Request) => {
     scanSeeds = scanSeeds.slice(0, MAX_SEEDS_PER_RUN);
     sourcedPropertyPostcodes = sourcedPropertyPostcodes.slice(
       0,
-      MAX_SEEDS_PER_RUN,
+      MAX_SEEDS_PER_RUN
     );
   }
 
@@ -304,13 +304,26 @@ export const POST = async (request: Request) => {
     const reviewSample = result.leads
       .map(
         (l, i) =>
-          `${i}:${l.address.slice(0, 40)}, ${l.postcode} — ${l.leadScore}/${l.verdict}`,
+          `${i}:${l.address.slice(0, 40)}, ${l.postcode} — ${l.leadScore}/${l.verdict}`
       )
       .slice(0, 10);
     const highLeadIds = highScoreLeads
       .map((l, i) => `${i}:${l.address.slice(0, 40)}, ${l.postcode}`)
       .slice(0, 10);
     try {
+      // Supersede yesterday's still-pending scout-review actions before adding
+      // today's. A "review 12 new leads" from a prior run is stale once a fresh
+      // run lands, and leaving them pending is exactly what piles the Action
+      // Centre into the dozens. Expiring them keeps the list to "today's work".
+      await database.founderAction.updateMany({
+        where: {
+          type: { in: ['review_leads', 'dispatch_campaign'] },
+          status: 'pending',
+          metadata: { path: ['source'], equals: 'cron_scouting' },
+        },
+        data: { status: 'expired', resolvedAt: new Date() },
+      });
+
       // Founder-facing review action — fires for ALL qualified leads.
       await database.founderAction.create({
         data: {
@@ -457,7 +470,9 @@ export const POST = async (request: Request) => {
                   ? 'bungalow'
                   : undefined;
         const bedrooms =
-          typeof pd?.bedrooms === 'number' ? (pd.bedrooms as number) : undefined;
+          typeof pd?.bedrooms === 'number'
+            ? (pd.bedrooms as number)
+            : undefined;
         snap = await getPropertySnapshot({
           postcode: lead.postcode,
           address: lead.address,
@@ -481,7 +496,7 @@ export const POST = async (request: Request) => {
       console.warn(
         '[cron/scouting] snapshot enrichment failed',
         lead.postcode,
-        err,
+        err
       );
     }
   }
