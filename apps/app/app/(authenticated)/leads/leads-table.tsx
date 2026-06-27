@@ -1,5 +1,6 @@
 'use client';
 
+import { resolvePropertyLink } from '@/lib/property-links';
 import { useState } from 'react';
 import { StarRatingInline } from '../components/star-rating-inline';
 import { PropertyThumb } from './property-thumb';
@@ -389,7 +390,14 @@ function LeadCard({
             ? 'bg-amber-100 text-amber-800 border-amber-200'
             : 'bg-slate-100 text-slate-700 border-slate-200';
 
-  const externalUrl = lead.listingUrl ?? lead.planningUrl ?? null;
+  // Only link out to a verified portal/council page; otherwise fall back to an
+  // address search so the founder never lands on a broken or generic page.
+  const propertyLink = resolvePropertyLink({
+    listingUrl: lead.listingUrl,
+    planningUrl: lead.planningUrl,
+    address: lead.address,
+    postcode: lead.postcode,
+  });
 
   // Cap the card to the 2 strongest "why act" signals (plain English) plus a
   // single collapsed risk pill — scanning 200 cards with 7+ pills each is
@@ -591,22 +599,19 @@ function LeadCard({
             >
               View detail →
             </a>
-            {externalUrl && (
-              <a
-                href={externalUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-muted-foreground hover:text-foreground"
-              >
-                {isPlanning
-                  ? 'View planning record ↗'
-                  : externalUrl.includes('rightmove')
-                    ? 'View on Rightmove ↗'
-                    : externalUrl.includes('zoopla')
-                      ? 'View on Zoopla ↗'
-                      : 'View listing ↗'}
-              </a>
-            )}
+            <a
+              href={propertyLink.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-muted-foreground hover:text-foreground"
+              title={
+                propertyLink.isDirect
+                  ? undefined
+                  : 'No verified listing link — searches the address instead'
+              }
+            >
+              {propertyLink.label}
+            </a>
             {lead.estimatedEquityPence && !lead.pricePence && (
               <span className="text-muted-foreground">
                 Est. equity: {formatGBP(lead.estimatedEquityPence)}
