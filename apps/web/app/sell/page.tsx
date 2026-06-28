@@ -87,7 +87,7 @@ function OfferLetter() {
         Bellwoods Lane
       </p>
       <p className="mt-1 text-[11px] text-stone-400 [font-family:var(--font-courier)]">
-        Binding offer &middot; Ref BW-2026-0142
+        Sample &middot; Ref BW-2026-0142
       </p>
       <div className="mt-4 border-t border-[#EAE0D9] pt-3">
         <p className="text-[11px] text-stone-400 [font-family:var(--font-courier)]">
@@ -159,47 +159,41 @@ export default function SellPage() {
       </header>
 
       {/* ————— HERO ————— */}
-      <section className="relative overflow-hidden px-6 pt-24 pb-20 md:px-12 md:pt-28 md:pb-24">
-        <Monogram
-          aria-hidden
-          className="pointer-events-none absolute -right-24 -top-10 h-72 w-auto opacity-[0.05] md:h-[26rem]"
-        />
-        <div className="relative mx-auto max-w-5xl">
-          <Eyebrow>for UK homeowners</Eyebrow>
-          <h1
-            className="mt-7 font-serif font-semibold leading-[0.95] tracking-[-0.03em] text-[#2B2220]"
-            style={{ fontSize: 'clamp(44px, 7vw, 80px)' }}
-          >
-            Sell your home.
-            <br />
-            On your timeline.
-            <br />
-            <span className="italic font-normal text-brand">
-              No fees. No chain. No surprises.
-            </span>
-          </h1>
-          <p className="mt-8 max-w-2xl text-lg leading-relaxed text-stone-600 md:mt-10">
-            We buy UK residential property directly with our own capital. An
-            indicative offer back within 4 business hours, a confirmed price
-            within 24 hours of viewing.{' '}
-            <strong className="font-medium text-[#2B2220]">
-              Completion in weeks not months
-            </strong>{' '}
-            — paced to suit a probate grant or onward move. The price we confirm
-            in writing is the price we complete at.
-          </p>
-
-          <div className="mt-10 flex flex-wrap items-center gap-x-7 gap-y-4">
-            <Button href="#offer">Get a cash offer</Button>
-            <Button href="/instant-offer/methodology" variant="ghost">
-              See how we calculate offers
-            </Button>
+      <section className="relative overflow-hidden px-6 pt-20 pb-20 md:px-12 md:pt-24 md:pb-24">
+        <div className="relative mx-auto grid max-w-6xl items-center gap-12 md:grid-cols-[1.05fr_0.95fr] md:gap-10">
+          <div>
+            <Eyebrow>for UK homeowners</Eyebrow>
+            <h1
+              className="mt-5 font-serif font-bold leading-[1.07] text-[#241C1A]"
+              style={{ fontSize: 'clamp(40px, 5.4vw, 62px)' }}
+            >
+              A real cash offer,
+              <br />
+              <span className="italic font-normal text-brand">in writing.</span>
+            </h1>
+            <p className="mt-6 max-w-md text-[17px] leading-relaxed text-stone-600">
+              An indicative figure in 4 business hours. After we visit, a
+              confirmed, signed price within 24 hours, locked for 72 hours so you
+              can take advice. The price we put in writing is the price we
+              complete at.
+            </p>
+            <div className="mt-8 flex flex-wrap items-center gap-x-6 gap-y-4">
+              <Button href="#offer">Get a cash offer</Button>
+              <Button href="/instant-offer/methodology" variant="ghost">
+                See how we calculate offers
+              </Button>
+            </div>
+            <p className="mt-7 text-[13px] text-stone-500 [font-family:var(--font-courier)]">
+              Every confirmed offer is a signed document like this one.
+            </p>
+            <p className="mt-4 font-serif text-[13px] italic text-stone-500">
+              Property Redress Scheme &middot; HMRC AML supervised &middot; ICO
+              registered &middot; Zero fees
+            </p>
           </div>
-
-          <p className="mt-10 font-serif text-sm italic text-stone-500">
-            Property Redress Scheme (PRS) &middot; HMRC AML supervised &middot;
-            ICO registered &middot; Zero fees
-          </p>
+          <div className="flex justify-center md:justify-end">
+            <OfferLetter />
+          </div>
         </div>
       </section>
 
