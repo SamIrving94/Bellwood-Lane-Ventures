@@ -63,6 +63,7 @@ const CONDITION_VALUES = new Set<ConditionLevel>([
 
 export function DealModelPanel({
   avmPointEstimatePence,
+  avmOfferPence,
   askingPricePence,
   inferredCondition,
   conditionRationale,
@@ -74,6 +75,8 @@ export function DealModelPanel({
   targetCashRoi,
 }: {
   avmPointEstimatePence: number;
+  /** The AVM-derived offer we'd actually make (~20% below market). */
+  avmOfferPence?: number | null;
   askingPricePence: number | null;
   /** Photo-inferred condition (from the vision screener), if any. */
   inferredCondition?: string | null;
@@ -108,9 +111,18 @@ export function DealModelPanel({
   const [targetPct, setTargetPct] = useState<string>(
     String(Math.round((targetCashRoi ?? 0.2) * 100)),
   );
-  // Pre-fill "our offer" with the asking price when we have it.
+  // Pre-fill "our offer" with the offer WE'D make (AVM-derived, ~20% below
+  // market) — never above market value. Falls back to the asking price capped
+  // at the AVM, then blank. Defaulting to a raw asking price above the AVM made
+  // the panel open on a nonsensical "paying above market" loss.
+  const defaultOfferPence =
+    avmOfferPence && avmOfferPence > 0
+      ? avmOfferPence
+      : askingPricePence
+        ? Math.min(askingPricePence, avmPointEstimatePence)
+        : null;
   const [offer, setOffer] = useState<string>(
-    askingPricePence ? String(Math.round(askingPricePence / 100)) : ''
+    defaultOfferPence ? String(Math.round(defaultOfferPence / 100)) : ''
   );
 
   const result = useMemo(

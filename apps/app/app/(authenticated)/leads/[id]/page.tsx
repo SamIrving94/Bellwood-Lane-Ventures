@@ -163,16 +163,50 @@ const LeadDetailPage = async ({
   const hmoLicenceExpiringSoon =
     (hmo?.licenceExpiringSoon as boolean | undefined) ?? false;
 
-  const externalUrl = listingUrl ?? planningUrl ?? null;
-  const externalLabel = listingUrl
-    ? listingUrl.includes('rightmove')
+  // PropertyData listing URLs are outbound REDIRECTS
+  // (propertydata.co.uk/outbound/<portal>/<id>) — linking straight to them dumps
+  // the user on PropertyData, not the portal (bad UX). Resolve to the real
+  // portal URL so "View on Zoopla/Rightmove" actually opens Zoopla/Rightmove.
+  const resolveListingLink = (
+    url: string | null,
+  ): { href: string; label: string } | null => {
+    if (!url) return null;
+    const outbound = url.match(
+      /propertydata\.co\.uk\/outbound\/([a-z]+)\/([^/?#]+)/i,
+    );
+    if (outbound) {
+      const portal = (outbound[1] ?? '').toLowerCase();
+      const id = outbound[2] ?? '';
+      if (portal === 'rightmove')
+        return {
+          href: `https://www.rightmove.co.uk/properties/${id}`,
+          label: 'View on Rightmove',
+        };
+      if (portal === 'zoopla')
+        return {
+          href: `https://www.zoopla.co.uk/for-sale/details/${id}`,
+          label: 'View on Zoopla',
+        };
+      if (portal === 'onthemarket')
+        return {
+          href: `https://www.onthemarket.com/details/${id}/`,
+          label: 'View on OnTheMarket',
+        };
+      return null; // unknown portal — don't send them to PropertyData
+    }
+    const label = url.includes('rightmove')
       ? 'View on Rightmove'
-      : listingUrl.includes('zoopla')
+      : url.includes('zoopla')
         ? 'View on Zoopla'
-        : 'View listing'
-    : planningUrl
-      ? 'View planning record'
-      : null;
+        : url.includes('onthemarket')
+          ? 'View on OnTheMarket'
+          : 'View listing';
+    return { href: url, label };
+  };
+  const resolvedListing = resolveListingLink(listingUrl);
+  const externalUrl = resolvedListing?.href ?? planningUrl ?? null;
+  const externalLabel =
+    resolvedListing?.label ?? (planningUrl ? 'View planning record' : null);
 
   // Always-on research links — constructed from address + postcode so we can
   // jump to Rightmove / Zoopla / Google / Land Registry even when the lead
@@ -646,6 +680,7 @@ const LeadDetailPage = async ({
         {avmFull?.pointEstimatePence ? (
           <DealModelPanel
             avmPointEstimatePence={avmFull.pointEstimatePence}
+            avmOfferPence={avmFull.finalOfferPence ?? null}
             askingPricePence={askingPrice}
             inferredCondition={avmFull.inferredCondition ?? null}
             conditionRationale={avmFull.conditionRationale ?? null}
@@ -805,9 +840,9 @@ const LeadDetailPage = async ({
                       </p>
                     )}
                   </div>
-                ) : listingUrl ? (
+                ) : resolvedListing ? (
                   <a
-                    href={listingUrl}
+                    href={resolvedListing.href}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="mt-2 inline-block text-sm text-blue-700 hover:underline"

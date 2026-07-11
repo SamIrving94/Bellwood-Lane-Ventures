@@ -69,6 +69,16 @@ describe('scoreDealRoi (stage 2)', () => {
     expect(bmv?.points).toBe(25); // ≥20% below market
     expect(roi?.points).toBe(12); // 20–25% cash ROI
   });
+
+  it('gives ZERO credit when asking is above market or the deal loses money', () => {
+    // The "Land and Garages" case: asking 165% above a £264k AVM.
+    const factors = scoreDealRoi({ bmvDiscountPct: -165, cashRoiPct: -36 });
+    const bmv = factors.find((f) => /above market/i.test(f.label));
+    const roi = factors.find((f) => /loss/i.test(f.label));
+    expect(bmv?.points).toBe(0);
+    expect(roi?.points).toBe(0);
+    expect(factors.every((f) => f.points === 0)).toBe(true);
+  });
 });
 
 describe('combineScore — folding appraisal ROI into the score', () => {
