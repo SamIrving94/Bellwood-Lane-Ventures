@@ -32,6 +32,7 @@ import {
 import { fetchProbateGrants } from './probate-data';
 import { fetchGazetteProbateNotices } from './gazette';
 import { matchProbateAddressToSale } from './hmlr-match';
+import { normaliseUkAddress } from './address-normalise';
 import { fetchShortLeaseLeads } from './short-lease';
 import {
   checkEnrichmentHealth,
@@ -699,7 +700,9 @@ export async function runScoutingPipeline(
     sourceErrors.propertydata = 'no scan seeds configured — add full-postcode seeds in /settings/scouting';
   }
 
-  // De-duplicate by address+postcode (case-insensitive).
+  // De-duplicate on the NORMALISED address (house number|street|postcode), so
+  // comma/spacing variants of the same property — "Abbey View, Leeds, LS5" vs
+  // "Abbey View, Leeds LS5" — collapse instead of both showing.
   const seen = new Set<string>();
   const rawGrants = [
     ...hmctsGrants,
@@ -710,7 +713,8 @@ export async function runScoutingPipeline(
     ...dissolvedGrants,
     ...shortLeaseGrants,
   ].filter((g) => {
-    const key = `${g.address.toLowerCase()}|${g.postcode.toLowerCase()}`;
+    const n = normaliseUkAddress(`${g.address}, ${g.postcode}`);
+    const key = n.key || `${g.address.toLowerCase()}|${g.postcode.toLowerCase()}`;
     if (seen.has(key)) return false;
     seen.add(key);
     return true;
