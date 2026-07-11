@@ -70,6 +70,26 @@ describe('scoreDealRoi (stage 2)', () => {
     expect(roi?.points).toBe(12); // 20–25% cash ROI
   });
 
+  it('damps ROI credit on a low-confidence AVM, and removes it at 0 comps', () => {
+    const full = scoreDealRoi({ bmvDiscountPct: 20, cashRoiPct: 22, avmConfidence: 'high', comparableCount: 6 });
+    const low = scoreDealRoi({ bmvDiscountPct: 20, cashRoiPct: 22, avmConfidence: 'low', comparableCount: 1 });
+    const zero = scoreDealRoi({ bmvDiscountPct: 20, cashRoiPct: 22, avmConfidence: 'low', comparableCount: 0 });
+    const sum = (fs) => fs.reduce((s, f) => s + f.points, 0);
+    expect(sum(full)).toBe(37); // 25 + 12
+    expect(sum(low)).toBeLessThan(sum(full)); // ×0.3 damped
+    expect(sum(low)).toBe(Math.round(25 * 0.3) + Math.round(12 * 0.3)); // 8 + 4 = 11
+    expect(sum(zero)).toBe(0); // 0 comps → no credit
+    // and the dampening is shown, not silent
+    expect(low.some((f) => /confidence/i.test(f.label))).toBe(true);
+    expect(zero.some((f) => /0 comps/i.test(f.label))).toBe(true);
+
+    // HMO / large property: house AVM unreliable → no ROI credit even with
+    // good comps + high confidence.
+    const hmo = scoreDealRoi({ bmvDiscountPct: 20, cashRoiPct: 22, avmConfidence: 'high', comparableCount: 6, avmUnreliable: true });
+    expect(sum(hmo)).toBe(0);
+    expect(hmo.some((f) => /hmo/i.test(f.label))).toBe(true);
+  });
+
   it('gives ZERO credit when asking is above market or the deal loses money', () => {
     // The "Land and Garages" case: asking 165% above a £264k AVM.
     const factors = scoreDealRoi({ bmvDiscountPct: -165, cashRoiPct: -36 });

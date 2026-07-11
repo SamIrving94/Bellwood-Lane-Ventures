@@ -377,6 +377,8 @@ export async function runScoutingPipeline(
           daysOnMarket: number | null;
           daysSincePriceChange: number | null;
           preciseAddress: string | null;
+          /** True for non-residential (pub/office/shop/unit) — kept but badged. */
+          commercial?: boolean;
         };
       }> = [];
       for (const seed of allSeeds) {
@@ -385,24 +387,30 @@ export async function runScoutingPipeline(
             radiusMiles: seed.radiusMiles,
           });
           for (const p of properties) {
-            // Skip non-residential / non-dealable listings — land, garages,
-            // new-build plots, development sites — that PropertyData sometimes
-            // returns. They can't be underwritten as a house (the AVM values
-            // them as one → nonsense) and pollute the lead list. Word-boundary
-            // matched so real streets like "Corkland Road" are NOT caught.
             const addrL = p.address.toLowerCase();
             const typeL = (p.propertyType ?? '').toLowerCase();
+            // DROP non-dealable listings — land, garages, new-build plots,
+            // development sites: there's no house to buy / refurb / flip, and the
+            // AVM values them as a house (nonsense). Word-boundary matched so
+            // real streets like "Corkland Road" are NOT caught.
             if (
               /^\s*(plot|land)\b/.test(addrL) ||
               /\bland and garages?\b/.test(addrL) ||
               /\bgarages?\s+(on|at|to|adjacent)\b/.test(addrL) ||
               /\bdevelopment site\b|\bbuilding plot\b/.test(addrL) ||
               typeL.includes('land') ||
-              typeL.includes('garage') ||
-              typeL.includes('commercial')
+              typeL.includes('garage')
             ) {
               continue;
             }
+            // FLAG commercial (pub / bar / office / shop / unit) — keep the lead
+            // (the founder wants to see them) but mark it so the UI can badge it
+            // and it's clear it isn't a standard residential deal.
+            const commercial =
+              typeL.includes('commercial') ||
+              /\b(pub|bar|tavern|inn|brewery|brewdog|restaurant|cafe|café|office|shop|retail|unit|warehouse|industrial|licensed premises|public house)\b/.test(
+                addrL,
+              );
             all.push({
               probateRef: `pd-${seed.label}-${p.id ?? p.address.slice(0, 16).replace(/\s+/g, '_')}`,
               address: p.address,
@@ -430,6 +438,7 @@ export async function runScoutingPipeline(
                 daysOnMarket: p.daysOnMarket,
                 daysSincePriceChange: p.daysSincePriceChange,
                 preciseAddress: p.preciseAddress,
+                commercial,
               },
             });
           }

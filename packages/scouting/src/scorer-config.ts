@@ -75,6 +75,13 @@ export interface ScorerConfig {
   equityBands: EquityBand[];
   equityNoComparable: number;
 
+  /**
+   * Confidence gate on the ROI pillar. A thin/low-confidence AVM makes the BMV
+   * discount and cash ROI unreliable, so its credit is multiplied down (and a
+   * 0-comp AVM earns none) — this stops a lead reading STRONG off one comp.
+   */
+  roiConfidenceMultiplier: { high: number; medium: number; low: number };
+
   // ── Modifiers ─────────────────────────────────────────────────────────
   marketTrend: { rising: number; stable: number; declining: number; unknown: number };
 
@@ -152,6 +159,8 @@ export const DEFAULT_SCORER_CONFIG: ScorerConfig = {
   ],
   equityNoComparable: 4,
 
+  roiConfidenceMultiplier: { high: 1, medium: 0.6, low: 0.3 },
+
   // Modifiers
   marketTrend: { rising: 10, stable: 6, declining: 3, unknown: 5 },
 
@@ -213,6 +222,7 @@ export function mergeScorerConfig(raw: unknown): ScorerConfig {
   const caps = isRecord(raw.dimensionCaps) ? raw.dimensionCaps : {};
   const mt = isRecord(raw.marketTrend) ? raw.marketTrend : {};
   const vt = isRecord(raw.verdictThresholds) ? raw.verdictThresholds : {};
+  const rcm = isRecord(raw.roiConfidenceMultiplier) ? raw.roiConfidenceMultiplier : {};
 
   return {
     dimensionCaps: {
@@ -239,6 +249,11 @@ export function mergeScorerConfig(raw: unknown): ScorerConfig {
     roiBands: mergeBands(raw.roiBands, d.roiBands),
     equityBands: mergeBands(raw.equityBands, d.equityBands),
     equityNoComparable: num(raw.equityNoComparable, d.equityNoComparable),
+    roiConfidenceMultiplier: {
+      high: num(rcm.high, d.roiConfidenceMultiplier.high),
+      medium: num(rcm.medium, d.roiConfidenceMultiplier.medium),
+      low: num(rcm.low, d.roiConfidenceMultiplier.low),
+    },
     marketTrend: {
       rising: num(mt.rising, d.marketTrend.rising),
       stable: num(mt.stable, d.marketTrend.stable),

@@ -109,6 +109,17 @@ function syntheticPricePaid(postcode: string): PricePaid {
 // Helpers
 // ---------------------------------------------------------------------------
 
+/**
+ * Normalise any parseable date string to ISO YYYY-MM-DD. HMLR's linked-data
+ * `transactionDate` can arrive as an RFC string ("Fri, 15 Nov 2024"); this
+ * keeps every stored/displayed comp date in a clean, sortable ISO form.
+ */
+export function toIsoDate(raw: unknown): string {
+  if (typeof raw !== 'string' || !raw) return '';
+  const t = Date.parse(raw);
+  return Number.isNaN(t) ? raw : new Date(t).toISOString().slice(0, 10);
+}
+
 export function calcAvgPrice(transactions: PpdTransaction[]): number | null {
   if (!transactions.length) return null;
   return Math.round(
@@ -189,10 +200,7 @@ async function fetchPricePaidLive(
 
   const transactions: PpdTransaction[] = items.map((t) => ({
     price: (t.pricePaid as number | undefined) ?? (t.price as number) ?? 0,
-    date:
-      (t.transactionDate as string | undefined) ??
-      (t.date as string | undefined) ??
-      '',
+    date: toIsoDate(t.transactionDate ?? t.date),
     propertyType: extractLinkedDataValue(t.propertyType) ?? 'unknown',
     newBuild: t.newBuild === 'Y' || t.newBuild === true,
     tenure:
@@ -292,10 +300,7 @@ export async function getPricePaidWithAddresses(
       const { address, postcode: pc } = buildAddress(t.propertyAddress);
       return {
         price: (t.pricePaid as number | undefined) ?? (t.price as number) ?? 0,
-        date:
-          (t.transactionDate as string | undefined) ??
-          (t.date as string | undefined) ??
-          '',
+        date: toIsoDate(t.transactionDate ?? t.date),
         address,
         postcode: pc,
         propertyType: extractLinkedDataValue(t.propertyType) ?? 'unknown',

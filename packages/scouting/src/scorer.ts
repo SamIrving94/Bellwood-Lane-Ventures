@@ -89,6 +89,16 @@ export interface DealRoiInput {
   bmvDiscountPct?: number | null;
   /** Deal-model cash ROI as a percent (e.g. 22 = 22%). */
   cashRoiPct?: number | null;
+  /** AVM confidence — gates the ROI credit (a thin AVM makes BMV/ROI unreliable). */
+  avmConfidence?: 'high' | 'medium' | 'low' | null;
+  /** Number of comps behind the AVM. 0 → no ROI credit (the AVM is a guess). */
+  comparableCount?: number | null;
+  /**
+   * The house-price AVM can't value this property (e.g. a 5+ bed HMO / multi-let,
+   * which needs a £/room or yield basis). When true the ROI pillar earns no
+   * credit — a house AVM's BMV/ROI on an HMO is meaningless.
+   */
+  avmUnreliable?: boolean;
 }
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -266,6 +276,23 @@ export function scoreDealRoi(
 ): ScoreFactor[] {
   const factors: ScoreFactor[] = [];
 
+  // Confidence gate: BMV + cash ROI both rest on the AVM, so a thin/low-
+  // confidence AVM makes them unreliable. Damp the credit accordingly — and a
+  // 0-comp AVM (a fallback guess) earns NONE. This stops a lead reading STRONG
+  // off a single comparable.
+  const conf = input.avmConfidence ?? null;
+  const unreliable =
+    input.comparableCount === 0 || input.avmUnreliable === true;
+  const mult = unreliable
+    ? 0
+    : conf
+      ? (config.roiConfidenceMultiplier[conf] ?? 1)
+      : 1;
+  const damp = (pts: number) => Math.round(pts * mult);
+  // Track whether there WAS a credit to damp, so the dampening note fires even
+  // when the multiplier zeroes it out (0 comps) — never a silent haircut.
+  let hadCredit = false;
+
   if (typeof input.bmvDiscountPct === 'number') {
     if (input.bmvDiscountPct < 0) {
       // Asking is ABOVE the modelled market value — no BMV credit. (pickBand
@@ -280,8 +307,9 @@ export function scoreDealRoi(
       );
     } else {
       const band = pickBand(config.bmvBands, input.bmvDiscountPct);
-      if (band) {
-        add(factors, `${band.label} (${input.bmvDiscountPct.toFixed(0)}% BMV)`, band.points, 'roi', 'positive');
+      if (band && band.points > 0) {
+        hadCredit = true;
+        add(factors, `${band.label} (${input.bmvDiscountPct.toFixed(0)}% BMV)`, damp(band.points), 'roi', 'positive');
       }
     }
   }
@@ -292,11 +320,23 @@ export function scoreDealRoi(
     } else {
       const band = pickBand(config.roiBands, input.cashRoiPct);
       if (band && band.points > 0) {
-        add(factors, `${band.label} (${input.cashRoiPct.toFixed(0)}%)`, band.points, 'roi', 'positive');
+        hadCredit = true;
+        add(factors, `${band.label} (${input.cashRoiPct.toFixed(0)}%)`, damp(band.points), 'roi', 'positive');
       } else {
         add(factors, `Cash ROI ${input.cashRoiPct.toFixed(0)}% — below hurdle`, 0, 'roi', 'neutral');
       }
     }
+  }
+
+  // Transparency: surface the confidence dampening so the founder sees WHY the
+  // ROI credit was reduced (never a silent haircut) — even when it's zeroed.
+  if (mult < 1 && hadCredit) {
+    const reason = input.avmUnreliable
+      ? 'Large/HMO property — house AVM unreliable, ROI not credited'
+      : input.comparableCount === 0
+        ? 'AVM has 0 comps — ROI credit removed (unreliable)'
+        : `AVM confidence ${conf ?? 'low'} — ROI credit ×${mult}`;
+    add(factors, reason, 0, 'roi', 'neutral');
   }
   return factors;
 }

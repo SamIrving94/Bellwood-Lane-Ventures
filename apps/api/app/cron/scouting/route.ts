@@ -2,7 +2,7 @@ import { env } from '@/env';
 import { database, Prisma } from '@repo/database';
 import { mergeScorerConfig, runScoutingPipeline } from '@repo/scouting';
 import { getPropertySnapshot } from '@repo/property-data/src/propertydata';
-import { NextResponse } from 'next/server';
+import { NextResponse, after } from 'next/server';
 import { recordCronHeartbeat } from '../_lib/heartbeat';
 
 // Snapshot enrichment is slow (~27s per unique postcode). Allow more time
@@ -498,6 +498,22 @@ export const POST = async (request: Request) => {
       );
     }
   }
+
+  // Auto-appraise right after scouting: kick the appraiser as a follow-up so
+  // fresh leads get their AVM / BMV / ROI (and stop looking uniformly mediocre
+  // in the sourcing-only state) without waiting for the scheduled appraise cron.
+  // Runs AFTER the response is sent (Next `after`), on a separate invocation, so
+  // it never delays or fails the scout run that already completed above.
+  after(async () => {
+    try {
+      const origin = new URL(request.url).origin;
+      await fetch(`${origin}/cron/lead-appraise`, {
+        headers: { Authorization: `Bearer ${env.CRON_SECRET}` },
+      });
+    } catch (err) {
+      console.warn('[cron/scouting] auto-appraise trigger failed', err);
+    }
+  });
 
   return NextResponse.json({
     success: true,
