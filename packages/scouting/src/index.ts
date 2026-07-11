@@ -31,6 +31,7 @@ import {
 
 import { fetchProbateGrants } from './probate-data';
 import { fetchGazetteProbateNotices } from './gazette';
+import { matchProbateAddressToSale } from './hmlr-match';
 import { fetchShortLeaseLeads } from './short-lease';
 import {
   checkEnrichmentHealth,
@@ -65,6 +66,15 @@ function mostCommon<T extends string>(items: T[]): T | null {
 
 export { fetchProbateGrants } from './probate-data';
 export { fetchGazetteProbateNotices } from './gazette';
+export { matchProbateAddressToSale } from './hmlr-match';
+export type { ProbateSaleMatch } from './hmlr-match';
+export {
+  normaliseUkAddress,
+  addressMatchScore,
+  classifyConfidence,
+  extractPostcode,
+} from './address-normalise';
+export type { NormalisedAddress, MatchConfidence } from './address-normalise';
 export { fetchShortLeaseLeads } from './short-lease';
 export type {
   ShortLeaseSeed,
@@ -76,7 +86,13 @@ export {
   enrichLeads,
   summariseEnrichment,
 } from './enrichment';
-export { scoreLead } from './scorer';
+export { scoreLead, scoreDealRoi, combineScore } from './scorer';
+export type {
+  ScoreFactor,
+  ScoreDimension,
+  ScoreBreakdown,
+  DealRoiInput,
+} from './scorer';
 export {
   DEFAULT_SCORER_CONFIG,
   mergeScorerConfig,
@@ -91,7 +107,7 @@ export type {
   EnrichmentHealth,
   EnrichmentSummary,
 } from './enrichment';
-export type { ScoreBreakdown, Verdict } from './scorer';
+export type { Verdict } from './scorer';
 
 // ---------------------------------------------------------------------------
 // ScoutLead — matches packages/database/prisma/schema.prisma ScoutLead model
@@ -883,13 +899,16 @@ export async function runScoutingPipeline(
           riskFlags: breakdown.riskFlags,
           rationale: breakdown.rationale,
           scoreFactors: breakdown.factors,
+          leadingIndicator: breakdown.leadingIndicator,
           scoreBreakdown: {
-            motivation: breakdown.motivation,
-            equity: breakdown.equity,
+            acquisition: breakdown.acquisition,
+            roi: breakdown.roi,
             marketTrend: breakdown.marketTrend,
-            contactQuality: breakdown.contactQuality,
             risk: breakdown.risk,
             total: breakdown.total,
+            // false at sourcing; the appraisal stage folds in real ROI and
+            // flips this true (see combineScore in scorer.ts).
+            appraised: breakdown.appraised,
           },
         };
       }
@@ -909,6 +928,23 @@ export async function runScoutingPipeline(
         });
         if (llmRationale) {
           enrichedRaw = { ...enrichedRaw, rationaleLlm: llmRationale };
+        }
+      }
+
+      // Probate leads: attach the deceased property's REAL last sale from
+      // HM Land Registry, matched to this exact address with a confidence
+      // score. Best-effort + real-data-only (returns confidence 'none' when
+      // it can't pin a sale) so it never blocks or fabricates. HMLR is cached
+      // per postcode inside the matcher, so many leads in one area = one call.
+      if (lead.leadType === 'probate' && enrichedRaw) {
+        try {
+          const probateMatch = await matchProbateAddressToSale({
+            address: lead.address,
+            postcode: lead.postcode,
+          });
+          enrichedRaw = { ...enrichedRaw, probateMatch };
+        } catch {
+          // Never block a lead on the Land Registry match.
         }
       }
 

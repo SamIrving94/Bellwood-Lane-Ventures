@@ -43,7 +43,7 @@ describe('scorer — short-lease marriage-value motivation', () => {
       f.label.includes('Short lease motivates sale')
     );
     expect(factor).toBeDefined();
-    expect(factor?.dimension).toBe('motivation');
+    expect(factor?.dimension).toBe('acquisition');
     expect(factor?.points).toBeGreaterThan(0);
   });
 
@@ -64,7 +64,7 @@ describe('scorer — short-lease marriage-value motivation', () => {
       ...shortLeaseSignals,
       leaseUrgency: 1,
     });
-    expect(high.motivation).toBeGreaterThan(low.motivation);
+    expect(high.acquisition).toBeGreaterThan(low.acquisition);
   });
 
   it('does NOT add the bonus for an ordinary lead without the flag', () => {

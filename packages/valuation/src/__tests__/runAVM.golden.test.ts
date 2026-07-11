@@ -26,6 +26,7 @@ vi.mock('@repo/property-data', () => ({
   getHousepriceIndex: vi.fn(),
   getEpcData: vi.fn(),
   getPropertyDataValuation: vi.fn(),
+  getPropertyFloorArea: vi.fn(),
   // Distance-weighted path dependencies. These golden tests lock the
   // Land-Registry fallback math, so we disable the distance path by making
   // the subject ungeocodable (geocodePostcode → null). getSoldPrices is also
@@ -42,6 +43,7 @@ const {
   getHousepriceIndex,
   getEpcData,
   getPropertyDataValuation,
+  getPropertyFloorArea,
   geocodePostcode,
   geocodePostcodes,
   getSoldPrices,
@@ -58,6 +60,8 @@ function applyScenario(scn: {
   vi.mocked(getHousepriceIndex).mockResolvedValue(scn.hpi as never);
   vi.mocked(getEpcData).mockResolvedValue(scn.epc as never);
   vi.mocked(getPropertyDataValuation).mockResolvedValue(scn.externalAvm as never);
+  // No verified per-property floor area in the golden scenarios (real-or-null).
+  vi.mocked(getPropertyFloorArea).mockResolvedValue(null as never);
   // Disable the distance path for the golden (HMLR fallback) scenarios.
   vi.mocked(geocodePostcode).mockResolvedValue(null as never);
   vi.mocked(geocodePostcodes).mockResolvedValue(new Map() as never);
@@ -151,12 +155,11 @@ describe('runAVM — Scenario 3: Probate with no comps + flood zone 2', () => {
 
     // No comps → 0 comparableCount.
     expect(r.comparableCount).toBe(0);
-    // KNOWN WEAKNESS: when comps are absent, the hedonic estimate falls back
-    // to the CSA value, so the spread between them is zero and calcConfidence
-    // reports 'high'. The AVM should down-rate confidence on low comp count;
-    // tracked as a follow-up. Asserting current behaviour here so the golden
-    // doesn't drift silently.
-    expect(['high', 'medium', 'low']).toContain(r.confidenceLevel);
+    // FIXED: confidence is now ceiling-capped by comp volume, so a valuation
+    // with no nearby sales can never read better than 'low' — regardless of how
+    // well the hedonic and CSA estimates happen to agree. (~4 sales within half
+    // a mile are required for 'high'.)
+    expect(r.confidenceLevel).toBe('low');
 
     // Fallback uses area avg × terraced type discount (0.85). With avgPrice
     // 260k that lands the AVM around £220k. Allow a wide ±15% band.
@@ -173,5 +176,46 @@ describe('runAVM — Scenario 3: Probate with no comps + flood zone 2', () => {
 
     // No EPC data → epcRating is null
     expect(r.epcRating).toBeNull();
+  });
+});
+
+describe('runAVM — confidence is capped by comp volume', () => {
+  // The reported bug: a valuation resting on a SINGLE sold comp was reading
+  // 'high' because the hedonic and CSA estimates trivially agreed. Confidence
+  // must be ceiling-capped by how many nearby sales back the estimate.
+  const SINGLE_COMP = {
+    ...SCENARIO_NORMAL_TERRACED,
+    pricePaid: {
+      ...SCENARIO_NORMAL_TERRACED.pricePaid,
+      transactions: SCENARIO_NORMAL_TERRACED.pricePaid.transactions.slice(0, 1),
+    },
+  };
+  const THREE_COMPS = {
+    ...SCENARIO_NORMAL_TERRACED,
+    pricePaid: {
+      ...SCENARIO_NORMAL_TERRACED.pricePaid,
+      transactions: SCENARIO_NORMAL_TERRACED.pricePaid.transactions.slice(0, 3),
+    },
+  };
+
+  it('one comp → low confidence, never high', async () => {
+    applyScenario(SINGLE_COMP);
+    const r = (await runAVM({ postcode: 'M14 5AB', propertyType: 'terraced', sellerType: 'standard' })).resultJson;
+    expect(r.comparableCount).toBe(1);
+    expect(r.confidenceLevel).toBe('low');
+  });
+
+  it('three comps → at most medium', async () => {
+    applyScenario(THREE_COMPS);
+    const r = (await runAVM({ postcode: 'M14 5AB', propertyType: 'terraced', sellerType: 'standard' })).resultJson;
+    expect(r.comparableCount).toBe(3);
+    expect(r.confidenceLevel).toBe('medium');
+  });
+
+  it('a full comp set (12) can reach high', async () => {
+    applyScenario(SCENARIO_NORMAL_TERRACED);
+    const r = (await runAVM({ postcode: 'M14 5AB', propertyType: 'terraced', sellerType: 'standard' })).resultJson;
+    expect(r.comparableCount).toBeGreaterThanOrEqual(4);
+    expect(r.confidenceLevel).toBe('high');
   });
 });

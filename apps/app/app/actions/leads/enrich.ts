@@ -5,12 +5,15 @@ import { auth } from '@repo/auth/server';
 import { database, Prisma } from '@repo/database';
 import { getPropertySnapshot } from '@repo/property-data/src/propertydata';
 import {
+  type ConditionLevel,
+  appraiseDealFromAvm,
   estimateRefurb,
   mapVisualConditionToLevel,
   mergeOfferConfig,
   mergeValuationConfig,
   runAVM,
 } from '@repo/valuation';
+import { type ScoreFactor, type Verdict, combineScore } from '@repo/scouting';
 import { VALUATION_CONFIG_KEY } from '@/app/actions/valuation-config/constants';
 import { revalidatePath } from 'next/cache';
 
@@ -113,10 +116,14 @@ export async function enrichLeadById(leadId: string): Promise<{
 
   let avmFull: Record<string, unknown> | null = null;
   try {
+    // Prefer a precise (house-numbered) address when the listing gave one —
+    // it lets the AVM match the exact EPC floor-area record for this house.
+    const preciseAddress =
+      typeof pd?.preciseAddress === 'string' ? (pd.preciseAddress as string) : null;
     const avm = await runAVM({
       postcode: lead.postcode,
       propertyType: avmPropertyType as never,
-      address: lead.address,
+      address: preciseAddress ?? lead.address,
       bedrooms,
       sellerType: avmSellerType as never,
       offerConfig,
@@ -134,10 +141,13 @@ export async function enrichLeadById(leadId: string): Promise<{
       offerDiscountPct,
       confidenceLevel: r.confidenceLevel ?? null,
       comparableCount: r.comparableCount ?? null,
+      comparables: r.comparables ?? [],
       requiresReview: Boolean(r.requiresCeoEscalation || r.discountCapped),
       riskScore: avm.riskScore,
       assumedPropertyType: normalised ? null : avmPropertyType, // flag a guess
       floorAreaSqm: r.floorAreaSqm ?? null,
+      floorAreaSource: r.floorAreaSource ?? null,
+      resolvedAddress: r.resolvedAddress ?? null,
       fetchedAt: new Date().toISOString(),
     };
   } catch {
@@ -199,6 +209,60 @@ export async function enrichLeadById(leadId: string): Promise<{
     avmFull.refurbAssumedFloorArea = refurb.assumedFloorArea;
   }
 
+  // ── Stage-2 scoring: fold the appraisal's ROI into the lead score ──
+  // Mirrors the lead-appraise cron: replace the sourcing score's provisional
+  // ROI proxy with the real BMV discount (asking vs AVM) + deal-model cash ROI.
+  // Best-effort; factor labels carry the inputs so every point is traceable.
+  const scoreUpdate: { leadScore?: number; verdict?: Verdict } = {};
+  if (avmFull) {
+    try {
+      const askingPence =
+        typeof pd?.pricePence === 'number' ? (pd.pricePence as number) : null;
+      const avmPoint = avmFull.pointEstimatePence as number;
+      const bmvDiscountPct =
+        askingPence && avmPoint > 0
+          ? ((avmPoint - askingPence) / avmPoint) * 100
+          : null;
+      const deal = appraiseDealFromAvm({
+        avmPointEstimatePence: avmPoint,
+        conditionLevel:
+          (avmFull.inferredCondition as ConditionLevel | null) ?? undefined,
+        refurbPence: (avmFull.refurbEstimatePence as number) ?? 0,
+        offerPence: (avmFull.finalOfferPence as number) ?? undefined,
+      });
+      const cashRoiPct = deal.appraisal ? deal.appraisal.cash.roi * 100 : null;
+
+      const baseFactors =
+        (raw.scoreFactors as ScoreFactor[] | undefined) ?? [];
+      if (baseFactors.length > 0) {
+        const combined = combineScore(
+          baseFactors,
+          { bmvDiscountPct, cashRoiPct },
+          {
+            hasCriticalData: true,
+            marketTrendLabel: lead.marketTrend ?? 'unknown',
+            riskFlags: (raw.riskFlags as string[] | undefined) ?? [],
+          },
+        );
+        raw.scoreFactors = combined.factors;
+        raw.rationale = combined.rationale;
+        raw.leadingIndicator = combined.leadingIndicator;
+        raw.scoreBreakdown = {
+          acquisition: combined.acquisition,
+          roi: combined.roi,
+          marketTrend: combined.marketTrend,
+          risk: combined.risk,
+          total: combined.total,
+          appraised: true,
+        };
+        scoreUpdate.leadScore = combined.total;
+        scoreUpdate.verdict = combined.verdict;
+      }
+    } catch (err) {
+      console.warn('[enrich] stage-2 scoring failed', leadId, err);
+    }
+  }
+
   const updatedRaw = {
     ...raw,
     snapshot,
@@ -207,7 +271,7 @@ export async function enrichLeadById(leadId: string): Promise<{
 
   await database.scoutLead.update({
     where: { id: leadId },
-    data: { rawPayload: updatedRaw as Prisma.InputJsonValue },
+    data: { ...scoreUpdate, rawPayload: updatedRaw as Prisma.InputJsonValue },
   });
 
   revalidatePath(`/leads/${leadId}`);

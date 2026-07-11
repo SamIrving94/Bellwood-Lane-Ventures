@@ -1,0 +1,91 @@
+import { describe, expect, it } from 'vitest';
+import type { EnrichedLead } from '../enrichment';
+import {
+  combineScore,
+  type LeadSignals,
+  scoreDealRoi,
+  scoreLead,
+} from '../scorer';
+
+function probateLead(overrides: Partial<EnrichedLead> = {}): EnrichedLead {
+  return {
+    probateRef: 'gazette-1',
+    address: '12 Sevenoaks Avenue',
+    postcode: 'SK4 4AP',
+    leadType: 'probate',
+    grantDate: '2026-06-01',
+    grantType: 'probate',
+    daysSinceGrant: 5,
+    goldenWindowLabel: 'hot',
+    solicitorFirm: 'Acme Law',
+    estateValuePence: 75_000_000,
+    contactName: null,
+    contactPhone: null,
+    contactEmail: null,
+    enrichmentTier: 3,
+    sourceTrail: 'gazette → tier3/manual',
+    ...overrides,
+  };
+}
+
+describe('scorer — two-pillar model', () => {
+  it('no longer awards a "hot probate window" bonus', () => {
+    const b = scoreLead(probateLead(), null, null, {});
+    expect(b.factors.some((f) => /probate window/i.test(f.label))).toBe(false);
+  });
+
+  it('scores acquisition from lead type + days on market + condition', () => {
+    const signals: LeadSignals = {
+      listingType: 'unmodernised-properties',
+      daysOnMarket: 120,
+    };
+    const b = scoreLead(probateLead(), null, null, signals);
+    // probate (20) + on-market 90+ (8) + unmodernised (10) = 38, capped ≤45.
+    expect(b.acquisition).toBeGreaterThanOrEqual(30);
+    expect(b.factors.some((f) => f.dimension === 'acquisition' && /unmodernised/i.test(f.label))).toBe(true);
+    expect(b.factors.some((f) => /on market/i.test(f.label))).toBe(true);
+  });
+
+  it('is not appraised at sourcing and marks ROI provisional', () => {
+    const b = scoreLead(probateLead(), { avgPrice: 500_000 } as never, null, {});
+    expect(b.appraised).toBe(false);
+    const roiFactor = b.factors.find((f) => f.dimension === 'roi');
+    expect(roiFactor?.provisional).toBe(true);
+  });
+
+  it('exposes the single biggest driver as the leading indicator', () => {
+    const b = scoreLead(probateLead(), null, null, { listingType: 'unmodernised-properties' });
+    expect(b.leadingIndicator).not.toBeNull();
+    // Probate (20) is the biggest single factor here.
+    expect(b.leadingIndicator?.points).toBe(20);
+  });
+});
+
+describe('scoreDealRoi (stage 2)', () => {
+  it('bands the BMV discount and cash ROI', () => {
+    const factors = scoreDealRoi({ bmvDiscountPct: 20, cashRoiPct: 22 });
+    const bmv = factors.find((f) => /BMV/i.test(f.label));
+    const roi = factors.find((f) => /Cash ROI/i.test(f.label));
+    expect(bmv?.points).toBe(25); // ≥20% below market
+    expect(roi?.points).toBe(12); // 20–25% cash ROI
+  });
+});
+
+describe('combineScore — folding appraisal ROI into the score', () => {
+  it('replaces the provisional proxy with real ROI and flips appraised', () => {
+    const sourcing = scoreLead(probateLead(), { avgPrice: 500_000 } as never, null, {
+      listingType: 'unmodernised-properties',
+      daysOnMarket: 120,
+    });
+    const combined = combineScore(sourcing.factors, { bmvDiscountPct: 20, cashRoiPct: 22 }, {
+      hasCriticalData: true,
+    });
+    expect(combined.appraised).toBe(true);
+    // No provisional ROI factors survive.
+    expect(combined.factors.some((f) => f.provisional)).toBe(false);
+    // Real ROI pillar now contributes (25 + 12 capped at 40 = 37).
+    expect(combined.roi).toBe(37);
+    // Total went up vs the provisional sourcing score.
+    expect(combined.total).toBeGreaterThan(sourcing.total);
+  });
+});

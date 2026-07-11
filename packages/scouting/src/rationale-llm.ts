@@ -77,7 +77,8 @@ export async function enrichRationaleWithLlm(
 
   const lines: string[] = [
     `Verdict: ${breakdown.verdict} (${breakdown.total}/100)`,
-    `Motivation: ${breakdown.motivation} / Equity: ${breakdown.equity} / Trend: ${breakdown.marketTrend} (${breakdown.marketTrendLabel}) / Contact: ${breakdown.contactQuality} / Risk: ${breakdown.risk}`,
+    `Acquisition: ${breakdown.acquisition} / ROI: ${breakdown.roi}${breakdown.appraised ? '' : ' (provisional)'} / Trend: ${breakdown.marketTrend} (${breakdown.marketTrendLabel}) / Risk: ${breakdown.risk}`,
+    breakdown.leadingIndicator ? `Leading indicator: ${breakdown.leadingIndicator.label}` : '',
     `Top positives: ${positives || '(none)'}`,
     `Top negatives: ${negatives || '(none)'}`,
   ];

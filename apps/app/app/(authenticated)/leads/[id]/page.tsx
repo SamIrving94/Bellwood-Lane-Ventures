@@ -80,7 +80,7 @@ const LeadDetailPage = async ({
   const lease = raw.leaseSignal as Record<string, unknown> | undefined;
   const riskFlags = (raw.riskFlags as string[] | undefined) ?? [];
   const scoreBreakdown = raw.scoreBreakdown as
-    | Record<string, number>
+    | (Record<string, number> & { appraised?: boolean })
     | undefined;
   const rationale = (raw.rationale as string | undefined) ?? null;
   type ScoreFactor = {
@@ -88,7 +88,10 @@ const LeadDetailPage = async ({
     points: number;
     dimension: string;
     tone?: 'positive' | 'negative' | 'neutral';
+    provisional?: boolean;
   };
+  // The single biggest driver — shown as the headline "why" (transparency).
+  const leadingIndicator = raw.leadingIndicator as ScoreFactor | null | undefined;
   const scoreFactors =
     (raw.scoreFactors as ScoreFactor[] | undefined) ?? [];
   const positiveFactors = scoreFactors
@@ -101,10 +104,9 @@ const LeadDetailPage = async ({
     (f) => f.points === 0 && f.tone === 'neutral',
   );
   const DIMENSION_LABELS: Record<string, string> = {
-    motivation: 'Motivation',
-    equity: 'Equity',
+    acquisition: 'Acquisition likelihood',
+    roi: 'ROI / deal quality',
     marketTrend: 'Market',
-    contactQuality: 'Contact',
     risk: 'Risk',
   };
 
@@ -127,8 +129,14 @@ const LeadDetailPage = async ({
   const daysOnMarket = (pd?.daysOnMarket as number | undefined) ?? null;
   const daysSincePriceChange =
     (pd?.daysSincePriceChange as number | undefined) ?? null;
+  // Best available house-level address. The listing's preciseAddress wins;
+  // otherwise the EPC floor-area match (resolvedAddress) carries the house
+  // number the AVM locked the size to. Falls back to the street-only address.
   const preciseAddress =
-    (pd?.preciseAddress as string | undefined) ?? null;
+    (pd?.preciseAddress as string | undefined) ??
+    ((raw.avmFull as { resolvedAddress?: string | null } | undefined)
+      ?.resolvedAddress ??
+      null);
   const listingType = (pd?.listingType as string | undefined) ?? null;
   const listingUrl = (pd?.listingUrl as string | undefined) ?? null;
 
@@ -302,9 +310,26 @@ const LeadDetailPage = async ({
     offerDiscountPct: number | null;
     confidenceLevel: string | null;
     comparableCount: number | null;
+    /** The sold comps that drove the AVM (address/price/date/distance). */
+    comparables?: {
+      address: string | null;
+      postcode: string | null;
+      soldPricePence: number;
+      adjustedPricePence: number;
+      date: string;
+      monthsAgo: number;
+      distanceMiles: number | null;
+    }[];
     requiresReview: boolean;
     riskScore: number | null;
     assumedPropertyType: string | null;
+    /** Verified internal floor area (m²) + where it came from. */
+    floorAreaSqm?: number | null;
+    floorAreaSource?: 'caller' | 'propertydata' | null;
+    /** EPC-matched address for the size (carries the house number). */
+    resolvedAddress?: string | null;
+    /** True when refurb used a default size because none was verified. */
+    refurbAssumedFloorArea?: boolean | null;
     fetchedAt: string;
     /** Photo-inferred condition (deal-model level) + the vision read. */
     inferredCondition?: string | null;
@@ -452,6 +477,23 @@ const LeadDetailPage = async ({
                     <span className="font-medium">{daysOnMarket}d</span>
                   </div>
                 )}
+                {/* Floor area — verified real size only. No verified size ⇒
+                    say so rather than show a fabricated/assumed number. */}
+                <div>
+                  <span className="text-muted-foreground">Floor area: </span>
+                  {avmFull?.floorAreaSource && avmFull.floorAreaSqm ? (
+                    <span className="font-medium">
+                      {Math.round(avmFull.floorAreaSqm)} m²
+                      <span className="ml-1 text-[11px] text-muted-foreground">
+                        (EPC{avmFull.floorAreaSource === 'caller' ? ', entered' : ''})
+                      </span>
+                    </span>
+                  ) : (
+                    <span className="font-medium text-muted-foreground">
+                      not verified
+                    </span>
+                  )}
+                </div>
               </div>
 
               {/* Score + verdict block */}
@@ -590,6 +632,17 @@ const LeadDetailPage = async ({
         )}
 
         {/* ── DEAL MODEL — bottom-up ROI, GDV auto-derived from the AVM ── */}
+        {/* No verified floor area ⇒ the refurb is built on a default size, so
+            the ROI is indicative only. Flag it plainly rather than presenting
+            an assumed-size refurb as fact. */}
+        {avmFull?.pointEstimatePence && avmFull.refurbAssumedFloorArea ? (
+          <div className="mt-4 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm">
+            <span className="font-semibold">⚠ Floor area not verified.</span>{' '}
+            No EPC size matched this property, so the refurb uses a default area
+            — treat the refurb and ROI below as indicative until the real size
+            is confirmed.
+          </div>
+        ) : null}
         {avmFull?.pointEstimatePence ? (
           <DealModelPanel
             avmPointEstimatePence={avmFull.pointEstimatePence}
@@ -603,6 +656,85 @@ const LeadDetailPage = async ({
             conditionDiscounts={valuationConfig.conditionDiscounts}
             targetCashRoi={valuationConfig.targetCashRoi}
           />
+        ) : null}
+
+        {/* ── COMPARABLES GUIDING THE AVM ────────────────────────────────
+            The actual sold comps behind the market-value estimate, so the
+            founder can sanity-check (and click through to verify) every one.
+            Distance comps carry address + how far from the subject; the HMLR
+            fallback path has price/date only. */}
+        {avmFull?.comparables && avmFull.comparables.length > 0 ? (
+          <div className="mt-4 rounded-xl border bg-card p-5">
+            <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+              Comparables guiding the AVM
+            </p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              {avmFull.comparables.length} sold{' '}
+              {avmFull.comparables.length === 1 ? 'comp' : 'comps'} behind the{' '}
+              {formatGBP(avmFull.pointEstimatePence ?? 0)} market value.
+              {avmFull.comparables.some((c) => c.monthsAgo != null) && (
+                <> Prices shown as sold, then time-adjusted to today.</>
+              )}
+            </p>
+            <table className="mt-3 w-full text-sm">
+              <thead className="border-b">
+                <tr className="text-left text-[11px] uppercase text-muted-foreground">
+                  <th className="py-2 font-medium">Address</th>
+                  <th className="py-2 text-right font-medium">Sold</th>
+                  <th className="py-2 text-right font-medium">Adj.</th>
+                  <th className="py-2 text-right font-medium">Date</th>
+                  <th className="py-2 text-right font-medium">Dist.</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y">
+                {avmFull.comparables.map((c, i) => {
+                  // Link the comp to its sold record where we can pinpoint it.
+                  const pc = c.postcode?.replace(/\s+/g, '');
+                  const href = pc
+                    ? `https://www.rightmove.co.uk/house-prices/${pc}.html`
+                    : c.address
+                      ? `https://www.google.com/search?q=${encodeURIComponent(`${c.address} sold price`)}`
+                      : null;
+                  const label = c.address ?? c.postcode ?? 'Address withheld (HMLR)';
+                  return (
+                    <tr key={`${c.address ?? 'comp'}-${c.date}-${i}`}>
+                      <td className="py-2 pr-3 text-slate-700">
+                        {href ? (
+                          <a
+                            href={href}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-blue-600 underline decoration-dotted underline-offset-2 hover:text-blue-800"
+                          >
+                            {label}
+                          </a>
+                        ) : (
+                          label
+                        )}
+                      </td>
+                      <td className="py-2 pr-3 text-right font-mono tabular-nums">
+                        {formatGBP(c.soldPricePence)}
+                      </td>
+                      <td className="py-2 pr-3 text-right font-mono tabular-nums text-muted-foreground">
+                        {formatGBP(c.adjustedPricePence)}
+                      </td>
+                      <td className="py-2 pr-3 text-right text-muted-foreground">
+                        {new Date(c.date).toLocaleDateString('en-GB', {
+                          month: 'short',
+                          year: 'numeric',
+                        })}
+                      </td>
+                      <td className="py-2 text-right text-muted-foreground">
+                        {typeof c.distanceMiles === 'number'
+                          ? `${c.distanceMiles} mi`
+                          : '—'}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         ) : null}
 
         {/* ── NEXT STEP: MAKE CONTACT ────────────────────────────────────
@@ -1206,34 +1338,47 @@ const LeadDetailPage = async ({
               </div>
             )}
 
-            {/* Per-dimension breakdown row */}
-            {scoreBreakdown && (
-              <div className="mt-4 grid grid-cols-5 gap-2 border-t pt-3 text-center text-[11px]">
+            {/* Leading indicator — the single biggest driver, shown up top. */}
+            {leadingIndicator && (
+              <div className="mt-4 flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm">
+                <span className="text-[11px] font-medium uppercase tracking-wider text-amber-700">
+                  Leading indicator
+                </span>
+                <span className="font-medium text-slate-900">
+                  {leadingIndicator.label}
+                </span>
+                <span className="ml-auto font-mono font-semibold text-amber-800 tabular-nums">
+                  {leadingIndicator.points > 0 ? '+' : ''}
+                  {leadingIndicator.points}
+                </span>
+              </div>
+            )}
+
+            {/* Two-pillar breakdown row. Acquisition + ROI are the pillars;
+                market + risk are modifiers. ROI shows a "provisional" tag until
+                the lead has been appraised (see the two-stage scorer). */}
+            {scoreBreakdown && typeof scoreBreakdown.acquisition === 'number' && (
+              <div className="mt-4 grid grid-cols-4 gap-2 border-t pt-3 text-center text-[11px]">
                 <div>
-                  <p className="text-muted-foreground">Motivation</p>
+                  <p className="text-muted-foreground">Acquisition</p>
                   <p className="font-mono text-sm font-semibold">
-                    {scoreBreakdown.motivation}
-                    <span className="text-muted-foreground">/40</span>
+                    {scoreBreakdown.acquisition}
+                    <span className="text-muted-foreground">/45</span>
                   </p>
                 </div>
                 <div>
-                  <p className="text-muted-foreground">Equity</p>
+                  <p className="text-muted-foreground">
+                    ROI{scoreBreakdown.appraised === false ? '*' : ''}
+                  </p>
                   <p className="font-mono text-sm font-semibold">
-                    {scoreBreakdown.equity}
-                    <span className="text-muted-foreground">/25</span>
+                    {scoreBreakdown.roi}
+                    <span className="text-muted-foreground">/40</span>
                   </p>
                 </div>
                 <div>
                   <p className="text-muted-foreground">Market</p>
                   <p className="font-mono text-sm font-semibold">
                     {scoreBreakdown.marketTrend}
-                    <span className="text-muted-foreground">/15</span>
-                  </p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground">Contact</p>
-                  <p className="font-mono text-sm font-semibold">
-                    {scoreBreakdown.contactQuality}
                     <span className="text-muted-foreground">/10</span>
                   </p>
                 </div>
@@ -1253,6 +1398,12 @@ const LeadDetailPage = async ({
                   </p>
                 </div>
               </div>
+            )}
+            {scoreBreakdown?.appraised === false && (
+              <p className="mt-2 text-[11px] text-muted-foreground">
+                * ROI is provisional (equity proxy) until the lead is appraised —
+                it becomes the real BMV discount + cash ROI after appraisal.
+              </p>
             )}
 
             {neutralFactors.length > 0 && (

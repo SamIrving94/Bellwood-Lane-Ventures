@@ -257,6 +257,102 @@ export async function getFloorAreas(postcode: string) {
 }
 
 // ---------------------------------------------------------------------------
+// Resolve ONE property's real floor area (EPC-derived) from /floor-areas
+// ---------------------------------------------------------------------------
+
+export interface PropertyFloorArea {
+  /** Real EPC-derived internal floor area, m². Never a guess/average. */
+  floorAreaSqm: number;
+  /** The matched EPC address (includes the house number). */
+  matchedAddress: string;
+  /** How the row was matched — surfaced in the UI for transparency. */
+  matchSource: 'house_number' | 'unique_type_match';
+}
+
+/**
+ * Extract the leading house identifier from an address so we can match it
+ * against an EPC row. Handles "12 …", "12A …", "Flat 3 …", "Unit 2 …".
+ * Returns null when the address has no number (street-only), which is common
+ * for scraped listings — in that case we must NOT guess a size.
+ */
+function houseIdentifier(address: string): string | null {
+  const trimmed = address.trim();
+  const numbered = trimmed.match(/^(\d+\s*[a-z]?)\b/i);
+  if (numbered?.[1]) return numbered[1].replace(/\s+/g, '').toLowerCase();
+  const unit = trimmed.match(/^((?:flat|apartment|apt|unit)\s+\w+)\b/i);
+  if (unit?.[1]) return unit[1].replace(/\s+/g, ' ').toLowerCase();
+  return null;
+}
+
+/**
+ * Resolve a single property's REAL floor area from PropertyData's /floor-areas
+ * (EPC register) for the postcode. Matching, in priority order:
+ *
+ *   1. Exact house-number match against the supplied address.
+ *   2. If the address has no number, a UNIQUE match on property type +
+ *      bedrooms (only when exactly one such row exists — still a real record,
+ *      not an average).
+ *
+ * Returns null when no unambiguous real row matches. We deliberately never
+ * fall back to `average_floor_area` — a postcode average is a guess, and the
+ * house-of-record could be half or double it (the M14 doubling bug).
+ */
+export async function getPropertyFloorArea(input: {
+  postcode: string;
+  address?: string;
+  propertyType?: string;
+  bedrooms?: number;
+}): Promise<PropertyFloorArea | null> {
+  const data = await getFloorAreas(input.postcode);
+  const properties = (data?.result?.properties ?? []).filter(
+    (p): p is { address?: string; total_floor_area: number; bedrooms?: number; property_type?: string } =>
+      typeof p.total_floor_area === 'number' && p.total_floor_area > 0,
+  );
+  if (properties.length === 0) return null;
+
+  // 1. House-number match (the precise path).
+  const wanted = input.address ? houseIdentifier(input.address) : null;
+  if (wanted) {
+    const hit = properties.find(
+      (p) => p.address && houseIdentifier(p.address) === wanted,
+    );
+    if (hit) {
+      return {
+        floorAreaSqm: Math.round(hit.total_floor_area),
+        matchedAddress: hit.address ?? input.address ?? '',
+        matchSource: 'house_number',
+      };
+    }
+    // Had a number but it isn't in the register → don't guess.
+    return null;
+  }
+
+  // 2. Street-only address: only accept a UNIQUE type+bedroom match.
+  const wantType = input.propertyType?.toLowerCase();
+  const wantBeds = input.bedrooms;
+  if (wantType && typeof wantBeds === 'number') {
+    const matches = properties.filter((p) => {
+      const t = p.property_type?.toLowerCase();
+      return (
+        t !== undefined &&
+        t.includes(wantType.split('-')[0] ?? wantType) &&
+        p.bedrooms === wantBeds
+      );
+    });
+    if (matches.length === 1 && matches[0]) {
+      return {
+        floorAreaSqm: Math.round(matches[0].total_floor_area),
+        matchedAddress: matches[0].address ?? '',
+        matchSource: 'unique_type_match',
+      };
+    }
+  }
+
+  // Ambiguous or unmatched → no size (real data or nothing).
+  return null;
+}
+
+// ---------------------------------------------------------------------------
 // Endpoint: /flood-risk
 // ---------------------------------------------------------------------------
 

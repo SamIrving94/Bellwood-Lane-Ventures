@@ -29,6 +29,8 @@ function baseValuation(overrides: Partial<BaseValuation> = {}): BaseValuation {
     hpi: { annualChange: 3, monthlyChange: 0.25, trend: 'rising', source: 'hmlr_hpi' } as BaseValuation['hpi'],
     epc: mkEpc('C'),
     floorAreaSqm: 85,
+    floorAreaSource: 'propertydata',
+    resolvedAddress: null,
     pricePerSqm: 3500,
     source: 'hmlr_ppd+hmlr_hpi+epc',
     ...overrides,

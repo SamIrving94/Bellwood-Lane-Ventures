@@ -186,6 +186,10 @@ export interface AvmResultJson {
   postcode: string;
   propertyType: PropertyType;
   floorAreaSqm: number | null;
+  /** Where floorAreaSqm came from — null means we have no verified size. */
+  floorAreaSource: 'caller' | 'propertydata' | null;
+  /** Address the floor area was matched to (carries the house number). */
+  resolvedAddress: string | null;
   bedrooms?: number;
   epcRating: string | null;
   buildEra: string | null;
@@ -197,6 +201,16 @@ export interface AvmResultJson {
   avmHigh: number;
   confidenceLevel: string;
   comparableCount: number;
+  /** The actual sold comps that drove the estimate (address/price/date/dist). */
+  comparables: {
+    address: string | null;
+    postcode: string | null;
+    soldPricePence: number;
+    adjustedPricePence: number;
+    date: string;
+    monthsAgo: number;
+    distanceMiles: number | null;
+  }[];
   avmSources: string;
 
   // Environmental risk
@@ -343,6 +357,8 @@ export async function runAVM(input: AvmInput): Promise<AvmResultPayload> {
     postcode,
     propertyType,
     floorAreaSqm: baseValuation.floorAreaSqm,
+    floorAreaSource: baseValuation.floorAreaSource,
+    resolvedAddress: baseValuation.resolvedAddress,
     bedrooms,
     epcRating: bld.epcBand,
     buildEra: bld.buildEra,
@@ -357,6 +373,15 @@ export async function runAVM(input: AvmInput): Promise<AvmResultPayload> {
     ),
     confidenceLevel: baseValuation.confidenceLevel,
     comparableCount: baseValuation.comparables.length,
+    comparables: baseValuation.comparables.map((c) => ({
+      address: c.address,
+      postcode: c.postcode,
+      soldPricePence: Math.round(c.price * 100),
+      adjustedPricePence: Math.round(c.adjustedPrice * 100),
+      date: c.date,
+      monthsAgo: c.monthsAgo,
+      distanceMiles: c.distanceMiles,
+    })),
     avmSources: baseValuation.source,
 
     environmentalBand: env.envBand,
