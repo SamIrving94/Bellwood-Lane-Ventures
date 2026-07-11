@@ -9,7 +9,12 @@
  *   EPC_API_KEY    — API key from the dashboard
  *
  * Auth: HTTP Basic auth (email:key base64-encoded)
- * Falls back to synthetic data when credentials are absent or the call fails.
+ *
+ * REAL DATA OR NOTHING: this client never fabricates values. When credentials
+ * are absent, the call fails, or no certificate is found, it returns an
+ * `unavailable` record with every data field null — so downstream code shows
+ * nothing rather than a made-up number. (It used to fall back to random
+ * synthetic data, which silently drove the AVM/refurb off a fake floor area.)
  */
 
 import { z } from 'zod';
@@ -41,58 +46,26 @@ export const EpcSchema = z.object({
 export type Epc = z.infer<typeof EpcSchema>;
 
 // ---------------------------------------------------------------------------
-// Synthetic fallback
+// "Unavailable" record — no data, no guesses
 // ---------------------------------------------------------------------------
 
-const PROPERTY_TYPES = [
-  'Semi-detached house',
-  'Terraced house',
-  'Detached house',
-  'Flat',
-];
-const CONSTRUCTION_ERAS = [
-  '1900-1929',
-  '1930-1949',
-  '1950-1966',
-  '1967-1975',
-  '1976-1982',
-  '1983-1990',
-  '1991-1995',
-  '1996-2002',
-  '2003-2006',
-  '2007-2011',
-  '2012 onwards',
-];
-const RATING_SCORES: Record<string, number> = {
-  A: 92, B: 82, C: 72, D: 60, E: 48, F: 36, G: 20,
-};
-
-function syntheticEpc(postcode: string): Epc {
-  const ratingIdx = Math.floor(Math.random() * EPC_RATINGS.length);
-  const rating = EPC_RATINGS[ratingIdx] ?? 'D';
-  const baseScore = RATING_SCORES[rating] ?? 60;
-  const score = Math.min(baseScore + Math.floor(Math.random() * 8), 100);
-
+/**
+ * The null-object returned when we have no real EPC certificate. Every data
+ * field is null and `source` is 'unavailable' so callers can tell real data
+ * from no-data and render nothing rather than a fabricated value.
+ */
+function unavailableEpc(postcode: string): Epc {
   return {
     postcode,
-    epcRating: rating,
-    epcScore: score,
-    propertyType:
-      PROPERTY_TYPES[Math.floor(Math.random() * PROPERTY_TYPES.length)] ??
-      null,
-    floorAreaSqm: 60 + Math.floor(Math.random() * 140),
-    constructionAgeBand:
-      CONSTRUCTION_ERAS[
-        Math.floor(Math.random() * CONSTRUCTION_ERAS.length)
-      ] ?? null,
-    heatingType: Math.random() > 0.3 ? 'Gas' : 'Electric',
-    totalBedrooms: 2 + Math.floor(Math.random() * 4),
-    inspectionDate: new Date(
-      Date.now() - Math.floor(Math.random() * 5 * 365 * 86_400_000)
-    )
-      .toISOString()
-      .slice(0, 10),
-    source: 'synthetic',
+    epcRating: null,
+    epcScore: null,
+    propertyType: null,
+    floorAreaSqm: null,
+    constructionAgeBand: null,
+    heatingType: null,
+    totalBedrooms: null,
+    inspectionDate: null,
+    source: 'unavailable',
   };
 }
 
@@ -174,7 +147,8 @@ async function fetchEpcLive(postcode: string, address?: string): Promise<Epc> {
 
 /**
  * Look up EPC data for a postcode (and optionally an address string).
- * Falls back to synthetic data when credentials are absent or the call fails.
+ * Returns an `unavailable` record (all fields null) when credentials are
+ * absent or the call fails — never synthetic data.
  */
 export async function getEpcData(
   postcode: string,
@@ -188,9 +162,9 @@ export async function getEpcData(
       return await fetchEpcLive(postcode, address);
     } catch (err) {
       console.warn(
-        `[property-data/epc] live fetch failed (${(err as Error).message}), using synthetic`
+        `[property-data/epc] live fetch failed (${(err as Error).message}) — returning unavailable (no synthetic)`
       );
     }
   }
-  return syntheticEpc(postcode);
+  return unavailableEpc(postcode);
 }

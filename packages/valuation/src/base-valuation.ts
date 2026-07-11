@@ -18,6 +18,7 @@ import {
   getHousepriceIndex,
   getEpcData,
   getPropertyDataValuation,
+  getPropertyFloorArea,
   type PpdTransaction,
   type Epc,
   type Hpi,
@@ -47,6 +48,12 @@ export interface ComparableSale {
   propertyType: string;
   adjustedPrice: number;
   monthsAgo: number;
+  /** Sold-property address. Present for distance comps; null for HMLR PPD. */
+  address: string | null;
+  /** Sold-property postcode (lets the UI link to the sold record). */
+  postcode: string | null;
+  /** Distance from the subject in miles. Null for the HMLR fallback path. */
+  distanceMiles: number | null;
 }
 
 export type ConfidenceLevel = 'high' | 'medium' | 'low';
@@ -65,6 +72,10 @@ export interface BaseValuation {
   hpi: Hpi;
   epc: Epc;
   floorAreaSqm: number | null;
+  /** Where floorAreaSqm came from. null when we have no real size. */
+  floorAreaSource: 'caller' | 'propertydata' | null;
+  /** The address the floor area was matched to (includes the house number). */
+  resolvedAddress: string | null;
   pricePerSqm: number | null;
   source: string;
   /** Present when the distance-weighted PropertyData path produced the CSA. */
@@ -187,6 +198,32 @@ function calcConfidence(
 }
 
 // ---------------------------------------------------------------------------
+// Evidence-volume ceiling — confidence can never exceed what the number of
+// nearby sold comps supports. A single comp cannot be "high" no matter how
+// well the hedonic and CSA models happen to agree (they trivially agree with
+// one data point). Founder rule: ~4 sold within half a mile ⇒ high.
+// ---------------------------------------------------------------------------
+
+const CONF_RANK: Record<ConfidenceLevel, number> = { low: 0, medium: 1, high: 2 };
+const CONF_INTERVAL: Record<ConfidenceLevel, number> = {
+  high: 0.03,
+  medium: 0.05,
+  low: 0.08,
+};
+
+/** Highest confidence justified purely by how many comps back the estimate. */
+function confidenceCeilingFromComps(compCount: number): ConfidenceLevel {
+  if (compCount >= 4) return 'high';
+  if (compCount >= 2) return 'medium';
+  return 'low'; // 0–1 comps: never better than low
+}
+
+/** The more conservative (lower) of two confidence levels. */
+function minConfidence(a: ConfidenceLevel, b: ConfidenceLevel): ConfidenceLevel {
+  return CONF_RANK[a] <= CONF_RANK[b] ? a : b;
+}
+
+// ---------------------------------------------------------------------------
 // Core hedonic model — size + bedroom count relative to avg area price
 // ---------------------------------------------------------------------------
 
@@ -215,7 +252,7 @@ export async function getBaseValuation(
 ): Promise<BaseValuation> {
   const { postcode, propertyType, floorAreaSqm, bedrooms, address } = input;
 
-  const [pricePaid, hpi, epc, externalAvm, distanceWeighted] = await Promise.all([
+  const [pricePaid, hpi, epc, externalAvm, distanceWeighted, pdFloorArea] = await Promise.all([
     getPricePaid(postcode, 20),
     getHousepriceIndex(postcode),
     getEpcData(postcode, address),
@@ -238,11 +275,33 @@ export async function getBaseValuation(
       bedrooms: bedrooms ?? undefined,
       maxAgeMonths: 12,
     }),
+    // Real, EPC-derived floor area for THIS property (house-number matched).
+    // Returns null when we can't pin an unambiguous record — we then show no
+    // size rather than a guess. NOT the postcode average.
+    getPropertyFloorArea({
+      postcode,
+      address,
+      propertyType,
+      bedrooms: bedrooms ?? undefined,
+    }),
   ]);
 
   const hmlrComps = filterComps(pricePaid.transactions, propertyType, floorAreaSqm);
 
-  const effectiveFloorArea = floorAreaSqm ?? epc.floorAreaSqm;
+  // Floor-area resolution — real data or nothing. Priority:
+  //   1. Caller-supplied size (a human typed it).
+  //   2. PropertyData /floor-areas exact/unique match (real EPC record).
+  // We deliberately DO NOT fall back to epc.floorAreaSqm here: that comes from
+  // a street-level EPC search that can grab a neighbouring property (the M14
+  // "doubled size" bug). No match → null → the UI shows no size.
+  const effectiveFloorArea =
+    floorAreaSqm ?? pdFloorArea?.floorAreaSqm ?? null;
+  const floorAreaSource: BaseValuation['floorAreaSource'] = floorAreaSqm
+    ? 'caller'
+    : pdFloorArea
+      ? 'propertydata'
+      : null;
+  const resolvedAddress = pdFloorArea?.matchedAddress ?? null;
   const effectiveBedrooms = bedrooms ?? epc.totalBedrooms ?? undefined;
 
   // CSA value — comparable sales adjusted value. Priority:
@@ -261,6 +320,9 @@ export async function getBaseValuation(
       propertyType,
       adjustedPrice: Math.round(c.adjustedPricePence / 100),
       monthsAgo: c.monthsAgo,
+      address: c.address,
+      postcode: c.postcode,
+      distanceMiles: c.distanceMiles,
     }));
     csaSource = 'distance';
   } else if (hmlrComps.length > 0) {
@@ -276,6 +338,10 @@ export async function getBaseValuation(
       propertyType: c.propertyType,
       adjustedPrice: c.adjustedPrice,
       monthsAgo: c.monthsAgo,
+      // HMLR PPD (keyless feed) returns no per-sale address or coordinates.
+      address: null,
+      postcode: null,
+      distanceMiles: null,
     }));
     csaSource = 'hmlr';
   } else {
@@ -314,26 +380,29 @@ export async function getBaseValuation(
       : Math.round(csaValue * 0.5 + hpiAdjustedHedonic * 0.5);
   }
 
-  // Confidence. Distance comps carry their own confidence; a synthetic /
-  // fallback valuation is never presented as better than low confidence.
-  const DISTANCE_INTERVAL: Record<DistanceWeightedValuation['confidence'], number> = {
-    high: 0.03,
-    medium: 0.05,
-    low: 0.08,
-  };
-  let confidenceLevel: ConfidenceLevel;
-  let confidenceInterval: number;
+  // Confidence — two stages:
+  //   1. a "signal" level from the model that produced the estimate
+  //   2. a hard CEILING from how many nearby sold comps actually back it
+  // The final level is the more conservative of the two, so proximity + volume
+  // (not just model agreement) drive the number. This stops a single comp from
+  // ever reading as "high" — the founder's rule is ~4 sales within half a mile.
+  let signalLevel: ConfidenceLevel;
   if (csaSource === 'distance' && distanceWeighted) {
-    confidenceLevel = distanceWeighted.confidence;
-    confidenceInterval = DISTANCE_INTERVAL[distanceWeighted.confidence];
+    signalLevel = distanceWeighted.confidence;
   } else if (pricePaid.source === 'synthetic' || csaSource === 'fallback') {
-    confidenceLevel = 'low';
-    confidenceInterval = 0.08;
+    signalLevel = 'low';
   } else {
-    const c = calcConfidence(hpiAdjustedHedonic, csaValue);
-    confidenceLevel = c.level;
-    confidenceInterval = c.interval;
+    signalLevel = calcConfidence(hpiAdjustedHedonic, csaValue).level;
   }
+
+  // comparables.length = comps within half a mile (distance path) or the
+  // exact-postcode comps used (HMLR path) — both are the volume of real
+  // evidence behind this estimate.
+  const confidenceLevel = minConfidence(
+    signalLevel,
+    confidenceCeilingFromComps(comparables.length),
+  );
+  const confidenceInterval = CONF_INTERVAL[confidenceLevel];
 
   const pricePerSqm =
     effectiveFloorArea && effectiveFloorArea > 0
@@ -359,6 +428,8 @@ export async function getBaseValuation(
     hpi,
     epc,
     floorAreaSqm: effectiveFloorArea ?? null,
+    floorAreaSource,
+    resolvedAddress,
     pricePerSqm,
     source,
     distanceWeighted: distanceWeighted ?? null,

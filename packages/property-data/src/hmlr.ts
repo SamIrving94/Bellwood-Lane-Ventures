@@ -40,6 +40,23 @@ export const PricePaidSchema = z.object({
 export type PricePaid = z.infer<typeof PricePaidSchema>;
 export type PpdTransaction = z.infer<typeof PpdTransactionSchema>;
 
+/**
+ * A single Price Paid sale WITH its property address. The postcode-aggregate
+ * `getPricePaid` discards the address; this richer record keeps it so a caller
+ * (e.g. the probate → sale matcher) can pin a sale to a specific house.
+ */
+export interface PpdAddressRecord {
+  /** Sale price in pounds (HMLR reports whole pounds). */
+  price: number;
+  /** Transaction date, ISO YYYY-MM-DD. */
+  date: string;
+  /** Reconstructed single-line address (PAON + street + town). */
+  address: string;
+  /** Postcode as returned by HMLR. */
+  postcode: string | null;
+  propertyType: string;
+}
+
 // ---------------------------------------------------------------------------
 // Synthetic fallback
 // ---------------------------------------------------------------------------
@@ -218,5 +235,78 @@ export async function getPricePaid(
       `[property-data/hmlr-ppd] live fetch failed (${(err as Error).message}), using synthetic`
     );
     return syntheticPricePaid(postcode);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Address-level records (for per-property matching)
+// ---------------------------------------------------------------------------
+
+/** Build a single-line address from the HMLR linked-data propertyAddress. */
+function buildAddress(propertyAddress: unknown): {
+  address: string;
+  postcode: string | null;
+} {
+  const a = (propertyAddress ?? {}) as Record<string, unknown>;
+  const str = (k: string): string | null =>
+    typeof a[k] === 'string' && (a[k] as string).trim()
+      ? (a[k] as string).trim()
+      : null;
+  // PAON = house number/name, SAON = flat/sub-unit.
+  const parts = [str('saon'), str('paon'), str('street'), str('locality'), str('town')]
+    .filter(Boolean)
+    .join(', ');
+  return { address: parts, postcode: str('postcode') };
+}
+
+/**
+ * Fetch Price Paid sales for a postcode WITH addresses, REAL DATA ONLY.
+ *
+ * Unlike getPricePaid, this never falls back to synthetic — a per-address match
+ * against fabricated sales would be meaningless. Returns an empty array on any
+ * failure so the caller shows "no match" rather than a made-up sale.
+ */
+export async function getPricePaidWithAddresses(
+  postcode: string,
+  limit = 100
+): Promise<PpdAddressRecord[]> {
+  const url = new URL(PPD_BASE);
+  url.searchParams.set('propertyAddress.postcode', postcode.toUpperCase().trim());
+  url.searchParams.set('_pageSize', String(limit));
+  url.searchParams.set('_sort', '-transactionDate');
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  try {
+    const res = await fetch(url.toString(), {
+      headers: { Accept: 'application/json' },
+      signal: controller.signal,
+    });
+    if (!res.ok) throw new Error(`HMLR PPD API ${res.status}`);
+    const raw = (await res.json()) as Record<string, unknown>;
+    const items = ((raw.result as Record<string, unknown> | undefined)?.items ??
+      raw.items ??
+      []) as Record<string, unknown>[];
+
+    return items.map((t) => {
+      const { address, postcode: pc } = buildAddress(t.propertyAddress);
+      return {
+        price: (t.pricePaid as number | undefined) ?? (t.price as number) ?? 0,
+        date:
+          (t.transactionDate as string | undefined) ??
+          (t.date as string | undefined) ??
+          '',
+        address,
+        postcode: pc,
+        propertyType: extractLinkedDataValue(t.propertyType) ?? 'unknown',
+      };
+    });
+  } catch (err) {
+    console.warn(
+      `[property-data/hmlr-ppd] address fetch failed for ${postcode} (${(err as Error).message}) — returning [] (no synthetic)`
+    );
+    return [];
+  } finally {
+    clearTimeout(timer);
   }
 }
