@@ -364,6 +364,8 @@ const LeadDetailPage = async ({
     resolvedAddress?: string | null;
     /** True when refurb used a default size because none was verified. */
     refurbAssumedFloorArea?: boolean | null;
+    /** Likely 5+ bed HMO/multi-let — the house AVM under-values it. */
+    hmoLikely?: boolean | null;
     fetchedAt: string;
     /** Photo-inferred condition (deal-model level) + the vision read. */
     inferredCondition?: string | null;
@@ -415,6 +417,15 @@ const LeadDetailPage = async ({
       verdictLabel = 'Above market';
       verdictReason = `Asking is ${Math.abs(askingVsAvm)}% above modelled market value — unlikely to work without a large reduction.`;
       verdictTone = 'border-rose-200 bg-rose-50 text-rose-900';
+    }
+    // HMO / large-property override — the house AVM under-values 5+ bed
+    // multi-lets, so the below/above-market figure is meaningless here. Takes
+    // precedence over the market-value read above.
+    if (avmFull.hmoLikely) {
+      verdictLabel = 'HMO / large — value separately';
+      verdictReason =
+        'Likely a 5+ bed HMO/multi-let. The house AVM under-values these, so the market-value and below/above-market figures are unreliable — value on a £/room or rental-yield basis before acting.';
+      verdictTone = 'border-amber-300 bg-amber-50 text-amber-900';
     }
   }
 

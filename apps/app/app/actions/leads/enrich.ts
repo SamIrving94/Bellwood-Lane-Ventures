@@ -148,6 +148,8 @@ export async function enrichLeadById(leadId: string): Promise<{
       floorAreaSqm: r.floorAreaSqm ?? null,
       floorAreaSource: r.floorAreaSource ?? null,
       resolvedAddress: r.resolvedAddress ?? null,
+      // Flag likely HMO/multi-let (5+ beds) — a house AVM under-values these.
+      hmoLikely: (bedrooms ?? 0) >= 5,
       fetchedAt: new Date().toISOString(),
     };
   } catch {
@@ -237,7 +239,16 @@ export async function enrichLeadById(leadId: string): Promise<{
       if (baseFactors.length > 0) {
         const combined = combineScore(
           baseFactors,
-          { bmvDiscountPct, cashRoiPct },
+          {
+            bmvDiscountPct,
+            cashRoiPct,
+            avmConfidence:
+              (avmFull.confidenceLevel as 'high' | 'medium' | 'low' | null) ??
+              null,
+            comparableCount: (avmFull.comparableCount as number | null) ?? null,
+            // 5+ beds ⇒ likely HMO/multi-let: a house AVM can't value it.
+            avmUnreliable: (bedrooms ?? 0) >= 5,
+          },
           {
             hasCriticalData: true,
             marketTrendLabel: lead.marketTrend ?? 'unknown',

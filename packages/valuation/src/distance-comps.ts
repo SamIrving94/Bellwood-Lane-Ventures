@@ -118,15 +118,26 @@ export async function getDistanceWeightedValuation(
   const coords = await geocodePostcodes(compPostcodes);
 
   // 4. Build distance + time-adjusted comps inside the half-mile, 12-month box.
+  // PropertyData /sold-prices frequently omits per-sale postcodes (or the
+  // geocode fails), which — if we dropped those comps — would leave zero comps
+  // and force EVERY valuation onto the weaker exact-postcode HMLR fallback.
+  // Those sales are still from the queried postcode's radius, so when we can't
+  // geolocate one we approximate it at the subject's location rather than
+  // discarding it (and cap confidence below, since proximity is unverified).
   const comps: WeightedComp[] = [];
+  let approxDistanceCount = 0;
   for (const t of sold.transactions) {
-    if (!t.postcode) continue;
-    const key = t.postcode.toUpperCase().replace(/\s+/g, '');
-    const ll = coords.get(key);
-    if (!ll) continue;
+    const key = t.postcode ? t.postcode.toUpperCase().replace(/\s+/g, '') : null;
+    const ll = key ? coords.get(key) : undefined;
 
-    const dist = distanceMiles(subject, ll);
-    if (dist > FAR_RADIUS_MILES) continue;
+    let dist: number;
+    if (ll) {
+      dist = distanceMiles(subject, ll);
+      if (dist > FAR_RADIUS_MILES) continue; // genuinely outside the radius
+    } else {
+      dist = 0; // ungeolocatable → approximate at the subject (near bucket)
+      approxDistanceCount++;
+    }
 
     const monthsAgo = monthsBetweenNow(t.date);
     if (monthsAgo > maxAgeMonths) continue;
@@ -175,12 +186,17 @@ export async function getDistanceWeightedValuation(
   }
 
   // 6. Confidence from how much near-radius evidence we have.
-  const confidence: DistanceWeightedValuation['confidence'] =
+  let confidence: DistanceWeightedValuation['confidence'] =
     nearPrices.length >= 3
       ? 'high'
       : comps.length >= 3
         ? 'medium'
         : 'low';
+  // If most comps had no real coordinates (approximated at the subject), we
+  // can't claim verified proximity — never present that as 'high' confidence.
+  if (confidence === 'high' && approxDistanceCount > comps.length / 2) {
+    confidence = 'medium';
+  }
 
   return {
     estimatePence: estimate,
