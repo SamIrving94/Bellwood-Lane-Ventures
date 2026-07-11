@@ -385,6 +385,24 @@ export async function runScoutingPipeline(
             radiusMiles: seed.radiusMiles,
           });
           for (const p of properties) {
+            // Skip non-residential / non-dealable listings — land, garages,
+            // new-build plots, development sites — that PropertyData sometimes
+            // returns. They can't be underwritten as a house (the AVM values
+            // them as one → nonsense) and pollute the lead list. Word-boundary
+            // matched so real streets like "Corkland Road" are NOT caught.
+            const addrL = p.address.toLowerCase();
+            const typeL = (p.propertyType ?? '').toLowerCase();
+            if (
+              /^\s*(plot|land)\b/.test(addrL) ||
+              /\bland and garages?\b/.test(addrL) ||
+              /\bgarages?\s+(on|at|to|adjacent)\b/.test(addrL) ||
+              /\bdevelopment site\b|\bbuilding plot\b/.test(addrL) ||
+              typeL.includes('land') ||
+              typeL.includes('garage') ||
+              typeL.includes('commercial')
+            ) {
+              continue;
+            }
             all.push({
               probateRef: `pd-${seed.label}-${p.id ?? p.address.slice(0, 16).replace(/\s+/g, '_')}`,
               address: p.address,

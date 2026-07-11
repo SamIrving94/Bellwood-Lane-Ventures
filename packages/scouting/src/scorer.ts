@@ -267,17 +267,35 @@ export function scoreDealRoi(
   const factors: ScoreFactor[] = [];
 
   if (typeof input.bmvDiscountPct === 'number') {
-    const band = pickBand(config.bmvBands, input.bmvDiscountPct);
-    if (band) {
-      add(factors, `${band.label} (${input.bmvDiscountPct.toFixed(0)}% BMV)`, band.points, 'roi', 'positive');
+    if (input.bmvDiscountPct < 0) {
+      // Asking is ABOVE the modelled market value — no BMV credit. (pickBand
+      // would otherwise floor to the lowest positive band and wrongly award
+      // points to an over-priced listing.)
+      add(
+        factors,
+        `Asking ${Math.abs(input.bmvDiscountPct).toFixed(0)}% ABOVE market — no BMV`,
+        0,
+        'roi',
+        'neutral',
+      );
+    } else {
+      const band = pickBand(config.bmvBands, input.bmvDiscountPct);
+      if (band) {
+        add(factors, `${band.label} (${input.bmvDiscountPct.toFixed(0)}% BMV)`, band.points, 'roi', 'positive');
+      }
     }
   }
   if (typeof input.cashRoiPct === 'number') {
-    const band = pickBand(config.roiBands, input.cashRoiPct);
-    if (band && band.points > 0) {
-      add(factors, `${band.label} (${input.cashRoiPct.toFixed(0)}%)`, band.points, 'roi', 'positive');
+    if (input.cashRoiPct <= 0) {
+      // A loss-making deal earns no ROI credit.
+      add(factors, `Cash ROI ${input.cashRoiPct.toFixed(0)}% — loss, no credit`, 0, 'roi', 'neutral');
     } else {
-      add(factors, `Cash ROI ${input.cashRoiPct.toFixed(0)}% — below hurdle`, 0, 'roi', 'neutral');
+      const band = pickBand(config.roiBands, input.cashRoiPct);
+      if (band && band.points > 0) {
+        add(factors, `${band.label} (${input.cashRoiPct.toFixed(0)}%)`, band.points, 'roi', 'positive');
+      } else {
+        add(factors, `Cash ROI ${input.cashRoiPct.toFixed(0)}% — below hurdle`, 0, 'roi', 'neutral');
+      }
     }
   }
   return factors;
