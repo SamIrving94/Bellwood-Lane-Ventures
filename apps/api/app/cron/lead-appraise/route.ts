@@ -3,12 +3,15 @@ import { screenPropertyCondition } from '@repo/auctions';
 import { type Prisma, database } from '@repo/database';
 import { getPropertySnapshot } from '@repo/property-data/src/propertydata';
 import {
+  type ConditionLevel,
+  appraiseDealFromAvm,
   estimateRefurb,
   mapVisualConditionToLevel,
   mergeOfferConfig,
   mergeValuationConfig,
   runAVM,
 } from '@repo/valuation';
+import { type ScoreFactor, type Verdict, combineScore } from '@repo/scouting';
 import { NextResponse } from 'next/server';
 import { recordCronHeartbeat } from '../_lib/heartbeat';
 
@@ -125,10 +128,14 @@ export const POST = async (request: Request) => {
             bedrooms,
           });
 
+      // Prefer a precise (house-numbered) address when the listing gave one —
+      // it lets the AVM match the exact EPC floor-area record for this house.
+      const preciseAddress =
+        typeof pd?.preciseAddress === 'string' ? (pd.preciseAddress as string) : null;
       const avm = await runAVM({
         postcode: lead.postcode,
         propertyType: avmPropertyType as never,
-        address: lead.address,
+        address: preciseAddress ?? lead.address,
         bedrooms,
         sellerType: resolveSellerType(lead.leadType) as never,
         offerConfig,
@@ -146,10 +153,13 @@ export const POST = async (request: Request) => {
         offerDiscountPct,
         confidenceLevel: r.confidenceLevel ?? null,
         comparableCount: r.comparableCount ?? null,
+        comparables: r.comparables ?? [],
         requiresReview: Boolean(r.requiresCeoEscalation || r.discountCapped),
         riskScore: avm.riskScore,
         assumedPropertyType: normalised ? null : avmPropertyType,
         floorAreaSqm: r.floorAreaSqm ?? null,
+        floorAreaSource: r.floorAreaSource ?? null,
+        resolvedAddress: r.resolvedAddress ?? null,
         fetchedAt: new Date().toISOString(),
       };
 
@@ -194,9 +204,68 @@ export const POST = async (request: Request) => {
       avmFull.refurbBasis = refurb.basis;
       avmFull.refurbAssumedFloorArea = refurb.assumedFloorArea;
 
+      // ── Stage-2 scoring: fold the appraisal's ROI into the lead score ──
+      // The scout pipeline set the sourcing score (acquisition + market + risk)
+      // with a provisional ROI proxy. Now that we have an AVM we replace that
+      // with the REAL ROI pillar: BMV discount (asking vs AVM) + deal-model cash
+      // ROI. Factor labels carry the underlying inputs so the founder can trace
+      // every point (transparency). Best-effort: a failure leaves the sourcing
+      // score untouched.
+      const scoreUpdate: { leadScore?: number; verdict?: Verdict } = {};
+      try {
+        const askingPence =
+          typeof pd?.pricePence === 'number' ? (pd.pricePence as number) : null;
+        const avmPoint = avmFull.pointEstimatePence as number;
+        const bmvDiscountPct =
+          askingPence && avmPoint > 0
+            ? ((avmPoint - askingPence) / avmPoint) * 100
+            : null;
+
+        const deal = appraiseDealFromAvm({
+          avmPointEstimatePence: avmPoint,
+          conditionLevel:
+            (avmFull.inferredCondition as ConditionLevel | null) ?? undefined,
+          refurbPence: (avmFull.refurbEstimatePence as number) ?? 0,
+          offerPence: (avmFull.finalOfferPence as number) ?? undefined,
+        });
+        const cashRoiPct = deal.appraisal
+          ? deal.appraisal.cash.roi * 100
+          : null;
+
+        const baseFactors =
+          (raw.scoreFactors as ScoreFactor[] | undefined) ?? [];
+        if (baseFactors.length > 0) {
+          const combined = combineScore(
+            baseFactors,
+            { bmvDiscountPct, cashRoiPct },
+            {
+              hasCriticalData: true,
+              marketTrendLabel: lead.marketTrend ?? 'unknown',
+              riskFlags: (raw.riskFlags as string[] | undefined) ?? [],
+            },
+          );
+          raw.scoreFactors = combined.factors;
+          raw.rationale = combined.rationale;
+          raw.leadingIndicator = combined.leadingIndicator;
+          raw.scoreBreakdown = {
+            acquisition: combined.acquisition,
+            roi: combined.roi,
+            marketTrend: combined.marketTrend,
+            risk: combined.risk,
+            total: combined.total,
+            appraised: true,
+          };
+          scoreUpdate.leadScore = combined.total;
+          scoreUpdate.verdict = combined.verdict;
+        }
+      } catch (err) {
+        console.warn('[cron/lead-appraise] stage-2 scoring failed', lead.id, err);
+      }
+
       await database.scoutLead.update({
         where: { id: lead.id },
         data: {
+          ...scoreUpdate,
           rawPayload: { ...raw, snapshot, avmFull } as Prisma.InputJsonValue,
         },
       });

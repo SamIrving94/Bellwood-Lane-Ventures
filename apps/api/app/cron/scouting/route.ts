@@ -403,11 +403,24 @@ export const POST = async (request: Request) => {
     }
   }
 
+  // ── Heartbeat BEFORE the slow enrichment loop ───────────────────────
+  // The cron's essential job — fetch → persist → surface leads — is complete
+  // at this point. The snapshot-enrichment loop below can take ~27s/postcode
+  // and sometimes exceeds the 300s function limit. If the heartbeat lived after
+  // it (as it used to), a timeout there would suppress the heartbeat and the
+  // watchdog would false-alarm "scouting has gone silent" even though leads
+  // were created and surfaced. Record liveness against the CORE work here, so
+  // the heartbeat reflects what the cron actually delivered, not the optional
+  // best-effort enrichment.
+  await recordCronHeartbeat('scouting', {
+    note: `${createdCount} persisted, ${result.leads.length} qualified`,
+  });
+
   // ── Best-effort: enrich top persisted leads with property snapshot ──
-  // Deferred to the very end on purpose (see note above): founder surfacing
-  // has already run, so a timeout here only costs un-enriched snapshots — never
-  // the daily review action. Top-8 by score, deduped by postcode; each update
-  // commits independently so partial progress survives a kill.
+  // Runs AFTER the heartbeat on purpose: founder surfacing + liveness are both
+  // already recorded, so a timeout here only costs un-enriched snapshots — never
+  // the daily review action or the heartbeat. Top-8 by score, deduped by
+  // postcode; each update commits independently so partial progress survives a kill.
   const topToEnrich = [...result.leads]
     .sort((a, b) => b.leadScore - a.leadScore)
     .slice(0, 8);
@@ -485,10 +498,6 @@ export const POST = async (request: Request) => {
       );
     }
   }
-
-  await recordCronHeartbeat('scouting', {
-    note: `${createdCount} persisted, ${result.leads.length} qualified`,
-  });
 
   return NextResponse.json({
     success: true,

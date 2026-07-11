@@ -24,14 +24,12 @@ const LEAD_TYPE_LABELS: Record<string, string> = {
 type EditableState = {
   leadTypeScores: Record<string, number>;
   verdictThresholds: { strong: number; viable: number; thin: number };
-  goldenWindow: { hot: number; warm: number; cool: number };
 };
 
 function extract(config: ScorerConfig): EditableState {
   return {
     leadTypeScores: { ...config.leadTypeScores },
     verdictThresholds: { ...config.verdictThresholds },
-    goldenWindow: { ...config.goldenWindow },
   };
 }
 
@@ -118,7 +116,6 @@ export function ConfigEditor({
           ...live,
           leadTypeScores: state.leadTypeScores,
           verdictThresholds: state.verdictThresholds,
-          goldenWindow: state.goldenWindow,
         };
         const { version } = await saveAndActivateConfig(next, description);
         toast.success(`Activated v${version}. Next scout will use it.`);
@@ -209,51 +206,6 @@ export function ConfigEditor({
         </div>
       </section>
 
-      {/* Golden window */}
-      <section className="rounded-xl border bg-card">
-        <div className="border-b p-4">
-          <h2 className="font-medium text-sm">Probate timing bonus</h2>
-          <p className="mt-0.5 text-muted-foreground text-xs">
-            Extra points for hitting the &ldquo;golden window&rdquo; after a
-            grant of probate, when executors are most ready to sell.
-          </p>
-        </div>
-        <div className="divide-y px-4">
-          <NumberField
-            label="Hot window"
-            value={state.goldenWindow.hot}
-            liveValue={liveEditable.goldenWindow.hot}
-            onChange={(n) =>
-              setState((s) => ({
-                ...s,
-                goldenWindow: { ...s.goldenWindow, hot: n },
-              }))
-            }
-          />
-          <NumberField
-            label="Warm window"
-            value={state.goldenWindow.warm}
-            liveValue={liveEditable.goldenWindow.warm}
-            onChange={(n) =>
-              setState((s) => ({
-                ...s,
-                goldenWindow: { ...s.goldenWindow, warm: n },
-              }))
-            }
-          />
-          <NumberField
-            label="Cool window"
-            value={state.goldenWindow.cool}
-            liveValue={liveEditable.goldenWindow.cool}
-            onChange={(n) =>
-              setState((s) => ({
-                ...s,
-                goldenWindow: { ...s.goldenWindow, cool: n },
-              }))
-            }
-          />
-        </div>
-      </section>
 
       {/* Save bar */}
       <div className="sticky bottom-4 rounded-xl border bg-card/95 p-4 shadow-lg backdrop-blur">

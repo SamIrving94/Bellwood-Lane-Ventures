@@ -50,7 +50,15 @@ const LeadsPage = async ({
     <>
       <Header pages={[]} page="Leads" />
       <div className="flex flex-1 flex-col gap-4 p-6">
-        <div className="flex justify-end">
+        <div className="flex justify-end gap-4">
+          {/* Probate lead spreadsheet: Gazette deceased-estate notices matched
+              to HM Land Registry last-sale data, newest notice first. */}
+          <a
+            href="/leads/export/probate"
+            className="text-xs text-muted-foreground hover:text-foreground hover:underline"
+          >
+            Export probate CSV ↓
+          </a>
           <Link
             href="/leads/calibration"
             className="text-xs text-muted-foreground hover:text-foreground hover:underline"
