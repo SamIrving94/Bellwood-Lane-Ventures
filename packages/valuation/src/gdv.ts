@@ -33,6 +33,7 @@
 import {
   type AcquisitionRoute,
   type DealAppraisal,
+  type DealCostConfig,
   appraiseDeal,
   maxOfferForRoi,
 } from './deal-model';
@@ -205,6 +206,8 @@ export interface DealFromAvmInput extends GdvInput {
   sdltExempt?: boolean;
   /** Target cash ROI for the max-offer solve. Defaults to the model's hurdle. */
   targetRoi?: number;
+  /** Override cost assumptions (e.g. bridge term for an earlier-exit what-if). */
+  config?: DealCostConfig;
 }
 
 export interface DealFromAvmResult {
@@ -234,6 +237,7 @@ export function appraiseDealFromAvm(
     route: input.route,
     leaseExtensionPence: input.leaseExtensionPence,
     sdltExempt: input.sdltExempt,
+    config: input.config,
   };
 
   const solved = maxOfferForRoi({ ...shared, targetRoi: input.targetRoi });

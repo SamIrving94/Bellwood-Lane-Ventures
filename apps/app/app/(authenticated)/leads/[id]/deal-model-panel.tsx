@@ -13,7 +13,10 @@
  * live client-side — no GDV to punch in by hand.
  */
 
-import type { AcquisitionRoute } from '@repo/valuation/src/deal-model';
+import {
+  type AcquisitionRoute,
+  DEFAULT_DEAL_COSTS,
+} from '@repo/valuation/src/deal-model';
 import {
   type ConditionLevel,
   appraiseDealFromAvm,
@@ -111,6 +114,11 @@ export function DealModelPanel({
   const [targetPct, setTargetPct] = useState<string>(
     String(Math.round((targetCashRoi ?? 0.2) * 100)),
   );
+  // Bridge term what-if (co-founder request): default 12 months, adjustable to
+  // see the financed picture with an earlier exit.
+  const [bridgeMonths, setBridgeMonths] = useState<string>(
+    String(DEFAULT_DEAL_COSTS.finance.holdMonths),
+  );
   // Pre-fill "our offer" with the offer WE'D make (AVM-derived, ~20% below
   // market) — never above market value. Falls back to the asking price capped
   // at the AVM, then blank. Defaulting to a raw asking price above the AVM made
@@ -136,6 +144,13 @@ export function DealModelPanel({
         route,
         offerPence: offer ? poundsToPence(offer) : undefined,
         targetRoi: (Number(targetPct) || 20) / 100,
+        config: {
+          ...DEFAULT_DEAL_COSTS,
+          finance: {
+            ...DEFAULT_DEAL_COSTS.finance,
+            holdMonths: Math.max(1, Number(bridgeMonths) || 12),
+          },
+        },
       }),
     [
       avmPointEstimatePence,
@@ -146,6 +161,7 @@ export function DealModelPanel({
       route,
       offer,
       targetPct,
+      bridgeMonths,
     ]
   );
 
@@ -280,6 +296,18 @@ export function DealModelPanel({
             inputMode="numeric"
             value={targetPct}
             onChange={(e) => setTargetPct(e.target.value)}
+          />
+        </label>
+        <label className="block">
+          <span className="text-[11px] text-muted-foreground">
+            Bridge term (months)
+          </span>
+          <input
+            className="mt-1 w-full rounded-md border bg-background px-2 py-1.5 text-sm tabular-nums"
+            inputMode="numeric"
+            value={bridgeMonths}
+            onChange={(e) => setBridgeMonths(e.target.value)}
+            title="How long we hold the bridge before exit. 80% LTV, 1% admin fee, 10%/yr rolled-up interest. Shorten to model an earlier exit."
           />
         </label>
         <label className="block">

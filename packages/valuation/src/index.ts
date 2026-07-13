@@ -94,6 +94,7 @@ export {
   appraiseDeal,
   maxOfferForRoi,
   computeSdltPence,
+  computePurchaseLegalsPence,
   DEFAULT_DEAL_COSTS,
 } from './deal-model';
 export type {

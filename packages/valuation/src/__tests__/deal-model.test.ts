@@ -59,11 +59,11 @@ describe('appraiseDeal — 39 Daniells (modern auction)', () => {
   const a = appraiseDeal(GOLDEN_DEALS.daniells);
 
   it('reproduces the founder ~£323k all-in outlay', () => {
-    expect(a.cash.totalOutlayPence).toBe(322_880_00);
+    expect(a.cash.totalOutlayPence).toBe(322_260_00);
   });
 
   it('reproduces the founder ~£87k cash profit', () => {
-    expect(a.cash.profitPence).toBe(87_120_00);
+    expect(a.cash.profitPence).toBe(87_740_00);
   });
 
   it('lands the founder 26.8% cash ROI', () => {

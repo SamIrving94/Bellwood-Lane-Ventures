@@ -68,8 +68,17 @@ export interface DealCostConfig {
      */
     additionalPropertySurcharge: number;
   };
-  /** Fixed solicitor / conveyancing cost on the purchase, pence. */
-  purchaseLegalsPence: number;
+  /**
+   * Purchase conveyancing fee, banded by purchase price (co-founder's rate
+   * card, ex VAT). The fee for a price is the first band whose maxPricePence
+   * is >= the price; prices above the last band use the last band's fee (the
+   * card says "on request" there — we model with the top fee as the floor).
+   */
+  purchaseLegals: {
+    bands: Array<{ maxPricePence: number; feeExVatPence: number }>;
+    /** VAT applied on top of the ex-VAT fee (0.2 = 20%). */
+    vatFraction: number;
+  };
   /** Extra buyer fee charged by modern/online auctions, pence. */
   auctionModernFeePence: number;
   /** Refurb contingency as a fraction of the refurb budget (conservatism lever). */
@@ -111,19 +120,48 @@ export const DEFAULT_DEAL_COSTS: DealCostConfig = {
     ],
     additionalPropertySurcharge: 0.05,
   },
-  purchaseLegalsPence: 2_000_00,
+  // Purchase conveyancing rate card (co-founder supplied, ex VAT).
+  purchaseLegals: {
+    bands: [
+      { maxPricePence: 200_000_00, feeExVatPence: 950_00 },
+      { maxPricePence: 250_000_00, feeExVatPence: 1_150_00 },
+      { maxPricePence: 300_000_00, feeExVatPence: 1_400_00 },
+      { maxPricePence: 350_000_00, feeExVatPence: 1_550_00 },
+      { maxPricePence: 400_000_00, feeExVatPence: 2_250_00 },
+      { maxPricePence: 500_000_00, feeExVatPence: 3_000_00 },
+    ],
+    vatFraction: 0.2,
+  },
   auctionModernFeePence: 10_000_00,
   refurbContingencyFraction: 0, // founder works refurb as "circa" all-in; raise to add headroom
   saleAgentFraction: 0.015,
   saleLegalsPence: 1_500_00,
+  // Bridging assumptions (co-founder's rate card): 80% LTV, 1% admin fee on
+  // the loan, 10%/yr rolled-up interest, and a 12-month term by default. No
+  // exit or lender legal fees. Term is a what-if lever, override holdMonths
+  // to model an earlier exit.
   finance: {
-    ltv: 0.75,
-    annualRate: 0.09,
-    arrangementFeeFraction: 0.02,
-    holdMonths: 9,
+    ltv: 0.8,
+    annualRate: 0.1,
+    arrangementFeeFraction: 0.01,
+    holdMonths: 12,
   },
   targetCashRoi: 0.2,
 };
+
+/**
+ * Purchase conveyancing fee for a price, from the banded rate card, VAT
+ * included. Prices above the top band use the top band's fee.
+ */
+export function computePurchaseLegalsPence(
+  pricePence: number,
+  config: DealCostConfig = DEFAULT_DEAL_COSTS
+): number {
+  const { bands, vatFraction } = config.purchaseLegals;
+  const band =
+    bands.find((b) => pricePence <= b.maxPricePence) ?? bands[bands.length - 1];
+  return Math.round(band.feeExVatPence * (1 + vatFraction));
+}
 
 export interface DealInput {
   /** End value after refurb (Gross Development Value), pence. */
@@ -252,6 +290,10 @@ function buildCosts(
     config,
     input.sdltExempt
   );
+  const purchaseLegalsPence = computePurchaseLegalsPence(
+    input.offerPence,
+    config
+  );
   const auctionFeePence =
     route === 'auction_modern' ? config.auctionModernFeePence : 0;
   const refurbContingencyPence = Math.round(
@@ -261,7 +303,7 @@ function buildCosts(
 
   const totalCostsPence =
     sdltPence +
-    config.purchaseLegalsPence +
+    purchaseLegalsPence +
     auctionFeePence +
     input.refurbPence +
     refurbContingencyPence +
@@ -271,7 +313,7 @@ function buildCosts(
 
   return {
     sdltPence,
-    purchaseLegalsPence: config.purchaseLegalsPence,
+    purchaseLegalsPence,
     auctionFeePence,
     refurbPence: input.refurbPence,
     refurbContingencyPence,
