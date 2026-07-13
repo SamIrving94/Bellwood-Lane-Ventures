@@ -149,10 +149,6 @@ export default async function OfferCertificatePage({
             AVM mid {formatGBP(avmMid)}
           </span>
           <span className="text-stone-300">·</span>
-          <span className="text-[#2B2220]">
-            {Math.round(o.offerPercentOfAvm * 100)}% of AVM
-          </span>
-          <span className="text-stone-300">·</span>
           <span className="text-[#1F6B3A]">
             confidence {Math.round(o.confidenceScore * 100)}%
           </span>

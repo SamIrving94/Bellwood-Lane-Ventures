@@ -10,7 +10,7 @@ import './[locale]/styles.css';
 // uses --font-courier directly via `[font-family:var(--font-courier)]`.
 const publicType = {
   '--font-fraunces': 'var(--font-libre-caslon)',
-  '--font-inter': 'var(--font-hanken)',
+  '--font-inter': 'var(--font-roboto)',
 } as CSSProperties;
 
 export default function RootLayout({ children }: { children: ReactNode }) {

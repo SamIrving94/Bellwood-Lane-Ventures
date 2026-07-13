@@ -29,14 +29,14 @@ everything" is a named, repeated signature of AI generated design
 | Role | Face | Why |
 |---|---|---|
 | Display / headings | **Libre Caslon Text** | English, legal, established. Reads as an old firm, not a startup. |
-| Body / UI | **Hanken Grotesk** | Warm grotesk with character. Deliberately not Inter. |
+| Body / UI | **Roboto** | The brand kit's working sans (matches the logo lockup). |
 | Documents / numerals | **Courier Prime** | A real typed letter. Used for the offer document, refs, figures. |
 
 How it is wired (do not undo this):
 
 - All three are loaded once in `packages/design-system/lib/fonts.ts`.
 - The public root (`apps/web/app/layout.tsx`) repoints `--font-fraunces` to
-  Libre Caslon and `--font-inter` to Hanken, so every existing `font-serif` and
+  Libre Caslon and `--font-inter` to Roboto, so every existing `font-serif` and
   `font-sans` class switches without touching the authenticated dashboard.
 - The typewriter is used directly: `[font-family:var(--font-courier)]`.
 - **Never** re-import `next/font` inside a page or sub-layout. It double loads

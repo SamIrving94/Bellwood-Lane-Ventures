@@ -692,7 +692,7 @@ function OfferCard({ offer }: { offer: OfferResult }) {
             {formatGBP(offer.offerPence)}
           </p>
           <p className="mt-2 text-xs text-stone-500">
-            {Math.round(offer.offerPercentOfAvm * 100)}% of AVM mid
+            A price that reflects the speed and certainty of the transaction
           </p>
         </div>
         <div className="space-y-6">
