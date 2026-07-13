@@ -157,7 +157,8 @@ export default function MethodologyPage() {
                   </span>
                 </div>
                 <p className="mt-3 text-xs text-stone-500">
-                  (78.3% of AVM mid, completion in weeks not months)
+                  (a price that reflects the speed and certainty of the
+                  transaction, completion in weeks not months)
                 </p>
               </div>
             }
@@ -166,7 +167,7 @@ export default function MethodologyPage() {
 
         <div className="mt-20 rounded-3xl bg-[#874646] p-10 text-center text-white">
           <h2 className="font-serif text-3xl font-semibold">
-            See your number in 60 seconds.
+            See your number.
           </h2>
           <Link
             href="/instant-offer#chat"

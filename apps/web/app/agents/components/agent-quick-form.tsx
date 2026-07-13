@@ -120,7 +120,7 @@ export function AgentQuickForm({ defaultTriggerLabel }: AgentQuickFormProperties
           kind: 'error',
           message:
             data?.error ||
-            'Something went wrong. Please email hello@bellwoodslane.co.uk and we will pick it up within two hours.',
+            'Something went wrong. Please email hello@bellwoodslane.co.uk and we will pick it up.',
         });
         return;
       }
@@ -129,7 +129,7 @@ export function AgentQuickForm({ defaultTriggerLabel }: AgentQuickFormProperties
       setState({
         kind: 'error',
         message:
-          'Could not reach our offer engine. Please email hello@bellwoodslane.co.uk and we will pick it up within two hours.',
+          'Could not reach our offer engine. Please email hello@bellwoodslane.co.uk and we will pick it up.',
       });
     }
   };
@@ -249,9 +249,9 @@ export function AgentQuickForm({ defaultTriggerLabel }: AgentQuickFormProperties
 
       <div className="mt-7 flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
         <p className="text-xs text-stone-500">
-          Indicative offer on screen in 60 seconds.
+          Indicative offer on screen, fast.
           <br />
-          Confirmed price in writing within 24 hours of viewing.
+          We aim to confirm a price in writing within 24–48 hours of viewing.
         </p>
         <button
           type="submit"
@@ -289,8 +289,8 @@ function SuccessView({
         </h3>
         <p className="mt-5 max-w-lg text-[15px] leading-relaxed text-stone-700">
           We have your details. Our senior appraiser will personally verify
-          before issuing a binding figure. Expect a written offer in{' '}
-          <strong>{vendorEmail}</strong> within 2 working hours, no obligation.
+          before issuing a binding figure. We will email a written offer to{' '}
+          <strong>{vendorEmail}</strong>, no obligation.
         </p>
       </div>
     );
@@ -340,10 +340,10 @@ function SuccessView({
         </div>
         <p className="mt-6 rounded-xl bg-[#F6ECE7] px-5 py-4 text-[13px] leading-relaxed text-stone-700">
           This is the indicative figure from our AVM (HM Land Registry comps,
-          last 24 months, adjusted for HPI). We'll acknowledge within 4
-          business hours, arrange a viewing, then send the confirmed price
-          in writing to <strong>{vendorEmail}</strong> within 24 hours of
-          the viewing. The price we confirm is the price we complete at.
+          last 24 months, adjusted for HPI). We'll be in touch to arrange a
+          viewing, and we aim to send the confirmed price in writing to{' '}
+          <strong>{vendorEmail}</strong> within 24–48 hours of the viewing.
+          The price we confirm is the price we complete at.
         </p>
       </div>
 
@@ -389,7 +389,7 @@ function VendorShareCard({
       `Completion: as fast as ${completionDays} days, or paced to suit you.`,
       `No fees, no chain.`,
       '',
-      `You can see the offer document, the methodology, and the walk-away cover here:`,
+      `You can see the offer document and the methodology here:`,
       trackUrl,
       '',
       'Have a read - happy to walk you through it on a call when you have a moment.',
@@ -407,8 +407,8 @@ function VendorShareCard({
         Share with your vendor
       </p>
       <p className="mt-2 text-[14px] leading-relaxed text-stone-600">
-        One link, no login. Your vendor sees the offer, our methodology, and
-        the walk-away cover. Most agents send via WhatsApp.
+        One link, no login. Your vendor sees the offer and our methodology.
+        Most agents send via WhatsApp.
       </p>
       <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
         <a

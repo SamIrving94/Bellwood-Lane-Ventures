@@ -59,7 +59,7 @@ const SITUATIONS_WE_WONT_BUY: Array<{ k: string; b: string; recommend: string }>
     k: 'Working chain, no urgency',
     b: 'Your sale is progressing normally. The buyer is engaged, the surveys are clean, your mortgage offer is in. There is no fall-through risk.',
     recommend:
-      'Stay with your high-street agent. The open market will get you 10–15% more than we will, and the time difference will be measured in weeks, not months.',
+      'Stay with your high-street agent. The open market will get you more than we will, and the time difference will be measured in weeks, not months.',
   },
   {
     k: 'Testing the market for an aspirational price',
@@ -149,7 +149,7 @@ export default function WhyWeWontBuyAnyHomePage() {
             kinds of property situations &mdash; the ones where speed and
             certainty matter more than maximum price. If your situation
             isn&rsquo;t one of those, the open market will probably get you
-            10&ndash;15% more, and we&rsquo;ll tell you that for free.
+            more, and we&rsquo;ll tell you that for free.
           </p>
         </div>
       </section>
@@ -240,14 +240,15 @@ export default function WhyWeWontBuyAnyHomePage() {
             </p>
             <p>
               We work the other way around. We say no to the deals we
-              can&rsquo;t do well, and we put the rest in writing &mdash;
-              with a £1,000 plus costs penalty if we walk without cause.
-              When we say a number, that number is what completes.
+              can&rsquo;t do well, and we put the rest in writing.
+              When we say a number, that number is what completes, and you
+              can walk away at no cost any time before exchange.
             </p>
             <p>
               The trade-off is honest: <strong>our offer is below open-market.</strong>{' '}
-              Typically 75&ndash;87% of mid-AVM. That&rsquo;s the price of
-              certainty, speed, and zero fall-through risk. If your situation
+              The price reflects the speed and certainty of the transaction:
+              a fixed date, a fixed number, and zero fall-through risk. If
+              your situation
               doesn&rsquo;t need those things, you don&rsquo;t need us.
             </p>
           </div>

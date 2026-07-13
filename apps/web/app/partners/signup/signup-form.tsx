@@ -105,7 +105,7 @@ export function SignupForm() {
       </button>
 
       <p className="text-center text-xs text-stone-500">
-        No credit card. No contract. Start referring in 60 seconds.
+        No credit card. No contract. Start referring today.
       </p>
     </form>
   );

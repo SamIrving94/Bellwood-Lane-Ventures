@@ -616,7 +616,7 @@ export function ChatFlow({ defaultRole }: ChatFlowProps = {}) {
             </p>
             <p className="mt-3 text-sm text-red-700">
               {errorMsg ||
-                'A member of our team will email you a manual offer within 2 hours.'}
+                'A member of our team will email you a manual offer shortly.'}
             </p>
           </div>
         )}
@@ -655,7 +655,7 @@ function OfferCard({ offer }: { offer: OfferResult }) {
         <p className="mt-4 text-stone-600">
           Based on the details you shared, we want our senior appraiser to
           personally verify before we commit. Expect a firm written offer
-          within 2 hours — no obligation.
+          by email, no obligation.
         </p>
       </div>
     );
@@ -668,8 +668,8 @@ function OfferCard({ offer }: { offer: OfferResult }) {
           Offer reserved. Welcome to Bellwoods Lane.
         </p>
         <p className="mt-3 text-sm text-stone-700">
-          We’ve emailed you the signed offer. Our team will be in touch within
-          24 hours to start the process.
+          We’ve emailed you the signed offer. Our team will be in touch to
+          start the process.
         </p>
       </div>
     );

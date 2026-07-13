@@ -56,7 +56,7 @@ export default function PartnerBriefPage() {
 
         <div className="grid grid-cols-2 gap-4 border-y border-stone-200 py-8">
           {[
-            ['4 business hours', 'Indicative offer ack'],
+            ['In writing', 'Every confirmed offer'],
             ['Weeks not months', 'Target completion'],
             ['Per deal, in writing', 'Partner fee terms'],
             ['Zero', 'Fees charged to the seller'],
@@ -78,11 +78,10 @@ export default function PartnerBriefPage() {
           What you earn per referral
         </h2>
         <p className="mt-3 text-sm text-stone-600">
-          Your partner fee is agreed in writing per deal — typically a sale fee
-          on our purchase completion, an introducer fee on the same day, and a
-          separate sale instruction when we resell. Exact figures are confirmed
-          before the deal proceeds and disclosed to the seller in writing per
-          NTSELAT guidance.
+          Your terms are agreed in writing per deal. You keep your commission
+          on the sale, and when we resell we instruct you. Exact figures are
+          confirmed before the deal proceeds and disclosed to the seller in
+          writing per NTSELAT guidance.
         </p>
       </section>
 
@@ -93,11 +92,11 @@ export default function PartnerBriefPage() {
         <ol className="mt-4 space-y-4 text-sm text-stone-700">
           {[
             {
-              t: '1. Indicative offer in 4 business hours',
-              b: 'Submit the property details — receive an indicative offer range within 4 business hours, based on comparable sales and PropertyData. Confirmed price issued within 24 hours of viewing.',
+              t: '1. Indicative offer, fast',
+              b: 'Submit the property details and receive an indicative offer range based on comparable sales and PropertyData. We aim to make a confirmed offer within 24–48 hours of viewing the property.',
             },
             {
-              t: '2. No re-trade',
+              t: '2. No price cuts',
               b: 'The price we confirm is the price we complete at. Adjustable only for the three documented exceptions: structural survey defect, title issue at conveyancing, or materially incorrect information disclosed by the seller.',
             },
             {
@@ -156,8 +155,8 @@ export default function PartnerBriefPage() {
             by email, WhatsApp, or via our indicative offer tool.
           </li>
           <li>
-            <strong>2.</strong> We send you the indicative offer within 4
-            business hours, confirmed price within 24 hours of viewing.
+            <strong>2.</strong> We send you the indicative offer, and we aim
+            to confirm the price within 24–48 hours of viewing.
           </li>
           <li>
             <strong>3.</strong> You present the offer to your seller using our

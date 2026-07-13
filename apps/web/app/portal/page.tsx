@@ -132,8 +132,8 @@ export default async function PortalPage() {
                       )
                     : null;
                   const estEarnings = q.offer
-                    ? Math.round(q.offer.offerPence * 0.02)
-                    : null; // 2% stack (1% sale + 1% introducer), resale not counted yet
+                    ? Math.round(q.offer.offerPence * 0.01)
+                    : null; // estimated sale commission at 1%, resale instruction not counted yet
                   return (
                     <tr key={q.id} className="hover:bg-stone-50">
                       <td className="px-5 py-3">
@@ -178,8 +178,8 @@ export default async function PortalPage() {
             Complete 3 referrals to move up.
           </p>
           <p className="mt-3 text-sm text-white/70">
-            Preferred tier unlocks an 8-hour offer SLA, a co-branded landing
-            page, and featured placement on our partner wall.
+            Preferred tier unlocks priority offer handling, a co-branded
+            landing page, and featured placement on our partner wall.
           </p>
         </section>
       )}

@@ -528,7 +528,7 @@ export async function POST(request: Request) {
             '  2. A title issue emerges during conveyancing that materially affects value.',
             '  3. Information provided about the property turns out to be materially incorrect.',
             '',
-            'We will be in touch within 4 business hours to arrange the viewing.',
+            'We will be in touch to arrange the viewing.',
             followUpLine,
             '',
             'Bellwoods Lane',
@@ -552,7 +552,7 @@ export async function POST(request: Request) {
           ? 'Indicative offer ready — awaiting founder review'
           : 'Cash offer issued',
         detail: offer.requiresReview
-          ? 'A senior member of our team is reviewing the inputs and will confirm a binding offer within 2 hours.'
+          ? 'A senior member of our team is reviewing the inputs and will confirm a written offer shortly.'
           : `We can complete in ${offer.completionDays} days. The offer is locked, in writing, until ${offer.lockedUntil.toLocaleString('en-GB', { dateStyle: 'long', timeStyle: 'short' })}.`,
         metadata: {
           offerPence: offer.offerPence,
@@ -597,7 +597,7 @@ export async function POST(request: Request) {
     return NextResponse.json(
       {
         error:
-          'Offer engine is temporarily unavailable. A member of our team will email you within 2 hours.',
+          'Offer engine is temporarily unavailable. A member of our team will email you shortly.',
       },
       { status: 500 },
     );

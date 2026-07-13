@@ -81,8 +81,8 @@ export function ProofOfFundsButton() {
                   Request received.
                 </h3>
                 <p className="mt-3 text-sm text-stone-600">
-                  We&apos;ll send you a signed bank letter within 2 hours
-                  during business hours, or first thing next morning.
+                  We&apos;ll email you a signed bank letter as soon as one
+                  of the team has prepared it.
                 </p>
                 <button
                   type="button"
@@ -101,7 +101,7 @@ export function ProofOfFundsButton() {
                   id="pof-title"
                   className="mt-2 font-serif text-2xl font-semibold"
                 >
-                  Signed bank letter, within two hours.
+                  Signed bank letter, direct to your inbox.
                 </h3>
                 <p className="mt-3 text-sm text-stone-600">
                   Tell us where to send it. No automated chasers — one

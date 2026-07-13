@@ -16,11 +16,11 @@ export const revalidate = 300;
 const FAQ: Array<{ q: string; a: string }> = [
   {
     q: 'Will my client think I sold them short?',
-    a: "No — because the offer is below open-market by a published, defensible margin (a speed premium for cash + 14–28 day completion + zero fall-through risk). You hand them the methodology page and a signed offer. They make the call.",
+    a: 'No, because the offer is below open-market by a defensible margin: a price that reflects the speed and certainty of a cash purchase with zero fall-through risk. You hand them the methodology page and a signed offer. They make the call.',
   },
   {
     q: 'My buyer’s mortgage was just refused. Can you replace them at the same price?',
-    a: 'Almost certainly not at the original asking price — our offer is below open-market by a published margin in exchange for cash and certainty. But for a vendor whose buyer just collapsed, that trade-off is often worth it: a quick completion at 75–87% of market value, instead of 4–8 months of re-marketing with no guarantee.',
+    a: 'Almost certainly not at the original asking price. Our offer is below open-market in exchange for cash and certainty. But for a vendor whose buyer just collapsed, that trade-off is often worth it: a quick completion at a price that reflects the speed and certainty of the transaction, instead of 4–8 months of re-marketing with no guarantee.',
   },
   {
     q: 'The survey came back and the buyer wants a £15k reduction. What now?',
@@ -28,15 +28,15 @@ const FAQ: Array<{ q: string; a: string }> = [
   },
   {
     q: 'When and how do I get paid?',
-    a: 'On completion of our purchase from your client. Your partner fee is agreed in writing per deal — typically your standard sale fee plus an introducer fee, with a separate sale instruction when we resell. All disclosed to the seller in writing per NTSELAT guidance.',
+    a: 'On completion of our purchase from your client. You keep your commission on the sale, agreed in writing per deal, with a separate sale instruction when we resell. All disclosed to the seller in writing per NTSELAT guidance.',
   },
   {
     q: 'How are you different from other cash buyers?',
-    a: 'Three ways. (1) Your partner fee is agreed in writing per deal — most national cash buyers cut the agent out entirely. (2) The price we confirm is the price we complete at; if we walk without cause, we pay you £1,000 plus your costs. (3) When we resell the property, we instruct you. National cash buyers flip through their own channels and the property never comes back to you.',
+    a: 'Three ways. (1) You keep your commission, agreed in writing per deal; most national cash buyers cut the agent out entirely. (2) The price we confirm is the price we complete at, with no renegotiation. (3) When we resell the property, we instruct you. National cash buyers flip through their own channels and the property never comes back to you.',
   },
   {
-    q: 'What if you re-trade my client at exchange?',
-    a: 'You collect £1,000 from us, plus your costs, in writing. The price in your client’s offer document is the price at completion. The single legitimate exception is a RICS-survey-disclosed material defect — and your client gets 48 hours to walk away free of charge.',
+    q: 'What if you cut the price before completion?',
+    a: 'We do not renegotiate. The price in your client’s offer document is the price at completion. There are three documented exceptions: a structural survey reveals a material defect that was not visible or disclosed at viewing, a title issue emerges that materially affects value, or information provided about the property proves materially incorrect. In each case your client gets 48 hours to walk away free of charge and we share the survey report or title note in full.',
   },
   {
     q: 'What if my client decides to stay on the open market?',
@@ -79,16 +79,16 @@ function SampleOfferDocument() {
           £244,000
         </p>
         <p className="mt-2 text-[11px] text-stone-500">
-          83% of mid AVM &middot; locked 72 hours
+          Locked for 72 hours
         </p>
       </div>
 
       <dl className="mt-6 space-y-2.5 border-t border-[#EBE1DB] pt-5 text-[12px]">
         {[
           ['Completion', 'Weeks not months'],
-          ['Survey adjustment', 'RICS material defect only'],
-          ['Walk-away cover', '£1,000 + costs'],
-          ['Introducer (your firm)', 'Agreed per deal'],
+          ['Price changes', 'Documented exceptions only'],
+          ['Your commission', 'Agreed per deal, in writing'],
+          ['Resale instruction', 'Back to your firm'],
         ].map(([k, v]) => (
           <div key={k} className="flex justify-between gap-6">
             <dt className="text-stone-500">{k}</dt>
@@ -176,8 +176,9 @@ export default function AgentsPage() {
           <p className="mt-8 max-w-xl text-lg leading-relaxed text-stone-600">
             Buyer pulled out, mortgage refused, survey down-valued, chain broken.
             We&rsquo;re the replacement buyer agents call <em>before</em> they
-            relist &mdash; not after weeks of trying. A real cash figure in 60
-            seconds, a signed binding offer within 24 hours.
+            relist, not after weeks of trying. Send the address, we view the
+            property, and we aim to make an offer within 24 to 48 hours of
+            viewing.
           </p>
           <div className="mt-10 flex flex-wrap items-center gap-x-7 gap-y-4">
             <Button href="#refer">Send the address</Button>
@@ -222,11 +223,11 @@ export default function AgentsPage() {
               },
               {
                 n: 'Option two',
-                t: 'Send to a national cash buyer',
+                t: 'Your client takes it to a national cash buyer',
                 pts: [
-                  '70–85% of market value, no negotiation',
-                  'Re-trading at exchange is endemic',
-                  'Your commission usually isn’t paid',
+                  'Well below market value, no negotiation',
+                  'Last-minute price cuts are endemic',
+                  'You’re out of the picture, so no commission',
                   'You never see the property again on resale',
                 ],
               },
@@ -248,8 +249,8 @@ export default function AgentsPage() {
           <div className="mt-10 rounded-sm border border-brand/50 bg-brand/[0.08] p-8 md:p-10">
             <Eyebrow tone="light">we&rsquo;re trying to be option three</Eyebrow>
             <h3 className="mt-4 max-w-3xl font-serif text-3xl font-semibold leading-[1.1] md:text-4xl">
-              Speed without re-trading. Full commission stack. Resale
-              instruction back to you.
+              Speed without renegotiation. Commission on the sale, and again on
+              the resale.
             </h3>
             <p className="mt-6 text-[11px] leading-relaxed text-white/40">
               Sources: TwentyCi (2025 fall-through rate), Santander &laquo;Fixing
@@ -276,9 +277,10 @@ export default function AgentsPage() {
               </span>
             </h2>
             <p className="mt-6 text-[15px] leading-relaxed text-stone-600">
-              The reason agents avoid cash-buyer referrals isn&rsquo;t the fee
-              &mdash; it&rsquo;s the second commission they lose: the onward
-              purchase, the part-exchange chain, the resale instruction.
+              When a client goes to a national cash buyer directly, the agent is
+              usually out of the picture entirely. Refer them to us instead and
+              the instruction stays yours: you earn your commission on the sale,
+              and again on the re-listing.
             </p>
             <p className="mt-4 text-[15px] leading-relaxed text-stone-600">
               We solve that one explicit way:{' '}
@@ -343,22 +345,23 @@ export default function AgentsPage() {
               <SectionNumber>03</SectionNumber>
               <Eyebrow className="mt-5">the written promise</Eyebrow>
               <h2 className="mt-4 font-serif text-4xl font-semibold leading-[1.05] tracking-[-0.02em] md:text-5xl">
-                No re-trade.{' '}
+                No renegotiation.{' '}
                 <span className="italic font-normal text-brand">In writing.</span>
               </h2>
             </div>
             <Seal label="Bellwoods Lane" className="mt-2 hidden shrink-0 sm:inline-flex" />
           </div>
           <p className="mt-6 max-w-2xl text-[15px] leading-relaxed text-stone-600">
-            Quietly cutting the offer days before exchange is the most-cited
-            complaint UK estate agents have about cash buyers. We make it
-            contractually impossible &mdash; with one transparent exception.
+            Quietly cutting the offer days before exchange is the cash-buyer
+            move vendors fear most. If your client comes to us, we do not
+            renegotiate. There are three transparent exceptions, documented
+            below.
           </p>
           <dl className="mt-12 divide-y divide-[#EBE1DB] border-y border-[#EBE1DB]">
             {[
               {
                 t: 'The price is the price',
-                d: 'The figure in your client’s offer document is the figure at completion. We are contractually liable for £1,000 plus your costs if we walk without cause.',
+                d: 'The figure in your client’s offer document is the figure at completion. If we walk away without cause, your client owes us nothing and loses nothing.',
               },
               {
                 t: 'The only three exceptions',
@@ -394,25 +397,24 @@ export default function AgentsPage() {
           <SectionNumber>04</SectionNumber>
           <Eyebrow className="mt-5">how the process actually runs</Eyebrow>
           <h2 className="mt-4 font-serif text-4xl font-semibold leading-[1.05] tracking-[-0.02em] md:text-5xl">
-            Five steps. Published timelines.{' '}
+            Five steps.{' '}
             <span className="italic font-normal text-brand">
               Honest about what each one means.
             </span>
           </h2>
           <p className="mt-6 max-w-2xl text-[15px] leading-relaxed text-stone-600">
             We never describe our offers as &ldquo;instant&rdquo; or
-            &ldquo;guaranteed&rdquo; at enquiry &mdash; the indicative offer is a
+            &ldquo;guaranteed&rdquo; at enquiry. The indicative offer is a
             starting point, the confirmed offer comes after we&rsquo;ve viewed.
-            Here&rsquo;s exactly what happens, in order, with the SLAs we commit
-            to.
+            Here&rsquo;s exactly what happens, in order.
           </p>
           <ol className="mt-12 divide-y divide-[#EBE1DB] border-y border-[#EBE1DB]">
             {[
               {
                 n: '01',
                 t: 'Acknowledgement',
-                sla: '4 business hours',
-                d: 'Seller or agent submits the property. We acknowledge receipt and may ask clarifying questions. Where we can pull from public records (Land Registry, EPC register, planning portal), we do — we only ask the seller for what we genuinely need.',
+                sla: 'Straight away',
+                d: 'Seller or agent submits the property. We acknowledge receipt and may ask clarifying questions. Where we can pull from public records (Land Registry, EPC register, planning portal), we do. We only ask the seller for what we genuinely need.',
               },
               {
                 n: '02',
@@ -429,14 +431,14 @@ export default function AgentsPage() {
               {
                 n: '04',
                 t: 'Confirmed offer in writing',
-                sla: 'Within 24 hours of viewing',
-                d: 'After viewing, we issue our confirmed purchase price in writing. This is the price we complete at. We share the survey notes that informed it. Locked for 72 hours, walk-away cover £1,000 + costs.',
+                sla: 'We aim for 24–48 hours after viewing',
+                d: 'After viewing, we issue our confirmed purchase price in writing. This is the price we complete at. We share the survey notes that informed it. Locked for 72 hours so your client can take advice.',
               },
               {
                 n: '05',
                 t: 'Conveyancing and completion',
                 sla: 'Weeks not months',
-                d: 'We instruct our solicitors same day. The seller instructs theirs (their choice — we never require a specific firm). We provide regular updates through to exchange and completion, surfaced on the live timeline page the seller can share with anyone.',
+                d: 'We instruct our solicitors straight away. The seller instructs theirs; we can recommend firms accustomed to working on expedited timelines. We provide regular updates through to exchange and completion, surfaced on the live timeline page the seller can share with anyone.',
               },
             ].map((s) => (
               <li
@@ -476,10 +478,10 @@ export default function AgentsPage() {
               </span>
             </h2>
             <p className="mt-6 max-w-md text-[15px] leading-relaxed text-white/70">
-              After viewing, within 24 hours you and your client both receive a
-              PDF offer document. Reference number, confirmed amount, completion
-              timeline, walk-away cover. The price we confirm is the price we
-              complete at. No ambiguity. No verbal commitments to remember.
+              After viewing, you and your client both receive a signed PDF offer
+              document. Reference number, confirmed amount, completion timeline.
+              The price we confirm is the price we complete at. No ambiguity. No
+              verbal commitments to remember.
             </p>
           </div>
           <div className="lg:pl-6">
@@ -494,28 +496,19 @@ export default function AgentsPage() {
         className="border-b border-[#EBE1DB]/70 px-6 py-24 md:px-12 md:py-28"
       >
         <div className="mx-auto max-w-4xl">
-          <Eyebrow>60 seconds to a real number</Eyebrow>
+          <Eyebrow>the fastest way to find out</Eyebrow>
           <h2 className="mt-4 font-serif text-4xl font-semibold tracking-[-0.02em] md:text-5xl">
             Send the address.
           </h2>
           <p className="mt-5 max-w-2xl text-[15px] leading-relaxed text-stone-600">
-            Five fields. The indicative figure appears as soon as you submit
-            &mdash; pulled from HM Land Registry comps. The signed binding offer
-            document follows by email within 24 hours.
+            Five fields. An indicative figure appears as soon as you submit,
+            pulled from HM Land Registry comps. We then view the property and
+            aim to make a confirmed, signed offer within 24 to 48 hours of
+            viewing.
           </p>
           <div className="mt-10">
             <AgentQuickForm />
           </div>
-          <p className="mt-6 text-center text-[13px] text-stone-500">
-            Prefer email?{' '}
-            <a
-              href="mailto:hello@bellwoodslane.co.uk?subject=Agent%20referral"
-              className="text-brand-deep underline underline-offset-4"
-            >
-              hello@bellwoodslane.co.uk
-            </a>{' '}
-            &mdash; same 4-hour turnaround in working hours.
-          </p>
         </div>
       </section>
 

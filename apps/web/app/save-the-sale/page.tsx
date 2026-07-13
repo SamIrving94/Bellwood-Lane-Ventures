@@ -19,11 +19,11 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: 'Sale fallen through? · Bellwoods Lane',
   description:
-    'Buyer pulled out, mortgage refused, survey down-valued or chain broken? An indicative cash figure on screen in 60 seconds. Signed binding offer within 24 hours. For UK estate agents.',
+    'Buyer pulled out, mortgage refused, survey down-valued or chain broken? An indicative cash figure on screen, fast. We aim to make a signed offer within 24–48 hours of viewing. For UK estate agents.',
   openGraph: {
     title: 'Sale fallen through? · Bellwoods Lane',
     description:
-      'Cash figure in 60 seconds, signed offer within 24 hours. For UK estate agents whose sale just collapsed.',
+      'A cash figure on screen fast, and we aim to make a signed offer within 24–48 hours of viewing. For UK estate agents whose sale just collapsed.',
     type: 'website',
   },
 };
@@ -75,25 +75,26 @@ export default function SaveTheSalePage() {
             <p className="mt-7 max-w-md text-lg leading-relaxed text-stone-600">
               Buyer pulled out, mortgage refused, survey down-valued, chain
               broken. Whatever&rsquo;s collapsed, we step in with an
-              indicative figure on screen in 60 seconds (drawn from HM Land
-              Registry comps) and a signed binding offer within 24 hours.
+              indicative figure on screen, fast (drawn from HM Land
+              Registry comps), and we aim to make a signed offer within
+              24&ndash;48 hours of viewing the property.
             </p>
             <ul className="mt-8 space-y-3 text-[14px] text-stone-700">
               <li className="flex items-start gap-3">
                 <span className="mt-1 inline-block h-1.5 w-1.5 shrink-0 rounded-md bg-[#DB5C5C]" />
                 <span>
-                  <strong className="text-[#2B2220]">No re-trade.</strong>{' '}
-                  The price your client accepts is the price they complete at,
-                  or we pay you £1,000 plus your costs.
+                  <strong className="text-[#2B2220]">No price cuts.</strong>{' '}
+                  The price we confirm in writing is the price we complete at,
+                  and your client can walk away at no cost any time before
+                  exchange.
                 </span>
               </li>
               <li className="flex items-start gap-3">
                 <span className="mt-1 inline-block h-1.5 w-1.5 shrink-0 rounded-md bg-[#DB5C5C]" />
                 <span>
-                  <strong className="text-[#2B2220]">Partner fee, agreed per deal.</strong>{' '}
-                  Sale fee, introducer fee, plus the resale instruction when
-                  we sell back through the market — figures confirmed in writing
-                  before the deal proceeds.
+                  <strong className="text-[#2B2220]">You keep your commission.</strong>{' '}
+                  You keep your commission on the sale, and when we resell
+                  through the market we instruct you.
                 </span>
               </li>
               <li className="flex items-start gap-3">
@@ -114,7 +115,7 @@ export default function SaveTheSalePage() {
               >
                 hello@bellwoodslane.co.uk
               </a>
-              {' '}&mdash; same 4-business-hour acknowledgement.
+              {' '}&ndash; it reaches the same team.
             </p>
           </div>
           <div>

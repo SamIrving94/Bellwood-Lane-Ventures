@@ -121,8 +121,7 @@ const SECTIONS: Array<{
           based on public data and comparables) are our honest starting
           point — a price we intend to confirm at, subject only to viewing
           and the three documented exceptions. During the 72-hour confirmed
-          window, we may not withdraw without cause. If we do, we will
-          reimburse your documented costs plus a fixed sum of £1,000.
+          window, we may not withdraw without cause.
         </p>
         <p>
           The offer is <em>not</em> binding upon you until you sign
@@ -131,10 +130,13 @@ const SECTIONS: Array<{
           fee, ever.
         </p>
         <p>
-          Post-survey, we may only revise the offer where an independent
-          RICS-panel survey identifies an undisclosed material defect. If
-          that happens, you may choose to accept the revision or walk away
-          — there is no penalty for the latter.
+          We may only revise the offer in three documented circumstances:
+          where an independent RICS-panel survey identifies a material
+          defect not visible or disclosed at viewing, where a title issue
+          emerges during conveyancing that materially affects value, or
+          where information provided about the property proves materially
+          incorrect. If that happens, you may choose to accept the revision
+          or walk away, and there is no penalty for the latter.
         </p>
       </>
     ),

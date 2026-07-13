@@ -40,7 +40,7 @@ const REASONS: Array<{ k: string; t: string; b: string }> = [
 const FAQ: Array<{ q: string; a: string }> = [
   {
     q: 'Why is the offer below open-market?',
-    a: "Because we buy for cash, complete in 14–28 days, charge no fee, and take the risk of fall-through. Our typical offer is 75–87% of open-market value. You're paying us a speed premium for certainty.",
+    a: "Because we buy for cash, complete in weeks rather than months, charge no fee, and take the risk of fall-through. The price reflects the speed and certainty of the transaction. You're paying us a speed premium for certainty.",
   },
   {
     q: 'Can I change my mind after I accept?',
@@ -48,7 +48,7 @@ const FAQ: Array<{ q: string; a: string }> = [
   },
   {
     q: 'What does it cost me?',
-    a: 'Zero. No agent fee. No solicitor fee (if you use our panel). No survey fee. The figure you see in the offer is the figure that lands in your account on completion day.',
+    a: 'Zero. No agent fee, no survey fee, and no fee to us at any point. As the buyer we pay for our own legals, searches and survey. The figure you see in the offer is the figure that lands in your account on completion day.',
   },
   {
     q: 'How is the offer calculated?',
@@ -56,7 +56,7 @@ const FAQ: Array<{ q: string; a: string }> = [
   },
   {
     q: 'How quickly can you complete?',
-    a: 'In weeks rather than months, paced to suit a probate grant or onward move. We instruct solicitors within 24 hours of acceptance and share proof of funds the same day.',
+    a: 'In weeks rather than months, paced to suit a probate grant or onward move. We instruct solicitors as soon as you accept and share proof of funds straight away.',
   },
   {
     q: 'Can the offer change later?',
@@ -105,7 +105,7 @@ function OfferLetter() {
           £244,000
         </p>
         <p className="mt-1.5 text-[11px] text-stone-500 [font-family:var(--font-courier)]">
-          83% of mid AVM &middot; locked 72 hours
+          Locked for 72 hours
         </p>
       </div>
       <dl className="mt-3 space-y-2 border-t border-[#EAE0D9] pt-3 text-[12px] text-stone-600 [font-family:var(--font-courier)]">
@@ -114,8 +114,8 @@ function OfferLetter() {
           <dd className="text-[#352B27]">Weeks, not months</dd>
         </div>
         <div className="flex justify-between gap-6">
-          <dt>Walk-away cover</dt>
-          <dd className="text-[#352B27]">£1,000 + costs</dd>
+          <dt>Fees to you</dt>
+          <dd className="text-[#352B27]">None</dd>
         </div>
       </dl>
       <svg viewBox="0 0 130 30" className="mt-3 h-6 w-28" aria-hidden="true">
@@ -172,10 +172,10 @@ export default function SellPage() {
               <span className="italic font-normal text-brand">in writing.</span>
             </h1>
             <p className="mt-6 max-w-md text-[17px] leading-relaxed text-stone-600">
-              An indicative figure in 4 business hours. After we visit, a
-              confirmed, signed price within 24 hours, locked for 72 hours so you
-              can take advice. The price we put in writing is the price we
-              complete at.
+              Tell us about the property and we will come and view it. We aim to
+              make an offer within 24 to 48 hours of viewing, locked for 72
+              hours so you can take advice. The price we put in writing is the
+              price we complete at.
             </p>
             <div className="mt-8 flex flex-wrap items-center gap-x-6 gap-y-4">
               <Button href="#offer">Get a cash offer</Button>
@@ -193,6 +193,34 @@ export default function SellPage() {
           </div>
           <div className="flex justify-center md:justify-end">
             <OfferLetter />
+          </div>
+        </div>
+      </section>
+
+      {/* ————— REASONS / SITUATIONS ————— */}
+      <section className="border-y border-[#EBE1DB]/70 bg-[#F6ECE7] px-6 py-24 md:px-12 md:py-28">
+        <div className="mx-auto max-w-6xl">
+          <div className="mb-12 max-w-3xl">
+            <Eyebrow>who we buy from</Eyebrow>
+            <h2 className="mt-4 font-serif text-4xl font-semibold leading-[1.05] tracking-[-0.02em] md:text-5xl">
+              Real reasons people choose{' '}
+              <span className="italic font-normal text-brand">certainty</span>{' '}
+              over price.
+            </h2>
+          </div>
+          <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+            {REASONS.map((r) => (
+              <div
+                key={r.k}
+                className="rounded-sm border border-[#E4D8D1] bg-white p-7 transition-shadow hover:shadow-[0_24px_48px_-32px_rgba(43,34,32,0.4)]"
+              >
+                <p className="font-serif text-sm italic text-brand">{r.k}</p>
+                <p className="mt-3 font-serif text-xl font-semibold">{r.t}</p>
+                <p className="mt-3 text-sm leading-relaxed text-stone-600">
+                  {r.b}
+                </p>
+              </div>
+            ))}
           </div>
         </div>
       </section>
@@ -221,8 +249,8 @@ export default function SellPage() {
               {
                 n: '01',
                 t: 'You get in touch',
-                sla: '4 business hours',
-                d: 'Tell us the address and a little about your situation. We acknowledge receipt within 4 business hours and pull what we can from public records — Land Registry, EPC, planning — before bothering you for anything else.',
+                sla: 'Straight away',
+                d: 'Tell us the address and a little about your situation. We acknowledge receipt and pull what we can from public records, Land Registry, EPC and planning, before bothering you for anything else.',
               },
               {
                 n: '02',
@@ -239,14 +267,14 @@ export default function SellPage() {
               {
                 n: '04',
                 t: 'Confirmed price in writing',
-                sla: 'Within 24 hours of viewing',
-                d: 'The price we send is the price we complete at. We share the survey notes that informed it. Locked for 72 hours so you can take advice. Walk-away cover £1,000 + costs.',
+                sla: 'We aim for 24–48 hours after viewing',
+                d: 'The price we send is the price we complete at. We share the survey notes that informed it. Locked for 72 hours so you can take advice.',
               },
               {
                 n: '05',
                 t: 'Conveyancing and completion',
                 sla: 'Paced to suit you',
-                d: 'You instruct your own solicitor (your choice — we never require ours). We instruct ours same-day. Regular updates on a live timeline you can share with anyone. We pay all our legal costs.',
+                d: 'You instruct your own solicitor. We can recommend firms accustomed to working on expedited timelines to keep the transaction efficient. We instruct ours straight away. Regular updates on a live timeline you can share with anyone. We pay all our own legal costs.',
               },
             ].map((s) => (
               <li
@@ -273,34 +301,6 @@ export default function SellPage() {
         </div>
       </section>
 
-      {/* ————— REASONS / SITUATIONS ————— */}
-      <section className="border-b border-[#EBE1DB]/70 bg-[#F6ECE7] px-6 py-24 md:px-12 md:py-28">
-        <div className="mx-auto max-w-6xl">
-          <div className="mb-12 max-w-3xl">
-            <Eyebrow>who we buy from</Eyebrow>
-            <h2 className="mt-4 font-serif text-4xl font-semibold leading-[1.05] tracking-[-0.02em] md:text-5xl">
-              Real reasons people choose{' '}
-              <span className="italic font-normal text-brand">certainty</span>{' '}
-              over price.
-            </h2>
-          </div>
-          <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-            {REASONS.map((r) => (
-              <div
-                key={r.k}
-                className="rounded-sm border border-[#E4D8D1] bg-white p-7 transition-shadow hover:shadow-[0_24px_48px_-32px_rgba(43,34,32,0.4)]"
-              >
-                <p className="font-serif text-sm italic text-brand">{r.k}</p>
-                <p className="mt-3 font-serif text-xl font-semibold">{r.t}</p>
-                <p className="mt-3 text-sm leading-relaxed text-stone-600">
-                  {r.b}
-                </p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
       {/* ————— THE OFFER (CHAT) ————— */}
       <section
         id="offer"
@@ -313,8 +313,8 @@ export default function SellPage() {
               Tell us about your home.
             </h2>
             <p className="mt-4 text-stone-600">
-              A few quick details. A real binding offer back the same day — not
-              an estimate.
+              A few quick details. An indicative figure first, then a confirmed
+              offer in writing after we view the property.
             </p>
           </div>
           <Suspense fallback={<div className="h-96" />}>
@@ -333,7 +333,7 @@ export default function SellPage() {
           <div>
             <Eyebrow tone="light">the written promise</Eyebrow>
             <h2 className="mt-4 font-serif text-4xl font-semibold leading-[1.05] tracking-[-0.02em] md:text-5xl">
-              No re-trade.
+              No renegotiation.
               <br />
               <span className="italic font-normal text-[#f0c9c0]">
                 No surprises.
@@ -341,17 +341,16 @@ export default function SellPage() {
             </h2>
             <p className="mt-6 text-[15px] leading-relaxed text-white/70">
               The single biggest complaint about cash buyers is the last-minute
-              price drop. We make it contractually impossible.
+              price drop. We put the price in writing and stand behind it.
             </p>
             <Seal label="Bellwoods Lane" className="mt-10 hidden lg:inline-flex" />
           </div>
           <dl className="divide-y divide-white/10 border-t border-white/10">
             {[
               ['Offer validity', 'Legally binding upon Bellwoods Lane for 72 hours. Time-stamped, in writing, downloadable as PDF.'],
-              ['No re-trade', 'We cannot reduce the offer between issue and exchange. The only exception is a survey-disclosed material defect, in which case you can walk away free.'],
+              ['No price reduction', 'We do not renegotiate between issue and exchange. There are three documented exceptions: a survey reveals a material defect not visible at viewing, a title issue emerges that materially affects value, or information provided proves materially incorrect. In each case you can walk away at no cost.'],
               ['Walk-away free', 'You may withdraw at any point before exchange. No penalty, no chase.'],
-              ['Costs covered', 'We pay solicitors (if you use our panel), searches, and survey. Zero fees to you.'],
-              ['Fall-through cover', 'If we walk without cause, we reimburse your costs plus £1,000.'],
+              ['Costs covered', 'No fee to us at any point. As the buyer we pay our own legals, searches and survey.'],
             ].map(([k, v]) => (
               <div
                 key={k as string}
@@ -403,9 +402,10 @@ export default function SellPage() {
             answer
           </h2>
           <p className="mt-5 max-w-2xl text-[15px] leading-relaxed text-stone-700">
-            We buy at 65&ndash;75% of open market value. That trade is right for
-            some sellers and wrong for others. We&rsquo;d rather tell you so up
-            front than waste your time.
+            We buy below open market value, at a price that reflects the speed
+            and certainty of the transaction. That trade is right for some
+            sellers and wrong for others. We&rsquo;d rather tell you so up front
+            than waste your time.
           </p>
           <ul className="mt-8 space-y-px overflow-hidden rounded-sm border border-[#E4D8D1] bg-[#E4D8D1]">
             {[

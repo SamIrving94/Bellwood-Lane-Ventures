@@ -175,10 +175,9 @@ export default async function OfferCertificatePage({
             ],
             ['AVM range', `${formatGBP(o.estimatedMarketValueMinPence)} – ${formatGBP(o.estimatedMarketValueMaxPence)}`],
             [
-              'Post-survey adjustment',
-              'Only on disclosed material defect; you may walk away free',
+              'Price adjustment',
+              'Only for three documented exceptions: a structural survey reveals a material defect not visible or disclosed at viewing, a title issue emerges during conveyancing that materially affects value, or information provided about the property proves materially incorrect. You may walk away free.',
             ],
-            ['Withdrawal cost (us)', "Your costs + £1,000"],
             ['Withdrawal cost (you)', '£0 at any point before exchange'],
             ['Vendor fees', 'Zero. We pay solicitors, searches, and any agent commission'],
           ].map(([k, v]) => (

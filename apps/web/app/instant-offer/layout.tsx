@@ -18,11 +18,11 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: 'Get an indicative cash offer · Bellwoods Lane',
   description:
-    'Indicative cash property offer in 4 business hours, confirmed in writing within 24 hours of viewing. Completion in weeks not months. No fees.',
+    'A cash offer that reflects the speed and certainty of the transaction, confirmed in writing after viewing. Completion in weeks not months. No fees.',
   openGraph: {
     title: 'Sell your home. On your timeline. No surprises. · Bellwoods Lane',
     description:
-      'Indicative cash offer in 4 business hours. Confirmed in writing after viewing. The price we confirm is the price we complete at.',
+      'An indicative cash offer, confirmed in writing after viewing. The price we confirm is the price we complete at.',
     type: 'website',
   },
 };
