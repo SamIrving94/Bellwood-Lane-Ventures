@@ -1,0 +1,388 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Sevenoaks Avenue — how the model got to the numbers</title>
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --panel2:#1e222b; --line:#2a2f3a;
+    --ink:#eef1f6; --muted:#9aa4b2; --accent:#5b9dff; --good:#37c98b;
+    --warn:#ffb020; --bad:#ff5d5d; --chip:#232833;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font:16px/1.55 -apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;}
+  .wrap{max-width:1060px;margin:0 auto;padding:28px 20px 80px;}
+  h1{font-size:30px;margin:0 0 6px;letter-spacing:-.4px}
+  h2{font-size:21px;margin:34px 0 12px;letter-spacing:-.2px}
+  h3{font-size:15px;margin:0 0 8px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;font-weight:700}
+  p{margin:8px 0}
+  .sub{color:var(--muted);margin-top:0}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px 20px;margin:14px 0}
+  .grid{display:grid;gap:14px}
+  .g2{grid-template-columns:1fr 1fr}
+  .g3{grid-template-columns:repeat(3,1fr)}
+  @media(max-width:760px){.g2,.g3{grid-template-columns:1fr}}
+  .chip{display:inline-block;background:var(--chip);border:1px solid var(--line);
+    border-radius:999px;padding:3px 11px;font-size:13px;color:var(--muted);margin:0 6px 6px 0}
+  .chip.good{color:var(--good);border-color:#1f6b4d}
+  .chip.warn{color:var(--warn);border-color:#6b551f}
+  .big{font-size:30px;font-weight:800;letter-spacing:-.5px;margin:2px 0}
+  .lbl{color:var(--muted);font-size:13px;text-transform:uppercase;letter-spacing:.4px;font-weight:700}
+  .good{color:var(--good)} .bad{color:var(--bad)} .warn{color:var(--warn)} .accent{color:var(--accent)}
+  table{width:100%;border-collapse:collapse;font-size:15px}
+  td,th{padding:7px 4px;border-bottom:1px solid var(--line);text-align:left}
+  td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
+  tr.total td{border-top:2px solid var(--line);border-bottom:none;font-weight:800}
+  .flow td:first-child{color:var(--muted)}
+  .step{display:flex;gap:14px;align-items:flex-start;margin:6px 0}
+  .num{flex:0 0 30px;height:30px;border-radius:8px;background:var(--accent);color:#0b1220;
+    font-weight:800;display:flex;align-items:center;justify-content:center}
+  input[type=range]{width:100%}
+  input[type=number],select{background:var(--panel2);color:var(--ink);border:1px solid var(--line);
+    border-radius:8px;padding:8px 10px;font-size:15px;width:100%}
+  label.field{display:block;margin:10px 0}
+  label.field .lbl{margin-bottom:4px;display:block}
+  .verdict{font-size:22px;font-weight:800;padding:4px 14px;border-radius:10px;display:inline-block}
+  .v-pass{background:#123b2b;color:var(--good)} .v-marginal{background:#3a3113;color:var(--warn)}
+  .v-fail{background:#3a1717;color:var(--bad)}
+  .note{font-size:13.5px;color:var(--muted)}
+  .kbd{background:var(--panel2);border:1px solid var(--line);border-radius:6px;padding:1px 6px;font-size:13px}
+  .mono{font-variant-numeric:tabular-nums}
+  .bar{height:10px;border-radius:6px;background:var(--panel2);overflow:hidden;margin-top:6px}
+  .bar>i{display:block;height:100%}
+  .callout{border-left:3px solid var(--accent);padding:6px 0 6px 14px;margin:10px 0;color:var(--ink)}
+  .two-offers{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  @media(max-width:760px){.two-offers{grid-template-columns:1fr}}
+  hr{border:none;border-top:1px solid var(--line);margin:26px 0}
+  .foot{color:var(--muted);font-size:13px;margin-top:40px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>Sevenoaks Avenue, Stockport — the numbers, explained</h1>
+  <p class="sub">SK4 4AP · Detached · 4 bed · 129 m² · <b>probate</b> lead · sourced 26 Jun 2026 (lead <span class="mono">cmqul56zv…</span>)</p>
+  <div>
+    <span class="chip warn">STRONG · 80/100</span>
+    <span class="chip">Unmodernised</span>
+    <span class="chip">Market: rising</span>
+    <span class="chip">Asking £695,000 (was £750,000, −7%)</span>
+    <span class="chip">On market 14d</span>
+  </div>
+
+  <div class="callout">
+    <b>Read this first.</b> There are <b>two different "offer" numbers</b> on this property and they answer
+    <b>two different questions</b>. That is the whole story. Everything below shows how each was built —
+    live, from the same code the app runs.
+  </div>
+
+  <!-- ============ THE TWO OFFERS ============ -->
+  <h2>The two offers — why they disagree</h2>
+  <div class="two-offers">
+    <div class="card">
+      <h3>1 · Instant AVM offer</h3>
+      <div class="lbl">what we'd quote off market value</div>
+      <div class="big accent" id="instantOffer">£682,254</div>
+      <p class="note"><b>20% below</b> the AVM market value. This is the sourcing/outreach number.
+      It assumes we resell at full market value with <b>no</b> refurb or buying costs — so it is only an
+      <i>opening</i> figure, never the underwriting number.</p>
+    </div>
+    <div class="card">
+      <h3>2 · Max offer as a flip</h3>
+      <div class="lbl">walk-away ceiling · 20% cash ROI</div>
+      <div class="big" id="maxOfferBig">£579,798</div>
+      <p class="note">The <b>most we can pay</b> and still clear a <b>20% cash return</b> after
+      <b>£71k refurb + ~£48k SDLT + selling fees</b>. This is the real underwriting ceiling.</p>
+    </div>
+  </div>
+  <div class="callout">
+    Asking is <b>£695,000</b>. That sits <b class="bad">above both</b> offers. As a flip it only returns
+    <b class="bad">~2%</b> — a <b>fail</b>. The gap between the two offers (~£100k) <b>is the refurb + tax + fees</b>
+    the instant offer ignores. <b>The margin is made buying below the as-is value (£755k), not from refurb uplift (which is 0 here).</b>
+  </div>
+
+  <!-- ============ STEP 1: AVM ============ -->
+  <h2>Step 1 — Market value (the AVM)</h2>
+  <div class="card">
+    <div class="grid g3">
+      <div><div class="lbl">AVM point estimate</div><div class="big">£858,181</div><div class="note">comp-typical, done-up</div></div>
+      <div><div class="lbl">Range (±3.0%)</div><div class="big" style="font-size:22px">£832,436 – £883,926</div><div class="note">±£25,745</div></div>
+      <div><div class="lbl">Confidence</div><div class="big" style="font-size:22px">high</div><div class="note">1 sold comp</div></div>
+    </div>
+    <hr>
+    <p class="note">The AVM is the value of a <b>normal-condition</b> (done-up) property of this type/size/area,
+    from distance-weighted sold comps + HPI. Condition, EPC and environmental risk do <b>not</b> move this number —
+    they move the <i>offer</i>. That's why the AVM doubles as the <b>GDV</b> (end value after a standard refurb).</p>
+  </div>
+
+  <!-- ============ STEP 2: sourcing score ============ -->
+  <h2>Step 2 — Why it scored 80/100 (sourcing signal)</h2>
+  <div class="card">
+    <p class="note" style="margin-top:0">This is the <b>lead-quality</b> score — how motivated/valuable the seller looks.
+    It's <b>separate</b> from whether the flip makes money.</p>
+    <table>
+      <tr><th>Factor</th><th>Dimension</th><th class="n">Points</th></tr>
+      <tr><td>Unmodernised</td><td>Motivation</td><td class="n">+25</td></tr>
+      <tr><td>Strong equity (1.5× area average)</td><td>Equity</td><td class="n">+25</td></tr>
+      <tr><td>Rising market</td><td>Market</td><td class="n">+15</td></tr>
+      <tr><td>Hot probate window</td><td>Motivation</td><td class="n">+12</td></tr>
+      <tr><td>Accelerating price drops (1)</td><td>Motivation</td><td class="n">+5</td></tr>
+      <tr><td>Contact quality (no direct contact yet)</td><td>Contact</td><td class="n">+0</td></tr>
+      <tr class="total"><td>Total</td><td>Motivation 40 · Equity 25 · Market 15 · Contact 0</td><td class="n">80</td></tr>
+    </table>
+    <p class="note">Verdict <b class="warn">STRONG</b>. Good <b>sourcing</b> signal — but the money question is Step 3.</p>
+  </div>
+
+  <!-- ============ STEP 3: interactive deal model ============ -->
+  <h2>Step 3 — The bottom-up flip model (live)</h2>
+  <p class="sub">Same maths as <span class="mono">deal-model.ts</span> + <span class="mono">gdv.ts</span>. Change anything — every number recalculates.</p>
+
+  <div class="grid g2">
+    <div class="card">
+      <h3>Inputs</h3>
+      <label class="field"><span class="lbl">AVM market value (£)</span>
+        <input type="number" id="in_avm" value="858181" step="1000"></label>
+      <label class="field"><span class="lbl">Condition (as-is discount)</span>
+        <select id="in_cond">
+          <option value="0">Turnkey (0%)</option>
+          <option value="0.06">Dated (−6%)</option>
+          <option value="0.12" selected>Tired (−12%)</option>
+          <option value="0.18">Unmodernised (−18%)</option>
+          <option value="0.28">Derelict (−28%)</option>
+        </select></label>
+      <label class="field"><span class="lbl">Refurb spend (£)</span>
+        <input type="number" id="in_refurb" value="71000" step="1000"></label>
+      <label class="field"><span class="lbl">Refurb uplift above comp (%)</span>
+        <input type="number" id="in_uplift" value="0" step="1"></label>
+      <label class="field"><span class="lbl">Acquisition route</span>
+        <select id="in_route">
+          <option value="private_treaty" selected>Private treaty</option>
+          <option value="auction_traditional">Auction (traditional)</option>
+          <option value="auction_modern">Auction (modern / online +£10k fee)</option>
+        </select></label>
+      <label class="field"><span class="lbl">Target cash ROI (%)</span>
+        <input type="number" id="in_target" value="20" step="1"></label>
+      <label class="field"><span class="lbl">Our offer (£)</span>
+        <input type="number" id="in_offer" value="695000" step="1000"></label>
+      <p class="note">Defaults are the live Sevenoaks values. Offer is pre-set to the <b>asking price</b>
+      so you can see why it fails.</p>
+    </div>
+
+    <div class="card">
+      <h3>Value chain</h3>
+      <table class="flow">
+        <tr><td>AVM market value <span class="note">(done-up)</span></td><td class="n big" style="font-size:19px" id="o_avm">£858,181</td></tr>
+        <tr><td>As-is today <span class="note" id="o_condlbl">(tired −12%)</span></td><td class="n" id="o_asis">£755,199</td></tr>
+        <tr><td>GDV after refurb <span class="note" id="o_upliftlbl">(+0%)</span></td><td class="n" id="o_gdv">£858,181</td></tr>
+      </table>
+
+      <h3 style="margin-top:18px">Costs on top of the price</h3>
+      <table>
+        <tr><td>SDLT <span class="note">(bands + 5% surcharge)</span></td><td class="n" id="o_sdlt">—</td></tr>
+        <tr><td>Purchase legals</td><td class="n" id="o_plegal">£2,000</td></tr>
+        <tr><td>Auction fee</td><td class="n" id="o_auction">£0</td></tr>
+        <tr><td>Refurb</td><td class="n" id="o_refurb">£71,000</td></tr>
+        <tr><td>Sale agent <span class="note">(1.5% GDV)</span></td><td class="n" id="o_sagent">—</td></tr>
+        <tr><td>Sale legals</td><td class="n" id="o_slegal">£1,500</td></tr>
+        <tr class="total"><td>Total costs</td><td class="n" id="o_costs">—</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <div class="grid g3">
+    <div class="card">
+      <div class="lbl">Max offer · <span id="o_targetlbl">20%</span> cash</div>
+      <div class="big" id="o_max">£579,798</div>
+      <div class="note">walk-away ceiling</div>
+    </div>
+    <div class="card">
+      <div class="lbl">At our offer · cash ROI</div>
+      <div class="big" id="o_cashroi">2%</div>
+      <div class="note" id="o_cashprofit">£16,308 profit · all-in £841,873</div>
+    </div>
+    <div class="card">
+      <div class="lbl">At our offer · financed ROI</div>
+      <div class="big" id="o_finroi">−9%</div>
+      <div class="note">bridging upside (never the gate)</div>
+    </div>
+  </div>
+
+  <div class="card" style="text-align:center">
+    <div class="lbl" style="margin-bottom:8px">Verdict at this offer</div>
+    <span class="verdict v-fail" id="o_verdict">FAIL</span>
+    <p class="note" id="o_verdictnote" style="margin-top:12px"></p>
+  </div>
+
+  <!-- ============ HOW MAX OFFER IS SOLVED ============ -->
+  <h2>How the "max offer" number is found</h2>
+  <div class="card">
+    <div class="step"><div class="num">1</div><div>Fix GDV (£858,181) and every cost that <i>doesn't</i> depend on price (refurb, sale fees).</div></div>
+    <div class="step"><div class="num">2</div><div>Cash ROI <b>falls</b> as the price rises (pay more → SDLT rises → profit shrinks). So there's exactly one price where ROI = target.</div></div>
+    <div class="step"><div class="num">3</div><div><b>Binary-search</b> the offer between £0 and GDV until cash ROI lands on <b>20%</b>. That price is the max offer.</div></div>
+    <div class="step"><div class="num">4</div><div>At <b id="proof_max">£579,798</b>: all-in outlay <b id="proof_outlay">£715,151</b> · profit <b id="proof_profit">£143,030</b> · ROI <b id="proof_roi">20.0%</b>. ✓</div></div>
+  </div>
+
+  <div class="callout">
+    <b>So — "why the max offer?"</b> The <span class="mono">Max offer · 20% cash</span> tile is the number that
+    <b>protects the return</b>. Sevenoaks is a <b>strong lead</b> (80/100) but a <b>failing flip at asking</b>:
+    you'd have to buy at <b>~£580k</b> — about <b>£115k under asking</b> — for the 20% ROI to hold. That's the
+    negotiation target the model is pointing you at.
+  </div>
+
+  <p class="foot">
+    Sources: live lead <span class="mono">cmqul56zv0005jv048yz9ps1d</span> (Neon <span class="mono">ScoutLead.rawPayload</span>) +
+    your dashboard view. Logic ported verbatim from <span class="mono">packages/valuation/src/deal-model.ts</span>,
+    <span class="mono">gdv.ts</span>, <span class="mono">offer-config.ts</span>. Money handled in pence, matching the app.
+    Instant AVM offer shown as stored at sourcing (20% below the AVM snapshot); the live deal-model re-anchors GDV on £858,181.
+  </p>
+
+</div>
+
+<script>
+// ---- ported verbatim from deal-model.ts DEFAULT_DEAL_COSTS + logic ----
+const P = 100; // pence per pound
+const COSTS = {
+  sdltBands: [
+    {t:0, r:0}, {t:125000*P, r:0.02}, {t:250000*P, r:0.05},
+    {t:925000*P, r:0.10}, {t:1500000*P, r:0.12}
+  ],
+  surcharge: 0.05,
+  purchaseLegalsPence: 2000*P,
+  auctionModernFeePence: 10000*P,
+  refurbContingencyFraction: 0,
+  saleAgentFraction: 0.015,
+  saleLegalsPence: 1500*P,
+  targetCashRoi: 0.20,
+  finance: { ltv:0.75, annualRate:0.09, arrangementFeeFraction:0.02, holdMonths:9 }
+};
+
+function computeSdltPence(price, exempt=false){
+  if(exempt || price<=0) return 0;
+  const b = COSTS.sdltBands; let tax=0;
+  for(let i=0;i<b.length;i++){
+    const lower=b[i].t;
+    if(price<=lower) break;
+    const upper = i+1<b.length ? b[i+1].t : Infinity;
+    const slice = Math.min(price,upper)-lower;
+    tax += slice*b[i].r;
+  }
+  tax += price*COSTS.surcharge;
+  return Math.round(tax);
+}
+
+function buildCosts(offer, gdv, refurb, route){
+  const sdlt = computeSdltPence(offer);
+  const auction = route==='auction_modern' ? COSTS.auctionModernFeePence : 0;
+  const contingency = Math.round(refurb*COSTS.refurbContingencyFraction);
+  const saleAgent = Math.round(gdv*COSTS.saleAgentFraction);
+  const total = sdlt + COSTS.purchaseLegalsPence + auction + refurb + contingency + saleAgent + COSTS.saleLegalsPence;
+  return {sdlt, auction, contingency, saleAgent, refurb, total};
+}
+
+function appraise(offer, gdv, refurb, route){
+  const c = buildCosts(offer, gdv, refurb, route);
+  const outlay = offer + c.total;
+  const profit = gdv - outlay;
+  const roi = outlay>0 ? profit/outlay : 0;
+  // financed
+  const f = COSTS.finance;
+  const loan = Math.round(offer*f.ltv);
+  const deposit = offer - loan;
+  const arr = Math.round(loan*f.arrangementFeeFraction);
+  const interest = Math.round(loan*f.annualRate*(f.holdMonths/12));
+  const cashIn = deposit + refurb + c.contingency + c.sdlt + COSTS.purchaseLegalsPence + c.auction + arr;
+  const finProfit = profit - interest - arr;
+  const finRoi = cashIn>0 ? finProfit/cashIn : 0;
+  return {costs:c, outlay, profit, roi, finRoi};
+}
+
+function maxOfferForRoi(gdv, refurb, route, target){
+  const roiAt = o => appraise(o, gdv, refurb, route).roi;
+  if(roiAt(0) < target){ return 0; }
+  let lo=0, hi=gdv;
+  while(hi-lo>1){
+    const mid=Math.floor((lo+hi)/2);
+    if(roiAt(mid)>=target) lo=mid; else hi=mid;
+  }
+  return lo;
+}
+
+const gbp = p => '£'+Math.round(p/P).toLocaleString('en-GB');
+const pct = f => (f*100).toFixed(f>=0.1||f<=-0.1?0:1)+'%';
+
+function render(){
+  const avm = Math.round((+document.getElementById('in_avm').value||0)*P);
+  const cond = +document.getElementById('in_cond').value;
+  const refurb = Math.round((+document.getElementById('in_refurb').value||0)*P);
+  const uplift = (+document.getElementById('in_uplift').value||0)/100;
+  const route = document.getElementById('in_route').value;
+  const target = (+document.getElementById('in_target').value||0)/100;
+  const offer = Math.round((+document.getElementById('in_offer').value||0)*P);
+
+  const asis = Math.round(avm*(1-cond));
+  const gdv = Math.round(avm*(1+uplift));
+
+  // value chain
+  document.getElementById('o_avm').textContent = gbp(avm);
+  document.getElementById('o_asis').textContent = gbp(asis);
+  document.getElementById('o_gdv').textContent = gbp(gdv);
+  const condName = document.getElementById('in_cond').selectedOptions[0].text;
+  document.getElementById('o_condlbl').textContent = '('+condName.toLowerCase()+')';
+  document.getElementById('o_upliftlbl').textContent = '(+'+Math.round(uplift*100)+'%)';
+
+  // instant AVM offer (20% below market, probate margin)
+  document.getElementById('instantOffer').textContent = gbp(Math.round(avm*0.80));
+
+  // costs at our offer
+  const a = appraise(offer, gdv, refurb, route);
+  document.getElementById('o_sdlt').textContent = gbp(a.costs.sdlt);
+  document.getElementById('o_auction').textContent = gbp(a.costs.auction);
+  document.getElementById('o_refurb').textContent = gbp(refurb);
+  document.getElementById('o_sagent').textContent = gbp(a.costs.saleAgent);
+  document.getElementById('o_costs').textContent = gbp(a.costs.total);
+
+  // max offer
+  const maxO = maxOfferForRoi(gdv, refurb, route, target);
+  document.getElementById('o_max').textContent = gbp(maxO);
+  document.getElementById('maxOfferBig').textContent = gbp(maxO);
+  document.getElementById('o_targetlbl').textContent = Math.round(target*100)+'%';
+
+  // ROI tiles
+  const cashEl = document.getElementById('o_cashroi');
+  cashEl.textContent = pct(a.roi);
+  cashEl.className = 'big '+(a.roi>=target?'good':a.roi>=target-0.01?'warn':'bad');
+  document.getElementById('o_cashprofit').textContent = gbp(a.profit)+' profit · all-in '+gbp(a.outlay);
+  const finEl = document.getElementById('o_finroi');
+  finEl.textContent = pct(a.finRoi);
+  finEl.className = 'big '+(a.finRoi>=0?'good':'bad');
+
+  // verdict
+  const v = a.roi>=target?'pass':a.roi>=target-0.01?'marginal':'fail';
+  const vEl = document.getElementById('o_verdict');
+  vEl.textContent = v.toUpperCase();
+  vEl.className = 'verdict v-'+v;
+  const gap = offer - maxO;
+  document.getElementById('o_verdictnote').innerHTML =
+    v==='pass'
+      ? 'Offer clears the '+Math.round(target*100)+'% hurdle.'
+      : 'Offer is <b>'+gbp(Math.abs(gap))+'</b> '+(gap>0?'above':'below')+' the '+Math.round(target*100)+
+        '% max offer of <b>'+gbp(maxO)+'</b>. To pass, buy at or below that.';
+
+  // proof line
+  const proof = appraise(maxO, gdv, refurb, route);
+  document.getElementById('proof_max').textContent = gbp(maxO);
+  document.getElementById('proof_outlay').textContent = gbp(proof.outlay);
+  document.getElementById('proof_profit').textContent = gbp(proof.profit);
+  document.getElementById('proof_roi').textContent = pct(proof.roi);
+}
+
+document.querySelectorAll('input,select').forEach(el=>{
+  el.addEventListener('input', render);
+  el.addEventListener('change', render);
+});
+render();
+</script>
+</body>
+</html>
