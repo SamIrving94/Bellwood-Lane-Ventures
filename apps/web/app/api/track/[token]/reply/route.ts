@@ -8,7 +8,7 @@ import { z } from 'zod';
  * Public endpoint — no auth, gated by the unguessable trackToken.
  * The vendor (or agent) leaves a message from the TrackToken page.
  * We create a Liaison-assigned FounderAction so Liaison picks it up
- * on its next heartbeat-pull from /agents/inbox?agent=liaison.
+ * via the event-poller cron's vendor-reply triage.
  *
  * We never auto-respond. Liaison drafts, the board approves, then it sends.
  */

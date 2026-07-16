@@ -196,3 +196,14 @@ Run a task for one workspace with a filter, e.g.
 | Server actions | `apps/app/app/actions/*` |
 | Paperclip agent onboarding | `docs/PAPERCLIP-SYNC-BRIEF.md` |
 | Session/context handover | `CONTEXT-HANDOVER.md` |
+
+## Paperclip (retired)
+
+The external Paperclip agent runtime was decommissioned (verified against prod
+AgentEvents, 2026-07-16). Its jobs run as internal Vercel crons that kept the
+agent names (liaison/appraiser/marketer/orchestrator in AgentEvent are crons,
+not external agents). Most `/agents/*` routes were deleted; the five that
+remain (auctions, marketer/draft-blog, dispatch, intake/whatsapp,
+scout/process-probate-pdf) have live internal callers and use
+`validateAgentAuth` (BELLWOOD_API_KEY). Do not add new `/agents/*` routes for
+external runtimes without founder sign-off.

@@ -1,8 +1,14 @@
 # Paperclip Agent Sync Brief — Bellwood Ventures Platform
 
-> **As of 2026-05, all marketing workflows run from `/cron/marketer-*`.
-> Paperclip is retained as optional dev tooling, not a required runtime.
-> See `docs/architecture/marketer-internal.md` for the current architecture.**
+> **RETIRED (2026-07-16).** The external Paperclip runtime is decommissioned.
+> Production evidence: its exclusive roles (cto, counsel) last wrote AgentEvents
+> on 2026-04-09; scout on 2026-05-25. All of its functions now run as internal
+> Vercel crons (see `docs/architecture/marketer-internal.md`), which kept the
+> agent identities (liaison, appraiser, marketer, orchestrator). The orphaned
+> `/agents/*` HTTP routes were deleted on 2026-07-16, except five with live
+> internal callers: auctions, marketer/draft-blog, dispatch, intake/whatsapp,
+> scout/process-probate-pdf. This document is kept as historical reference for
+> the role playbooks and workflow definitions.
 
 **This is the single source of truth for every Paperclip agent.**
 **Updated:** May 2026 (v4 — reconciled with the live Paperclip instance).

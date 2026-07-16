@@ -57,7 +57,7 @@ export const POST = async (request: Request) => {
     method: 'POST',
     headers: {
       'content-type': 'application/json',
-      authorization: `Bearer ${env.PAPERCLIP_API_KEY}`,
+      authorization: `Bearer ${env.BELLWOOD_API_KEY ?? env.PAPERCLIP_API_KEY ?? ''}`,
     },
     body: JSON.stringify({
       lots: screenedLots.map((lot) => ({

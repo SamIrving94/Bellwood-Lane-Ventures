@@ -492,7 +492,7 @@ export async function POST(request: Request) {
             status: 'pending',
             agent: 'appraiser',
             title: `Draft signed offer PDF: ${input.address}`,
-            description: `Enrich + draft a signed binding offer for ${input.address}, ${input.postcode}. Indicative figure: £${offerGbp}. Use docs/templates/binding-offer-letter.md. PATCH /agents/quote-ops/${quoteRequest.id} with signedOfferUrl when done — that auto-creates a Liaison send action.`,
+            description: `Enrich + draft a signed binding offer for ${input.address}, ${input.postcode}. Indicative figure: £${offerGbp}. Use docs/templates/binding-offer-letter.md. The quote-ops cron picks this up automatically (enrichment, dedup, signed PDF); review the draft it produces before anything is sent.`,
             expiresAt: new Date(Date.now() + 4 * 60 * 60 * 1000),
             metadata: { ...commonMeta, assignedToAgent: 'appraiser', workflow: 'draft_signed_pdf' },
           },
