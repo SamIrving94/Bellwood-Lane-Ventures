@@ -492,7 +492,22 @@ const SourcedPropertiesSchema = z.object({
           image_url: z.string().nullable().optional(),
           url: z.string().nullable().optional(),
           // Multi-list responses tag each property with the lists it matched.
-          lists: z.array(z.string()).nullable().optional(),
+          // PropertyData returns these as {id,name} objects (id is the slug),
+          // though a bare string form is accepted too for resilience.
+          lists: z
+            .array(
+              z.union([
+                z.string(),
+                z
+                  .object({
+                    id: z.string().optional(),
+                    name: z.string().optional(),
+                  })
+                  .partial(),
+              ]),
+            )
+            .nullable()
+            .optional(),
         })
         .partial(),
     )
@@ -675,14 +690,23 @@ function pickStrongestList(lists: unknown, fallbackSlug: string): string {
   if (!Array.isArray(lists)) return fallbackSlug;
   let best: string | null = null;
   let bestRank = Number.POSITIVE_INFINITY;
-  for (const l of lists) {
-    if (typeof l !== 'string') continue;
-    const rank = SOURCED_LIST_TYPES.indexOf(l as SourcedListType);
+  for (const raw of lists) {
+    // Each entry is either a slug string or a {id,name} object (id = slug).
+    const slug =
+      typeof raw === 'string'
+        ? raw
+        : raw &&
+            typeof raw === 'object' &&
+            typeof (raw as { id?: unknown }).id === 'string'
+          ? (raw as { id: string }).id
+          : null;
+    if (!slug) continue;
+    const rank = SOURCED_LIST_TYPES.indexOf(slug as SourcedListType);
     if (rank >= 0 && rank < bestRank) {
       bestRank = rank;
-      best = l;
+      best = slug;
     } else if (best === null) {
-      best = l; // unknown slug, keep only if nothing ranked wins
+      best = slug; // unknown slug, keep only if nothing ranked wins
     }
   }
   return best ?? fallbackSlug;
@@ -835,7 +859,16 @@ export async function getSourcedProperties(
  * `results` caps at 500 (PropertyData's page×results ceiling); we default to
  * 60, comparable to the old loop's coverage in a single fast call. For deeper
  * sweeps, page through with the `page` option.
+ *
+ * PropertyData enforces 4 calls / 10s PER KEY across all endpoints, so this
+ * self-throttles: consecutive invocations (e.g. one per scout seed) are spaced
+ * at least SOURCED_MIN_INTERVAL_MS apart. Collapsing the old per-list loop
+ * removed the inter-list sleeps that were also spacing the per-seed calls,
+ * which tripped a 429; this restores that spacing at the call boundary.
  */
+let lastSourcedCallAt = 0;
+const SOURCED_MIN_INTERVAL_MS = 2700;
+
 export async function getSourcedPropertiesMulti(
   postcode: string,
   opts?: {
@@ -855,6 +888,11 @@ export async function getSourcedPropertiesMulti(
   };
   if (typeof opts?.radiusMiles === 'number') params.radius = opts.radiusMiles;
   if (typeof opts?.page === 'number' && opts.page > 1) params.page = opts.page;
+
+  // Space calls to respect the 4/10s key throttle.
+  const wait = SOURCED_MIN_INTERVAL_MS - (Date.now() - lastSourcedCallAt);
+  if (wait > 0) await new Promise((r) => setTimeout(r, wait));
+  lastSourcedCallAt = Date.now();
 
   const data = await fetchPropertyData('/sourced-properties', params, {
     ttlMs: 24 * 60 * 60 * 1000,
