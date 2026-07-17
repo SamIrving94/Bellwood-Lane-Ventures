@@ -491,30 +491,10 @@ const SourcedPropertiesSchema = z.object({
           summary: z.string().nullable().optional(),
           image_url: z.string().nullable().optional(),
           url: z.string().nullable().optional(),
-          // Multi-list responses tag each property with the lists it matched.
-          // PropertyData returns these as {id,name} objects (id is the slug),
-          // though a bare string form is accepted too for resilience.
-          lists: z
-            .array(
-              z.union([
-                z.string(),
-                z
-                  .object({
-                    id: z.string().optional(),
-                    name: z.string().optional(),
-                  })
-                  .partial(),
-              ]),
-            )
-            .nullable()
-            .optional(),
         })
         .partial(),
     )
     .optional(),
-  // Top-level list descriptor. Single-list: an {id,name} object (legacy).
-  // Multi-list: an array of the lists requested. Kept loose to accept both.
-  lists: z.array(z.unknown()).optional(),
 });
 
 export type SourcedProperty = {
@@ -682,121 +662,6 @@ export async function getSourcedPropertiesRaw(
 }
 
 /**
- * Pick the strongest distress signal from a property's matched lists.
- * Earlier in SOURCED_LIST_TYPES = stronger signal. Falls back to
- * `fallbackSlug` when there is no usable list tag.
- */
-function pickStrongestList(lists: unknown, fallbackSlug: string): string {
-  if (!Array.isArray(lists)) return fallbackSlug;
-  let best: string | null = null;
-  let bestRank = Number.POSITIVE_INFINITY;
-  for (const raw of lists) {
-    // Each entry is either a slug string or a {id,name} object (id = slug).
-    const slug =
-      typeof raw === 'string'
-        ? raw
-        : raw &&
-            typeof raw === 'object' &&
-            typeof (raw as { id?: unknown }).id === 'string'
-          ? (raw as { id: string }).id
-          : null;
-    if (!slug) continue;
-    const rank = SOURCED_LIST_TYPES.indexOf(slug as SourcedListType);
-    if (rank >= 0 && rank < bestRank) {
-      bestRank = rank;
-      best = slug;
-    } else if (best === null) {
-      best = slug; // unknown slug, keep only if nothing ranked wins
-    }
-  }
-  return best ?? fallbackSlug;
-}
-
-/**
- * Normalise one raw /sourced-properties property into a SourcedProperty.
- * Reads the per-property `lists[]` (multi-list responses) to set the
- * strongest `listingType`; falls back to `fallbackSlug` for single-list
- * responses. Returns null when address/postcode are missing.
- */
-function normaliseSourcedProperty(
-  p: Record<string, unknown>,
-  fallbackSlug: string,
-): SourcedProperty | null {
-  const address = typeof p.address === 'string' ? p.address.trim() : null;
-  const postcodeOut =
-    typeof p.postcode === 'string' ? p.postcode.toUpperCase().trim() : null;
-  if (!address || !postcodeOut) return null;
-
-  const listingType = pickStrongestList(p.lists, fallbackSlug);
-
-  let originalPricePence: number | null = null;
-  let discountPercent: number | null = null;
-  let reductionCount = 0;
-  let velocityScore = 0;
-  const hist = Array.isArray(p.price_history)
-    ? (p.price_history as Array<{ price?: number; date?: string }>)
-    : [];
-  const currentPrice = typeof p.price === 'number' ? p.price : null;
-  const maxHistPrice = hist
-    .map((h) => h.price)
-    .filter((v): v is number => typeof v === 'number')
-    .reduce((m, v) => (v > m ? v : m), 0);
-  if (currentPrice && maxHistPrice > currentPrice) {
-    originalPricePence = Math.round(maxHistPrice * 100);
-    discountPercent = Math.round(
-      ((maxHistPrice - currentPrice) / maxHistPrice) * 100,
-    );
-  }
-  const sortedHist = [...hist]
-    .filter((h) => typeof h.price === 'number')
-    .sort((a, b) => (a.date ?? '').localeCompare(b.date ?? ''));
-  for (let k = 1; k < sortedHist.length; k++) {
-    const prev = sortedHist[k - 1]?.price ?? 0;
-    const cur = sortedHist[k]?.price ?? 0;
-    if (cur < prev) reductionCount++;
-  }
-  const daysOnMarket =
-    typeof p.days_on_market === 'number' ? p.days_on_market : null;
-  if (
-    reductionCount > 0 &&
-    discountPercent !== null &&
-    daysOnMarket !== null &&
-    daysOnMarket > 0
-  ) {
-    velocityScore =
-      Math.round(((discountPercent * reductionCount) / daysOnMarket) * 100) /
-      100;
-  }
-
-  return {
-    id: typeof p.id === 'string' ? p.id : null,
-    address,
-    preciseAddress:
-      typeof p.precise_address === 'string' ? p.precise_address : null,
-    postcode: postcodeOut,
-    pricePence: currentPrice ? Math.round(currentPrice * 100) : null,
-    bedrooms: typeof p.bedrooms === 'number' ? p.bedrooms : null,
-    propertyType:
-      (typeof p.type_standardised === 'string' && p.type_standardised) ||
-      (typeof p.type === 'string' ? p.type : null),
-    listingType,
-    listingUrl: typeof p.url === 'string' ? p.url : null,
-    daysOnMarket,
-    daysSincePriceChange:
-      typeof p.days_since_price_change === 'number'
-        ? p.days_since_price_change
-        : null,
-    originalPricePence,
-    discountPercent,
-    reductionCount,
-    velocityScore,
-    summary: typeof p.summary === 'string' ? p.summary : null,
-    imageUrl: typeof p.image_url === 'string' ? p.image_url : null,
-    source: `propertydata_${listingType}`,
-  };
-}
-
-/**
  * Distressed property listings for ONE list type. Each call costs ~1
  * PropertyData credit and is cached 24h. Postcode-scoped.
  *
@@ -839,84 +704,138 @@ export async function getSourcedProperties(
 
   const normalised: SourcedProperty[] = [];
   for (const raw of properties) {
-    const n = normaliseSourcedProperty(raw as Record<string, unknown>, listSlug);
-    if (n) normalised.push(n);
+    const p = raw as Record<string, unknown>;
+    const address = typeof p.address === 'string' ? p.address.trim() : null;
+    const postcodeOut =
+      typeof p.postcode === 'string' ? p.postcode.toUpperCase().trim() : null;
+    if (!address || !postcodeOut) continue;
+
+    // Derive discount + velocity from price_history.
+    let originalPricePence: number | null = null;
+    let discountPercent: number | null = null;
+    let reductionCount = 0;
+    let velocityScore = 0;
+    const hist = Array.isArray(p.price_history)
+      ? (p.price_history as Array<{ price?: number; date?: string }>)
+      : [];
+    const currentPrice = typeof p.price === 'number' ? p.price : null;
+    const maxHistPrice = hist
+      .map((h) => h.price)
+      .filter((v): v is number => typeof v === 'number')
+      .reduce((m, v) => (v > m ? v : m), 0);
+    if (currentPrice && maxHistPrice > currentPrice) {
+      originalPricePence = Math.round(maxHistPrice * 100);
+      discountPercent = Math.round(
+        ((maxHistPrice - currentPrice) / maxHistPrice) * 100,
+      );
+    }
+    // Walk history chronologically to count distinct price DROPS.
+    const sortedHist = [...hist]
+      .filter((h) => typeof h.price === 'number')
+      .sort((a, b) => (a.date ?? '').localeCompare(b.date ?? ''));
+    for (let k = 1; k < sortedHist.length; k++) {
+      const prev = sortedHist[k - 1]?.price ?? 0;
+      const cur = sortedHist[k]?.price ?? 0;
+      if (cur < prev) reductionCount++;
+    }
+    // Velocity = magnitude of drops × frequency, normalised by listing age.
+    const daysOnMarket =
+      typeof p.days_on_market === 'number' ? p.days_on_market : null;
+    if (
+      reductionCount > 0 &&
+      discountPercent !== null &&
+      daysOnMarket !== null &&
+      daysOnMarket > 0
+    ) {
+      velocityScore =
+        Math.round(((discountPercent * reductionCount) / daysOnMarket) * 100) /
+        100;
+    }
+
+    normalised.push({
+      id: typeof p.id === 'string' ? p.id : null,
+      address,
+      preciseAddress:
+        typeof p.precise_address === 'string' ? p.precise_address : null,
+      postcode: postcodeOut,
+      pricePence: currentPrice ? Math.round(currentPrice * 100) : null,
+      bedrooms: typeof p.bedrooms === 'number' ? p.bedrooms : null,
+      propertyType:
+        (typeof p.type_standardised === 'string' && p.type_standardised) ||
+        (typeof p.type === 'string' ? p.type : null),
+      listingType: listSlug,
+      listingUrl: typeof p.url === 'string' ? p.url : null,
+      daysOnMarket:
+        typeof p.days_on_market === 'number' ? p.days_on_market : null,
+      daysSincePriceChange:
+        typeof p.days_since_price_change === 'number'
+          ? p.days_since_price_change
+          : null,
+      originalPricePence,
+      discountPercent,
+      reductionCount,
+      velocityScore,
+      summary: typeof p.summary === 'string' ? p.summary : null,
+      imageUrl: typeof p.image_url === 'string' ? p.image_url : null,
+      source: `propertydata_${listSlug}`,
+    });
   }
   return normalised;
 }
 
 /**
- * Aggregate distressed listings across multiple PropertyData list types.
+ * Fan out across multiple PropertyData list types and merge results,
+ * deduped by id (or address+postcode if id missing).
  *
- * PropertyData now accepts a comma-separated `list` and returns one merged,
- * de-duplicated, distance-sorted set, tagging each property with the `lists`
- * it matched. So this is ONE call, not one-per-list: no 2.7s rate-limit
- * sleeps (the old 6-list loop cost ~16s/seed and risked the 4-calls/10s
- * limit), and the strongest distress signal is read per-property from its
- * own `lists[]`. Credits scale with `results` (~10 results = 1 credit),
- * so `results` is the spend/coverage lever. Cached 24h.
+ * Throttle: PropertyData rate limit is 4 calls per 10 seconds. We pause
+ * 2700ms between calls. For 6 list types × 1 area that's ~16s wall-clock,
+ * 6 credits. Each call is cached 24h so repeat probes are free.
  *
- * `results` caps at 500 (PropertyData's page×results ceiling); we default to
- * 60, comparable to the old loop's coverage in a single fast call. For deeper
- * sweeps, page through with the `page` option.
- *
- * PropertyData enforces 4 calls / 10s PER KEY across all endpoints, so this
- * self-throttles: consecutive invocations (e.g. one per scout seed) are spaced
- * at least SOURCED_MIN_INTERVAL_MS apart. Collapsing the old per-list loop
- * removed the inter-list sleeps that were also spacing the per-seed calls,
- * which tripped a 429; this restores that spacing at the call boundary.
+ * Returns aggregated SourcedProperty[] with the strongest distress signal
+ * surfaced in `listingType` when a property hits multiple lists.
  */
-let lastSourcedCallAt = 0;
-const SOURCED_MIN_INTERVAL_MS = 2700;
-
 export async function getSourcedPropertiesMulti(
   postcode: string,
-  opts?: {
-    radiusMiles?: number;
-    lists?: readonly string[];
-    results?: number;
-    page?: number;
-  },
+  opts?: { radiusMiles?: number; lists?: readonly string[] },
 ): Promise<SourcedProperty[]> {
-  const lists = opts?.lists ?? SOURCED_LIST_TYPES;
-  const results = Math.min(Math.max(opts?.results ?? 60, 10), 500);
-
-  const params: Record<string, string | number> = {
-    postcode: postcode.replace(/\s/g, ''),
-    list: lists.join(','),
-    results,
-  };
-  if (typeof opts?.radiusMiles === 'number') params.radius = opts.radiusMiles;
-  if (typeof opts?.page === 'number' && opts.page > 1) params.page = opts.page;
-
-  // Space calls to respect the 4/10s key throttle.
-  const wait = SOURCED_MIN_INTERVAL_MS - (Date.now() - lastSourcedCallAt);
-  if (wait > 0) await new Promise((r) => setTimeout(r, wait));
-  lastSourcedCallAt = Date.now();
-
-  const data = await fetchPropertyData('/sourced-properties', params, {
-    ttlMs: 24 * 60 * 60 * 1000,
-    // ~10 results per credit; round up so the estimate never under-reports.
-    estimatedCredits: Math.ceil(results / 10),
-    schema: SourcedPropertiesSchema,
-  });
-
-  const body = data as { properties?: unknown[] } | null;
-  const properties = body?.properties;
-  if (!Array.isArray(properties)) return [];
-
-  // The API already dedups, but guard defensively (id, else address+postcode).
+  const lists = opts?.lists ?? SOURCED_LIST_TYPES.slice(0, 6);
   const seen = new Map<string, SourcedProperty>();
-  for (const raw of properties) {
-    const n = normaliseSourcedProperty(
-      raw as Record<string, unknown>,
-      'distressed',
-    );
-    if (!n) continue;
-    const key =
-      n.id ?? `${n.address.toLowerCase()}|${n.postcode.toLowerCase()}`;
-    if (!seen.has(key)) seen.set(key, n);
+
+  for (let i = 0; i < lists.length; i++) {
+    const list = lists[i]!;
+    try {
+      const props = await getSourcedProperties(postcode, {
+        radiusMiles: opts?.radiusMiles,
+        list,
+      });
+      for (const p of props) {
+        const key =
+          p.id ?? `${p.address.toLowerCase()}|${p.postcode.toLowerCase()}`;
+        if (!seen.has(key)) {
+          seen.set(key, p);
+        } else {
+          // Stronger signal wins (earlier in SOURCED_LIST_TYPES = higher signal)
+          const existing = seen.get(key)!;
+          const existingRank = SOURCED_LIST_TYPES.indexOf(
+            existing.listingType as (typeof SOURCED_LIST_TYPES)[number],
+          );
+          const newRank = SOURCED_LIST_TYPES.indexOf(
+            p.listingType as (typeof SOURCED_LIST_TYPES)[number],
+          );
+          if (newRank >= 0 && (existingRank < 0 || newRank < existingRank)) {
+            seen.set(key, p);
+          }
+        }
+      }
+    } catch (err) {
+      console.warn(`[propertydata multi] ${list} failed`, err);
+    }
+    // Throttle except after the last
+    if (i < lists.length - 1) {
+      await new Promise((r) => setTimeout(r, 2700));
+    }
   }
+
   return Array.from(seen.values());
 }
 
@@ -2013,29 +1932,18 @@ export type PricesPerSqf = {
   medianPerSqft: number | null;
 };
 
-/** Property types PropertyData's /prices-per-sqf `type` filter accepts. */
-export type PricesPerSqfType =
-  | 'flat'
-  | 'terraced'
-  | 'semi-detached'
-  | 'detached';
-
 export async function getPricesPerSqf(
   postcode: string,
-  // Filtering by type gives a like-for-like £/sqft benchmark. Without it the
-  // endpoint blends flats with detached houses, distorting the comparison
-  // shown on the lead page and used as an AVM cross-check.
-  type?: PricesPerSqfType,
 ): Promise<PricesPerSqf | null> {
-  const params: Record<string, string | number> = {
-    postcode: postcode.replace(/\s/g, ''),
-  };
-  if (type) params.type = type;
-  const data = await fetchPropertyData('/prices-per-sqf', params, {
-    ttlMs: 30 * 24 * 60 * 60 * 1000,
-    estimatedCredits: 2,
-    schema: PricesPerSqfSchema,
-  });
+  const data = await fetchPropertyData(
+    '/prices-per-sqf',
+    { postcode: postcode.replace(/\s/g, '') },
+    {
+      ttlMs: 30 * 24 * 60 * 60 * 1000,
+      estimatedCredits: 2,
+      schema: PricesPerSqfSchema,
+    },
+  );
   const r = (data as { result?: Record<string, unknown> } | null)?.result;
   if (!r) return null;
   return {
@@ -2224,9 +2132,7 @@ export async function getPropertySnapshot(input: {
   const yieldsRes = await safe('yields', () => getYields(input.postcode));
   await sleep(DELAY);
   const pricesPerSqf = await safe('pricesPerSqf', () =>
-    // Use the same resolved type as the AVM so the £/sqft benchmark is
-    // like-for-like (avmType maps bungalow → detached; null = unfiltered).
-    getPricesPerSqf(input.postcode, avmType ?? undefined),
+    getPricesPerSqf(input.postcode),
   );
   await sleep(DELAY);
   const demandRaw = await safe('demand', () =>
