@@ -29,6 +29,13 @@ import { ProbateLeadSchema } from './probate-data';
 const GAZETTE_LIST_URL = 'https://www.thegazette.co.uk/all-notices/notice/data.json';
 const REQUEST_TIMEOUT_MS = 12_000;
 const PARALLEL_DETAIL_BATCH = 5;
+const MAX_FETCH_ATTEMPTS = 3;
+// The Gazette sits behind a government WAF that rejects/serves 5xx to
+// User-Agent-less clients. Identify ourselves and give a contact URL.
+const GAZETTE_USER_AGENT =
+  'BellwoodScout/1.0 (+https://bellwoodslane.co.uk; property sourcing bot)';
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 /**
  * Pull recent UK probate notices from The Gazette.
@@ -45,19 +52,19 @@ export async function fetchGazetteProbateNotices(
   listUrl.searchParams.set('noticetype', 'deceased-estates');
   listUrl.searchParams.set('results-page-size', String(Math.min(limit, 100)));
 
+  // NOTE: a total failure of the LIST fetch is NOT swallowed — it is thrown so
+  // the scouting pipeline's `.catch` records sourceErrors.gazette and raises a
+  // single deduped founder action. (Individual notice-detail failures below
+  // stay graceful and yield partial results.)
   let listJson: unknown;
-  try {
-    const res = await timedFetch(listUrl.toString(), REQUEST_TIMEOUT_MS);
-    if (!res.ok) {
-      console.warn(`[scouting/gazette] list HTTP ${res.status}`);
-      return [];
-    }
-    listJson = await res.json().catch(() => null);
-  } catch (err) {
-    console.warn('[scouting/gazette] list fetch failed', err);
-    return [];
+  const res = await timedFetch(listUrl.toString(), REQUEST_TIMEOUT_MS);
+  if (!res.ok) {
+    throw new Error(`Gazette list HTTP ${res.status}`);
   }
-  if (!listJson || typeof listJson !== 'object') return [];
+  listJson = await res.json().catch(() => null);
+  if (!listJson || typeof listJson !== 'object') {
+    throw new Error('Gazette list returned non-JSON / empty body');
+  }
 
   const entries = (listJson as { entry?: unknown[] }).entry;
   if (!Array.isArray(entries) || entries.length === 0) {
@@ -104,16 +111,35 @@ export async function fetchGazetteProbateNotices(
 // ---------------------------------------------------------------------------
 
 async function timedFetch(url: string, ms: number): Promise<Response> {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), ms);
-  try {
-    return await fetch(url, {
-      headers: { Accept: 'application/json' },
-      signal: controller.signal,
-    });
-  } finally {
-    clearTimeout(timer);
+  let lastErr: unknown = null;
+  for (let attempt = 1; attempt <= MAX_FETCH_ATTEMPTS; attempt++) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), ms);
+    try {
+      const res = await fetch(url, {
+        headers: {
+          Accept: 'application/json',
+          'User-Agent': GAZETTE_USER_AGENT,
+        },
+        signal: controller.signal,
+      });
+      clearTimeout(timer);
+      // Retry transient upstream failures (WAF / load), not client errors.
+      if (res.status >= 500 && attempt < MAX_FETCH_ATTEMPTS) {
+        await sleep(attempt * 500);
+        continue;
+      }
+      return res;
+    } catch (err) {
+      clearTimeout(timer);
+      lastErr = err;
+      if (attempt < MAX_FETCH_ATTEMPTS) {
+        await sleep(attempt * 500);
+        continue;
+      }
+    }
   }
+  throw lastErr ?? new Error('Gazette fetch failed after retries');
 }
 
 function extractNoticeId(value: unknown): string | null {

@@ -113,14 +113,18 @@ function deriveInvestmentGrade(
 // Lease discount curve — for short_lease and any property under 85 years
 // ---------------------------------------------------------------------------
 
-function leaseDiscount(remainingYears: number | undefined): number {
-  if (!remainingYears) return 0;
+function leaseDiscount(remainingYears: number | undefined | null): number {
+  // Unknown (no lease data) means no adjustment. A KNOWN 0 (expired/near-
+  // expired lease) must NOT fall through here — it is the worst case and gets
+  // the largest discount below. The old `!remainingYears` guard wrongly
+  // treated 0 as "unknown" and returned 0%.
+  if (remainingYears == null) return 0;
   if (remainingYears >= 85) return 0;
   if (remainingYears >= 70) return 0.03;
   if (remainingYears >= 60) return 0.07;
   if (remainingYears >= 50) return 0.12;
-  if (remainingYears >= 40) return 0.20;
-  return 0.30; // < 40 years — very hard to mortgage
+  if (remainingYears >= 40) return 0.2;
+  return 0.3; // < 40 years (including 0) — very hard to mortgage
 }
 
 // ---------------------------------------------------------------------------
