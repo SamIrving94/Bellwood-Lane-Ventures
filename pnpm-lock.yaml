@@ -1216,6 +1216,9 @@ importers:
       typescript:
         specifier: ^5.8.2
         version: 5.8.2
+      vitest:
+        specifier: ^3.0.7
+        version: 3.0.7(@types/debug@4.1.12)(@types/node@22.13.9)(jiti@2.4.2)(jsdom@26.0.0(bufferutil@4.0.9))(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.21.0)(yaml@2.7.0)
 
   packages/quote-ops:
     dependencies:

@@ -12,6 +12,10 @@
  */
 
 import 'server-only';
+import { type PropertyDataType, toPropertyDataType } from './property-type';
+
+export { toPropertyDataType };
+export type { PropertyDataType };
 
 import { z } from 'zod';
 import { keys } from '../keys';
@@ -198,7 +202,7 @@ export async function getPropertyDataValuation(input: {
 }): Promise<ValuationSaleResult> {
   const data = await fetchPropertyData('/valuation-sale', {
     postcode: input.postcode.replace(/\s/g, ''),
-    type: input.propertyType,
+    property_type: toPropertyDataType(input.propertyType),
     bedrooms: input.bedrooms,
     internal_area: input.internalArea,
   }, {
@@ -1816,7 +1820,7 @@ export async function getSoldPrices(
     {
       postcode: postcode.replace(/\s/g, ''),
       max_age: maxAge,
-      type: opts.type,
+      type: toPropertyDataType(opts.type),
       bedrooms,
       points,
     },
