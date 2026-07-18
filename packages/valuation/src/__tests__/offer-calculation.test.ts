@@ -172,6 +172,45 @@ describe('calculateOffer — guard rails', () => {
   });
 });
 
+describe('calculateOffer — lease discount curve', () => {
+  const bv = baseValuation();
+  const risk = scoreRisk({ postcode: 'M14', epc: mkEpc('C') });
+
+  function leaseLine(years: number | undefined) {
+    const offer = calculateOffer({
+      baseValuation: bv,
+      riskScore: risk,
+      sellerType: 'short_lease',
+      remainingLeaseYears: years,
+    });
+    return offer.discountLines.find((d) => d.label.startsWith('Short lease'));
+  }
+
+  it('unknown lease (undefined) applies NO lease discount', () => {
+    expect(leaseLine(undefined)).toBeUndefined();
+  });
+
+  it('a healthy 99-year lease applies no discount', () => {
+    expect(leaseLine(99)).toBeUndefined();
+  });
+
+  it('regression: an expired 0-year lease gets the max 30% discount, not 0%', () => {
+    // The old `!remainingYears` guard treated 0 as "unknown" and returned 0%.
+    // A known 0-year (expired) lease is the WORST case and must be discounted.
+    const line = leaseLine(0);
+    expect(line).toBeDefined();
+    expect(line?.fraction).toBe(0.3);
+  });
+
+  it('a 35-year lease (sub-40) also gets the 30% tier', () => {
+    expect(leaseLine(35)?.fraction).toBe(0.3);
+  });
+
+  it('a 55-year lease sits in the 12% tier', () => {
+    expect(leaseLine(55)?.fraction).toBe(0.12);
+  });
+});
+
 describe('calculateOffer — investment grade nudge', () => {
   it('A+ grade reduces base margin by 3 percentage points', () => {
     const bv = baseValuation();

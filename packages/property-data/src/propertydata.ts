@@ -640,7 +640,12 @@ export async function probeSourcedByType(
 
 export async function getSourcedPropertiesRaw(
   postcode: string,
-  opts?: { radiusMiles?: number; list?: string },
+  opts?: {
+    radiusMiles?: number;
+    list?: string;
+    standardisedType?: string;
+    includeSstc?: boolean;
+  },
 ): Promise<{
   ok: boolean;
   status?: number;
@@ -655,6 +660,14 @@ export async function getSourcedPropertiesRaw(
   url.searchParams.set('list', opts?.list ?? DEFAULT_LIST);
   if (typeof opts?.radiusMiles === 'number') {
     url.searchParams.set('radius', String(opts.radiusMiles));
+  }
+  // Drop sold-subject-to-contract listings by default — they are already under
+  // offer and not actionable as fresh leads. Opt back in with includeSstc.
+  if (opts?.includeSstc !== true) {
+    url.searchParams.set('exclude_sstc', '1');
+  }
+  if (opts?.standardisedType) {
+    url.searchParams.set('standardised_type', opts.standardisedType);
   }
   try {
     const res = await fetch(url.toString(), { headers: { Accept: 'application/json' } });
@@ -675,7 +688,12 @@ export async function getSourcedPropertiesRaw(
  */
 export async function getSourcedProperties(
   postcode: string,
-  opts?: { radiusMiles?: number; list?: string },
+  opts?: {
+    radiusMiles?: number;
+    list?: string;
+    standardisedType?: string;
+    includeSstc?: boolean;
+  },
 ): Promise<SourcedProperty[]> {
   const params: Record<string, string | number> = {
     postcode: postcode.replace(/\s/g, ''),
@@ -683,6 +701,14 @@ export async function getSourcedProperties(
   };
   if (typeof opts?.radiusMiles === 'number') {
     params.radius = opts.radiusMiles;
+  }
+  // Drop sold-subject-to-contract listings by default — already under offer,
+  // not actionable as fresh leads. Opt back in with includeSstc.
+  if (opts?.includeSstc !== true) {
+    params.exclude_sstc = 1;
+  }
+  if (opts?.standardisedType) {
+    params.standardised_type = opts.standardisedType;
   }
   const data = await fetchPropertyData(
     '/sourced-properties',
