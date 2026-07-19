@@ -1852,6 +1852,12 @@ export async function getSoldPrices(
     {
       postcode: postcode.replace(/\s/g, ''),
       max_age: maxAge,
+      // NB: /sold-prices takes `type`, NOT `property_type` (which /valuation-sale
+      // uses) — the param names genuinely differ between endpoints. The prod
+      // errors confirm it: /valuation-sale threw "Missing input: property_type"
+      // (a param-name fix), while /sold-prices threw "Invalid filter: type" (a
+      // value fix, done via toPropertyDataType). Do not "align" these to match —
+      // verify against a real captured response first (docs/LEARNINGS.md).
       type: toPropertyDataType(opts.type),
       bedrooms,
       points,
