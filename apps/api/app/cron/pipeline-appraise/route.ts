@@ -46,7 +46,9 @@ export const POST = async (request: Request) => {
   const topLeads = await database.scoutLead.findMany({
     where: {
       leadScore: { gte: 70 },
-      status: 'new',
+      // Founder-triaged leads (shortlisted/watching) stay in scope; passed
+      // and converted leads drop out.
+      status: { in: ['new', 'shortlisted', 'watching'] },
       convertedDealId: null,
     },
     orderBy: { leadScore: 'desc' },

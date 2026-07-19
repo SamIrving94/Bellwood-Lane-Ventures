@@ -10,6 +10,7 @@ import { CalendlyButton } from './calendly-button';
 import { ConvertButton } from './convert-button';
 import { DealModelPanel } from './deal-model-panel';
 import { EnrichLeadButton } from './enrich-button';
+import { TriageButtons } from '../../components/triage-buttons';
 import { PropertyImage } from './property-image';
 
 export const metadata: Metadata = {
@@ -564,8 +565,22 @@ const LeadDetailPage = async ({
                 </div>
               </div>
 
-              {/* External actions — primary listing link (when we have one) */}
-              <div className="mt-5 flex flex-wrap gap-2">
+              {/* Triage decision + external listing link */}
+              <div className="mt-5 flex flex-wrap items-center gap-3">
+                {lead.status === 'converted' ? (
+                  <a
+                    href={`/deals/${lead.convertedDealId}`}
+                    className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-emerald-700"
+                  >
+                    ✓ Converted — open deal →
+                  </a>
+                ) : (
+                  <TriageButtons
+                    leadId={lead.id}
+                    status={lead.status}
+                    size="md"
+                  />
+                )}
                 {externalUrl && externalLabel && (
                   <a
                     href={externalUrl}
@@ -594,7 +609,12 @@ const LeadDetailPage = async ({
               <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
                 Deal decision
               </p>
-              <EnrichLeadButton leadId={lead.id} label="↻ Re-appraise" />
+              <div className="flex flex-wrap items-center gap-2">
+                <EnrichLeadButton leadId={lead.id} label="↻ Re-appraise" />
+                {lead.status !== 'converted' && (
+                  <ConvertButton leadId={lead.id} />
+                )}
+              </div>
             </div>
 
             <div className="mt-3 grid gap-4 sm:grid-cols-4">
@@ -788,7 +808,7 @@ const LeadDetailPage = async ({
             rarely carry direct contact details, so we give the founder the
             concrete routes: call the listing agent, find the registered
             owner (Land Registry), or write to the property. */}
-        {lead.status === 'new' && (
+        {lead.status !== 'converted' && (
           <section className="rounded-2xl border-2 border-slate-900/10 bg-slate-50 p-5">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
@@ -1582,9 +1602,9 @@ const LeadDetailPage = async ({
           </div>
         )}
 
-        {/* Contact (if known). For 'new' leads this is shown in the
+        {/* Contact (if known). For unconverted leads this is shown in the
             "Make contact" block above, so only render here once converted. */}
-        {lead.status !== 'new' &&
+        {lead.status === 'converted' &&
           (lead.contactName || lead.contactEmail || lead.contactPhone) && (
           <div className="rounded-xl border bg-card p-5">
             <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
@@ -1600,9 +1620,11 @@ const LeadDetailPage = async ({
           </div>
         )}
 
-        {/* Founder feedback — captures context so the calibration page
-            can analyse which factors are mis-weighted. */}
+        {/* Scorer calibration — deliberately separate from the triage
+            buttons above. Stars here rate how well the SCORER did (feeds
+            the calibration page), not whether we want the property. */}
         <FeedbackPanel
+          title="Scorer calibration — was this score right?"
           targetType="scout_lead"
           targetId={lead.id}
           context={{

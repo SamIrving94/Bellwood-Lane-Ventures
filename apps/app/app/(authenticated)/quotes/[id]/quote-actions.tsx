@@ -4,6 +4,7 @@ import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   acceptQuote,
+  convertQuoteToDeal,
   declineQuote,
   postNote,
 } from '@/app/actions/quotes/update';
@@ -43,6 +44,26 @@ export function QuoteActions({ quoteRequestId, hasOffer, status }: Props) {
         >
           Mark accepted
         </button>
+        {status === 'accepted' && (
+          <button
+            type="button"
+            disabled={isPending}
+            onClick={() =>
+              startTransition(async () => {
+                setError(null);
+                try {
+                  const deal = await convertQuoteToDeal(quoteRequestId);
+                  router.push(`/deals/${deal.id}`);
+                } catch (err) {
+                  setError((err as Error).message ?? 'Conversion failed');
+                }
+              })
+            }
+            className="rounded-full bg-slate-900 px-5 py-2 text-sm font-medium text-white transition hover:bg-slate-800 disabled:opacity-50"
+          >
+            {isPending ? 'Converting…' : 'Convert to deal → pipeline'}
+          </button>
+        )}
         <button
           type="button"
           disabled={isPending || status === 'declined'}

@@ -3,7 +3,7 @@
 import { updateDealStatus } from '@/app/actions/deals/update-status';
 import type { Deal, DealStatus } from '@repo/database/generated/client';
 import { useRouter } from 'next/navigation';
-import { useState, useTransition } from 'react';
+import { useTransition } from 'react';
 
 type PipelineBoardProps = {
   initialDeals: Deal[];
@@ -121,7 +121,7 @@ function DealCard({
             canMoveForward ? `Move to ${stages[stageIndex + 1].label}` : ''
           }
         >
-          {canMoveForward ? `${stages[stageIndex + 1].label} &rarr;` : ''}
+          {canMoveForward ? `${stages[stageIndex + 1].label} →` : ''}
         </button>
       </div>
     </div>
@@ -129,7 +129,10 @@ function DealCard({
 }
 
 export const PipelineBoard = ({ initialDeals }: PipelineBoardProps) => {
-  const [deals] = useState(initialDeals);
+  // Render straight from the server prop — router.refresh() after a stage
+  // move re-serialises it, so holding a useState copy would show stale
+  // columns forever.
+  const deals = initialDeals;
 
   return (
     <div className="grid grid-cols-1 gap-4 overflow-x-auto md:grid-cols-3 lg:grid-cols-6">

@@ -29,23 +29,6 @@ const LeadsPage = async ({
     take: 200,
   });
 
-  // Fetch all feedback for these leads in one query
-  const feedbackRecords = await database.founderFeedback.findMany({
-    where: {
-      targetType: 'scout_lead',
-      targetId: { in: leads.map((l) => l.id) },
-    },
-    select: { targetId: true, rating: true },
-  });
-
-  const feedbackByLeadId = Object.fromEntries(
-    feedbackRecords.map((f) => [f.targetId, f.rating])
-  );
-
-  const unratedCount = leads.filter(
-    (l) => l.status === 'new' && !feedbackByLeadId[l.id]
-  ).length;
-
   return (
     <>
       <Header pages={[]} page="Leads" />
@@ -90,7 +73,6 @@ const LeadsPage = async ({
               marketTrend: l.marketTrend,
               status: l.status,
               source: l.source,
-              existingRating: feedbackByLeadId[l.id] ?? 0,
               // Rich PropertyData fields (when source is propertydata_*)
               listingType:
                 (pd?.listingType as string | undefined) ?? null,
@@ -157,8 +139,7 @@ const LeadsPage = async ({
                 .map((f) => f.label),
             };
           })}
-          unratedCount={unratedCount}
-          initialFilter={filter ?? 'shortlist'}
+          initialFilter={filter ?? 'triage'}
         />
       </div>
     </>

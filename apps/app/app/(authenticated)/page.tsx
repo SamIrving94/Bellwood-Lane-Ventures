@@ -82,6 +82,7 @@ export default async function TodayPage() {
     leadsLast24h,
     repliesLast24h,
     overnightLeads,
+    shortlistedLeads,
   ] = await Promise.all([
     database.founderAction.findMany({
       where: { status: { in: ['pending', 'in_progress'] } },
@@ -124,6 +125,22 @@ export default async function TodayPage() {
       },
       orderBy: [{ leadScore: 'desc' }, { createdAt: 'desc' }],
       take: 5,
+      select: {
+        id: true,
+        address: true,
+        postcode: true,
+        leadType: true,
+        leadScore: true,
+        verdict: true,
+        rawPayload: true,
+      },
+    }),
+    // Our shortlist: leads a founder explicitly shortlisted and hasn't yet
+    // converted or passed — the standing "decide on these" queue.
+    database.scoutLead.findMany({
+      where: { status: 'shortlisted' },
+      orderBy: [{ leadScore: 'desc' }, { createdAt: 'desc' }],
+      take: 6,
       select: {
         id: true,
         address: true,
@@ -326,6 +343,63 @@ export default async function TodayPage() {
                     <div className="flex flex-wrap items-start justify-between gap-3">
                       <div className="min-w-0 flex-1">
                         <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-emerald-700">
+                          {lead.leadType.replace(/_/g, ' ')}
+                        </p>
+                        <p className="mt-2 truncate font-medium">
+                          {lead.address}, {lead.postcode}
+                        </p>
+                        {rationale && (
+                          <p className="mt-1 line-clamp-2 text-muted-foreground text-xs">
+                            {rationale}
+                          </p>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <span
+                          className={`rounded-full px-2.5 py-1 font-mono text-[11px] uppercase tracking-widest ring-1 ${VERDICT_BADGE[lead.verdict] ?? 'bg-slate-100 text-slate-700 ring-slate-200'}`}
+                        >
+                          {lead.verdict}
+                        </span>
+                        <p className="font-serif text-2xl font-semibold tabular-nums">
+                          {lead.leadScore}
+                        </p>
+                      </div>
+                    </div>
+                  </Link>
+                );
+              })}
+            </div>
+          </section>
+        )}
+
+        {/* ─── Shortlist ────────────────────────────────────── */}
+        {shortlistedLeads.length > 0 && (
+          <section>
+            <div className="mb-4 flex items-baseline justify-between">
+              <h2 className="font-semibold text-lg">
+                Shortlist — awaiting a decision
+              </h2>
+              <Link
+                href="/leads?filter=shortlist"
+                className="font-mono text-[10px] uppercase tracking-[0.22em] text-primary hover:underline"
+              >
+                Open shortlist →
+              </Link>
+            </div>
+            <div className="space-y-3">
+              {shortlistedLeads.map((lead) => {
+                const raw = (lead.rawPayload ?? {}) as Record<string, unknown>;
+                const rationale =
+                  (raw.rationale as string | undefined) ?? null;
+                return (
+                  <Link
+                    key={lead.id}
+                    href={`/leads/${lead.id}`}
+                    className="block rounded-2xl border-2 border-amber-200 bg-amber-50/40 p-5 transition hover:border-amber-300 hover:bg-amber-50"
+                  >
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div className="min-w-0 flex-1">
+                        <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-amber-700">
                           {lead.leadType.replace(/_/g, ' ')}
                         </p>
                         <p className="mt-2 truncate font-medium">
