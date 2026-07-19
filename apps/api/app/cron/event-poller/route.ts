@@ -1,7 +1,12 @@
 import { env } from '@/env';
-import { callClaudeForJson, CLAUDE_HAIKU } from '@repo/ai/claude';
+import {
+  callClaudeForJson,
+  callClaudeForObject,
+  CLAUDE_HAIKU,
+} from '@repo/ai/claude';
 import { database } from '@repo/database';
 import { NextResponse } from 'next/server';
+import { z as zod } from 'zod';
 
 /**
  * Event poller cron — runs every 30 minutes.
@@ -49,13 +54,26 @@ Return ONLY JSON (no markdown fences, no preamble):
   "complianceFlags": string[]              // ICO / CPR / anonymisation concerns. Empty array if clean.
 }`;
 
-interface VendorTriage {
-  intent: 'interested' | 'needs_info' | 'not_interested' | 'complaint' | 'unclear';
-  summary: string;
-  urgency: 'high' | 'medium' | 'low';
-  suggestedReply: { subject: string; bodyPlainText: string };
-  complianceFlags: string[];
-}
+// Zod schema → the provider CONSTRAINS generation to this shape
+// (callClaudeForObject / structured outputs), so a malformed-JSON reply
+// can no longer silently drop a vendor into the manual-triage fallback.
+const VendorTriageSchema = zod.object({
+  intent: zod.enum([
+    'interested',
+    'needs_info',
+    'not_interested',
+    'complaint',
+    'unclear',
+  ]),
+  summary: zod.string(),
+  urgency: zod.enum(['high', 'medium', 'low']),
+  suggestedReply: zod.object({
+    subject: zod.string(),
+    bodyPlainText: zod.string(),
+  }),
+  complianceFlags: zod.array(zod.string()),
+});
+type VendorTriage = zod.infer<typeof VendorTriageSchema>;
 
 // Mirrored from cron/marketer-daily — kept in-file to avoid a shared util just
 // for two callers.
@@ -188,14 +206,14 @@ async function pollVendorHolds(windowStart: Date): Promise<{
       .filter(Boolean)
       .join('\n');
 
-    const triage = await callClaudeForJson<VendorTriage>({
+    const triage = await callClaudeForObject({
       system: VENDOR_TRIAGE_SYSTEM_PROMPT,
       user: userPrompt,
+      schema: VendorTriageSchema,
       maxTokens: 700,
       temperature: 0.3,
       model: CLAUDE_HAIKU,
       feature: 'vendor_reply_triage',
-      cacheSystemPrompt: true,
     }).catch((err) => {
       console.warn(`[event-poller] LLM triage failed for hold ${hold.id}`, err);
       return null;

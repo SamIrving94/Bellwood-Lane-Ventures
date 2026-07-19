@@ -1,6 +1,10 @@
 {
   "crons": [
     {
+      "path": "/cron/overnight-research",
+      "schedule": "30 5 * * *"
+    },
+    {
       "path": "/cron/scouting",
       "schedule": "0 7 * * *"
     },

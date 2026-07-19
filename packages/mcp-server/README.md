@@ -58,8 +58,7 @@ Claude Code, Cursor, or any in-product agent can call in natural language.
    ```sh
    export DATABASE_URL="postgres://..."
    export OS_PLACES_API_KEY="..."
-   export EPC_API_EMAIL="..."
-   export EPC_API_KEY="..."
+   export EPC_API_TOKEN="..."   # bearer token from get-energy-performance-data.communities.gov.uk My account
    export COMPANIES_HOUSE_API_KEY="..."
    export PROPERTYDATA_API_KEY="..."
    ```

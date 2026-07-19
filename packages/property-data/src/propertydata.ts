@@ -19,6 +19,7 @@ export type { PropertyDataType };
 
 import { z } from 'zod';
 import { keys } from '../keys';
+import { acquireRateLimitSlot } from './rate-limit';
 
 const env = keys();
 
@@ -87,6 +88,48 @@ class PropertyDataError extends Error {
   }
 }
 
+// PropertyData signals rate limiting as HTTP 429 with error code X14.
+const RATE_LIMIT_RETRY_DELAY_MS = 2_500;
+
+/** Detect 429/X14 without consuming the response body (clone for the peek). */
+async function isRateLimited(res: Response): Promise<boolean> {
+  if (res.status === 429) return true;
+  if (res.ok) return false;
+  const bodyText = await res.clone().text().catch(() => '');
+  return /\bX14\b/.test(bodyText);
+}
+
+/**
+ * One rate-limited GET. On 429/X14 despite the limiter: wait 2.5s, retry
+ * once, then let the failure flow through the caller's existing error
+ * path (callers degrade to null — no new thrown types).
+ */
+async function rateLimitedGet(
+  endpoint: string,
+  url: string,
+  init: RequestInit,
+): Promise<Response> {
+  const attempt = async (): Promise<Response> => {
+    await acquireRateLimitSlot();
+    // Timeout covers the network call only — time spent queued for a slot
+    // must not count against it (12 queued callers can wait 20s+ for slots).
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+    try {
+      return await fetch(url, { ...init, signal: controller.signal });
+    } finally {
+      clearTimeout(timer);
+    }
+  };
+  const res = await attempt();
+  if (!(await isRateLimited(res))) return res;
+  console.warn(
+    `[propertydata] ${endpoint} rate-limited (429/X14) — retrying once in ${RATE_LIMIT_RETRY_DELAY_MS}ms`,
+  );
+  await new Promise((r) => setTimeout(r, RATE_LIMIT_RETRY_DELAY_MS));
+  return attempt();
+}
+
 async function fetchPropertyData<T>(
   endpoint: string,
   params: Record<string, string | number | undefined>,
@@ -126,7 +169,7 @@ async function fetchPropertyData<T>(
   const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
   try {
-    const res = await fetch(url.toString(), {
+    const res = await rateLimitedGet(endpoint, url.toString(), {
       method: 'GET',
       signal: controller.signal,
       headers: { Accept: 'application/json' },
@@ -670,7 +713,9 @@ export async function getSourcedPropertiesRaw(
     url.searchParams.set('standardised_type', opts.standardisedType);
   }
   try {
-    const res = await fetch(url.toString(), { headers: { Accept: 'application/json' } });
+    const res = await rateLimitedGet('/sourced-properties', url.toString(), {
+      headers: { Accept: 'application/json' },
+    });
     const body = await res.json().catch(() => null);
     return { ok: res.ok, status: res.status, body };
   } catch (err) {

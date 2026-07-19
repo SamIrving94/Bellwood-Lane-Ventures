@@ -109,6 +109,21 @@ const SettingsPage = async () => {
                 <span aria-hidden className="text-muted-foreground">→</span>
               </Link>
             </li>
+            <li>
+              <Link
+                href="/settings/ai"
+                className="flex items-center justify-between p-5 transition hover:bg-accent"
+              >
+                <div>
+                  <p className="font-medium">AI models · Routing &amp; shadow evals</p>
+                  <p className="text-sm text-muted-foreground">
+                    Pick which model (Claude, Kimi, Gemini…) runs each AI
+                    feature, and A/B challengers silently. No deploy needed.
+                  </p>
+                </div>
+                <span aria-hidden className="text-muted-foreground">→</span>
+              </Link>
+            </li>
           </ul>
         </section>
       </div>
