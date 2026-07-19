@@ -12,6 +12,7 @@
  */
 
 import 'server-only';
+import { acquireRateSlot } from './rate-limiter';
 import { type PropertyDataType, toPropertyDataType } from './property-type';
 
 export { toPropertyDataType };
@@ -121,6 +122,9 @@ async function fetchPropertyData<T>(
     logCreditUsage(endpoint, 0, true);
     return cached;
   }
+
+  // Respect PropertyData's 4-calls/10s limit before every live fetch.
+  await acquireRateSlot();
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
@@ -670,6 +674,8 @@ export async function getSourcedPropertiesRaw(
     url.searchParams.set('standardised_type', opts.standardisedType);
   }
   try {
+    // This raw helper bypasses fetchPropertyData, so gate it on the same limiter.
+    await acquireRateSlot();
     const res = await fetch(url.toString(), { headers: { Accept: 'application/json' } });
     const body = await res.json().catch(() => null);
     return { ok: res.ok, status: res.status, body };
@@ -1846,6 +1852,12 @@ export async function getSoldPrices(
     {
       postcode: postcode.replace(/\s/g, ''),
       max_age: maxAge,
+      // NB: /sold-prices takes `type`, NOT `property_type` (which /valuation-sale
+      // uses) — the param names genuinely differ between endpoints. The prod
+      // errors confirm it: /valuation-sale threw "Missing input: property_type"
+      // (a param-name fix), while /sold-prices threw "Invalid filter: type" (a
+      // value fix, done via toPropertyDataType). Do not "align" these to match —
+      // verify against a real captured response first (docs/LEARNINGS.md).
       type: toPropertyDataType(opts.type),
       bedrooms,
       points,
@@ -2113,7 +2125,13 @@ export async function getPropertySnapshot(input: {
 }): Promise<PropertySnapshot> {
   const errors: Record<string, string> = {};
   const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
-  const DELAY = 2700;
+  // Pacing is now enforced globally by the rate limiter inside fetchPropertyData
+  // (4 calls / 10s). The old fixed 2.7s inter-call sleep here was additive on top
+  // of that — 10× ≈ 27s of dead wall-clock per snapshot — and was the main reason
+  // lead-appraise (8 leads × snapshot) blew the 300s function limit. Zeroed so the
+  // limiter alone spaces the calls (bursting up to 4 immediately). See
+  // docs/LEARNINGS.md.
+  const DELAY = 0;
 
   // Helper to wrap each call so we never throw — collect into errors[].
   const safe = async <T>(
@@ -2350,6 +2368,8 @@ export async function askGeorge(input: {
   const timer = setTimeout(() => controller.abort(), 30_000);
 
   try {
+    // /george is a raw POST outside fetchPropertyData — gate it on the limiter.
+    await acquireRateSlot();
     const res = await fetch(url, {
       method: 'POST',
       signal: controller.signal,
