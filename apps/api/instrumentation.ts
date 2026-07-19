@@ -9,7 +9,7 @@
  * Sentry instrumentation stays disabled — see next.config.ts.
  */
 export async function register() {
-  const { setLlmLogger } = await import('@repo/ai/claude');
+  const { setLlmLogger, setModelRouter } = await import('@repo/ai/claude');
   const { database } = await import('@repo/database');
 
   setLlmLogger(async (metric) => {
@@ -24,5 +24,27 @@ export async function register() {
         errorReason: metric.errorReason,
       },
     });
+  });
+
+  // Per-feature model routing — the founder edits the `model_routing`
+  // Setting row from the dashboard (Settings → AI models); changes apply
+  // within 60s, no deploy. Shape: { [feature]: ModelRoute }.
+  let routingCache: { table: Record<string, unknown>; fetchedAt: number } | null =
+    null;
+  setModelRouter(async (feature) => {
+    const now = Date.now();
+    if (!routingCache || now - routingCache.fetchedAt > 60_000) {
+      const row = await database.setting.findUnique({
+        where: { key: 'model_routing' },
+      });
+      routingCache = {
+        table: (row?.value as Record<string, unknown>) ?? {},
+        fetchedAt: now,
+      };
+    }
+    const route = routingCache.table[feature];
+    return route && typeof route === 'object'
+      ? (route as import('@repo/ai/claude').ModelRoute)
+      : null;
   });
 }
