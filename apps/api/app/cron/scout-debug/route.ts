@@ -33,7 +33,7 @@ async function handle(request: Request) {
     COMPANIES_HOUSE_API_KEY: Boolean(process.env.COMPANIES_HOUSE_API_KEY),
     HMCTS_PROBATE_API_KEY: Boolean(process.env.HMCTS_PROBATE_API_KEY),
     OS_PLACES_API_KEY: Boolean(process.env.OS_PLACES_API_KEY),
-    EPC_API_KEY: Boolean(process.env.EPC_API_KEY),
+    EPC_API_TOKEN: Boolean(process.env.EPC_API_TOKEN),
     ANTHROPIC_API_KEY: Boolean(process.env.ANTHROPIC_API_KEY),
     CRON_SECRET: Boolean(process.env.CRON_SECRET),
   };
