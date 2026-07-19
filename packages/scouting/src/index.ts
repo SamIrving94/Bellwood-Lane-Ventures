@@ -34,6 +34,7 @@ import { fetchGazetteProbateNotices } from './gazette';
 import { matchProbateAddressToSale } from './hmlr-match';
 import { normaliseUkAddress } from './address-normalise';
 import { fetchShortLeaseLeads } from './short-lease';
+import { fetchCompaniesHouseDistressLeads } from './companies-house-charges';
 import {
   checkEnrichmentHealth,
   type EnrichmentSummary,
@@ -82,6 +83,12 @@ export type {
   ShortLeaseRawLead,
   ShortLeaseScoutResult,
 } from './short-lease';
+export { fetchCompaniesHouseDistressLeads } from './companies-house-charges';
+export type {
+  ChDistressRawLead,
+  ChDistressScoutResult,
+  ChDistressScoutOptions,
+} from './companies-house-charges';
 export {
   checkEnrichmentHealth,
   enrichLeads,
@@ -230,6 +237,7 @@ export interface ScoutingPipelineResult {
     planning: number;
     hmo: number;
     dissolved: number;
+    chDistress: number;
     shortLease: number;
     staleListings: number;
     afterDedupe: number;
@@ -243,6 +251,7 @@ export interface ScoutingPipelineResult {
     planning?: string;
     hmo?: string;
     dissolved?: string;
+    chDistress?: string;
     staleListings?: string;
     shortLease?: string;
     enrichment?: string;
@@ -295,6 +304,7 @@ export async function runScoutingPipeline(
     planning?: string;
     hmo?: string;
     dissolved?: string;
+    chDistress?: string;
     staleListings?: string;
     shortLease?: string;
     enrichment?: string;
@@ -329,11 +339,24 @@ export async function runScoutingPipeline(
     })),
   ];
 
+  // Postcode districts our scan seeds cover — used to keep Companies House
+  // sources (charges/insolvency + dissolved) inside our patch.
+  const targetDistricts = Array.from(
+    new Set(
+      allSeeds.map((s) => {
+        const norm = s.postcode.toUpperCase().replace(/\s+/g, '');
+        const m = norm.match(/^([A-Z]{1,2}\d{1,2}[A-Z]?)/);
+        return m?.[1] ?? norm;
+      }),
+    ),
+  );
+
   // We split sources by rate-limit dependency:
-  //  - HMCTS + Gazette are external (no PropertyData rate limit) → parallel
+  //  - HMCTS + Gazette + Companies House are external (no PropertyData rate
+  //    limit; CH has its own 600 req/5min pool) → parallel
   //  - PropertyData sources (sourced/planning/HMO) → serial to stay under
   //    the "4 calls / 10s" rate limit
-  const [hmctsGrants, gazetteGrants] = await Promise.all([
+  const [hmctsGrants, gazetteGrants, chDistressResult] = await Promise.all([
     fetchProbateGrants(sinceDate, limit).catch((err) => {
       const msg = (err as Error)?.message ?? String(err);
       sourceErrors.hmcts = msg.slice(0, 200);
@@ -346,7 +369,35 @@ export async function runScoutingPipeline(
       console.warn('[scouting] Gazette source failed', err);
       return [];
     }),
+    // Companies House distress signals: fresh charges (new lender security =
+    // bridging/distress) + insolvency filings against property companies.
+    // Throws on a missing COMPANIES_HOUSE_API_KEY / dead search endpoint so
+    // this .catch records it — one deduped founder action, never a silent
+    // skip (same contract as gazette/hmcts).
+    // Skipped (empty result) when no seeds are configured — a nationwide
+    // poll would emit leads outside our patch, and the missing-seed state is
+    // already surfaced via sourceErrors.propertydata below.
+    (targetDistricts.length === 0
+      ? Promise.resolve({ leads: [], scanned: 0 } as Awaited<
+          ReturnType<typeof fetchCompaniesHouseDistressLeads>
+        >)
+      : fetchCompaniesHouseDistressLeads({ districts: targetDistricts })
+    ).catch(
+      (err) => {
+        const msg = (err as Error)?.message ?? String(err);
+        sourceErrors.chDistress = msg.slice(0, 200);
+        console.warn('[scouting] Companies House distress source failed', err);
+        return { leads: [], scanned: 0 } as Awaited<
+          ReturnType<typeof fetchCompaniesHouseDistressLeads>
+        >;
+      },
+    ),
   ]);
+  const chDistressLeads = chDistressResult.leads;
+  // Partial-failure surfacing (per-company poll errors, key still valid).
+  if (chDistressResult.error && !sourceErrors.chDistress) {
+    sourceErrors.chDistress = chDistressResult.error;
+  }
 
   // ── PropertyData sources — serial (rate-limit constrained) ─────────
   const sourcedFromPostcodes = await (async () => {
@@ -598,15 +649,6 @@ export async function runScoutingPipeline(
   // parallel with HMO loop safely. No-ops if COMPANIES_HOUSE_API_KEY unset.
   const dissolvedGrants: RawGrant[] = [];
   if (!skipSlowSources) try {
-    const targetDistricts = Array.from(
-      new Set(
-        allSeeds.map((s) => {
-          const norm = s.postcode.toUpperCase().replace(/\s+/g, '');
-          const m = norm.match(/^([A-Z]{1,2}\d{1,2}[A-Z]?)/);
-          return m?.[1] ?? norm;
-        }),
-      ),
-    );
     const all = await searchDissolvedPropertyCompanies({ limit: 100 });
     const inArea = filterCompaniesByDistrict(all, targetDistricts);
     for (const c of inArea) {
@@ -711,6 +753,7 @@ export async function runScoutingPipeline(
     ...planningGrants,
     ...hmoGrants,
     ...dissolvedGrants,
+    ...chDistressLeads,
     ...shortLeaseGrants,
   ].filter((g) => {
     const n = normaliseUkAddress(`${g.address}, ${g.postcode}`);
@@ -721,7 +764,7 @@ export async function runScoutingPipeline(
   }).slice(0, limit);
 
   console.info(
-    `[scouting] sources: hmcts=${hmctsGrants.length} gazette=${gazetteGrants.length} propertydata=${sourcedFromPostcodes.length} planning=${planningGrants.length} hmo=${hmoGrants.length} shortLease=${shortLeaseGrants.length} (after dedupe: ${rawGrants.length})`,
+    `[scouting] sources: hmcts=${hmctsGrants.length} gazette=${gazetteGrants.length} propertydata=${sourcedFromPostcodes.length} planning=${planningGrants.length} hmo=${hmoGrants.length} chDistress=${chDistressLeads.length} shortLease=${shortLeaseGrants.length} (after dedupe: ${rawGrants.length})`,
   );
 
   // Step 2 — GDPR sanitise raw payloads
@@ -1034,6 +1077,7 @@ export async function runScoutingPipeline(
       planning: planningGrants.length,
       hmo: hmoGrants.length,
       dissolved: dissolvedGrants.length,
+      chDistress: chDistressLeads.length,
       shortLease: shortLeaseGrants.length,
       staleListings: 0,
       afterDedupe: rawGrants.length,
