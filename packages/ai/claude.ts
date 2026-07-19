@@ -43,7 +43,8 @@ import 'server-only';
 
 import { createAnthropic } from '@ai-sdk/anthropic';
 import { createOpenRouter } from '@openrouter/ai-sdk-provider';
-import { generateText, type CoreMessage } from 'ai';
+import { generateObject, generateText, type CoreMessage } from 'ai';
+import type { z } from 'zod';
 import { callWithFallback, isRecoverableProviderError } from './fallback';
 import { keys } from './keys';
 import {
@@ -145,6 +146,102 @@ async function logSafely(metric: LlmCallMetric): Promise<void> {
   } catch (err) {
     console.warn('[@repo/ai/claude] LLM logger failed (non-fatal)', err);
   }
+}
+
+// ───────────────────────────────────────────────────────────────────────────
+// Provider attempt construction — shared by callClaude / callClaudeForObject
+// ───────────────────────────────────────────────────────────────────────────
+
+type ProviderAttempt<T> = { provider: string; call: () => Promise<T> };
+type AiModelInstance = Parameters<typeof generateText>[0]['model'];
+
+/**
+ * Build the primary + fallback provider attempts for a resolved model id.
+ *
+ *   - Slash id ("vendor/model") → OpenRouter primary, Anthropic Sonnet
+ *     direct as fallback (enterprise-terms endpoint — always acceptable,
+ *     even for PII-pinned routes).
+ *   - Bare id + ANTHROPIC_API_KEY → Anthropic direct primary, OpenRouter
+ *     chain fallback.
+ *   - Bare id, no Anthropic key, OpenRouter key present → serve Claude
+ *     via OpenRouter ("anthropic/<model>") so features keep working.
+ *
+ * Returns null when no viable key exists.
+ */
+function buildProviderAttempts<T>(
+  model: string,
+  providerPrefs: Record<string, unknown> | undefined,
+  runModel: (modelInstance: AiModelInstance) => Promise<T>,
+): { primary: ProviderAttempt<T>; fallbacks: ProviderAttempt<T>[] } | null {
+  const orModelInstance = (orModel: string) => {
+    const openrouter = createOpenRouter({ apiKey: env.OPENROUTER_API_KEY! });
+    // extraBody.provider is OpenRouter's provider-routing block; the
+    // ai-sdk provider forwards it verbatim. Cast: the settings type lags
+    // the wire format.
+    return openrouter(
+      orModel,
+      (providerPrefs
+        ? { extraBody: { provider: providerPrefs } }
+        : {}) as Record<string, never>,
+    );
+  };
+
+  const fallbacks: ProviderAttempt<T>[] = [];
+
+  if (isOpenRouterModel(model)) {
+    if (!env.OPENROUTER_API_KEY) return null;
+    if (env.ANTHROPIC_API_KEY) {
+      const anthropic = createAnthropic({ apiKey: env.ANTHROPIC_API_KEY });
+      fallbacks.push({
+        provider: `anthropic:${CLAUDE_SONNET}`,
+        call: () => runModel(anthropic(CLAUDE_SONNET)),
+      });
+    }
+    return {
+      primary: {
+        provider: `openrouter:${model}`,
+        call: () => runModel(orModelInstance(model)),
+      },
+      fallbacks,
+    };
+  }
+
+  if (env.ANTHROPIC_API_KEY) {
+    const anthropic = createAnthropic({ apiKey: env.ANTHROPIC_API_KEY });
+    if (env.OPENROUTER_API_KEY) {
+      for (const orModel of openRouterChainFor(model)) {
+        fallbacks.push({
+          provider: `openrouter:${orModel}`,
+          call: () => runModel(orModelInstance(orModel)),
+        });
+      }
+    }
+    return {
+      primary: {
+        provider: `anthropic:${model}`,
+        call: () => runModel(anthropic(model)),
+      },
+      fallbacks,
+    };
+  }
+
+  if (env.OPENROUTER_API_KEY) {
+    for (const orModel of openRouterChainFor(model)) {
+      fallbacks.push({
+        provider: `openrouter:${orModel}`,
+        call: () => runModel(orModelInstance(orModel)),
+      });
+    }
+    return {
+      primary: {
+        provider: `openrouter:anthropic/${model}`,
+        call: () => runModel(orModelInstance(`anthropic/${model}`)),
+      },
+      fallbacks,
+    };
+  }
+
+  return null;
 }
 
 // ───────────────────────────────────────────────────────────────────────────
@@ -305,74 +402,16 @@ export async function callClaude(input: CallClaudeInput): Promise<string | null>
   // come from the route, and are threaded to shadow calls explicitly.
   const providerPrefs =
     input.providerPrefs ?? openRouterProviderPrefs(route);
-  const orModelInstance = (orModel: string) => {
-    const openrouter = createOpenRouter({ apiKey: env.OPENROUTER_API_KEY! });
-    // extraBody.provider is OpenRouter's provider-routing block; the
-    // ai-sdk provider forwards it verbatim. Cast: the settings type lags
-    // the wire format.
-    return openrouter(
-      orModel,
-      (providerPrefs
-        ? { extraBody: { provider: providerPrefs } }
-        : {}) as Record<string, never>,
-    );
-  };
 
-  let primary: { provider: string; call: () => Promise<string | null> };
-  const fallbacks: { provider: string; call: () => Promise<string | null> }[] =
-    [];
-
-  if (openRouterPrimary) {
-    // ── Routed to a non-Anthropic model: OpenRouter primary ──────────
-    primary = {
-      provider: `openrouter:${model}`,
-      call: () => runModel(orModelInstance(model)),
-    };
-    // Fall back to Anthropic direct so a flaky host degrades to Claude,
-    // not to null. Skipped when the route pins providers for PII — a
-    // pinned route must hard-fail rather than leak elsewhere... except
-    // Anthropic direct is itself an enterprise-terms endpoint, so it is
-    // always an acceptable fallback.
-    if (env.ANTHROPIC_API_KEY) {
-      const anthropic = createAnthropic({ apiKey: env.ANTHROPIC_API_KEY });
-      fallbacks.push({
-        provider: `anthropic:${CLAUDE_SONNET}`,
-        call: () => runModel(anthropic(CLAUDE_SONNET)),
-      });
-    }
-  } else if (env.ANTHROPIC_API_KEY) {
-    // ── Anthropic direct primary (default path) ──────────────────────
-    const anthropic = createAnthropic({ apiKey: env.ANTHROPIC_API_KEY });
-    primary = {
-      provider: `anthropic:${model}`,
-      call: () => runModel(anthropic(model)),
-    };
-    if (env.OPENROUTER_API_KEY) {
-      for (const orModel of openRouterChainFor(model)) {
-        fallbacks.push({
-          provider: `openrouter:${orModel}`,
-          call: () => runModel(orModelInstance(orModel)),
-        });
-      }
-    }
-  } else {
-    // ── No Anthropic key but OpenRouter available: serve Claude via
-    // OpenRouter so the feature keeps working. ───────────────────────
-    primary = {
-      provider: `openrouter:anthropic/${model}`,
-      call: () => runModel(orModelInstance(`anthropic/${model}`)),
-    };
-    for (const orModel of openRouterChainFor(model)) {
-      fallbacks.push({
-        provider: `openrouter:${orModel}`,
-        call: () => runModel(orModelInstance(orModel)),
-      });
-    }
+  const attempts = buildProviderAttempts(model, providerPrefs, runModel);
+  if (!attempts) {
+    // Defensive — the key check above should already have caught this.
+    return null;
   }
 
   const fallbackResult = await callWithFallback<string | null>({
-    primary,
-    fallbacks,
+    primary: attempts.primary,
+    fallbacks: attempts.fallbacks,
     isRecoverable: isRecoverableProviderError,
     attemptTimeoutMs,
   });
@@ -427,7 +466,7 @@ export async function callClaude(input: CallClaudeInput): Promise<string | null>
     durationMs,
     success: false,
     errorReason:
-      fallbacks.length > 0
+      attempts.fallbacks.length > 0
         ? 'all_providers_failed'
         : shortErrorReason(fallbackResult.error),
   });
@@ -477,6 +516,115 @@ export async function callClaudeForJson<T = Record<string, unknown>>(
   const text = await callClaude(input);
   if (!text) return null;
   return extractJson<T>(text);
+}
+
+// ───────────────────────────────────────────────────────────────────────────
+// callClaudeForObject — schema-GUARANTEED structured output
+// ───────────────────────────────────────────────────────────────────────────
+
+export interface CallClaudeObjectInput<T> {
+  system: string;
+  user: string;
+  /** Zod schema — the provider constrains generation to match it. */
+  schema: z.ZodType<T>;
+  /** Hard cap on response length. Default 800. */
+  maxTokens?: number;
+  /** Temperature 0-1. Default 0.2 — structured extraction wants tight. */
+  temperature?: number;
+  /** Model selector. Routing config overrides it, as in callClaude. */
+  model?: ClaudeModelId;
+  /** Feature tag for metrics + routing. Default 'unknown'. */
+  feature?: string;
+  /** Per-attempt wall-clock budget in ms. Default 8000. */
+  attemptTimeoutMs?: number;
+}
+
+/**
+ * Structured-output call: the response is generated AGAINST the Zod
+ * schema (AI SDK generateObject), so the returned object is valid or the
+ * call fails — no tolerant-parse failure class, no prompt-begging for
+ * JSON. Prefer this over callClaudeForJson for anything a cron writes to
+ * the database.
+ *
+ * Same routing, provider fallback, and logging as callClaude. Shadow
+ * evals do not run for object calls (text-only for now). Returns null on
+ * any failure — callers degrade as usual.
+ */
+export async function callClaudeForObject<T>(
+  input: CallClaudeObjectInput<T>,
+): Promise<T | null> {
+  const feature = input.feature ?? 'unknown';
+  const route = await resolveRoute(feature);
+  const model = route?.model ?? input.model ?? CLAUDE_SONNET;
+  const startedAt = Date.now();
+
+  let lastUsage: { promptTokens?: number; completionTokens?: number } = {};
+  const runModel = async (modelInstance: AiModelInstance): Promise<T> => {
+    const result = await generateObject({
+      model: modelInstance,
+      schema: input.schema,
+      system: input.system,
+      prompt: input.user,
+      maxTokens: input.maxTokens ?? 800,
+      temperature: input.temperature ?? 0.2,
+    });
+    lastUsage = result.usage;
+    return result.object;
+  };
+
+  const attempts = buildProviderAttempts(
+    model,
+    openRouterProviderPrefs(route),
+    runModel,
+  );
+  if (!attempts) {
+    console.warn('[@repo/ai/claude] no API key for routed model — returning null');
+    await logSafely({
+      feature,
+      model,
+      inputTokens: 0,
+      outputTokens: 0,
+      durationMs: 0,
+      success: false,
+      errorReason: 'no_api_key',
+    });
+    return null;
+  }
+
+  const result = await callWithFallback<T>({
+    primary: attempts.primary,
+    fallbacks: attempts.fallbacks,
+    isRecoverable: isRecoverableProviderError,
+    attemptTimeoutMs: input.attemptTimeoutMs ?? 8000,
+  });
+
+  const durationMs = Date.now() - startedAt;
+  if (result.ok) {
+    await logSafely({
+      feature: result.viaFallback ? `${feature}_via_fallback` : feature,
+      model,
+      inputTokens: lastUsage.promptTokens ?? 0,
+      outputTokens: lastUsage.completionTokens ?? 0,
+      durationMs,
+      success: true,
+    });
+    return result.value;
+  }
+
+  console.error('[@repo/ai/claude] structured call failed', {
+    feature,
+    provider: result.provider,
+  });
+  await logSafely({
+    feature,
+    model,
+    inputTokens: 0,
+    outputTokens: 0,
+    durationMs,
+    success: false,
+    errorReason: shortErrorReason(result.error),
+  });
+  return null;
 }
 
 // ───────────────────────────────────────────────────────────────────────────
