@@ -10,6 +10,7 @@ import {
   InboxIcon,
   MegaphoneIcon,
   SparklesIcon,
+  TargetIcon,
   type LucideIcon,
 } from 'lucide-react';
 import type { Metadata } from 'next';
@@ -41,8 +42,15 @@ const TOURS: TourEntry[] = [
     id: 'today',
     title: 'Today',
     description:
-      'How the action queue, SLAs and overnight leads fit together.',
+      'How the action queue, SLAs, overnight leads and shortlist fit together.',
     icon: InboxIcon,
+  },
+  {
+    id: 'leads',
+    title: 'Leads',
+    description:
+      'Daily triage with Shortlist, Watch and Pass — and how it differs from scorer stars.',
+    icon: TargetIcon,
   },
   {
     id: 'appraisals',
@@ -102,8 +110,8 @@ const GuidePage = () => {
                   </CardTitle>
                 </div>
                 <CardDescription>
-                  Leads, Pipeline, Investors, Research, Outreach, Contacts and
-                  Documents will get their own tours as each section settles.
+                  Pipeline, Investors, Research, Outreach and Documents will
+                  get their own tours as each section settles.
                 </CardDescription>
               </CardHeader>
             </Card>

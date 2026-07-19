@@ -22,7 +22,12 @@ export type TourStep = {
   };
 };
 
-export type TourId = 'onboarding' | 'today' | 'appraisals' | 'marketing';
+export type TourId =
+  | 'onboarding'
+  | 'today'
+  | 'leads'
+  | 'appraisals'
+  | 'marketing';
 
 export const TOURS: Record<TourId, TourStep[]> = {
   // ─────────────────────────────────────────────────────────────────────
@@ -44,7 +49,7 @@ export const TOURS: Record<TourId, TourStep[]> = {
       popover: {
         title: 'Quotes',
         description:
-          'Agent quick-form submissions. Each carries a four-hour signed offer SLA, so the clock here drives the day.',
+          'Agent quick-form submissions with a four-hour offer SLA. An accepted quote converts straight into the pipeline from here.',
         side: 'right',
         align: 'start',
       },
@@ -54,7 +59,7 @@ export const TOURS: Record<TourId, TourStep[]> = {
       popover: {
         title: 'Leads',
         description:
-          'Every probate, chain break or repossession the scout surfaced. Each lead has a score and a verdict you can act on.',
+          'Everything the scout found, scored and ranked. Triage each one with Shortlist, Watch or Pass, then convert the winners.',
         side: 'right',
         align: 'start',
       },
@@ -74,7 +79,7 @@ export const TOURS: Record<TourId, TourStep[]> = {
       popover: {
         title: 'Pipeline',
         description:
-          'Every live deal, grouped by stage. This is the core of the business and where deals move from offer to completion.',
+          'Every live deal, grouped by stage. Move deals along the board; close them out from the deal page when done.',
         side: 'right',
         align: 'start',
       },
@@ -124,7 +129,7 @@ export const TOURS: Record<TourId, TourStep[]> = {
       popover: {
         title: 'Outreach',
         description:
-          'Targeted campaigns, the reply inbox and templates. The home for proactive contact with sellers and partners.',
+          'People, campaigns, the reply inbox and templates in one hub. All contact with sellers and partners lives here now.',
         side: 'right',
         align: 'start',
       },
@@ -193,6 +198,77 @@ export const TOURS: Record<TourId, TourStep[]> = {
           'Replies to outbound campaigns in the last day. Open the Outreach inbox to read and respond to each one.',
         side: 'bottom',
         align: 'center',
+      },
+    },
+    {
+      element: '[data-tour="shortlist-section"]',
+      popover: {
+        title: 'Shortlist',
+        description:
+          'Leads either of you shortlisted, waiting on a decision. This section only appears when the shortlist has something in it.',
+        side: 'top',
+        align: 'start',
+      },
+    },
+  ],
+
+  // ─────────────────────────────────────────────────────────────────────
+  // Leads — daily triage: Shortlist / Watch / Pass, and how the scorer
+  // stars differ from the triage buttons.
+  // ─────────────────────────────────────────────────────────────────────
+  leads: [
+    {
+      element: '[data-tour="leads-filters"]',
+      popover: {
+        title: 'Start at Needs triage',
+        description:
+          'The default view. Every new lead worth a look waits here until you make a call on it. Aim to clear it daily.',
+        side: 'bottom',
+        align: 'start',
+      },
+    },
+    {
+      element: '[data-tour="leads-triage"]',
+      popover: {
+        title: 'Make one call per lead',
+        description:
+          'Shortlist means we want it. Watch means not yet, keep an eye on it. Pass means not for us. Click again to undo.',
+        side: 'top',
+        align: 'start',
+      },
+    },
+    {
+      element: '[data-tour="leads-filters"]',
+      popover: {
+        title: 'Your shortlist is saved',
+        description:
+          'The Shortlist filter shows every lead either of you shortlisted. The best ones also appear on the Today page each morning.',
+        side: 'bottom',
+        align: 'start',
+      },
+    },
+    {
+      element: '[data-tour="leads-score"]',
+      popover: {
+        title: 'Score is the machine, buttons are you',
+        description:
+          'The score and verdict come from the scorer. Your triage call sits alongside them and never changes the score.',
+        side: 'left',
+        align: 'start',
+      },
+    },
+    {
+      popover: {
+        title: 'Stars are different',
+        description:
+          'On a lead detail page you can also star-rate the SCORER. That is calibration feedback — was the score right — not a shortlist.',
+      },
+    },
+    {
+      popover: {
+        title: 'From shortlist to deal',
+        description:
+          'Open a shortlisted lead, run the appraisal, then press Convert to Deal next to the Deal decision panel. It joins the pipeline.',
       },
     },
   ],
@@ -314,7 +390,13 @@ export const TOUR_META: Record<
   },
   today: {
     title: 'Today',
-    description: 'How the action queue, SLAs and overnight leads fit together.',
+    description:
+      'How the action queue, SLAs, overnight leads and shortlist fit together.',
+  },
+  leads: {
+    title: 'Leads',
+    description:
+      'Daily triage with Shortlist, Watch and Pass — and how it differs from scorer stars.',
   },
   appraisals: {
     title: 'Appraisals',
@@ -334,6 +416,7 @@ export const TOUR_META: Record<
 export function tourIdForPath(pathname: string): TourId {
   if (pathname.startsWith('/appraisals')) return 'appraisals';
   if (pathname.startsWith('/marketing')) return 'marketing';
+  if (pathname.startsWith('/leads')) return 'leads';
   if (pathname === '/') return 'today';
   return 'onboarding';
 }

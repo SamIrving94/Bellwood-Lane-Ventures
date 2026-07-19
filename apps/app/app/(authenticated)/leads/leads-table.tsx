@@ -254,7 +254,7 @@ export function LeadsTable({ leads, initialFilter }: Props) {
 
   return (
     <>
-      <div className="flex flex-wrap items-center gap-1">
+      <div className="flex flex-wrap items-center gap-1" data-tour="leads-filters">
         {primaryFilters.map((f) => (
           <button
             key={f.key}
@@ -581,7 +581,10 @@ function LeadCard({
             </div>
 
             {/* Right side — score */}
-            <div className="flex flex-col items-end gap-2 text-right">
+            <div
+              className="flex flex-col items-end gap-2 text-right"
+              data-tour="leads-score"
+            >
               <div>
                 <div
                   className="font-mono text-2xl font-bold tabular-nums leading-none"
@@ -605,17 +608,19 @@ function LeadCard({
 
           {/* Footer: triage decision + links */}
           <div className="mt-3 flex flex-wrap items-center gap-3 border-t pt-2 text-xs">
-            {status === 'converted' ? (
-              <span className="inline-flex rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 font-medium text-emerald-700">
-                ✓ Converted to deal
-              </span>
-            ) : (
-              <TriageButtons
-                leadId={lead.id}
-                status={status}
-                onChanged={onTriaged}
-              />
-            )}
+            <span data-tour="leads-triage">
+              {status === 'converted' ? (
+                <span className="inline-flex rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 font-medium text-emerald-700">
+                  ✓ Converted to deal
+                </span>
+              ) : (
+                <TriageButtons
+                  leadId={lead.id}
+                  status={status}
+                  onChanged={onTriaged}
+                />
+              )}
+            </span>
             <a
               href={`/leads/${lead.id}`}
               className="font-medium text-primary hover:underline"

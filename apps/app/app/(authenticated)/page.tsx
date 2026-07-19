@@ -374,7 +374,7 @@ export default async function TodayPage() {
 
         {/* ─── Shortlist ────────────────────────────────────── */}
         {shortlistedLeads.length > 0 && (
-          <section>
+          <section data-tour="shortlist-section">
             <div className="mb-4 flex items-baseline justify-between">
               <h2 className="font-semibold text-lg">
                 Shortlist — awaiting a decision
