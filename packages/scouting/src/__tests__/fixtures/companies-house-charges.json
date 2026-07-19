@@ -1,0 +1,140 @@
+{
+  "advancedSearch": {
+    "hits": 4,
+    "items": [
+      {
+        "company_name": "MOSSLANE PROPERTIES LTD",
+        "company_number": "12345678",
+        "company_status": "active",
+        "sic_codes": ["68100"],
+        "registered_office_address": {
+          "address_line_1": "14 Wilmslow Road",
+          "locality": "Manchester",
+          "postal_code": "M14 5LL"
+        }
+      },
+      {
+        "company_name": "HEATON HOLDINGS LIMITED",
+        "company_number": "87654321",
+        "company_status": "active",
+        "sic_codes": ["68209"],
+        "registered_office_address": {
+          "address_line_1": "2 Heaton Moor Road",
+          "address_line_2": "Heaton Moor",
+          "locality": "Stockport",
+          "postal_code": "SK4 4NX"
+        }
+      },
+      {
+        "company_name": "OUT OF AREA ESTATES LTD",
+        "company_number": "11112222",
+        "company_status": "active",
+        "sic_codes": ["68320"],
+        "registered_office_address": {
+          "address_line_1": "1 The Strand",
+          "locality": "London",
+          "postal_code": "WC2N 5EJ"
+        }
+      },
+      {
+        "company_name": "NO ADDRESS LTD",
+        "company_number": "33334444",
+        "company_status": "active",
+        "sic_codes": ["68100"]
+      }
+    ]
+  },
+  "charges": {
+    "total_count": 3,
+    "items": [
+      {
+        "charge_code": "123456780001",
+        "charge_number": 1,
+        "status": "outstanding",
+        "created_on": "2026-07-17",
+        "delivered_on": "2026-07-18",
+        "classification": {
+          "type": "charge-description",
+          "description": "A registered charge"
+        },
+        "particulars": {
+          "type": "charged-property-description",
+          "description": "Land and property at 42 Ladybarn Lane, Fallowfield, Manchester M14 6WP",
+          "contains_fixed_charge": true,
+          "contains_negative_pledge": true
+        },
+        "persons_entitled": [{ "name": "SWIFTBRIDGE CAPITAL FINANCE LIMITED" }]
+      },
+      {
+        "charge_code": "123456780002",
+        "charge_number": 2,
+        "status": "outstanding",
+        "created_on": "2024-02-01",
+        "delivered_on": "2024-02-04",
+        "classification": {
+          "type": "charge-description",
+          "description": "A registered charge"
+        },
+        "particulars": {
+          "type": "brief-description",
+          "description": "All that freehold land at 9 Old Hall Road"
+        },
+        "persons_entitled": [{ "name": "HIGH STREET BANK PLC" }]
+      },
+      {
+        "charge_code": "123456780003",
+        "charge_number": 3,
+        "status": "fully-satisfied",
+        "created_on": "2026-07-18",
+        "delivered_on": "2026-07-18",
+        "satisfied_on": "2026-07-18",
+        "particulars": {
+          "type": "brief-description",
+          "description": "Satisfied same-day charge"
+        },
+        "persons_entitled": [{ "name": "PAID OFF LENDER LTD" }]
+      }
+    ]
+  },
+  "chargesNoPostcodeParticulars": {
+    "items": [
+      {
+        "charge_number": 7,
+        "status": "outstanding",
+        "created_on": "2026-07-18",
+        "delivered_on": "2026-07-18",
+        "particulars": {
+          "type": "brief-description",
+          "description": "A fixed and floating charge over the undertaking and all property and assets"
+        },
+        "persons_entitled": [{ "name": "TOGETHER COMMERCIAL FINANCE LIMITED" }]
+      }
+    ]
+  },
+  "filingHistory": {
+    "total_count": 3,
+    "items": [
+      {
+        "transaction_id": "MzAxNTY3ODkw",
+        "category": "insolvency",
+        "date": "2026-07-18",
+        "type": "AM01",
+        "description": "appoint-administrator-company"
+      },
+      {
+        "transaction_id": "MzAwMDAwMDAw",
+        "category": "insolvency",
+        "date": "2025-11-02",
+        "type": "600",
+        "description": "liquidation-voluntary-appointment-of-liquidators"
+      },
+      {
+        "transaction_id": "MzAxOTk5OTk5",
+        "category": "accounts",
+        "date": "2026-07-18",
+        "type": "AA",
+        "description": "accounts-with-accounts-type-micro-entity"
+      }
+    ]
+  }
+}
