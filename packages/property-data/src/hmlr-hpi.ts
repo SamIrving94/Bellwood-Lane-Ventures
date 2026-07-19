@@ -2,7 +2,14 @@
  * HM Land Registry UK House Price Index (HPI) client
  *
  * Fetches monthly regional price trend data from the HMLR linked-data API.
- * No API key required. Falls back to synthetic data when the live call fails.
+ * No API key required.
+ *
+ * REAL DATA OR NOTHING: this client never fabricates a trend. When the live call
+ * fails (the endpoint has been 404-ing — see docs/LEARNINGS.md), it returns an
+ * `unavailable` record with a neutral 0% change, so the AVM's HPI nudge becomes a
+ * no-op rather than being driven by a random number. (It used to fall back to
+ * synthetic HPI, which silently fed a made-up trend into live valuations — a
+ * Bet-2 "never silently guessed" violation.)
  *
  * Endpoint: https://landregistry.data.gov.uk/linked-data/house-price-index.json
  */
@@ -89,21 +96,24 @@ function mapPostcodeAreaToRegion(area: string): string {
 }
 
 // ---------------------------------------------------------------------------
-// Synthetic fallback
+// "Unavailable" record — no data, no guesses
 // ---------------------------------------------------------------------------
 
-function syntheticHpi(): Hpi {
-  const annualChange = parseFloat(
-    ((Math.random() * 14) - 4).toFixed(2)
-  );
+/**
+ * The null-object returned when we have no real HPI reading. A neutral 0% annual
+ * change means the AVM's `hpiNudge` (1 + change * 0.15) evaluates to 1.0 — i.e.
+ * no adjustment — so a missing HPI feed can never move a valuation. `source` is
+ * 'unavailable' so callers can tell real data from no-data.
+ */
+function unavailableHpi(): Hpi {
   return {
     region: 'england',
-    averagePrice: 250_000 + Math.floor(Math.random() * 150_000),
-    annualChange,
-    monthlyChange: parseFloat(((Math.random() * 2) - 0.5).toFixed(2)),
+    averagePrice: null,
+    annualChange: 0,
+    monthlyChange: 0,
     period: new Date().toISOString().slice(0, 7),
-    trend: parseHpiTrend(annualChange),
-    source: 'synthetic',
+    trend: 'stable',
+    source: 'unavailable',
   };
 }
 
@@ -186,15 +196,16 @@ async function fetchHpiLive(postcode: string): Promise<Hpi> {
 
 /**
  * Fetch UK House Price Index data for the region containing this postcode.
- * Falls back to synthetic data if the live call fails.
+ * Returns an `unavailable` record (neutral 0% change) if the live call fails —
+ * never synthetic data.
  */
 export async function getHousepriceIndex(postcode: string): Promise<Hpi> {
   try {
     return await fetchHpiLive(postcode);
   } catch (err) {
     console.warn(
-      `[property-data/hmlr-hpi] live fetch failed (${(err as Error).message}), using synthetic`
+      `[property-data/hmlr-hpi] live fetch failed (${(err as Error).message}) — returning unavailable (no synthetic)`
     );
-    return syntheticHpi();
+    return unavailableHpi();
   }
 }
