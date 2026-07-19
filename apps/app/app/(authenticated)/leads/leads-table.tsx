@@ -1,7 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { StarRatingInline } from '../components/star-rating-inline';
+import { TriageButtons } from '../components/triage-buttons';
+import type { TriageStatus } from '../../actions/leads/triage';
 
 type Lead = {
   id: string;
@@ -14,7 +15,6 @@ type Lead = {
   marketTrend: string | null;
   status: string;
   source: string;
-  existingRating: number;
   // PropertyData-rich fields
   listingType: string | null;
   listingUrl: string | null;
@@ -51,7 +51,6 @@ type Lead = {
 
 type Props = {
   leads: Lead[];
-  unratedCount: number;
   initialFilter: string;
 };
 
@@ -78,6 +77,14 @@ const LISTING_TYPE_LABELS: Record<string, string> = {
   'poor-epc-score': 'Poor EPC',
 };
 
+const STATUS_LABELS: Record<string, string> = {
+  new: 'New',
+  shortlisted: 'Shortlisted',
+  watching: 'Watching',
+  passed: 'Passed',
+  converted: 'Converted',
+};
+
 function formatGBP(pence: number): string {
   return new Intl.NumberFormat('en-GB', {
     style: 'currency',
@@ -88,9 +95,10 @@ function formatGBP(pence: number): string {
 
 type FilterKey =
   | 'shortlist'
+  | 'triage'
+  | 'watching'
+  | 'passed'
   | 'all'
-  | 'unrated'
-  | 'rated'
   | 'STRONG'
   | 'VIABLE'
   | 'THIN'
@@ -105,6 +113,7 @@ type FilterKey =
 // Source-type filters are analyst tools, not part of the daily "what do I
 // act on" job — they live behind a "More filters" disclosure.
 const SECONDARY_FILTERS: FilterKey[] = [
+  'passed',
   'appraised',
   'unappraised',
   'propertydata',
@@ -114,39 +123,40 @@ const SECONDARY_FILTERS: FilterKey[] = [
   'shortlease',
 ];
 
-export function LeadsTable({ leads, unratedCount, initialFilter }: Props) {
+export function LeadsTable({ leads, initialFilter }: Props) {
   const [activeFilter, setActiveFilter] = useState<FilterKey>(
-    (initialFilter as FilterKey) ?? 'shortlist',
+    (initialFilter as FilterKey) ?? 'triage',
   );
   const [showMoreFilters, setShowMoreFilters] = useState(false);
-  const [localRatings, setLocalRatings] = useState<Record<string, number>>({});
+  // Optimistic triage state so cards re-filter instantly on Shortlist/Pass.
+  const [localStatus, setLocalStatus] = useState<Record<string, string>>({});
 
-  const handleRated = (leadId: string, rating: number) => {
-    setLocalRatings((prev) => ({ ...prev, [leadId]: rating }));
+  const getStatus = (lead: Lead) => localStatus[lead.id] ?? lead.status;
+
+  const handleTriaged = (leadId: string, status: TriageStatus) => {
+    setLocalStatus((prev) => ({ ...prev, [leadId]: status }));
   };
 
-  const getRating = (lead: Lead) =>
-    localRatings[lead.id] ?? lead.existingRating;
-
   const filteredLeads = leads.filter((lead) => {
-    const rating = getRating(lead);
+    const status = getStatus(lead);
     switch (activeFilter) {
       case 'shortlist':
-        // The daily triage view: act-on-these-today. New, worth pursuing,
-        // not yet rated.
+        // OUR shortlist — leads a founder explicitly shortlisted.
+        return status === 'shortlisted';
+      case 'triage':
+        // The daily queue: new, worth pursuing, no decision made yet.
         return (
-          lead.status === 'new' &&
-          (lead.verdict === 'STRONG' || lead.verdict === 'VIABLE') &&
-          !rating
+          status === 'new' &&
+          (lead.verdict === 'STRONG' || lead.verdict === 'VIABLE')
         );
-      case 'unrated':
-        return lead.status === 'new' && !rating;
-      case 'rated':
-        return rating > 0;
+      case 'watching':
+        return status === 'watching';
+      case 'passed':
+        return status === 'passed';
       case 'STRONG':
       case 'VIABLE':
       case 'THIN':
-        return lead.verdict === activeFilter;
+        return lead.verdict === activeFilter && status !== 'passed';
       case 'propertydata':
         return lead.source.startsWith('propertydata_');
       case 'planning':
@@ -166,38 +176,37 @@ export function LeadsTable({ leads, unratedCount, initialFilter }: Props) {
     }
   });
 
-  const currentUnratedCount =
-    unratedCount -
-    Object.keys(localRatings).filter((id) => {
-      const lead = leads.find((l) => l.id === id);
-      return lead?.status === 'new' && !lead.existingRating;
-    }).length;
-
-  const shortlistCount = leads.filter(
-    (l) =>
-      l.status === 'new' &&
-      (l.verdict === 'STRONG' || l.verdict === 'VIABLE') &&
-      !getRating(l),
-  ).length;
+  const countByStatus = (s: string) =>
+    leads.filter((l) => getStatus(l) === s).length;
 
   const filters: { key: FilterKey; label: string; count: number }[] = [
-    { key: 'shortlist', label: "Today's shortlist", count: shortlistCount },
+    { key: 'shortlist', label: 'Shortlist', count: countByStatus('shortlisted') },
+    {
+      key: 'triage',
+      label: 'Needs triage',
+      count: leads.filter(
+        (l) =>
+          getStatus(l) === 'new' &&
+          (l.verdict === 'STRONG' || l.verdict === 'VIABLE'),
+      ).length,
+    },
+    { key: 'watching', label: 'Watching', count: countByStatus('watching') },
     {
       key: 'STRONG',
       label: 'Strong',
-      count: leads.filter((l) => l.verdict === 'STRONG').length,
+      count: leads.filter(
+        (l) => l.verdict === 'STRONG' && getStatus(l) !== 'passed',
+      ).length,
     },
     {
       key: 'VIABLE',
       label: 'Viable',
-      count: leads.filter((l) => l.verdict === 'VIABLE').length,
-    },
-    {
-      key: 'unrated',
-      label: 'Unrated',
-      count: Math.max(0, currentUnratedCount),
+      count: leads.filter(
+        (l) => l.verdict === 'VIABLE' && getStatus(l) !== 'passed',
+      ).length,
     },
     { key: 'all', label: 'All', count: leads.length },
+    { key: 'passed', label: 'Passed', count: countByStatus('passed') },
     {
       key: 'propertydata',
       label: 'Distressed',
@@ -276,7 +285,7 @@ export function LeadsTable({ leads, unratedCount, initialFilter }: Props) {
       {showMoreFilters && (
         <div className="flex flex-wrap items-center gap-1">
           <span className="mr-1 font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-            By source
+            More
           </span>
           {secondaryFilters.map((f) => (
             <button
@@ -305,10 +314,27 @@ export function LeadsTable({ leads, unratedCount, initialFilter }: Props) {
           {activeFilter === 'shortlist' ? (
             <>
               <p className="font-medium text-foreground">
+                Your shortlist is empty.
+              </p>
+              <p className="mt-1 text-muted-foreground text-sm">
+                Hit <span className="font-medium text-emerald-700">Shortlist</span> on
+                any lead to save it here.{' '}
+                <button
+                  type="button"
+                  onClick={() => setActiveFilter('triage')}
+                  className="font-medium text-primary hover:underline"
+                >
+                  Triage new leads →
+                </button>
+              </p>
+            </>
+          ) : activeFilter === 'triage' ? (
+            <>
+              <p className="font-medium text-foreground">
                 Nothing needs you right now.
               </p>
               <p className="mt-1 text-muted-foreground text-sm">
-                No new STRONG or VIABLE leads to action. Browse{' '}
+                No new STRONG or VIABLE leads to triage. Browse{' '}
                 <button
                   type="button"
                   onClick={() => setActiveFilter('all')}
@@ -316,15 +342,18 @@ export function LeadsTable({ leads, unratedCount, initialFilter }: Props) {
                 >
                   all leads
                 </button>{' '}
-                or run a fresh scout from Settings → Scouting.
+                or run a fresh scout from{' '}
+                <a
+                  href="/settings/scouting"
+                  className="font-medium text-primary hover:underline"
+                >
+                  Settings → Scouting
+                </a>
+                .
               </p>
             </>
           ) : (
-            <p className="text-muted-foreground">
-              {activeFilter === 'unrated'
-                ? 'All leads have been rated.'
-                : 'No leads match this filter.'}
-            </p>
+            <p className="text-muted-foreground">No leads match this filter.</p>
           )}
         </div>
       ) : (
@@ -333,8 +362,8 @@ export function LeadsTable({ leads, unratedCount, initialFilter }: Props) {
             <LeadCard
               key={lead.id}
               lead={lead}
-              rating={getRating(lead)}
-              onRate={(r) => handleRated(lead.id, r)}
+              status={getStatus(lead)}
+              onTriaged={(s) => handleTriaged(lead.id, s)}
             />
           ))}
         </div>
@@ -345,12 +374,12 @@ export function LeadsTable({ leads, unratedCount, initialFilter }: Props) {
 
 function LeadCard({
   lead,
-  rating,
-  onRate,
+  status,
+  onTriaged,
 }: {
   lead: Lead;
-  rating: number;
-  onRate: (rating: number) => void;
+  status: string;
+  onTriaged: (status: TriageStatus) => void;
 }) {
   const isPropertyData = lead.source.startsWith('propertydata_');
   const isPlanning = lead.source.startsWith('planning_');
@@ -551,7 +580,7 @@ function LeadCard({
               )}
             </div>
 
-            {/* Right side — score + actions */}
+            {/* Right side — score */}
             <div className="flex flex-col items-end gap-2 text-right">
               <div>
                 <div
@@ -571,18 +600,22 @@ function LeadCard({
                   ))}
                 </ul>
               )}
-              <StarRatingInline
-                targetType="scout_lead"
-                targetId={lead.id}
-                existingRating={rating}
-                compact
-                onRated={onRate}
-              />
             </div>
           </div>
 
-          {/* Footer actions */}
+          {/* Footer: triage decision + links */}
           <div className="mt-3 flex flex-wrap items-center gap-3 border-t pt-2 text-xs">
+            {status === 'converted' ? (
+              <span className="inline-flex rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 font-medium text-emerald-700">
+                ✓ Converted to deal
+              </span>
+            ) : (
+              <TriageButtons
+                leadId={lead.id}
+                status={status}
+                onChanged={onTriaged}
+              />
+            )}
             <a
               href={`/leads/${lead.id}`}
               className="font-medium text-primary hover:underline"
@@ -610,8 +643,8 @@ function LeadCard({
                 Est. equity: {formatGBP(lead.estimatedEquityPence)}
               </span>
             )}
-            <span className="ml-auto capitalize text-muted-foreground">
-              {lead.status}
+            <span className="ml-auto text-muted-foreground">
+              {STATUS_LABELS[status] ?? status}
             </span>
           </div>
         </div>

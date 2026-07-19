@@ -17,7 +17,6 @@ import {
   useSidebar,
 } from '@repo/design-system/components/ui/sidebar';
 import {
-  ActivityIcon,
   BuildingIcon,
   CompassIcon,
   FileTextIcon,
@@ -30,13 +29,11 @@ import {
   MailIcon,
   MapIcon,
   MegaphoneIcon,
-  MessageSquareIcon,
   SearchIcon,
   SlidersHorizontalIcon,
   Settings2Icon,
   SheetIcon,
   TargetIcon,
-  UsersIcon,
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -48,19 +45,17 @@ type GlobalSidebarProperties = {
 };
 
 /**
- * Sidebar — three thematic groups, 10 visible items + 3 system.
+ * Sidebar — the founder decision loop, not a page-per-system directory.
+ * Triage (Leads) → Decide (Appraisals/Batch) → Progress (Pipeline) →
+ * Close (Book).
  *
- * Surfacing previously-hidden routes that have real product value:
- *   - Quotes      → /quotes (agent SLA inbox — the 4hr promise)
- *   - Leads       → /leads (scouting output)
- *   - Research    → /research (George concierge)
- *   - Contacts    → /contacts (CRM)
- *   - Documents   → /documents (probate / lease / contract review)
- *   - Admin       → /admin/llm-usage (cost + reliability dashboard)
- *
- * Still off-nav by design (reachable via search / direct URL):
+ * Off-nav by design (reachable via direct URL / in-page links):
  *   - /actions (Today already shows actions)
- *   - /agents, /auctions, /campaigns, /deals, /intake, /partners, /valuations
+ *   - /contacts, /intake → merged into Outreach (People / Inbox tabs)
+ *   - /partners (agent-referral channel — shelved, not an active bet)
+ *   - /auctions stays: it feeds the buying pipeline
+ * Deleted outright (were dead or Paperclip-era): /agents, /campaigns,
+ * /valuations.
  */
 const data = {
   dealFlow: [
@@ -78,14 +73,11 @@ const data = {
   ],
   comms: [
     { title: 'Research', url: '/research', icon: SearchIcon },
-    { title: 'Intake', url: '/intake', icon: MessageSquareIcon },
     { title: 'Marketing', url: '/marketing', icon: MegaphoneIcon },
     { title: 'Outreach', url: '/outreach', icon: MailIcon },
-    { title: 'Contacts', url: '/contacts', icon: UsersIcon },
     { title: 'Documents', url: '/documents', icon: FileTextIcon },
   ],
   system: [
-    { title: 'Agents', url: '/agents', icon: ActivityIcon },
     {
       title: 'Valuation method',
       url: '/settings/valuation',

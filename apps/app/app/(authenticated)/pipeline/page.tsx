@@ -42,7 +42,9 @@ const PipelinePage = async ({
     database.deal.count({
       where: { status: { notIn: ['completed', 'rejected', 'withdrawn'] } },
     }),
-    database.scoutLead.count({ where: { status: 'new' } }),
+    database.scoutLead.count({
+      where: { status: { in: ['new', 'shortlisted', 'watching'] } },
+    }),
     database.deal.count({
       where: { status: { in: ['completed', 'rejected', 'withdrawn'] } },
     }),
@@ -119,19 +121,6 @@ async function LeadsTabContent({ filter }: { filter?: string }) {
     orderBy: [{ leadScore: 'desc' }, { createdAt: 'desc' }],
     take: 200,
   });
-  const feedbackRecords = await database.founderFeedback.findMany({
-    where: {
-      targetType: 'scout_lead',
-      targetId: { in: leads.map((l) => l.id) },
-    },
-    select: { targetId: true, rating: true },
-  });
-  const feedbackByLeadId = Object.fromEntries(
-    feedbackRecords.map((f) => [f.targetId, f.rating]),
-  );
-  const unratedCount = leads.filter(
-    (l) => l.status === 'new' && !feedbackByLeadId[l.id],
-  ).length;
   return (
     <LeadsTable
       leads={leads.map((l) => {
@@ -157,7 +146,6 @@ async function LeadsTabContent({ filter }: { filter?: string }) {
           marketTrend: l.marketTrend,
           status: l.status,
           source: l.source,
-          existingRating: feedbackByLeadId[l.id] ?? 0,
           listingType:
             (pd?.listingType as string | undefined) ?? null,
           listingUrl: (pd?.listingUrl as string | undefined) ?? null,
@@ -218,7 +206,6 @@ async function LeadsTabContent({ filter }: { filter?: string }) {
             .map((f) => f.label),
         };
       })}
-      unratedCount={unratedCount}
       initialFilter={filter ?? 'all'}
     />
   );

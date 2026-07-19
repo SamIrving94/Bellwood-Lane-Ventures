@@ -69,11 +69,17 @@ export const POST = async (request: Request) => {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  // Candidate pool: new, worth-pursuing leads. We pull a generous batch ordered
-  // by score and filter in code to those not yet appraised (avmFull absent),
-  // since Prisma can't easily query JSON-key absence.
+  // Candidate pool: worth-pursuing leads that are still live. Shortlisted and
+  // watching leads (founder triage) stay in the pool — a shortlisted lead
+  // needs its appraisal MORE, not less. Passed/converted drop out. We pull a
+  // generous batch ordered by score and filter in code to those not yet
+  // appraised (avmFull absent), since Prisma can't easily query JSON-key
+  // absence.
   const candidates = await database.scoutLead.findMany({
-    where: { status: 'new', verdict: { in: ['STRONG', 'VIABLE'] } },
+    where: {
+      status: { in: ['new', 'shortlisted', 'watching'] },
+      verdict: { in: ['STRONG', 'VIABLE'] },
+    },
     orderBy: { leadScore: 'desc' },
     take: 60,
   });

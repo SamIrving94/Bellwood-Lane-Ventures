@@ -10,6 +10,7 @@ import { GenerateOfferButton } from './generate-offer-button';
 import { InvestorPanel } from './investor-panel';
 import { ReleaseControl } from './release-control';
 import { SourcingFeePanel } from './sourcing-fee-panel';
+import { DealStatusControl } from './status-control';
 
 export const metadata: Metadata = {
   title: 'Deal Detail — Bellwood Ventures',
@@ -114,13 +115,19 @@ const DealDetailPage = async ({
             <h1 className="text-xl font-bold">{deal.address}</h1>
             <p className="text-sm text-muted-foreground">
               {deal.postcode} &middot; {deal.propertyType}
-              {deal.bedrooms ? ` &middot; ${deal.bedrooms} bed` : ''}
+              {deal.bedrooms ? ` · ${deal.bedrooms} bed` : ''}
             </p>
+            {deal.convertedFromLeadId && (
+              <a
+                href={`/leads/${deal.convertedFromLeadId}`}
+                className="mt-1 inline-block text-xs font-medium text-primary hover:underline"
+              >
+                ← From scout lead (score, comps &amp; risk detail)
+              </a>
+            )}
           </div>
           <div className="flex items-center gap-2">
-            <span className="rounded-full bg-muted px-3 py-1 text-xs capitalize">
-              {deal.status.replace(/_/g, ' ')}
-            </span>
+            <DealStatusControl dealId={deal.id} status={deal.status} />
             <span className="rounded-full bg-muted px-3 py-1 text-xs capitalize">
               {deal.sellerType.replace('_', ' ')}
             </span>
