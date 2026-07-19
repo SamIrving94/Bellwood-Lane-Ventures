@@ -22,7 +22,7 @@
  * Environment variables the tools rely on (inherit from your shell):
  *   - DATABASE_URL              — Neon Postgres connection string
  *   - OS_PLACES_API_KEY         — OS Places (UK address) API
- *   - EPC_API_EMAIL + EPC_API_KEY — EPC Register API
+ *   - EPC_API_TOKEN             — Energy Performance of Buildings Data API (bearer token)
  *   - COMPANIES_HOUSE_API_KEY   — Companies House
  *   - PROPERTYDATA_API_KEY      — PropertyData (for HPI fallback, agents lookup)
  *
