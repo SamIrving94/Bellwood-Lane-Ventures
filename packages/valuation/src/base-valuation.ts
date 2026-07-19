@@ -409,12 +409,17 @@ export async function getBaseValuation(
       ? Math.round(pointEstimate / effectiveFloorArea)
       : null;
 
+  // Only advertise a data source in the trail when it actually contributed real
+  // data — never claim hmlr_hpi/epc when the feed came back 'unavailable'
+  // (otherwise the source string silently implies a signal we didn't use).
+  const hpiTag = hpi.source === 'hmlr_hpi' ? '+hmlr_hpi' : '';
+  const epcTag = epc.source === 'epc_register' ? '+epc' : '';
   const source =
     csaSource === 'distance' && distanceWeighted
-      ? `propertydata_sold_distance(${distanceWeighted.nearCount}@0.25mi/${distanceWeighted.farCount}@0.5mi)+hmlr_hpi+epc`
+      ? `propertydata_sold_distance(${distanceWeighted.nearCount}@0.25mi/${distanceWeighted.farCount}@0.5mi)${hpiTag}${epcTag}`
       : pricePaid.source === 'synthetic'
         ? 'synthetic'
-        : 'hmlr_ppd+hmlr_hpi+epc';
+        : `hmlr_ppd${hpiTag}${epcTag}`;
 
   return {
     postcode,

@@ -74,7 +74,8 @@ describe('scoreDealRoi (stage 2)', () => {
     const full = scoreDealRoi({ bmvDiscountPct: 20, cashRoiPct: 22, avmConfidence: 'high', comparableCount: 6 });
     const low = scoreDealRoi({ bmvDiscountPct: 20, cashRoiPct: 22, avmConfidence: 'low', comparableCount: 1 });
     const zero = scoreDealRoi({ bmvDiscountPct: 20, cashRoiPct: 22, avmConfidence: 'low', comparableCount: 0 });
-    const sum = (fs) => fs.reduce((s, f) => s + f.points, 0);
+    const sum = (fs: { points: number }[]) =>
+      fs.reduce((s, f) => s + f.points, 0);
     expect(sum(full)).toBe(37); // 25 + 12
     expect(sum(low)).toBeLessThan(sum(full)); // ×0.3 damped
     expect(sum(low)).toBe(Math.round(25 * 0.3) + Math.round(12 * 0.3)); // 8 + 4 = 11
