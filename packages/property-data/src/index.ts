@@ -44,6 +44,12 @@ export * from './os-places';
 export * from './propertydata';
 export * from './postcodes-io';
 export * from './registered-leases';
+export {
+  getPersistentStore,
+  setPersistentStore,
+  type PersistentCacheEntry,
+  type PersistentCacheStore,
+} from './store';
 
 // ---------------------------------------------------------------------------
 // Constants

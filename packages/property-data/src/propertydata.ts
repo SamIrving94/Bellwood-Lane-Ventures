@@ -13,6 +13,7 @@
 
 import 'server-only';
 import { acquireRateSlot } from './rate-limiter';
+import { getPersistentStore } from './store';
 import { type PropertyDataType, toPropertyDataType } from './property-type';
 
 export { toPropertyDataType };
@@ -51,6 +52,11 @@ function cacheSet<T>(key: string, value: T, ttlMs: number) {
     if (firstKey !== undefined) cache.delete(firstKey);
   }
   cache.set(key, { value, expiresAt: Date.now() + ttlMs });
+}
+
+/** Test-only: empty the in-memory cache to simulate a serverless cold start. */
+export function __clearMemoryCache(): void {
+  cache.clear();
 }
 
 // ---------------------------------------------------------------------------
@@ -123,6 +129,30 @@ async function fetchPropertyData<T>(
     return cached;
   }
 
+  // Durable second tier: survives cold starts and is shared across instances, so
+  // a postcode is bought once per TTL window rather than re-bought on every fresh
+  // lambda. Additive — a no-op when no persistent store is registered — and a DB
+  // read never consumes a rate slot (it's not a PropertyData call).
+  const persistentStore = getPersistentStore();
+  if (persistentStore) {
+    try {
+      const entry = await persistentStore.get(cacheKey);
+      if (entry) {
+        const remainingMs = entry.expiresAt - Date.now();
+        if (remainingMs > 0) {
+          cacheSet(cacheKey, entry.value as T, remainingMs);
+          logCreditUsage(endpoint, 0, true);
+          return entry.value as T;
+        }
+      }
+    } catch (error) {
+      console.warn(
+        `[propertydata] persistent cache read failed for ${endpoint}`,
+        error,
+      );
+    }
+  }
+
   // Respect PropertyData's 4-calls/10s limit before every live fetch.
   await acquireRateSlot();
 
@@ -166,6 +196,18 @@ async function fetchPropertyData<T>(
       return null;
     }
     cacheSet(cacheKey, parsed.data, options.ttlMs);
+    if (persistentStore) {
+      // Fire-and-forget: a durable-cache write must never block or fail a live
+      // response.
+      persistentStore
+        .set(cacheKey, parsed.data, Date.now() + options.ttlMs)
+        .catch((error) =>
+          console.warn(
+            `[propertydata] persistent cache write failed for ${endpoint}`,
+            error,
+          ),
+        );
+    }
     logCreditUsage(endpoint, options.estimatedCredits, false);
     return parsed.data;
   } catch (error) {
