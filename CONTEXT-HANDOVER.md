@@ -56,8 +56,7 @@
 - `DATABASE_URL` — Neon Postgres
 - `CLERK_SECRET_KEY` + `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` — auth
 - `OS_PLACES_API_KEY` = `spgRAgklEAnG9O3k4oIbgzgcR8vLqQJl` (UK addresses + UPRN)
-- `EPC_API_EMAIL` = `samjlirving@gmail.com`
-- `EPC_API_KEY` = `8825f22ff5b2869cba3f884b72dc00f25a19162a` (EPC Register)
+- `EPC_API_TOKEN` — bearer token from https://get-energy-performance-data.communities.gov.uk/ "My account" page (GOV.UK One Login). Replaces the old `EPC_API_EMAIL`/`EPC_API_KEY` pair — that EPC Register API was retired 30 May 2026.
 
 ### Free/built-in
 - HMLR Price Paid — no key needed

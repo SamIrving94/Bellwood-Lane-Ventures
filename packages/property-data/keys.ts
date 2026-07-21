@@ -9,11 +9,6 @@ export const keys = () =>
       // GOV.UK One Login and copy it from the "My account" page:
       // https://get-energy-performance-data.communities.gov.uk/api-technical-documentation/making-a-request
       EPC_API_TOKEN: z.string().min(1).optional(),
-      // DEPRECATED: credentials for the old epc.opendatacommunities.org API,
-      // retired 30 May 2026. Kept in the schema so stale .env files still
-      // validate; no longer read by any client code.
-      EPC_API_EMAIL: z.string().email().optional(),
-      EPC_API_KEY: z.string().min(1).optional(),
       COMPANIES_HOUSE_API_KEY: z.string().min(1).optional(),
       OS_PLACES_API_KEY: z.string().min(1).optional(),
       // PropertyData REST API. Server-only — never exposed to the browser.
@@ -22,8 +17,6 @@ export const keys = () =>
     },
     runtimeEnv: {
       EPC_API_TOKEN: process.env.EPC_API_TOKEN,
-      EPC_API_EMAIL: process.env.EPC_API_EMAIL,
-      EPC_API_KEY: process.env.EPC_API_KEY,
       COMPANIES_HOUSE_API_KEY: process.env.COMPANIES_HOUSE_API_KEY,
       OS_PLACES_API_KEY: process.env.OS_PLACES_API_KEY,
       PROPERTYDATA_API_KEY: process.env.PROPERTYDATA_API_KEY,
