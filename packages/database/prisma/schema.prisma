@@ -991,3 +991,22 @@ model PropertyBatchItem {
   @@index([batchId])
   @@index([dedupeKey])
 }
+
+/// Durable cache for third-party PropertyData API responses. The in-memory LRU
+/// in @repo/property-data dies on every serverless cold start, so a fresh lambda
+/// re-buys the whole dataset — the biggest source of wasted PropertyData credits
+/// and a compounding cause of the lead-appraise 504s. This table lets a bought
+/// response survive cold starts and be shared across instances, so a postcode is
+/// paid for once per TTL window. Written via the persistent-store hook wired in
+/// apps/api/instrumentation.ts.
+model PropertyDataCache {
+  key       String   @id // endpoint + normalised params (never includes the API key)
+  endpoint  String // e.g. '/sourced-properties' — for spend analysis / sweeping
+  value     Json // the validated response payload
+  expiresAt DateTime // absolute expiry (per-endpoint TTL)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([expiresAt])
+  @@index([endpoint])
+}
