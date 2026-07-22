@@ -296,7 +296,12 @@ export default async function TodayPage() {
                         <p className="mt-2 font-medium">{a.title}</p>
                         {a.description && (
                           <p className="mt-1 line-clamp-2 text-muted-foreground text-xs">
-                            {a.description}
+                            {/* Descriptions are Markdown; this is a 2-line
+                                plain-text preview, so strip the syntax. */}
+                            {a.description
+                              .replace(/\*\*/g, '')
+                              .replace(/^[-•]\s+/gm, '')
+                              .replace(/^#+\s+/gm, '')}
                           </p>
                         )}
                       </div>

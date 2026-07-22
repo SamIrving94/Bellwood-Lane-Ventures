@@ -379,28 +379,59 @@ export const POST = async (request: Request) => {
     ([, msg]) => Boolean(msg)
   );
   if (failingSources.length > 0) {
-    const dayBucket = new Date().toISOString().slice(0, 10);
     try {
-      await database.founderAction.create({
-        data: {
+      // ONE card, stable key: while sources keep failing, each run refreshes
+      // the same card (reopening it if it was completed). No per-day stacking.
+      const dedupKey = 'scouting-source-error';
+      const title = `Scouting source${failingSources.length === 1 ? '' : 's'} failing: ${failingSources.map(([s]) => s).join(', ')}`;
+      const description = `The daily scout run completed but ${failingSources.length} source${failingSources.length === 1 ? '' : 's'} errored, so lead volume may be degraded${result.leads.length === 0 ? ' (zero leads found this run)' : ''}:\n\n${failingSources.map(([s, msg]) => `• ${s}: ${msg}`).join('\n')}`;
+      const priority = result.leads.length === 0 ? 'high' : 'medium';
+      await database.founderAction.upsert({
+        where: { dedupKey },
+        create: {
           type: 'general',
-          priority: result.leads.length === 0 ? 'high' : 'medium',
+          priority,
           status: 'pending',
           agent: 'system',
-          dedupKey: `scouting-source-error:${dayBucket}`,
-          title: `Scouting source${failingSources.length === 1 ? '' : 's'} failing: ${failingSources.map(([s]) => s).join(', ')}`,
-          description: `The daily scout run completed but ${failingSources.length} source${failingSources.length === 1 ? '' : 's'} errored, so lead volume may be degraded${result.leads.length === 0 ? ' (zero leads found this run)' : ''}:\n\n${failingSources.map(([s, msg]) => `• ${s}: ${msg}`).join('\n')}`,
+          dedupKey,
+          title,
+          description,
           metadata: {
             source: 'cron_scouting',
             failingSources: Object.fromEntries(failingSources),
             leadsThisRun: result.leads.length,
-            dayBucket,
+          },
+        },
+        update: {
+          status: 'pending',
+          priority,
+          title,
+          description,
+          resolvedAt: null,
+          resolvedBy: null,
+          metadata: {
+            source: 'cron_scouting',
+            failingSources: Object.fromEntries(failingSources),
+            leadsThisRun: result.leads.length,
           },
         },
       });
     } catch {
-      // Unique violation on dedupKey == already alerted today. Non-fatal.
+      // Non-fatal for alerting.
     }
+  } else {
+    // All sources healthy — auto-complete any open source-failure cards
+    // (stable key + legacy day-bucketed keys). Founders should only see
+    // alerts that are CURRENTLY true.
+    await database.founderAction
+      .updateMany({
+        where: {
+          dedupKey: { startsWith: 'scouting-source-error' },
+          status: { in: ['pending', 'in_progress'] },
+        },
+        data: { status: 'completed', resolvedAt: new Date() },
+      })
+      .catch(() => undefined);
   }
 
   // ── Heartbeat BEFORE the slow enrichment loop ───────────────────────
