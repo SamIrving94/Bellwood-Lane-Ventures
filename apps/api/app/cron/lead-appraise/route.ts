@@ -20,7 +20,7 @@ import { recordCronHeartbeat } from '../_lib/heartbeat';
 // without the founder clicking "Appraise" on each one. Bounded per run so it
 // stays well inside the function budget and PropertyData/Claude spend stays
 // predictable. Runs after the scouting cron (which lands new leads at 7am).
-export const maxDuration = 300;
+export const maxDuration = 800;
 
 // How many leads to appraise per run. Each is ~1 AVM + 1 snapshot (~22 PD
 // credits) + 1 vision call, so this bounds both time and spend.

@@ -7,7 +7,7 @@ import { recordCronHeartbeat } from '../_lib/heartbeat';
 
 // Snapshot enrichment is slow (~27s per unique postcode). Allow more time
 // than the default 60s — bumps to Vercel Pro plan cap.
-export const maxDuration = 300;
+export const maxDuration = 800;
 
 /**
  * Daily scouting pipeline — runs at 7am.

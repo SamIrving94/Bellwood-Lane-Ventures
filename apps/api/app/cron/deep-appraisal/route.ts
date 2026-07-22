@@ -6,7 +6,7 @@ import { NextResponse } from 'next/server';
 
 // Pipeline takes ~15-25s per appraisal (HMLR + EPC + HPI + LLM). Allow
 // generous headroom for the per-run batch.
-export const maxDuration = 300;
+export const maxDuration = 800;
 
 /**
  * /cron/deep-appraisal — daily at 08:30 (after pipeline-appraise)
