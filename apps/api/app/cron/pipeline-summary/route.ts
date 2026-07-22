@@ -68,9 +68,15 @@ export const POST = async (request: Request) => {
         status: 'pending',
       },
     }),
-    // Top 3 highest-priority pending actions — input for the LLM briefing
+    // Top 3 highest-priority pending actions — input for the LLM briefing.
+    // System alerts (cron watchdog, source failures) are EXCLUDED: they have
+    // their own cards, and echoing them here is what made the briefing read
+    // as a duplicate of the rest of the Action Centre.
     database.founderAction.findMany({
-      where: { status: { in: ['pending', 'in_progress'] } },
+      where: {
+        status: { in: ['pending', 'in_progress'] },
+        agent: { not: 'system' },
+      },
       orderBy: [{ priority: 'asc' }, { createdAt: 'desc' }],
       take: 3,
       select: { title: true, priority: true },
@@ -111,9 +117,11 @@ export const POST = async (request: Request) => {
     lines.push(`**SLA:** ${slaBreaches} breach${slaBreaches === 1 ? '' : 'es'} need attention`);
   }
 
-  lines.push(`\n**Total pending actions:** ${pendingActions}`);
+  // NOTE: no "total pending actions" line — the Action Centre already shows
+  // that count right next to this card. Repeating it was pure noise.
 
-  const summaryTitle = `Morning briefing: ${newLeadsToday} leads, ${pendingActions} actions pending`;
+  const dayBucket = new Date().toISOString().slice(0, 10);
+  const summaryTitle = `Morning briefing — ${new Date().toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })}`;
   const deterministicBody = lines.join('\n');
 
   // Try the LLM-synthesised 4-bullet briefing. If it fails or the key is
@@ -137,8 +145,11 @@ export const POST = async (request: Request) => {
   const hasCritical = slaBreaches > 0 || heldComms > 0;
   const hasActivity = newLeadsToday > 0 || dealsAppraised > 0 || emailsSent > 0;
 
-  // Only create summary if there's something to report
-  if (hasActivity || pendingActions > 0) {
+  // Quiet days get NO briefing card. A briefing that says "nothing happened,
+  // N actions pending" restates what the Action Centre already shows —
+  // pendingActions alone is deliberately not a trigger anymore.
+  if (hasActivity || hasCritical) {
+    // Unique violation on dedupKey == already briefed today (cron retry).
     await database.founderAction.create({
       data: {
         type: 'general',
@@ -146,6 +157,8 @@ export const POST = async (request: Request) => {
         title: summaryTitle,
         description: summaryBody,
         agent: 'orchestrator',
+        // One briefing per UTC day, even if Vercel retries the cron.
+        dedupKey: `morning-briefing:${dayBucket}`,
         metadata: {
           newLeadsToday,
           strongLeadsToday,
@@ -157,6 +170,8 @@ export const POST = async (request: Request) => {
           totalEvents: todayEvents.length,
         },
       },
+    }).catch(() => {
+      // Already briefed today — cron retry, nothing to do.
     });
   }
 
@@ -223,18 +238,20 @@ interface BriefingInput {
 
 const BRIEFING_SYSTEM_PROMPT = `You are the Chief of Staff for Bellwood Ventures, a UK property deal-sourcer.
 
-Your job: write the founder's 4-bullet morning briefing. The founder is dyslexic — short sentences, plain English, no jargon, no marketing fluff.
+Your job: write the founder's morning briefing. The founder is dyslexic — short sentences, plain English, no jargon, no marketing fluff.
 
 Rules:
-- Exactly 4 bullets, in this order:
-  1. **Overnight movement** — what changed since yesterday (new leads, valuations done, emails sent)
-  2. **What needs your eyes today** — the highest-priority pending actions (be specific, name titles)
-  3. **Watch-outs** — SLA breaches, held vendor emails, anything blocking
-  4. **Recommended first move** — one concrete action, e.g. "Open /quotes — 2 agent submissions are at hour 18 of 24"
-- Each bullet ≤ 25 words.
+- 1 to 4 bullets, drawn from these categories IN ORDER, skipping any with nothing in them:
+  1. **Overnight movement** — new leads, valuations done, emails sent
+  2. **Watch-outs** — SLA breaches, held vendor emails, anything blocking a deal
+  3. **Best lead** — the single strongest overnight lead, with address area + score
+  4. **First move** — one concrete action, e.g. "Open /quotes — 2 agent submissions are at hour 18 of 24"
+- SKIP empty categories entirely. Never write "no new leads" or "nothing to report" bullets.
+- NEVER mention how many actions are pending — the dashboard shows that next to this card.
+- NEVER comment on cron, system, or pipeline health — system alerts have their own cards.
+- Each bullet ≤ 20 words.
 - Use **bold** for numbers and key entities.
-- If a category has nothing in it, say so plainly — don't pad.
-- Return ONLY the 4 bullets in Markdown, no preamble, no closing line.`;
+- Return ONLY the bullets in Markdown, no preamble, no closing line.`;
 
 async function buildLlmBriefing(input: BriefingInput): Promise<string | null> {
   const leadLines =
@@ -261,9 +278,8 @@ async function buildLlmBriefing(input: BriefingInput): Promise<string | null> {
     `- B2B emails auto-sent: ${input.emailsSent}`,
     `- vendor emails awaiting review: ${input.heldComms}`,
     `- SLA breaches needing attention: ${input.slaBreaches}`,
-    `- total pending founder actions: ${input.pendingActions}`,
     '',
-    'Top 3 pending actions:',
+    'Top pending deal actions (system alerts excluded — do not mention them):',
     actionLines,
     '',
     'Top STRONG leads from overnight:',

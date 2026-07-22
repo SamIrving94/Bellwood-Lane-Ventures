@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { useState, useTransition } from 'react';
+import ReactMarkdown from 'react-markdown';
 import { resolveAction } from '@/app/actions/founder-actions/resolve';
 import { checkFeedbackCompletion } from '@/app/actions/founder-actions/check-feedback';
 import { StarRatingInline } from '../../components/star-rating-inline';
@@ -122,11 +123,12 @@ export function ActionCard({ action, reviewLeads }: { action: Action; reviewLead
             )}
           </p>
 
-          {/* Expandable description */}
+          {/* Expandable description — briefings and alerts are written in
+              Markdown; render it instead of showing raw ** asterisks. */}
           {action.description && expanded && (
-            <p className="mt-2 text-sm text-muted-foreground whitespace-pre-wrap">
-              {action.description}
-            </p>
+            <div className="mt-2 space-y-1.5 text-sm text-muted-foreground [&_strong]:font-semibold [&_strong]:text-foreground [&_ul]:list-disc [&_ul]:space-y-1 [&_ul]:pl-4 [&_ol]:list-decimal [&_ol]:space-y-1 [&_ol]:pl-4 [&_a]:text-primary [&_a]:underline [&_h1]:font-semibold [&_h2]:font-semibold [&_h3]:font-semibold">
+              <ReactMarkdown>{action.description}</ReactMarkdown>
+            </div>
           )}
         </div>
 
