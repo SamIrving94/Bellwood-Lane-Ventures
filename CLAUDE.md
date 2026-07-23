@@ -170,6 +170,12 @@ Run a task for one workspace with a filter, e.g.
 
 ## Working in this repo
 
+- **Announce shipped features in-app.** When you ship a founder-visible
+  feature, add an entry to the TOP of `apps/app/lib/whats-new.ts` (fresh
+  `id`, fun copy, one emoji per bullet). The dashboard shows the newest
+  entry as a one-time celebration popup at next login — that file is how
+  founders find out what's new.
+
 - **Branch:** develop on the assigned feature branch; do not push to `master`/`main`
   without explicit permission. Push with `git push -u origin <branch>` and open a
   **draft PR**.
