@@ -1,6 +1,7 @@
 import { env } from '@/env';
 import { recordCronHeartbeat } from '../_lib/heartbeat';
 import { database, Prisma } from '@repo/database';
+import { checkListingLiveness } from '@repo/scouting';
 import { runDeepAppraisal, type DeepAppraisal } from '@repo/valuation';
 import { NextResponse } from 'next/server';
 
@@ -53,6 +54,9 @@ async function handle(request: Request) {
       where: {
         verdict: 'STRONG',
         createdAt: { gte: since },
+        // Passed leads are out — that's where lead-appraise parks listings it
+        // found dead (SSTC/withdrawn), and where the founder puts rejects.
+        status: { not: 'passed' },
       },
       orderBy: { leadScore: 'desc' },
       take: MAX_APPRAISALS_PER_RUN,
@@ -98,6 +102,7 @@ async function handle(request: Request) {
 
   let produced = 0;
   let skippedDuplicate = 0;
+  let skippedDead = 0;
   let failed = 0;
   const sample: Array<{ kind: string; ref: string; verdict?: string }> = [];
 
@@ -125,8 +130,47 @@ async function handle(request: Request) {
     if (cand.kind === 'lead') {
       const lead = cand.lead;
       ref = `${lead.address}, ${lead.postcode}`;
-      const pd = (lead.rawPayload as { propertyData?: Record<string, unknown> } | null)
-        ?.propertyData;
+      const raw = (lead.rawPayload ?? {}) as Record<string, unknown>;
+      const pd = raw.propertyData as Record<string, unknown> | undefined;
+
+      // Zero-credit gate before the LLM spend: reuse the liveness verdict
+      // lead-appraise stored earlier this morning, or check the listing page
+      // fresh. Fail-open — only a positive SSTC/withdrawn signal skips, and
+      // the lead is parked as 'passed' (Passed tab), never deleted.
+      const storedCheck = raw.listingCheck as { result?: string } | undefined;
+      let liveness = storedCheck?.result ?? null;
+      const leadListingUrl =
+        typeof pd?.listingUrl === 'string' ? (pd.listingUrl as string) : null;
+      if (!liveness && leadListingUrl) {
+        const check = await checkListingLiveness(leadListingUrl);
+        liveness = check.status;
+        if (check.status === 'sstc' || check.status === 'removed') {
+          try {
+            await database.scoutLead.update({
+              where: { id: lead.id },
+              data: {
+                status: 'passed',
+                rawPayload: {
+                  ...raw,
+                  listingCheck: {
+                    result: check.status,
+                    marker: check.marker,
+                    url: leadListingUrl,
+                    checkedAt: new Date().toISOString(),
+                  },
+                } as Prisma.InputJsonValue,
+              },
+            });
+          } catch (err) {
+            console.warn('[deep-appraisal] failed to park dead lead', err);
+          }
+        }
+      }
+      if (liveness === 'sstc' || liveness === 'removed') {
+        skippedDead++;
+        continue;
+      }
+
       appraisal = await runDeepAppraisal({
         address: lead.address,
         postcode: lead.postcode,
@@ -233,12 +277,13 @@ async function handle(request: Request) {
       data: {
         agent: 'appraiser',
         eventType: 'deep_appraisal_run',
-        summary: `Produced ${produced} deep appraisals (${skippedDuplicate} dedup, ${failed} failed) from ${candidates.length} candidates`,
+        summary: `Produced ${produced} deep appraisals (${skippedDuplicate} dedup, ${skippedDead} dead listings, ${failed} failed) from ${candidates.length} candidates`,
         count: produced,
         payload: {
           candidates: candidates.length,
           produced,
           skippedDuplicate,
+          skippedDead,
           failed,
           strongLeadsConsidered: strongLeads.length,
           auctionLotsConsidered: upcomingLots.length,
@@ -259,6 +304,7 @@ async function handle(request: Request) {
     candidates: candidates.length,
     produced,
     skippedDuplicate,
+    skippedDead,
     failed,
     sample,
   });

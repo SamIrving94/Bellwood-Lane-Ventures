@@ -11,7 +11,12 @@ import {
   mergeValuationConfig,
   runAVM,
 } from '@repo/valuation';
-import { type ScoreFactor, type Verdict, combineScore } from '@repo/scouting';
+import {
+  type ScoreFactor,
+  type Verdict,
+  checkListingLiveness,
+  combineScore,
+} from '@repo/scouting';
 import { NextResponse } from 'next/server';
 import { recordCronHeartbeat } from '../_lib/heartbeat';
 
@@ -25,6 +30,11 @@ export const maxDuration = 800;
 // How many leads to appraise per run. Each is ~1 AVM + 1 snapshot (~22 PD
 // credits) + 1 vision call, so this bounds both time and spend.
 const MAX_APPRAISALS_PER_RUN = 8;
+
+// How many zero-credit listing-liveness fetches per run. Leads can go SSTC /
+// get withdrawn between sourcing and appraisal; checking the listing page
+// first costs nothing but time, so bound it to keep the run inside budget.
+const MAX_LIVENESS_CHECKS = 24;
 
 type PropertyType =
   | 'detached'
@@ -84,13 +94,11 @@ export const POST = async (request: Request) => {
     take: 60,
   });
 
-  const pending = candidates
-    .filter((lead) => {
-      const raw = (lead.rawPayload ?? {}) as Record<string, unknown>;
-      const avm = raw.avmFull as { pointEstimatePence?: unknown } | undefined;
-      return typeof avm?.pointEstimatePence !== 'number';
-    })
-    .slice(0, MAX_APPRAISALS_PER_RUN);
+  const pending = candidates.filter((lead) => {
+    const raw = (lead.rawPayload ?? {}) as Record<string, unknown>;
+    const avm = raw.avmFull as { pointEstimatePence?: unknown } | undefined;
+    return typeof avm?.pointEstimatePence !== 'number';
+  });
 
   // Founder-tuned offer policy (highest active avm_confidence EvalConfig).
   const activeConfig = await database.evalConfig.findFirst({
@@ -107,12 +115,55 @@ export const POST = async (request: Request) => {
   const valuationConfig = mergeValuationConfig(valuationRow?.value ?? null);
 
   let appraised = 0;
+  let skippedDead = 0;
+  let livenessChecks = 0;
   const errors: string[] = [];
 
   for (const lead of pending) {
+    if (appraised >= MAX_APPRAISALS_PER_RUN) break;
+    const raw = (lead.rawPayload ?? {}) as Record<string, unknown>;
+    const pd = raw.propertyData as Record<string, unknown> | undefined;
+
+    // Zero-credit gate: re-confirm the listing is still for sale before
+    // spending the snapshot/AVM/vision budget. Listings go SSTC or get
+    // withdrawn between sourcing and appraisal, and exclude_sstc only
+    // screened them on the day they were fetched. Fail-open: 'unknown'
+    // (no URL, blocked fetch, check budget spent) appraises as before.
+    // Dead leads are parked as 'passed' — still visible in the Passed tab,
+    // never deleted — and their appraisal slot goes to the next live lead.
+    const listingUrl =
+      typeof pd?.listingUrl === 'string' ? (pd.listingUrl as string) : null;
+    if (listingUrl && livenessChecks < MAX_LIVENESS_CHECKS) {
+      livenessChecks++;
+      const check = await checkListingLiveness(listingUrl);
+      raw.listingCheck = {
+        result: check.status,
+        marker: check.marker,
+        url: listingUrl,
+        checkedAt: new Date().toISOString(),
+      };
+      if (check.status === 'sstc' || check.status === 'removed') {
+        skippedDead++;
+        try {
+          await database.scoutLead.update({
+            where: { id: lead.id },
+            data: {
+              status: 'passed',
+              rawPayload: raw as Prisma.InputJsonValue,
+            },
+          });
+        } catch (err) {
+          console.warn(
+            '[cron/lead-appraise] failed to park dead listing',
+            lead.id,
+            err,
+          );
+        }
+        continue;
+      }
+    }
+
     try {
-      const raw = (lead.rawPayload ?? {}) as Record<string, unknown>;
-      const pd = raw.propertyData as Record<string, unknown> | undefined;
       const normalised = normalisePropertyType(pd?.propertyType);
       const avmPropertyType =
         normalised === 'bungalow' ? 'detached' : (normalised ?? 'terraced');
@@ -296,7 +347,7 @@ export const POST = async (request: Request) => {
   }
 
   await recordCronHeartbeat('lead-appraise', {
-    note: `appraised ${appraised}/${pending.length}`,
+    note: `appraised ${appraised}/${pending.length}, parked ${skippedDead} dead listings`,
   });
 
   return NextResponse.json({
@@ -304,6 +355,8 @@ export const POST = async (request: Request) => {
     candidates: candidates.length,
     pending: pending.length,
     appraised,
+    skippedDead,
+    livenessChecks,
     errors,
   });
 };
