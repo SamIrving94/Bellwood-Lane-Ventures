@@ -58,9 +58,17 @@ export function setModelRouter(router: ModelRouter | null): void {
 
 /** Resolve the route for a feature. Never throws; null on any failure. */
 export async function resolveRoute(feature: string): Promise<ModelRoute | null> {
-  if (!modelRouter) return null;
+  // globalThis fallback for the same reason as the LLM logger (see
+  // claude.ts logSafely): instrumentation.ts can't import this module and
+  // wouldn't share its module instance anyway.
+  const router =
+    modelRouter ??
+    ((globalThis as Record<string, unknown>).__bellwoodModelRouter as
+      | ModelRouter
+      | undefined);
+  if (!router) return null;
   try {
-    return (await modelRouter(feature)) ?? null;
+    return (await router(feature)) ?? null;
   } catch (err) {
     console.warn('[@repo/ai/routing] router failed (non-fatal)', err);
     return null;

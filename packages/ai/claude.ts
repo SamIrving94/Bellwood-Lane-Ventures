@@ -140,9 +140,19 @@ export function setLlmLogger(logger: LlmLogger | null): void {
 }
 
 async function logSafely(metric: LlmCallMetric): Promise<void> {
-  if (!llmLogger) return;
+  // Fallback to the globalThis hook: instrumentation.ts CANNOT import this
+  // module (its runtime lacks the react-server condition, so the
+  // 'server-only' guard throws), and even if it could, Next bundles
+  // instrumentation separately — module-level state would not be shared
+  // with route handlers. globalThis IS shared across bundles in a process.
+  const logger =
+    llmLogger ??
+    ((globalThis as Record<string, unknown>).__bellwoodLlmLogger as
+      | LlmLogger
+      | undefined);
+  if (!logger) return;
   try {
-    await llmLogger(metric);
+    await logger(metric);
   } catch (err) {
     console.warn('[@repo/ai/claude] LLM logger failed (non-fatal)', err);
   }

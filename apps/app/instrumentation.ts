@@ -1,15 +1,25 @@
 /**
  * Next.js boot hook. Runs ONCE per server process / Vercel function
- * cold start. See apps/api/instrumentation.ts for the canonical version.
+ * cold start. See apps/api/instrumentation.ts for the canonical version
+ * and the ⚠ no-'server-only'-imports constraint (importing @repo/ai or
+ * @repo/database here throws and silently kills register()).
  *
  * Sentry stays disabled — see next.config.ts.
  */
 export async function register() {
-  const { setLlmLogger, setModelRouter } = await import('@repo/ai/claude');
-  const { database } = await import('@repo/database');
+  const { PrismaClient } = await import('@repo/database/generated/client');
+  const db = new PrismaClient();
 
-  setLlmLogger(async (metric) => {
-    await database.llmCallLog.create({
+  (globalThis as Record<string, unknown>).__bellwoodLlmLogger = async (metric: {
+    feature: string;
+    model: string;
+    inputTokens: number;
+    outputTokens: number;
+    durationMs: number;
+    success: boolean;
+    errorReason?: string;
+  }) => {
+    await db.llmCallLog.create({
       data: {
         feature: metric.feature,
         model: metric.model,
@@ -20,15 +30,16 @@ export async function register() {
         errorReason: metric.errorReason,
       },
     });
-  });
+  };
 
-  // Same per-feature routing as apps/api — see that file for the shape.
   let routingCache: { table: Record<string, unknown>; fetchedAt: number } | null =
     null;
-  setModelRouter(async (feature) => {
+  (globalThis as Record<string, unknown>).__bellwoodModelRouter = async (
+    feature: string,
+  ) => {
     const now = Date.now();
     if (!routingCache || now - routingCache.fetchedAt > 60_000) {
-      const row = await database.setting.findUnique({
+      const row = await db.setting.findUnique({
         where: { key: 'model_routing' },
       });
       routingCache = {
@@ -37,8 +48,6 @@ export async function register() {
       };
     }
     const route = routingCache.table[feature];
-    return route && typeof route === 'object'
-      ? (route as import('@repo/ai/claude').ModelRoute)
-      : null;
-  });
+    return route && typeof route === 'object' ? route : null;
+  };
 }
