@@ -198,12 +198,15 @@ export const POST = async (request: Request) => {
       usage = data.usage;
       stopReason = data.stop_reason;
       // The response interleaves server_tool_use / web_search_tool_result
-      // blocks with text; the brief is the concatenated text blocks.
-      brief = (data.content ?? [])
+      // blocks with text. Text blocks BEFORE the final one are the model
+      // narrating its searches ("I'll search for…") — noise the founder
+      // explicitly complained about. The brief is the LAST text block: the
+      // synthesis written after all searches finished.
+      const textBlocks = (data.content ?? [])
         .filter((b) => b.type === 'text' && typeof b.text === 'string')
-        .map((b) => b.text)
-        .join('\n')
-        .trim();
+        .map((b) => (b.text as string).trim())
+        .filter(Boolean);
+      brief = (textBlocks[textBlocks.length - 1] ?? '').trim();
 
       // Manual LLM usage log — the setLlmLogger path only covers callClaude.
       await database.llmCallLog
@@ -257,6 +260,8 @@ export const POST = async (request: Request) => {
         dedupKey,
         title: `Overnight market brief — ${dayBucket}`,
         description: brief,
+        // Yesterday's market brief is dead news — expire, don't pile up.
+        expiresAt: new Date(Date.now() + 24 * 3600_000),
         metadata: {
           source: 'cron_overnight_research',
           areas: areas.map((a) => a.postcode),

@@ -105,12 +105,32 @@ export const POST = async (request: Request) => {
     }
   }
 
+  // Expiry sweep: informational cards (briefings, market briefs, daily
+  // review prompts) set expiresAt — once past it they're dead news, not
+  // pending work. type is restricted so quote-ops' approve_offer SLA flow
+  // (which reads expiresAt itself to raise breach alerts) is untouched.
+  let expired = 0;
+  try {
+    const res = await database.founderAction.updateMany({
+      where: {
+        expiresAt: { lt: new Date() },
+        status: { in: ['pending', 'in_progress'] },
+        type: { in: ['general', 'review_leads'] },
+      },
+      data: { status: 'expired' },
+    });
+    expired = res.count;
+  } catch {
+    // Non-fatal.
+  }
+
   return NextResponse.json({
     success: true,
     checked: Object.keys(CRON_MAX_STALENESS_HOURS).length,
     stale: stale.map((s) => s.name),
     raised,
     autoResolved,
+    expired,
   });
 };
 

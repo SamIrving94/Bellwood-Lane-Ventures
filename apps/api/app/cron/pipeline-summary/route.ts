@@ -159,6 +159,8 @@ export const POST = async (request: Request) => {
         agent: 'orchestrator',
         // One briefing per UTC day, even if Vercel retries the cron.
         dedupKey: `morning-briefing:${dayBucket}`,
+        // Yesterday's briefing is dead news — expire instead of piling up.
+        expiresAt: new Date(Date.now() + 24 * 3600_000),
         metadata: {
           newLeadsToday,
           strongLeadsToday,

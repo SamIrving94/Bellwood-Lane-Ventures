@@ -222,12 +222,17 @@ export const POST = async (request: Request) => {
           }`,
       )
       .join('\n');
+    // "0 new firms surfaced" is not an action — don't create a card for it.
+    if (newCount > 0)
     await database.founderAction.create({
       data: {
         type: 'general',
         priority: 'medium',
         status: 'pending',
         agent: 'scout',
+        // Nothing-to-do weeks create no card; this one dies in 7 days if
+        // not actioned rather than piling up.
+        expiresAt: new Date(Date.now() + 7 * 24 * 3600_000),
         title: `Weekly agent prospecting: ${newCount} new firm${newCount === 1 ? '' : 's'} surfaced`,
         description: `${summary}\n\nTop new firms by listing volume:\n${topNewLines || '(none new this run)'}\n\nReview in /contacts (filter type=estate_agent).`,
         metadata: {

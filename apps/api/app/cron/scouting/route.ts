@@ -311,32 +311,46 @@ export const POST = async (request: Request) => {
       .map((l, i) => `${i}:${l.address.slice(0, 40)}, ${l.postcode}`)
       .slice(0, 10);
     try {
-      // Founder-facing review action — fires for ALL qualified leads.
-      await database.founderAction.create({
-        data: {
+      // Founder-facing review action — ONE persistent card, refreshed each
+      // run. The card's lead list is rendered live, so yesterday's copy of
+      // the same card is pure noise; a stack of eight of them was the
+      // founder's top Action Centre complaint.
+      const reviewPriority =
+        highScoreLeads.length >= 5 || strongLeads.length > 0
+          ? 'high'
+          : highScoreLeads.length > 0
+            ? 'medium'
+            : 'low';
+      const reviewData = {
+        priority: reviewPriority,
+        status: 'pending',
+        title: `Review ${result.leads.length} new qualified lead${result.leads.length === 1 ? '' : 's'}${highScoreLeads.length ? ` (${highScoreLeads.length} scored 70+)` : ''}`,
+        description: `Daily scout run found ${result.leads.length} qualified leads — ${strongLeads.length} STRONG, ${highScoreLeads.length} scored ≥ 70. Open Pipeline → Leads to review each and decide invest / pass / refer to another investor.`,
+        metadata: {
+          source: 'cron_scouting',
+          assignedToAgent: 'board',
+          leadCount: result.leads.length,
+          highScoreCount: highScoreLeads.length,
+          strongCount: strongLeads.length,
+          runDate: result.runDate.toISOString(),
+          link: '/pipeline?tab=leads',
+          leadSample: reviewSample,
+        },
+        resolvedAt: null,
+        resolvedBy: null,
+        // Dies on its own if not acted on before the leads go stale.
+        expiresAt: new Date(Date.now() + 48 * 3600_000),
+      } as const;
+      await database.founderAction.upsert({
+        where: { dedupKey: 'scout-review-leads' },
+        create: {
           type: 'review_leads',
-          priority:
-            highScoreLeads.length >= 5 || strongLeads.length > 0
-              ? 'high'
-              : highScoreLeads.length > 0
-                ? 'medium'
-                : 'low',
-          status: 'pending',
           agent: 'system',
           agentEventId: eventId,
-          title: `Review ${result.leads.length} new qualified lead${result.leads.length === 1 ? '' : 's'}${highScoreLeads.length ? ` (${highScoreLeads.length} scored 70+)` : ''}`,
-          description: `Daily scout run found ${result.leads.length} qualified leads — ${strongLeads.length} STRONG, ${highScoreLeads.length} scored ≥ 70. Open Pipeline → Leads to review each and decide invest / pass / refer to another investor.`,
-          metadata: {
-            source: 'cron_scouting',
-            assignedToAgent: 'board',
-            leadCount: result.leads.length,
-            highScoreCount: highScoreLeads.length,
-            strongCount: strongLeads.length,
-            runDate: result.runDate.toISOString(),
-            link: '/pipeline?tab=leads',
-            leadSample: reviewSample,
-          },
+          dedupKey: 'scout-review-leads',
+          ...reviewData,
         },
+        update: { agentEventId: eventId, ...reviewData },
       });
 
       // Marketer-facing draft action — high-scoring leads only (outreach is
