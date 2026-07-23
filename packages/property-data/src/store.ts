@@ -32,16 +32,25 @@ export type PersistentCacheStore = {
   set(key: string, value: unknown, expiresAt: number): Promise<void>;
 };
 
-let store: PersistentCacheStore | null = null;
+// The singleton MUST live on globalThis, not in module scope. Next.js bundles
+// instrumentation.ts as its own webpack entry, so this module can be inlined
+// twice in one server process (once for instrumentation, once for route
+// chunks). A module-scoped variable then splits: register() writes to one copy
+// while fetchPropertyData reads the other — silently null, cache never used.
+const GLOBAL_KEY = Symbol.for('@repo/property-data:persistent-store');
+
+type GlobalWithStore = typeof globalThis & {
+  [GLOBAL_KEY]?: PersistentCacheStore | null;
+};
 
 /**
  * Register (or clear, with `null`) the durable cache backend. Call once at app
  * boot. Safe to leave unset — the client falls back to in-memory only.
  */
 export function setPersistentStore(next: PersistentCacheStore | null): void {
-  store = next;
+  (globalThis as GlobalWithStore)[GLOBAL_KEY] = next;
 }
 
 export function getPersistentStore(): PersistentCacheStore | null {
-  return store;
+  return (globalThis as GlobalWithStore)[GLOBAL_KEY] ?? null;
 }
