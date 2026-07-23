@@ -3,12 +3,14 @@ import { database } from '@repo/database';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
+import { buildScorerSuggestions, mergeScorerConfig } from '@repo/scouting';
 import {
   THEME_LABELS,
   type FeedbackInsights,
   type InsightTheme,
 } from '@/lib/feedback/insight-schema';
 import { Header } from '../../components/header';
+import { SuggestionCards } from './suggestion-cards';
 
 export const metadata: Metadata = {
   title: 'Scorer calibration — Bellwood Ventures',
@@ -45,7 +47,12 @@ const CalibrationPage = async () => {
   const activeConfig = await database.evalConfig.findFirst({
     where: { evalType: 'lead_scoring', activatedAt: { not: null } },
     orderBy: { version: 'desc' },
-    select: { version: true, description: true, activatedAt: true },
+    select: {
+      version: true,
+      description: true,
+      activatedAt: true,
+      config: true,
+    },
   });
 
   // Aggregate: scorer vs founder agreement
@@ -124,6 +131,13 @@ const CalibrationPage = async () => {
   const total = agree + disagreeHigh + disagreeLow;
   const agreementPct = total > 0 ? Math.round((agree / total) * 100) : 0;
   const avgDelta = deltaCount > 0 ? deltaSum / deltaCount : 0;
+
+  // One-click tuning: map biased factors back to their config knobs and
+  // propose specific new values (evidence + Apply button, never automatic).
+  const suggestions = buildScorerSuggestions(
+    factorRows,
+    mergeScorerConfig(activeConfig?.config ?? null),
+  );
 
   // ── Taste profile — aggregate the structured insights mined from notes
   // and voice-note transcripts (overrides._insights). Per theme: how often
@@ -361,6 +375,9 @@ const CalibrationPage = async () => {
             </div>
           )}
         </div>
+
+        {/* One-click weight suggestions from the bias table */}
+        <SuggestionCards suggestions={suggestions} />
 
         {/* Taste profile — mined from notes + voice-note transcripts */}
         <div className="rounded-xl border bg-card">

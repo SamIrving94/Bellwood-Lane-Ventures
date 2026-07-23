@@ -110,6 +110,18 @@ export { sanitisePayload, auditProtectedFields } from './rbac';
 export { enrichRationaleWithLlm } from './rationale-llm';
 export { checkListingLiveness, classifyListingHtml } from './listing-status';
 export type { ListingCheck, ListingLiveness } from './listing-status';
+export { dedupeDealbreakerRules, screenDealbreakers } from './dealbreakers';
+export type { DealbreakerCandidate, DealbreakerHit } from './dealbreakers';
+export {
+  applySuggestionChange,
+  buildScorerSuggestions,
+  nudgeValue,
+} from './calibration-suggestions';
+export type {
+  FactorBiasRow,
+  ScorerSuggestion,
+  SuggestionChange,
+} from './calibration-suggestions';
 
 export type { ProbateLead } from './probate-data';
 export type {
