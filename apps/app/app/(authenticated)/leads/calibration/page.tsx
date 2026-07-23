@@ -3,6 +3,11 @@ import { database } from '@repo/database';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
+import {
+  THEME_LABELS,
+  type FeedbackInsights,
+  type InsightTheme,
+} from '@/lib/feedback/insight-schema';
 import { Header } from '../../components/header';
 
 export const metadata: Metadata = {
@@ -119,6 +124,62 @@ const CalibrationPage = async () => {
   const total = agree + disagreeHigh + disagreeLow;
   const agreementPct = total > 0 ? Math.round((agree / total) * 100) : 0;
   const avgDelta = deltaCount > 0 ? deltaSum / deltaCount : 0;
+
+  // ── Taste profile — aggregate the structured insights mined from notes
+  // and voice-note transcripts (overrides._insights). Per theme: how often
+  // it was liked vs disliked, with the freshest supporting quote. This is
+  // the "why" behind the star ratings.
+  const themeTally = new Map<
+    InsightTheme,
+    { liked: number; disliked: number; quote: string | null }
+  >();
+  const dealbreakers = new Map<string, number>();
+  let insightCount = 0;
+  let voiceNoteCount = 0;
+
+  for (const f of feedback) {
+    const overrides = (f.overrides ?? {}) as Record<string, unknown>;
+    if (overrides._voice === true) voiceNoteCount += 1;
+    const insights = overrides._insights as FeedbackInsights | undefined;
+    if (!insights) continue;
+    insightCount += 1;
+    for (const like of insights.likes ?? []) {
+      const slot = themeTally.get(like.theme) ?? {
+        liked: 0,
+        disliked: 0,
+        quote: null,
+      };
+      slot.liked += 1;
+      slot.quote ??= like.quote || null;
+      themeTally.set(like.theme, slot);
+    }
+    for (const dislike of insights.dislikes ?? []) {
+      const slot = themeTally.get(dislike.theme) ?? {
+        liked: 0,
+        disliked: 0,
+        quote: null,
+      };
+      slot.disliked += 1;
+      slot.quote ??= dislike.quote || null;
+      themeTally.set(dislike.theme, slot);
+    }
+    for (const rule of insights.dealbreakers ?? []) {
+      const key = rule.trim().toLowerCase();
+      dealbreakers.set(key, (dealbreakers.get(key) ?? 0) + 1);
+    }
+  }
+
+  const themeRows = Array.from(themeTally.entries())
+    .map(([theme, t]) => ({
+      theme,
+      label: THEME_LABELS[theme] ?? theme,
+      ...t,
+      mentions: t.liked + t.disliked,
+    }))
+    .sort((a, b) => b.mentions - a.mentions);
+  const dealbreakerRows = Array.from(dealbreakers.entries()).sort(
+    (a, b) => b[1] - a[1],
+  );
 
   return (
     <>
@@ -297,6 +358,88 @@ const CalibrationPage = async () => {
                   ))}
                 </tbody>
               </table>
+            </div>
+          )}
+        </div>
+
+        {/* Taste profile — mined from notes + voice-note transcripts */}
+        <div className="rounded-xl border bg-card">
+          <div className="border-b p-5">
+            <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+              Taste profile
+            </p>
+            <p className="mt-1 text-sm text-slate-700">
+              What you consistently <strong>like</strong> and{' '}
+              <strong>dislike</strong> about properties, mined from your
+              notes and voice notes ({insightCount} note
+              {insightCount === 1 ? '' : 's'} analysed
+              {voiceNoteCount > 0
+                ? `, ${voiceNoteCount} by voice`
+                : ''}
+              ). Every note makes this sharper.
+            </p>
+          </div>
+          {themeRows.length === 0 ? (
+            <div className="p-8 text-center text-sm text-muted-foreground">
+              No notes analysed yet. Add a note — or tap the mic and say what
+              you like or dislike — when rating a lead.
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="border-b bg-muted/40">
+                  <tr>
+                    <th className="px-4 py-3 text-left font-medium">Theme</th>
+                    <th className="px-4 py-3 text-right font-medium">
+                      Liked
+                    </th>
+                    <th className="px-4 py-3 text-right font-medium">
+                      Disliked
+                    </th>
+                    <th className="px-4 py-3 text-left font-medium">
+                      In your words
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y">
+                  {themeRows.map((r) => (
+                    <tr key={r.theme} className="hover:bg-accent">
+                      <td className="px-4 py-3 font-medium">{r.label}</td>
+                      <td className="px-4 py-3 text-right font-mono text-emerald-700">
+                        {r.liked}
+                      </td>
+                      <td className="px-4 py-3 text-right font-mono text-rose-700">
+                        {r.disliked}
+                      </td>
+                      <td className="px-4 py-3 text-xs italic text-muted-foreground">
+                        {r.quote ? `“${r.quote}”` : '—'}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+          {dealbreakerRows.length > 0 && (
+            <div className="border-t p-5">
+              <p className="text-xs font-medium uppercase tracking-wider text-rose-700">
+                Dealbreakers
+              </p>
+              <ul className="mt-2 space-y-1 text-sm">
+                {dealbreakerRows.map(([rule, count]) => (
+                  <li key={rule} className="flex items-start gap-2">
+                    <span className="mt-0.5 text-rose-500">✕</span>
+                    <span>
+                      {rule}
+                      {count > 1 && (
+                        <span className="ml-1 text-xs text-muted-foreground">
+                          (said {count}×)
+                        </span>
+                      )}
+                    </span>
+                  </li>
+                ))}
+              </ul>
             </div>
           )}
         </div>
