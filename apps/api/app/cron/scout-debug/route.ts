@@ -3,7 +3,7 @@ import { database } from '@repo/database';
 import { runScoutingPipeline, mergeScorerConfig } from '@repo/scouting';
 import { NextResponse } from 'next/server';
 
-export const maxDuration = 300;
+export const maxDuration = 800;
 
 /**
  * GET / POST /cron/scout-debug
