@@ -7,6 +7,12 @@
  * Sentry stays disabled — see next.config.ts.
  */
 export async function register() {
+  // register() runs once per RUNTIME — nodejs AND edge. The edge runtime
+  // (which executes middleware.ts) cannot load the generated Prisma client;
+  // letting it try kills the whole edge entry and every middleware
+  // invocation 500s with MIDDLEWARE_INVOCATION_FAILED (= login down).
+  if (process.env.NEXT_RUNTIME !== 'nodejs') return;
+
   const { PrismaClient } = await import('@repo/database/generated/client');
   const db = new PrismaClient();
 
