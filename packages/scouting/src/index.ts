@@ -108,6 +108,20 @@ export {
 } from './scorer-config';
 export { sanitisePayload, auditProtectedFields } from './rbac';
 export { enrichRationaleWithLlm } from './rationale-llm';
+export { checkListingLiveness, classifyListingHtml } from './listing-status';
+export type { ListingCheck, ListingLiveness } from './listing-status';
+export { dedupeDealbreakerRules, screenDealbreakers } from './dealbreakers';
+export type { DealbreakerCandidate, DealbreakerHit } from './dealbreakers';
+export {
+  applySuggestionChange,
+  buildScorerSuggestions,
+  nudgeValue,
+} from './calibration-suggestions';
+export type {
+  FactorBiasRow,
+  ScorerSuggestion,
+  SuggestionChange,
+} from './calibration-suggestions';
 
 export type { ProbateLead } from './probate-data';
 export type {
@@ -453,6 +467,13 @@ export async function runScoutingPipeline(
               typeL.includes('land') ||
               typeL.includes('garage')
             ) {
+              continue;
+            }
+            // DROP listings PropertyData flags as SSTC. We already send
+            // exclude_sstc=1 at fetch time, but the flag still comes back set
+            // on some rows — already under offer means every credit spent
+            // downstream (snapshot, AVM, vision) is wasted.
+            if (p.sstc === true) {
               continue;
             }
             // FLAG commercial (pub / bar / office / shop / unit) — keep the lead
