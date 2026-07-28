@@ -1,5 +1,11 @@
 # Bellwood Ventures — Complete AI Agent Briefing Pack
 
+> ⚠ **Historical document (April 2026).** Public promises were rewritten in
+> July 2026 — the live site copy is the source of truth: same-day indicative
+> response, viewing, confirmed written offer within 24–48 hours of viewing,
+> completion in weeks not months. Timing/SLA claims below predate that and
+> are kept for the record only.
+
 **Version:** April 2026 | **Purpose:** Master context document for Claude and AI agent teams  
 **Use this as:** System prompt context, agent memory, task briefing, or project brief
 

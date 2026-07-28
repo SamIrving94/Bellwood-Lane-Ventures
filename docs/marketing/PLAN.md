@@ -144,7 +144,8 @@ billboards. No radio.
 
 - **Audience:** investors + agents (resale signal) + vendors (success proof)
 - **Content:** every completed resale. Story arc: bought from chain break
-  in 14 days → refurbished → resold via [agent name] in N weeks
+  in N weeks (use the real number — never claim faster than the deal
+  actually completed) → refurbished → resold via [agent name] in N weeks
 - **Cadence:** every completion (1–2/month → builds gradually)
 - **Owner:** Marketer + Counsel draft, CEO approves, Liaison posts
 

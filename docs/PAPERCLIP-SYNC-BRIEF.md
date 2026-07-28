@@ -9,6 +9,11 @@
 > internal callers: auctions, marketer/draft-blog, dispatch, intake/whatsapp,
 > scout/process-probate-pdf. This document is kept as historical reference for
 > the role playbooks and workflow definitions.
+>
+> **Promise note (2026-07-24):** every "4-hour SLA" in this document is an
+> INTERNAL ops target only. The public promise (live-site copy is the source
+> of truth) is: same-day indicative response, then a confirmed written offer
+> within 24–48 hours of viewing. Never advertise the internal target.
 
 **This is the single source of truth for every Paperclip agent.**
 **Updated:** May 2026 (v4 — reconciled with the live Paperclip instance).

@@ -154,6 +154,13 @@ Run a task for one workspace with a filter, e.g.
 - **Safety rails (do not break these):** vendor emails are always held for
   founder review (`OutreachHold`); CEO escalation fires for offers <60% of AVM;
   SLA breaches are deduplicated so they don't spawn duplicate `FounderAction`s.
+- **Public promises — live site copy is the source of truth.** The promise is:
+  same-day indicative response → we view every property → confirmed written
+  offer within 24–48 hours of viewing, locked 72 hours → completion in weeks
+  not months. Never state faster SLAs (60-second figures, 4-hour signed
+  offers) in vendor-facing, agent-facing, or marketing copy — internal ops
+  targets may be faster but are never advertised. If docs and the live site
+  disagree, the live site wins.
 
 ## Testing & CI
 
