@@ -96,8 +96,14 @@ jobs:
       - name: Build with bundle analysis
         run: pnpm analyze
 
+      # `turbo test` runs each workspace's own vitest config from its own
+      # directory. That matters: packages/{valuation,scouting,property-data}
+      # alias `server-only` to a no-op stub, because the real package throws at
+      # import time outside Next.js's `react-server` condition. Invoking the api
+      # config from the repo root instead swept those packages up under jsdom
+      # without their aliases, so 9 test files failed to load.
       - name: Run tests
-        run: npx vitest run --config apps/api/vitest.config.ts
+        run: pnpm test
 
       - name: Upload bundle analysis artifacts
         uses: actions/upload-artifact@v4
