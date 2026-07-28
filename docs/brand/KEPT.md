@@ -38,14 +38,25 @@ hype, never "We Buy Any House" energy.
 promise (the dot, the seal, "the honest version" labels). Leaf green is
 *only* ever action. Breaking this rule is how the brand dies.
 
-## Type
+## Type — DECIDED: inherit the Bellwoods editorial set
 
-- **Headlines & promise lines:** old-style serif — Iowan Old Style /
-  Palatino stack (web), Caslon acceptable in print. Weight 500–600,
-  tight leading (1.06–1.1), `text-wrap: balance`.
-- **Body & UI:** humanist grotesk — Avenir Next / system stack. 15–16.5px.
-- **Documents:** Courier accents for offer-letter labels (PROPERTY,
+All three faces already load on the public site (Google Fonts, free,
+`packages/design-system/lib/fonts.ts`) — zero licensing cost, zero
+migration, and visual continuity through the dual-name transition:
+
+- **Headlines & promise lines:** **Libre Caslon Text** — Caslon is the
+  English document face (legal, publishing, letterpress): exactly Kept's
+  world. Weight 500–700, tight leading (1.06–1.1), `text-wrap: balance`.
+  (System fallback in mocks: Iowan Old Style / Palatino / Georgia.)
+- **Body & UI:** **Roboto** (working sans; candidate for a later swap —
+  zero-cost decision, revisit after launch).
+- **Documents:** **Courier Prime** for offer-letter labels (PROPERTY,
   OUR CASH OFFER) — the typed-document texture.
+- **The wordmark — one test outstanding:** never Roboto Bold (invisible).
+  Trial A: `kept.` in **Libre Caslon Bold lowercase** (serif mark, ties
+  the logo to the document world). Trial B: a characterful free grotesk
+  (e.g. Hanken Grotesk) at 700, −0.03em. Decide in Claude Design; the
+  drawn dot/circle is constant either way.
 - Eyebrows: 10.5–11px, letterspacing .24–.28em, uppercase, leaf (or wax
   for "honest version" sections).
 
