@@ -1,0 +1,266 @@
+<!-- @dsCard group="Brand" name="Brand Hub" -->
+<title>Kept. Brand Hub</title>
+<style>
+  :root{
+    --cream:#F7F3EA;--card:#FFFFFF;--forest:#1F332B;--body:#4C5A50;--leaf:#2E7D5B;--wax:#C33F35;--hair:#E2DCCB;--soft:#EDE7D8;
+    --serif:'Iowan Old Style','Palatino Linotype',Palatino,Georgia,serif;
+    --sans:'Avenir Next',Avenir,'Segoe UI','Helvetica Neue',sans-serif;
+    --mono:'Courier New',Courier,monospace;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--cream);color:var(--forest);font-family:var(--sans);line-height:1.6;font-size:15px}
+  .top{position:sticky;top:0;z-index:20;background:color-mix(in srgb,var(--cream) 92%,transparent);backdrop-filter:blur(8px);border-bottom:1px solid var(--hair)}
+  .topin{max-width:1000px;margin:0 auto;padding:14px 22px;display:flex;align-items:center;gap:22px;flex-wrap:wrap}
+  .mark{font-size:21px;font-weight:700;letter-spacing:-.03em}
+  .dot{color:var(--wax)}
+  .tabs{display:flex;gap:4px;flex-wrap:wrap}
+  .tab{border:0;background:transparent;font-family:var(--sans);font-size:13px;color:var(--body);padding:7px 14px;border-radius:999px;cursor:pointer;font-weight:500}
+  .tab:hover{color:var(--forest)}
+  .tab.on{background:var(--forest);color:#EFEAE0}
+  .shell{max-width:1000px;margin:0 auto;padding:36px 22px 90px}
+  .pane{display:none}
+  .pane.on{display:block;animation:fade .35s ease}
+  @keyframes fade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+  h1{font-family:var(--serif);font-size:clamp(26px,4vw,36px);font-weight:600;margin:0 0 8px;text-wrap:balance}
+  h2{font-family:var(--serif);font-size:21px;font-weight:600;margin:34px 0 8px}
+  h3{font-size:14px;font-weight:600;margin:20px 0 6px}
+  p{margin:0 0 10px}
+  .quiet{color:var(--body);font-size:13px}
+  .card{background:var(--card);border:1px solid var(--hair);border-radius:12px;padding:18px 20px;margin:12px 0}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+  @media(max-width:720px){.grid2,.grid3{grid-template-columns:1fr}}
+  table{width:100%;border-collapse:collapse;font-size:13px;margin:10px 0}
+  th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--hair);vertical-align:top}
+  th{font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--body)}
+  td:first-child{font-weight:600}
+  .tbl{overflow-x:auto}
+  ul{margin:0 0 10px;padding-left:18px}
+  li{margin-bottom:6px}
+  .mono{font-family:var(--mono);font-size:12.5px}
+  .band{background:var(--forest);color:#EFEAE0;border-radius:12px;padding:20px 24px;margin:12px 0}
+  .band p{color:#C2CCC4;margin:0}
+  .eyebrow{font-size:10px;letter-spacing:.24em;text-transform:uppercase;color:var(--leaf);font-weight:600;margin:0 0 8px}
+  .logo-tile{display:flex;align-items:center;justify-content:center;border-radius:10px;border:1px solid var(--hair);min-height:130px;padding:18px}
+  .cap{font-size:11px;color:var(--body);margin-top:6px}
+  .sizes{display:flex;align-items:flex-end;gap:26px;flex-wrap:wrap;margin:10px 0}
+  .no{color:var(--wax);font-weight:700;margin-right:6px}
+  .sw{display:inline-block;width:15px;height:15px;border-radius:4px;vertical-align:-2px;margin-right:7px;border:1px solid rgba(0,0,0,.1)}
+  .gap{border-left:4px solid var(--wax);background:var(--card);border-radius:0 10px 10px 0;padding:14px 18px;margin:10px 0}
+  .gap b{display:block;margin-bottom:2px}
+  .gap p{font-size:13px;color:var(--body);margin:0}
+</style>
+
+<div class="top"><div class="topin">
+  <span class="mark">kept<span class="dot">.</span></span>
+  <nav class="tabs" id="tabs">
+    <button class="tab on" data-p="strategy">Strategy</button>
+    <button class="tab" data-p="logo">Logo &amp; mark</button>
+    <button class="tab" data-p="foundations">Foundations</button>
+    <button class="tab" data-p="components">Components</button>
+    <button class="tab" data-p="voice">Voice</button>
+    <button class="tab" data-p="gaps">What's still missing</button>
+  </nav>
+</div></div>
+
+<div class="shell">
+
+  <!-- ═══ STRATEGY ═══ -->
+  <section class="pane on" id="strategy">
+    <p class="eyebrow">The decisions · v2 · full document in the strategy file</p>
+    <h1>We keep our word, so you can keep going<span class="dot">.</span></h1>
+    <div class="band"><p><b style="color:#EFEAE0">Positioning:</b> For UK homeowners who must sell — not want to — Kept is the cash buyer whose written figure is the completion figure, because we publish the maths, the method, and every promise we've kept. Warm on the phone. Immovable on the number.</p></div>
+    <div class="grid2">
+      <div class="card"><h3>The lines (decided)</h3><ul class="quiet" style="margin:0">
+        <li><b>Masterline:</b> Our word. Kept.</li>
+        <li><b>Explainer:</b> A price given is a price kept.</li>
+        <li><b>Agents:</b> You keep your fee. Your client keeps their move.</li>
+        <li><b>Reserve:</b> The most reassuring full stop in property.</li></ul></div>
+      <div class="card"><h3>Three governance tests</h3><ul class="quiet" style="margin:0">
+        <li><b>Widow test</b> — readable aloud, gently, to a recent widow.</li>
+        <li><b>Ledger test</b> — publishable next to the public record without wincing.</li>
+        <li><b>Full-stop test</b> — needs an exclamation mark? Doesn't work.</li></ul></div>
+    </div>
+    <div class="card"><h3>The Welcome (the "welcoming" half)</h3><p class="quiet" style="margin:0">One person by name, start to finish · the no-decision call · voice notes answered in kind · grief-literate copy rules (probate never gets "great news") · the Kept Kit on completion day.</p></div>
+    <div class="card"><h3>Proof machine</h3><p class="quiet" style="margin:0">The shown maths · The Kept Ledger ("31 signed, 31 completed at the signed price") · shareable trackers ("14 Marsh Lane. Kept.") · published methodology · refusal stats.</p></div>
+  </section>
+
+  <!-- ═══ LOGO ═══ -->
+  <section class="pane" id="logo">
+    <p class="eyebrow">The mark — now as actual vectors</p>
+    <h1>The dot is the logo<span class="dot">.</span></h1>
+    <p class="quiet" style="max-width:64ch">Primary wordmark, reverse, monogram seal, and the dot alone — drawn as SVG so they scale and export. Set in the placeholder stack until the typeface decision (see What's still missing); the geometry and rules below survive any face.</p>
+
+    <div class="grid2">
+      <div>
+        <div class="logo-tile" style="background:var(--cream)">
+          <svg viewBox="0 0 300 100" width="230" role="img" aria-label="kept wordmark">
+            <text x="20" y="72" font-family="Avenir Next,Segoe UI,sans-serif" font-size="72" font-weight="700" letter-spacing="-2.5" fill="#1F332B">kept</text>
+            <circle cx="262" cy="66" r="9" fill="#C33F35"/>
+          </svg>
+        </div><p class="cap">Primary — ink on cream. The dot is drawn as a circle, not a period: it never inherits font rendering.</p>
+      </div>
+      <div>
+        <div class="logo-tile" style="background:var(--forest)">
+          <svg viewBox="0 0 300 100" width="230" role="img" aria-label="kept wordmark reversed">
+            <text x="20" y="72" font-family="Avenir Next,Segoe UI,sans-serif" font-size="72" font-weight="700" letter-spacing="-2.5" fill="#EFEAE0">kept</text>
+            <circle cx="262" cy="66" r="9" fill="#C33F35"/>
+          </svg>
+        </div><p class="cap">Reverse — bone on forest. The wax dot survives both grounds unchanged: it's the constant.</p>
+      </div>
+      <div>
+        <div class="logo-tile" style="background:var(--cream)">
+          <svg viewBox="0 0 100 100" width="96" role="img" aria-label="k. seal monogram">
+            <defs><radialGradient id="wax" cx="35%" cy="30%"><stop offset="0%" stop-color="#D65A50"/><stop offset="75%" stop-color="#8E2921"/></radialGradient></defs>
+            <circle cx="50" cy="50" r="46" fill="url(#wax)"/>
+            <circle cx="50" cy="50" r="46" fill="none" stroke="#7A231C" stroke-width="1.5"/>
+            <text x="30" y="66" font-family="Iowan Old Style,Palatino,Georgia,serif" font-size="46" font-weight="700" fill="#F7E9E4">k</text>
+            <circle cx="66" cy="61" r="5" fill="#F7E9E4"/>
+          </svg>
+        </div><p class="cap">The seal — avatar, favicon large sizes, stamp, sticker, PDF header. Serif k: the seal is the one place the serif touches the mark (wax = document world).</p>
+      </div>
+      <div>
+        <div class="logo-tile" style="background:var(--cream)">
+          <svg viewBox="0 0 100 100" width="96" role="img" aria-label="the dot">
+            <circle cx="50" cy="50" r="30" fill="#C33F35"/>
+          </svg>
+        </div><p class="cap">The dot alone — 16px favicon, loading indicator, list bullets in brand decks. Smallest unit of the brand.</p>
+      </div>
+    </div>
+
+    <h2>Does it survive small? The size ladder</h2>
+    <div class="card"><div class="sizes">
+      <span style="font-weight:700;letter-spacing:-.03em;font-size:64px;line-height:1">kept<span class="dot">.</span></span>
+      <span style="font-weight:700;letter-spacing:-.03em;font-size:32px;line-height:1">kept<span class="dot">.</span></span>
+      <span style="font-weight:700;letter-spacing:-.02em;font-size:18px;line-height:1">kept<span class="dot">.</span></span>
+      <span style="font-weight:700;font-size:13px;line-height:1">kept<span class="dot">.</span></span>
+      <svg viewBox="0 0 100 100" width="32" aria-label="seal at 32px"><circle cx="50" cy="50" r="46" fill="#A93229"/><text x="30" y="66" font-family="Georgia,serif" font-size="46" font-weight="700" fill="#F7E9E4">k</text><circle cx="66" cy="61" r="5" fill="#F7E9E4"/></svg>
+      <svg viewBox="0 0 100 100" width="16" aria-label="dot at 16px"><circle cx="50" cy="50" r="42" fill="#C33F35"/></svg>
+    </div>
+    <p class="cap" style="margin:0">Rule: wordmark down to 18px; below that, switch to the seal; at 16px (favicon) the dot alone. Never letter-space the wordmark to fit — swap assets instead.</p></div>
+
+    <h2>Clearspace &amp; rules</h2>
+    <div class="grid2">
+      <div class="card"><h3 style="margin-top:0">Clearspace = one dot</h3><p class="quiet" style="margin:0">Minimum space around the wordmark on all sides equals the dot's diameter. Easy to remember, impossible to argue with.</p></div>
+      <div class="card"><h3 style="margin-top:0">Never</h3><ul class="quiet" style="margin:0">
+        <li><span class="no">✕</span>Uppercase KEPT — certainty doesn't shout</li>
+        <li><span class="no">✕</span>Dot in any colour but wax (or bone on wax surfaces)</li>
+        <li><span class="no">✕</span>Outlines, gradients, or shadows on the wordmark</li>
+        <li><span class="no">✕</span>The dot omitted. Ever. It's the promise.</li></ul></div>
+    </div>
+  </section>
+
+  <!-- ═══ FOUNDATIONS ═══ -->
+  <section class="pane" id="foundations">
+    <p class="eyebrow">Tokens · mirrors docs/brand/KEPT.md in the repo</p>
+    <h1>Foundations</h1>
+    <h2>Colour</h2>
+    <div class="tbl"><table>
+      <tr><th>Token</th><th>Hex</th><th>Role</th></tr>
+      <tr><td><span class="sw" style="background:#F7F3EA"></span>cream</td><td class="mono">#F7F3EA</td><td>Page ground</td></tr>
+      <tr><td><span class="sw" style="background:#FFFFFF"></span>card</td><td class="mono">#FFFFFF</td><td>Cards &amp; documents</td></tr>
+      <tr><td><span class="sw" style="background:#1F332B"></span>forest</td><td class="mono">#1F332B</td><td>Ink, dark bands, footer</td></tr>
+      <tr><td><span class="sw" style="background:#4C5A50"></span>body</td><td class="mono">#4C5A50</td><td>Body text</td></tr>
+      <tr><td><span class="sw" style="background:#2E7D5B"></span>leaf</td><td class="mono">#2E7D5B</td><td><b>Action ONLY</b> — buttons, links, focus</td></tr>
+      <tr><td><span class="sw" style="background:#C33F35"></span>wax</td><td class="mono">#C33F35</td><td><b>The promise ONLY</b> — dot, seals</td></tr>
+      <tr><td><span class="sw" style="background:#E2DCCB"></span>hair</td><td class="mono">#E2DCCB</td><td>Hairlines</td></tr>
+      <tr><td><span class="sw" style="background:#EDE7D8"></span>soft</td><td class="mono">#EDE7D8</td><td>Tinted sections</td></tr>
+    </table></div>
+    <p class="quiet"><b>The two-accent rule:</b> wax marks the promise, leaf marks action. Swapping them is how the brand dies.</p>
+    <h2>Type roles</h2>
+    <div class="card">
+      <p style="font-family:var(--serif);font-size:26px;font-weight:600;margin:0 0 2px">Serif speaks the promise.</p>
+      <p class="cap">Headlines &amp; promise lines · 500–600 · 1.06–1.1 leading</p>
+      <p style="margin:12px 0 2px">The grotesk works: body, UI, buttons, nav.</p>
+      <p class="cap">15–16.5px body</p>
+      <p class="mono" style="margin:12px 0 2px;letter-spacing:.06em">PROPERTY · OUR CASH OFFER · REF KP-2026-0142</p>
+      <p class="cap">Courier — document labels only (typed-letter texture)</p>
+      <p class="eyebrow" style="margin:12px 0 2px">for UK homeowners</p>
+      <p class="cap" style="margin:0">Eyebrows · 10.5–11px · .24–.28em · leaf (wax for "honest version" sections)</p>
+    </div>
+    <h2>Motion</h2>
+    <p class="quiet">One move: <b>the dot lands</b> (drop + settle, 0.8s, cubic-bezier(.3,1.5,.4,1)), once per page load. Sections rise 18px on scroll. Artefacts lift on hover. Everything behind prefers-reduced-motion. Restraint is the animation strategy.</p>
+  </section>
+
+  <!-- ═══ COMPONENTS ═══ -->
+  <section class="pane" id="components">
+    <p class="eyebrow">Sync-ready cards live in docs/brand/kept-ds/ · full page boards included there</p>
+    <h1>Components &amp; artefacts</h1>
+    <div class="grid2">
+      <div class="card">
+        <h3 style="margin-top:0">Buttons</h3>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+          <a href="#c" style="background:var(--leaf);color:#fff;font-weight:600;font-size:13.5px;padding:11px 24px;border-radius:999px;text-decoration:none">Get my offer</a>
+          <a href="#c" style="color:var(--leaf);border:1.5px solid var(--leaf);font-weight:600;font-size:13.5px;padding:9px 22px;border-radius:999px;text-decoration:none">See how we price</a>
+        </div>
+        <p class="cap">Wax CTA exists only on forest poster moments.</p>
+      </div>
+      <div class="card">
+        <h3 style="margin-top:0">The shown-maths widget</h3>
+        <div style="font-size:13px">
+          <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--soft)"><span class="quiet">What it would fetch in 6 months</span><b>£212,000</b></div>
+          <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--soft)"><span class="quiet">Speed &amp; certainty — our margin</span><b>−£28,000</b></div>
+          <div style="display:flex;justify-content:space-between;padding:8px 0 0;align-items:baseline"><b>Yours in ~3 weeks</b><b style="font-family:var(--serif);font-size:20px;color:var(--leaf)">£184,000</b></div>
+        </div>
+        <p class="cap">We show the discount. Nobody else dares.</p>
+      </div>
+      <div class="card">
+        <h3 style="margin-top:0">The offer letter</h3>
+        <div style="background:#FFFEFB;border:1px solid #E6DFCC;padding:14px 16px;transform:rotate(-1.2deg);box-shadow:0 14px 28px -16px rgba(31,51,43,.4);max-width:250px">
+          <b style="font-family:var(--serif)">Kept<span class="dot">.</span></b>
+          <p class="mono" style="font-size:10px;color:#9AA097;margin:2px 0 8px">Ref KP-2026-0142</p>
+          <p class="mono" style="font-size:10px;color:var(--leaf);margin:0">OUR CASH OFFER</p>
+          <p style="font-family:var(--serif);font-size:26px;font-weight:700;margin:2px 0 0">£244,000</p>
+          <p class="mono" style="font-size:10px;color:#7C8880;margin:4px 0 0">Locked for 72 hours</p>
+        </div>
+        <p class="cap">The hero artefact — confirmed after viewing, 24–48h.</p>
+      </div>
+      <div class="card">
+        <h3 style="margin-top:0">The tracker endcard</h3>
+        <div style="background:var(--forest);border-radius:10px;padding:22px;text-align:center">
+          <p style="font-family:var(--serif);font-size:17px;color:#EFEAE0;margin:0">14 Marsh Lane<span class="dot">.</span> <b>Kept<span class="dot">.</span></b></p>
+          <p style="font-size:11px;color:#8FA096;margin:6px 0 0">Completed 14 August · at the signed price</p>
+        </div>
+        <p class="cap">Every finished deal becomes a tiny monument. Shareable.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ VOICE ═══ -->
+  <section class="pane" id="voice">
+    <p class="eyebrow">One voice from billboard to error message</p>
+    <h1>Voice</h1>
+    <div class="card mono" style="line-height:2.1">
+      Chain: <b>kept.</b> &nbsp; Completion date: <b>kept.</b> &nbsp; Onward purchase: <b>kept.</b><br>
+      Word given, 9:41am. Word <b>kept</b>, completion day.<br>
+      Searches ordered. &nbsp; Survey booked. &nbsp; Done.
+    </div>
+    <div class="grid2">
+      <div class="card"><h3 style="margin-top:0">Always</h3><ul class="quiet" style="margin:0"><li>Short declaratives ending in full stops</li><li>Name the trade-off out loud (below market, and why)</li><li>Say who we're wrong for, unprompted</li><li>First names. "I'm Sam." Never "our team".</li></ul></div>
+      <div class="card"><h3 style="margin-top:0">Never</h3><ul class="quiet" style="margin:0"><li><span class="no">✕</span>Exclamation marks — anywhere, ever</li><li><span class="no">✕</span>Urgency timers, "instant cash", countdowns</li><li><span class="no">✕</span>"Great news" / "congratulations" in probate flows</li><li><span class="no">✕</span>Claims faster than the live-site promise (binding rule in CLAUDE.md)</li></ul></div>
+    </div>
+    <div class="band"><p><b style="color:#EFEAE0">Probate completion message, verbatim standard:</b> "It's done. The money is with your solicitor. We hope it brings some peace."</p></div>
+  </section>
+
+  <!-- ═══ GAPS ═══ -->
+  <section class="pane" id="gaps">
+    <p class="eyebrow">Honest ledger of what a complete identity still needs</p>
+    <h1>What's still missing</h1>
+    <div class="gap"><b>1 · A committed typeface (the big one)</b><p>Everything so far uses system-font placeholders — fine for direction, not ownable. Candidates to trial in Claude Design: wordmark/UI grotesk — Söhne, Neue Haas Grotesk, or (open-source) Hanken Grotesk; serif — GT Sectra, or (open-source) Fraunces / Source Serif 4. Decision needed before any print or final logo export.</p></div>
+    <div class="gap"><b>2 · The seal, professionally drawn</b><p>Today's seal is a gradient approximation. The real one wants an illustrator's pass: embossed wax texture, usable as print sticker, PDF stamp, and 180px avatar.</p></div>
+    <div class="gap"><b>3 · Photography direction shot for real</b><p>The spec exists (overcast British light, thresholds, doorsteps, kettle on — no stock smiles). Needs one half-day shoot at the first completed properties, with vendor permission.</p></div>
+    <div class="gap"><b>4 · Applications not yet designed</b><p>Offer-letter PDF template (the artefact vendors actually receive), transactional email set, the agent A5 desk card, WhatsApp Business profile, social avatar/headers, the Kept Kit envelope.</p></div>
+    <div class="gap"><b>5 · The legal gate</b><p>Class-36 trademark search on "Kept" — still unrun, still ten minutes, still blocking everything public. Plus @wearekept handle checks on Instagram/LinkedIn/X.</p></div>
+    <h2>Getting this into Claude Design</h2>
+    <p class="quiet" style="max-width:66ch">Everything in this hub + the ten component cards is committed at <span class="mono">docs/brand/kept-ds/</span>. From any interactive Claude Code session: run <span class="mono">/design-login</span>, then say <i>"create a Kept design-system project and sync docs/brand/kept-ds"</i>. From then on you iterate visually in Claude Design, and every future session reads the same source of truth.</p>
+  </section>
+</div>
+
+<script>
+  const tabs=document.querySelectorAll('.tab'),panes=document.querySelectorAll('.pane');
+  tabs.forEach(t=>t.addEventListener('click',()=>{
+    tabs.forEach(x=>x.classList.remove('on'));panes.forEach(x=>x.classList.remove('on'));
+    t.classList.add('on');document.getElementById(t.dataset.p).classList.add('on');
+    window.scrollTo({top:0,behavior:'smooth'});
+  }));
+</script>
