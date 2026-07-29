@@ -10,11 +10,11 @@ import { getPropertySnapshot } from '@repo/property-data/src/propertydata';
 import { NextResponse, after } from 'next/server';
 import { recordCronHeartbeat } from '../_lib/heartbeat';
 import {
-  DRY_RUN_STREAK_THRESHOLD,
   type ScoutRunStats,
   buildDryStreakActionCopy,
   buildReviewActionCopy,
   countDryStreak,
+  dryStreakThreshold,
   shouldAlertDryStreak,
 } from '../_lib/scout-freshness';
 
@@ -58,6 +58,12 @@ export const POST = async (request: Request) => {
   // Raw area objects + the ids we scanned this run — used to advance rotation.
   let areasRaw: Record<string, unknown>[] | null = null;
   let selectedAreaIds: string[] = [];
+  // How many areas are actually IN the rotation queue (i.e. survived parsing —
+  // an area with no seedPostcode is dropped and never scanned). Null on the
+  // legacy path, which doesn't rotate at all. The dry-run alert below divides
+  // this by MAX_SEEDS_PER_RUN to work out how many runs one full sweep takes,
+  // so it must be the live count, never a hard-coded guess.
+  let rotationAreaCount: number | null = null;
 
   try {
     const areasSetting = await database.setting.findUnique({
@@ -86,6 +92,7 @@ export const POST = async (request: Request) => {
         if (!seedPostcode) return [];
         return [{ id, seedPostcode, radiusMiles, label, lastProbeAt }];
       });
+      rotationAreaCount = areas.length;
       // Oldest-probed (and never-probed) first; bounded batch per run.
       areas.sort((a, b) => a.lastProbeAt - b.lastProbeAt);
       const batch = areas.slice(0, MAX_SEEDS_PER_RUN);
@@ -568,22 +575,30 @@ export const POST = async (request: Request) => {
   // scout isn't finding any properties?".
   //
   // One dry run is NORMAL (the rotation re-scans areas probed days ago), so we
-  // alert on a STREAK instead: DRY_RUN_STREAK_THRESHOLD consecutive dry runs =
-  // a full sweep of every scan area with zero new stock. The streak is read
-  // back off the AgentEvent log written above rather than kept in its own
-  // Setting row — one source of truth, and it stays correct if a run is
-  // replayed or skipped. Same shape as the source-error card: ONE stable
+  // alert on a STREAK instead: enough consecutive dry runs to cover a full
+  // sweep of every scan area with zero new stock. That sweep length depends on
+  // how many areas the founder currently has configured, so the threshold is
+  // computed per run from the live count — see dryStreakThreshold(). The streak
+  // itself is read back off the AgentEvent log written above rather than kept
+  // in its own Setting row — one source of truth, and it stays correct if a run
+  // is replayed or skipped. Same shape as the source-error card: ONE stable
   // dedupKey, upserted while true, auto-completed the moment it isn't.
   //
   // Placed here (with the other founder surfacing, before the heartbeat and
   // the slow enrichment pass) so a timeout in enrichment can never swallow it.
   try {
+    const streakThreshold = dryStreakThreshold(
+      rotationAreaCount,
+      MAX_SEEDS_PER_RUN,
+    );
     const thisRun: ScoutRunStats = {
       qualified: result.leads.length,
       persisted: createdCount,
     };
     // Prior runs, newest first. Over-fetch a little and filter in JS so events
-    // from any other writer of `leads_created` can't pollute the streak.
+    // from any other writer of `leads_created` can't pollute the streak. Both
+    // the fetch and the slice follow the threshold, so a longer sweep pulls
+    // proportionally more history instead of silently under-fetching.
     const priorEvents = await database.agentEvent.findMany({
       where: {
         agent: 'system',
@@ -591,7 +606,7 @@ export const POST = async (request: Request) => {
         ...(eventId ? { id: { not: eventId } } : {}),
       },
       orderBy: { createdAt: 'desc' },
-      take: DRY_RUN_STREAK_THRESHOLD * 2,
+      take: streakThreshold * 2,
       select: { payload: true },
     });
     const priorRuns: ScoutRunStats[] = priorEvents
@@ -604,12 +619,12 @@ export const POST = async (request: Request) => {
           ? { qualified: p.total, persisted: p.persisted }
           : { qualified: 0, persisted: 0 },
       )
-      .slice(0, DRY_RUN_STREAK_THRESHOLD - 1);
+      .slice(0, streakThreshold - 1);
 
     const dryStreak = countDryStreak([thisRun, ...priorRuns]);
     const dedupKey = 'scout-no-new-leads';
 
-    if (shouldAlertDryStreak(dryStreak)) {
+    if (shouldAlertDryStreak(dryStreak, streakThreshold)) {
       const copy = buildDryStreakActionCopy({
         streak: dryStreak,
         qualified: result.leads.length,
@@ -617,6 +632,10 @@ export const POST = async (request: Request) => {
       const metadata = {
         source: 'cron_scouting',
         dryStreak,
+        // Why it fired: the sweep maths that produced the threshold.
+        streakThreshold,
+        areaCount: rotationAreaCount,
+        seedsPerRun: MAX_SEEDS_PER_RUN,
         qualified: result.leads.length,
         persisted: createdCount,
         duplicatesSkipped,

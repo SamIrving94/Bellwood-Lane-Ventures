@@ -34,21 +34,74 @@ export type ScoutRunStats = {
  */
 export const DRY_RUN_MIN_QUALIFIED = 5;
 
+// ── How many CONSECUTIVE dry runs mean "the scout is spinning" ─────────────
+//
+// The cron scans a bounded batch of areas per run, oldest-probed first, and
+// rotates — so a dry run is only meaningful once rotation has had time to visit
+// EVERY area. One sweep takes `ceil(areaCount / seedsPerRun)` runs:
+//   • inside one sweep → expected. Those areas were scanned days ago and the
+//     same listings are still up. Pure noise.
+//   • a whole sweep with nothing new → real signal. The areas are exhausted, a
+//     source has quietly gone stale, or the score threshold is filtering
+//     everything new out.
+//
+// The sweep length is therefore the smallest streak rotation can't explain —
+// but it is NOT a constant. The founder adds and removes areas from Settings →
+// Scouting whenever they like, so it is derived at runtime from the real area
+// count rather than baked in from a stale code comment. A 30-area config sweeps
+// in 5 runs, and alerting at 3 would be a false alarm — exactly the Action
+// Centre noise this repo has already had to go and delete twice.
+
 /**
- * How many CONSECUTIVE dry runs before we bother the founder.
- *
- * The cron scans MAX_SEEDS_PER_RUN (6) areas per run, oldest-probed first, and
- * rotates. With the current ~16-area list a full sweep of every target area
- * takes ceil(16 / 6) = 3 runs. So:
- *   • 1 dry run  → expected. Those areas were probably scanned 2–3 days ago.
- *   • 2 dry runs → still inside one rotation cycle. Noise.
- *   • 3 dry runs → the scout has covered EVERY area it knows about and added
- *     nothing. That is a real signal: the areas are exhausted, a source has
- *     quietly gone stale, or the scoring threshold is filtering everything new.
- *
- * Three is therefore the smallest streak that can't be explained by rotation.
+ * Floor. Never alert off a single dry run, even for a one-area config that
+ * sweeps every run: any one day can re-find only known stock for perfectly
+ * ordinary reasons (a quiet listing day, a source blipping). Two consecutive
+ * full sweeps is the cheapest insurance against a one-day fluke.
+ */
+export const DRY_RUN_STREAK_MIN = 2;
+
+/**
+ * Ceiling. At the current 6 seeds/run this caps the alert at a 30-area config;
+ * beyond that the sweep maths would push the threshold past a working week and
+ * a big list (say 200 areas → 34 runs) would make the card effectively
+ * unreachable — an alert that never fires is the same as no alert. Five daily
+ * runs of zero new stock is a genuine drought whatever the rotation length, and
+ * it still lands while "I haven't seen anything new this week" is a live
+ * question for the founder rather than ancient history.
+ */
+export const DRY_RUN_STREAK_MAX = 5;
+
+/**
+ * Fallback when the area count is unknown — the legacy `scouting.scanSeeds` /
+ * `AGENT_PROSPECTING_POSTCODES` path doesn't rotate through `scouting.areas` at
+ * all, so there is no sweep length to compute. Sits between the bounds and
+ * matches the historical ~16-area list.
  */
 export const DRY_RUN_STREAK_THRESHOLD = 3;
+
+/**
+ * Consecutive dry runs that mean a full sweep of every scan area found nothing.
+ *
+ * Returns the clamped sweep length, or `DRY_RUN_STREAK_THRESHOLD` when the area
+ * count or batch size is unknown/nonsensical (null, zero, negative, NaN).
+ */
+export const dryStreakThreshold = (
+  areaCount: number | null | undefined,
+  seedsPerRun: number | null | undefined
+): number => {
+  if (
+    typeof areaCount !== 'number' ||
+    !Number.isFinite(areaCount) ||
+    areaCount <= 0 ||
+    typeof seedsPerRun !== 'number' ||
+    !Number.isFinite(seedsPerRun) ||
+    seedsPerRun <= 0
+  ) {
+    return DRY_RUN_STREAK_THRESHOLD;
+  }
+  const sweepRuns = Math.ceil(areaCount / seedsPerRun);
+  return Math.min(DRY_RUN_STREAK_MAX, Math.max(DRY_RUN_STREAK_MIN, sweepRuns));
+};
 
 /**
  * Did this run qualify a meaningful number of leads yet persist none of them?
@@ -76,9 +129,14 @@ export const countDryStreak = (runs: ScoutRunStats[]): number => {
 
 /**
  * Should the "scout is spinning" founder card be raised for this streak?
+ *
+ * `threshold` comes from `dryStreakThreshold()` — the caller passes the value
+ * derived from this run's real area count, not a constant.
  */
-export const shouldAlertDryStreak = (streak: number): boolean =>
-  streak >= DRY_RUN_STREAK_THRESHOLD;
+export const shouldAlertDryStreak = (
+  streak: number,
+  threshold: number
+): boolean => streak >= threshold;
 
 /** Copy for a founder-facing card: `title` is one line, `description` is short. */
 export type ActionCopy = { title: string; description: string };
