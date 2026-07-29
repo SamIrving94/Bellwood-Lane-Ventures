@@ -1,0 +1,10 @@
+{
+  "projectId": "c6edbcd9-1c8e-45dd-ad74-6d6f7fc3ca39",
+  "projectName": "Kept.",
+  "shape": "cards",
+  "note": "Hand-authored HTML card design system (docs/brand/kept-ds). Not a build-pipeline DS: each *.html is a standalone card with a first-line @dsCard marker that supplies its group + name. Sync = upload files verbatim; never run the converter/esbuild path here. Brand rules live in ../KEPT.md.",
+  "cards": {
+    "source": "@dsCard markers (first line of each HTML)",
+    "modifyFiles": false
+  }
+}
