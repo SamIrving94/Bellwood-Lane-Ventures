@@ -10,6 +10,7 @@ import type { PropertyType } from '@repo/valuation';
 import { generateReferralCode } from '@/app/partners/_lib/auth';
 import { recordDealUpdate } from '@repo/deal-updates';
 import { sendEmail } from '@repo/email';
+import { sendHoldingReply } from '@repo/email/holding-reply';
 import { runPreflightChecks } from '@repo/property-data/src/propertydata';
 
 // Simple in-memory rate limit: 10 requests per IP per hour
@@ -64,6 +65,22 @@ const InputSchema = z.object({
   submissionSource: z.string().optional(),
   /** Free-text "anything else?" — drives the LLM triage signal in the inbox. */
   notes: z.string().max(2000).optional(),
+
+  // ─── Paid-ads attribution ────────────────────────────────────────────
+  // Read off the landing-page query string by the client and posted through
+  // here. Must be captured at creation time — an untagged lead can never be
+  // attributed back to a channel or creative afterwards, and that
+  // attribution is what every budget-reallocation decision reads from.
+  adPlatform: z.enum(['meta', 'google', 'bing', 'nextdoor']).optional(),
+  adCampaignRef: z.string().optional(),
+  adSetRef: z.string().optional(),
+  adCreativeRef: z.string().optional(),
+  utmSource: z.string().max(200).optional(),
+  utmMedium: z.string().max(200).optional(),
+  utmCampaign: z.string().max(200).optional(),
+  utmContent: z.string().max(200).optional(),
+  utmTerm: z.string().max(200).optional(),
+  landingPath: z.string().max(500).optional(),
 });
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -223,6 +240,16 @@ export async function POST(request: Request) {
         urgencyDays: input.urgencyDays,
         notes,
         status: 'processing',
+        adPlatform: input.adPlatform,
+        adCampaignRef: input.adCampaignRef,
+        adSetRef: input.adSetRef,
+        adCreativeRef: input.adCreativeRef,
+        utmSource: input.utmSource,
+        utmMedium: input.utmMedium,
+        utmCampaign: input.utmCampaign,
+        utmContent: input.utmContent,
+        utmTerm: input.utmTerm,
+        landingPath: input.landingPath,
       },
     });
 
@@ -594,6 +621,46 @@ export async function POST(request: Request) {
       where: { id: quoteRequest.id },
       data: { status: 'draft' },
     });
+
+    // The response below tells the submitter someone will be in touch. Until
+    // now nothing made that true: the row was marked draft and the lead went
+    // quiet. That is survivable on organic traffic and not survivable on paid
+    // — a click we paid for that hits a failing offer engine would otherwise
+    // vanish with no acknowledgement and nothing in anyone's queue.
+    //
+    // The holding reply is the right message here precisely because the offer
+    // engine did NOT produce a figure: it acknowledges and commits to a call
+    // without implying a price we have not calculated.
+    await sendHoldingReply({
+      contactName: input.contactName,
+      contactEmail: input.contactEmail,
+      propertyRef: `${input.address}, ${input.postcode}`,
+    });
+
+    try {
+      await database.founderAction.create({
+        data: {
+          type: 'review_leads',
+          priority: 'high',
+          status: 'pending',
+          agent: 'liaison',
+          title: `Offer engine failed — call ${input.contactName}, ${input.postcode}`,
+          description: `${input.address}, ${input.postcode} came in via ${input.submissionSource ?? 'the web form'} but the offer engine errored, so no figure was produced. They have had the holding reply and expect a call. Price this one by hand.`,
+          expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+          dedupKey: `${quoteRequest.id}:offer_engine_failed`,
+          metadata: {
+            quoteRequestId: quoteRequest.id,
+            adPlatform: input.adPlatform,
+            utmCampaign: input.utmCampaign,
+            error: err instanceof Error ? err.message : String(err),
+            link: `/quotes/${quoteRequest.id}`,
+          },
+        },
+      });
+    } catch (actionErr) {
+      console.warn('[quote] failure-path founder action failed', actionErr);
+    }
+
     return NextResponse.json(
       {
         error:
