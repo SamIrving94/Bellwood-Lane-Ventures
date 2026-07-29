@@ -94,6 +94,26 @@ describe('fetchPropertyData durable cache (via getFloodRisk)', () => {
     expect(fetchMock).toHaveBeenCalledTimes(1); // had to buy it again
   });
 
+  it('falls back to the globalThis.__bellwoodPdStore slot set by instrumentation', async () => {
+    // Apps' instrumentation.ts cannot import this package ('server-only'
+    // barrel) — it publishes the store on globalThis instead. Same wiring
+    // convention as __bellwoodLlmLogger.
+    const { store, map } = makeMockStore();
+    (globalThis as Record<string, unknown>).__bellwoodPdStore = store;
+    try {
+      await getFloodRisk('SW1A 2AA');
+      await Promise.resolve(); // flush the fire-and-forget write
+      expect(store.set).toHaveBeenCalledTimes(1);
+      expect(map.size).toBe(1);
+
+      __clearMemoryCache();
+      await getFloodRisk('SW1A 2AA');
+      expect(fetchMock).toHaveBeenCalledTimes(1); // served from the slot
+    } finally {
+      (globalThis as Record<string, unknown>).__bellwoodPdStore = undefined;
+    }
+  });
+
   it('behaves as in-memory-only when no persistent store is registered', async () => {
     await getFloodRisk('SW1A 2AA');
     expect(fetchMock).toHaveBeenCalledTimes(1);

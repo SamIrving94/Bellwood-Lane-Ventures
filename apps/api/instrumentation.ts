@@ -72,4 +72,32 @@ export async function register() {
     const route = routingCache.table[feature];
     return route && typeof route === 'object' ? route : null;
   };
+
+  // Durable PropertyData cache (PR #28) — @repo/property-data reads this slot
+  // via getPersistentStore(); it cannot be imported here (its barrel is
+  // 'server-only'). Reads/writes sit inside fetchPropertyData's try/catch, so
+  // a DB blip degrades gracefully to the in-memory cache.
+  (globalThis as Record<string, unknown>).__bellwoodPdStore = {
+    async get(key: string) {
+      const row = await db.propertyDataCache.findUnique({ where: { key } });
+      if (!row) return null;
+      const expiresAt = row.expiresAt.getTime();
+      if (expiresAt <= Date.now()) return null;
+      return { value: row.value, expiresAt };
+    },
+    async set(key: string, value: unknown, expiresAt: number) {
+      // Key is `${endpoint}:${params}` — keep the endpoint for spend analysis.
+      const endpoint = key.split(':')[0] ?? 'unknown';
+      const data = {
+        endpoint,
+        value: value as object,
+        expiresAt: new Date(expiresAt),
+      };
+      await db.propertyDataCache.upsert({
+        where: { key },
+        create: { key, ...data },
+        update: data,
+      });
+    },
+  };
 }

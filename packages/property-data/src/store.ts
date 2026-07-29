@@ -41,6 +41,13 @@ const GLOBAL_KEY = Symbol.for('@repo/property-data:persistent-store');
 
 type GlobalWithStore = typeof globalThis & {
   [GLOBAL_KEY]?: PersistentCacheStore | null;
+  /**
+   * Set by apps' instrumentation.ts, which CANNOT import this package (the
+   * barrel is 'server-only', and the instrumentation runtime lacks the
+   * react-server condition — importing it there throws and kills register()).
+   * Same convention as __bellwoodLlmLogger / __bellwoodModelRouter.
+   */
+  __bellwoodPdStore?: PersistentCacheStore | null;
 };
 
 /**
@@ -52,5 +59,6 @@ export function setPersistentStore(next: PersistentCacheStore | null): void {
 }
 
 export function getPersistentStore(): PersistentCacheStore | null {
-  return (globalThis as GlobalWithStore)[GLOBAL_KEY] ?? null;
+  const g = globalThis as GlobalWithStore;
+  return g[GLOBAL_KEY] ?? g.__bellwoodPdStore ?? null;
 }
