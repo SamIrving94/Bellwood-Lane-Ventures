@@ -53,6 +53,11 @@ async function handle(request: Request) {
       where: {
         verdict: 'STRONG',
         createdAt: { gte: since },
+        // Passed leads are out — the founder's rejects, plus anything the
+        // scout parked on a recorded dealbreaker. Deep appraisal is the most
+        // expensive step in the pipeline; don't spend it on a lead already
+        // ruled out.
+        status: { not: 'passed' },
       },
       orderBy: { leadScore: 'desc' },
       take: MAX_APPRAISALS_PER_RUN,
@@ -125,8 +130,9 @@ async function handle(request: Request) {
     if (cand.kind === 'lead') {
       const lead = cand.lead;
       ref = `${lead.address}, ${lead.postcode}`;
-      const pd = (lead.rawPayload as { propertyData?: Record<string, unknown> } | null)
-        ?.propertyData;
+      const raw = (lead.rawPayload ?? {}) as Record<string, unknown>;
+      const pd = raw.propertyData as Record<string, unknown> | undefined;
+
       appraisal = await runDeepAppraisal({
         address: lead.address,
         postcode: lead.postcode,

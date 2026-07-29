@@ -24,8 +24,9 @@ Three audiences, one chain:
    leases, problem properties. They value **speed, certainty, empathy** over
    squeezing the top price.
 2. **Introducers** — estate agents & solicitors sitting on a **collapsed sale**.
-   We give them a 60-second cash figure and a signed offer in 4 hours, so they
-   rescue a dead instruction and keep their fee.
+   We respond same-day with an indicative figure, view fast, and put a
+   confirmed written offer on the table within 24–48 hours of viewing — so
+   they rescue a dead instruction and keep their fee.
 3. **Capital** — investor syndicate who fund the deals we choose not to buy
    ourselves, for a sourcing fee.
 
@@ -36,10 +37,10 @@ needs us before they need anyone else.
 
 ## 1. Vision  *(the change in the world)*
 
-**Selling a house in a crisis should take days, not months — and feel humane.**
+**Selling a house in a crisis should take weeks, not months — and feel humane.**
 
 A UK where any homeowner facing a forced or urgent sale can get a fair, certain
-cash offer in hours, with dignity, instead of months of uncertainty, chains
+cash offer in days, with dignity, instead of months of uncertainty, chains
 that collapse, and fire-sale auctions.
 
 ## 2. Mission  *(what we do about it)*
@@ -101,7 +102,9 @@ sourcing fee lets volume grow faster than our balance sheet.
 *Bet 1. Does the wedge actually pull?*
 - **KR2.1** **[3]** friendly agents live on `/save-the-sale`.
 - **KR2.2** **[10]** real fall-through submissions received.
-- **KR2.3** **≥90%** of submissions get a signed offer **within the 4-hour SLA**.
+- **KR2.3** **≥90%** of submissions get a same-day indicative response and a
+  confirmed written offer **within 24–48 hours of viewing** (the public
+  promise; internal ops may target faster, but we never advertise faster).
 - **KR2.4** **[1]** completion (or agreed offer) from the channel.
 
 ### O3 — Make the weekly pipeline review effortless
@@ -158,6 +161,11 @@ Saying no protects the bets.
 
 ## Changelog
 
+- **2026-07-24** — Promise language aligned with the rewritten live-site copy
+  (the source of truth): view-first, same-day indicative, confirmed offer
+  24–48h after viewing, completion in weeks not months. Vision softened to
+  match. The old 60-second / 4-hour public claims are retired — internal ops
+  may target faster, but we never advertise faster than we deliver.
 - **2026-06-21** — Created. AVM pounds↔pence bug fixed; distance-weighted comps
   (0.25mi=60% / 0.5mi=40%) + deterministic fallback shipped; batch Excel upload
   (parse → appraise → rank → diff → export) shipped. Batch v2 (exact-file export

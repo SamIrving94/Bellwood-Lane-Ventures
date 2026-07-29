@@ -3,6 +3,8 @@
 import { auth } from '@repo/auth/server';
 import { database, Prisma } from '@repo/database';
 import { revalidatePath } from 'next/cache';
+import { after } from 'next/server';
+import { extractFeedbackInsights } from '@/lib/feedback/insights';
 
 type SubmitFeedbackInput = {
   targetType: 'scout_lead' | 'avm_result' | 'outreach_template' | 'outreach_campaign' | 'legal_step' | 'deal' | 'founder_action' | 'campaign';
@@ -17,6 +19,8 @@ type SubmitFeedbackInput = {
   context?: Record<string, unknown>;
   notes?: string;
   markedAsTemplate?: boolean;
+  /** True when the notes came from a transcribed voice note. */
+  voiceNote?: boolean;
 };
 
 export async function submitFeedback(data: SubmitFeedbackInput) {
@@ -35,6 +39,7 @@ export async function submitFeedback(data: SubmitFeedbackInput) {
     ...(data.context && Object.keys(data.context).length > 0
       ? { _context: data.context }
       : {}),
+    ...(data.voiceNote ? { _voice: true } : {}),
   };
 
   // Create feedback record
@@ -61,6 +66,47 @@ export async function submitFeedback(data: SubmitFeedbackInput) {
     if (Object.keys(applyable).length > 0) {
       await applyOverrides(data.targetType, data.targetId, applyable, userId);
     }
+  }
+
+  // Mine the note for structured taste signals (likes/dislikes by theme) —
+  // this is what turns free-form voice notes into a learnable preference
+  // dataset. Runs after the response so the founder never waits on the LLM;
+  // best-effort — a failed extraction still leaves the raw note stored.
+  const notesForInsights = data.notes?.trim();
+  if (notesForInsights && notesForInsights.length >= 12) {
+    const feedbackId = feedback.id;
+    const targetType = data.targetType;
+    const targetId = data.targetId;
+    after(async () => {
+      try {
+        let leadContext: { address?: string | null; leadType?: string | null } =
+          {};
+        if (targetType === 'scout_lead') {
+          const lead = await database.scoutLead.findUnique({
+            where: { id: targetId },
+            select: { address: true, leadType: true },
+          });
+          if (lead) leadContext = lead;
+        }
+        const insights = await extractFeedbackInsights(
+          notesForInsights,
+          leadContext,
+        );
+        if (insights) {
+          await database.founderFeedback.update({
+            where: { id: feedbackId },
+            data: {
+              overrides: {
+                ...mergedOverrides,
+                _insights: insights,
+              } as Prisma.InputJsonValue,
+            },
+          });
+        }
+      } catch (err) {
+        console.warn('[feedback] insight extraction failed', feedbackId, err);
+      }
+    });
   }
 
   // Revalidate relevant pages

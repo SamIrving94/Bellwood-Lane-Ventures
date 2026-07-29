@@ -1,6 +1,11 @@
 import { env } from '@/env';
 import { database, Prisma } from '@repo/database';
-import { mergeScorerConfig, runScoutingPipeline } from '@repo/scouting';
+import {
+  dedupeDealbreakerRules,
+  mergeScorerConfig,
+  runScoutingPipeline,
+  screenDealbreakers,
+} from '@repo/scouting';
 import { getPropertySnapshot } from '@repo/property-data/src/propertydata';
 import { NextResponse, after } from 'next/server';
 import { recordCronHeartbeat } from '../_lib/heartbeat';
@@ -192,6 +197,71 @@ export const POST = async (request: Request) => {
     skipSlowSources: true,
   });
 
+  // ── Dealbreaker screen (founder's recorded hard NOs) ─────────────────
+  // Rules mined from feedback notes/voice notes (overrides._insights
+  // .dealbreakers) are enforced here, before persistence — the same pattern
+  // as the land/garage/SSTC screens, but learned from the founder's own
+  // judgement. Violators are parked as 'passed' with the rule + evidence
+  // recorded (visible in the Passed tab, reversible), so they never draw
+  // appraisal spend. Best-effort: any failure means no leads are flagged.
+  const dealbreakerFlags = new Map<
+    number,
+    { rule: string; reason: string }
+  >();
+  try {
+    const recentFeedback = await database.founderFeedback.findMany({
+      where: {
+        targetType: 'scout_lead',
+        createdAt: { gte: new Date(Date.now() - 180 * 24 * 60 * 60 * 1000) },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 500,
+      select: { overrides: true },
+    });
+    const rules = dedupeDealbreakerRules(
+      recentFeedback.flatMap((f) => {
+        const insights = (f.overrides as Record<string, unknown> | null)
+          ?._insights as { dealbreakers?: unknown } | undefined;
+        return Array.isArray(insights?.dealbreakers)
+          ? insights.dealbreakers.filter((d): d is string => typeof d === 'string')
+          : [];
+      }),
+    );
+    if (rules.length > 0) {
+      // Only screen leads worth money downstream — the ones the appraisal
+      // crons will pick up.
+      const candidates = result.leads
+        .map((lead, index) => ({ lead, index }))
+        .filter(({ lead }) => lead.verdict === 'STRONG' || lead.verdict === 'VIABLE');
+      const hits = await screenDealbreakers(
+        rules,
+        candidates.map(({ lead, index }) => {
+          const pd = (lead.rawPayload?.propertyData ?? {}) as Record<
+            string,
+            unknown
+          >;
+          return {
+            ref: String(index),
+            address: lead.address,
+            summary: typeof pd.summary === 'string' ? pd.summary : null,
+            propertyType:
+              typeof pd.propertyType === 'string' ? pd.propertyType : null,
+            listingType:
+              typeof pd.listingType === 'string' ? pd.listingType : null,
+          };
+        }),
+      );
+      for (const [ref, hit] of hits) {
+        dealbreakerFlags.set(Number(ref), {
+          rule: hit.rule,
+          reason: hit.reason,
+        });
+      }
+    }
+  } catch (err) {
+    console.warn('[cron/scouting] dealbreaker screen failed', err);
+  }
+
   // ── Persist leads FIRST (cheap, durable) ─────────────────────────────
   // Snapshot enrichment is slow (~27s/postcode) and previously ran BEFORE
   // the write — so a 300s timeout during enrichment lost the entire run.
@@ -201,13 +271,21 @@ export const POST = async (request: Request) => {
   let createdCount = 0;
   if (result.leads.length > 0) {
     const written = await database.scoutLead.createMany({
-      data: result.leads.map((lead) => ({
-        ...lead,
-        rawPayload:
-          lead.rawPayload === null
-            ? Prisma.JsonNull
-            : (lead.rawPayload as Prisma.InputJsonValue),
-      })),
+      data: result.leads.map((lead, index) => {
+        const flag = dealbreakerFlags.get(index);
+        const rawPayload = flag
+          ? { ...(lead.rawPayload ?? {}), dealbreaker: flag }
+          : lead.rawPayload;
+        return {
+          ...lead,
+          // Park dealbreaker violators on arrival — no appraisal spend.
+          status: flag ? 'passed' : lead.status,
+          rawPayload:
+            rawPayload === null
+              ? Prisma.JsonNull
+              : (rawPayload as Prisma.InputJsonValue),
+        };
+      }),
       skipDuplicates: true,
     });
     createdCount = written.count;
@@ -567,6 +645,7 @@ export const POST = async (request: Request) => {
     enriched: result.enriched,
     qualified: result.leads.length,
     persisted: createdCount,
+    dealbreakersParked: dealbreakerFlags.size,
     snapshotsEnriched: enrichedCount,
     evalConfigVersion,
     highScoreLeads: highScoreLeads.length,

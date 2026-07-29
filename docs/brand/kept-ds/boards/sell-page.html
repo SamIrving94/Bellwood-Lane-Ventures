@@ -1,0 +1,378 @@
+<!-- @dsCard group="Boards" name="Sell page board" -->
+<title>Kept. — /sell rebranded, copy untouched</title>
+<style>
+  :root{
+    --cream:#F7F3EA; --card:#FFFFFF; --forest:#1F332B; --body:#4C5A50; --soft:#EDE7D8;
+    --leaf:#2E7D5B; --leaf-d:#256A4C; --wax:#C33F35; --hair:#E2DCCB; --blush:#B9C4BB;
+    --serif:'Iowan Old Style','Palatino Linotype',Palatino,Georgia,serif;
+    --sans:'Avenir Next',Avenir,'Segoe UI','Helvetica Neue',sans-serif;
+    --mono:'Courier New',Courier,monospace;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--cream);color:var(--forest);font-family:var(--sans);line-height:1.6}
+  a{color:inherit}
+  .shell{max-width:1080px;margin:0 auto;padding:0 24px}
+
+  .dot{color:var(--wax);display:inline-block}
+  .nav-dot{animation:land .8s cubic-bezier(.3,1.5,.4,1) .35s both}
+  @keyframes land{0%{transform:translateY(-1.1em);opacity:0}60%{opacity:1}80%{transform:translateY(.05em)}100%{transform:translateY(0)}}
+
+  header{position:sticky;top:0;z-index:40;background:color-mix(in srgb, var(--cream) 88%, transparent);backdrop-filter:blur(8px);border-bottom:1px solid var(--hair)}
+  header .shell{display:flex;align-items:center;justify-content:space-between;padding-top:15px;padding-bottom:15px}
+  .mark{font-size:22px;font-weight:700;letter-spacing:-.03em;text-decoration:none}
+  .navlinks{display:flex;gap:24px;font-size:13.5px;align-items:center}
+  .navlinks a{text-decoration:none;color:var(--body)}
+  .navlinks a:hover{color:var(--forest)}
+  .btn{display:inline-block;background:var(--leaf);color:#fff;font-weight:600;text-decoration:none;border-radius:999px;padding:12px 28px;font-size:14.5px;transition:background .2s,transform .2s}
+  .btn:hover{background:var(--leaf-d);transform:translateY(-1px)}
+  .btn.sm{padding:8px 18px;font-size:13px}
+  .btn.ghost{background:transparent;color:var(--leaf);border:1.5px solid var(--leaf)}
+  .btn.ghost:hover{background:var(--leaf);color:#fff}
+  @media(max-width:720px){.navlinks a:not(.btn){display:none}}
+
+  .eyebrow{font-size:10.5px;letter-spacing:.26em;text-transform:uppercase;color:var(--leaf);font-weight:600;margin:0 0 14px}
+  .eyebrow.light{color:var(--blush)}
+  .eyebrow.wax{color:var(--wax)}
+
+  /* reveal on scroll */
+  .rv{opacity:0;transform:translateY(18px);transition:opacity .7s cubic-bezier(.2,.7,.2,1),transform .7s cubic-bezier(.2,.7,.2,1)}
+  .rv.in{opacity:1;transform:none}
+
+  /* hero */
+  .hero{display:grid;grid-template-columns:1.05fr .95fr;gap:44px;align-items:center;padding:72px 0 80px}
+  @media(max-width:860px){.hero{grid-template-columns:1fr;padding:44px 0 56px}}
+  h1{font-family:var(--serif);font-size:clamp(38px,5.4vw,60px);line-height:1.07;font-weight:600;margin:0 0 22px;letter-spacing:-.01em;text-wrap:balance}
+  h1 em{font-style:italic;font-weight:400;color:var(--leaf)}
+  .sub{font-size:16.5px;color:var(--body);margin:0 0 30px;max-width:44ch}
+  .heronotes{margin-top:26px;font-size:12.5px;color:#7C8880;font-family:var(--mono)}
+  .heronotes2{margin-top:12px;font-family:var(--serif);font-style:italic;font-size:13px;color:#7C8880}
+
+  /* offer letter */
+  .letterwrap{display:flex;justify-content:center}
+  .letter{position:relative;width:296px;background:#FFFEFB;border:1px solid #E6DFCC;border-radius:2px;padding:24px 24px 20px;box-shadow:0 28px 52px -24px rgba(31,51,43,.45);transform:rotate(-1.6deg);transition:transform .4s cubic-bezier(.2,.7,.2,1)}
+  .letter:hover{transform:rotate(0) translateY(-4px)}
+  .seal{position:absolute;right:-16px;top:-16px;width:44px;height:44px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#D65A50,#8E2921 75%);box-shadow:inset 0 1px 4px rgba(255,255,255,.4),0 3px 8px rgba(0,0,0,.3);display:flex;align-items:center;justify-content:center;color:#F7E9E4;font-weight:700;font-size:17px}
+  .lt-name{font-family:var(--serif);font-weight:700;font-size:18px}
+  .lt-ref{font-family:var(--mono);font-size:11px;color:#9AA097;margin-top:3px}
+  .lt-sec{border-top:1px solid #ECE5D2;margin-top:12px;padding-top:10px}
+  .lt-label{font-family:var(--mono);font-size:10.5px;color:#9AA097;letter-spacing:.06em}
+  .lt-label.green{color:var(--leaf)}
+  .lt-addr{font-family:var(--serif);font-size:15px;margin-top:4px}
+  .lt-fig{font-family:var(--serif);font-size:40px;font-weight:700;line-height:1;margin-top:4px}
+  .lt-lock{font-family:var(--mono);font-size:11px;color:#7C8880;margin-top:6px}
+  .lt-row{display:flex;justify-content:space-between;font-family:var(--mono);font-size:12px;color:#5C665E;margin-top:6px}
+  .lt-sig{margin-top:12px}
+  .lt-sig-note{font-family:var(--serif);font-style:italic;font-size:11px;color:#9AA097;margin-top:2px}
+
+  section.block{padding:88px 0}
+  .tinted{background:var(--soft)}
+  .white{background:var(--card)}
+  .bordered{border-block:1px solid var(--hair)}
+  h2{font-family:var(--serif);font-size:clamp(28px,4vw,44px);line-height:1.06;font-weight:600;letter-spacing:-.015em;margin:0 0 14px;text-wrap:balance}
+  h2 em{font-style:italic;font-weight:400;color:var(--leaf)}
+  .lead{color:var(--body);font-size:15px;max-width:56ch;margin:0}
+
+  .cards{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:40px}
+  @media(max-width:760px){.cards{grid-template-columns:1fr}}
+  .rcard{background:var(--card);border:1px solid var(--hair);border-radius:10px;padding:26px 28px;transition:box-shadow .3s,transform .3s}
+  .rcard:hover{box-shadow:0 24px 48px -30px rgba(31,51,43,.4);transform:translateY(-2px)}
+  .rcard .k{font-family:var(--serif);font-style:italic;font-size:14px;color:var(--wax)}
+  .rcard .t{font-family:var(--serif);font-size:20px;font-weight:600;margin:10px 0 8px}
+  .rcard p{font-size:13.5px;color:var(--body);margin:0}
+
+  .howgrid{display:grid;grid-template-columns:1fr 2fr;gap:56px;align-items:start}
+  @media(max-width:860px){.howgrid{grid-template-columns:1fr;gap:28px}}
+  .steps{border-block:1px solid var(--hair)}
+  .step{display:grid;grid-template-columns:52px 1fr 160px;gap:22px;padding:24px 0;border-bottom:1px solid var(--hair);align-items:start}
+  .step:last-child{border-bottom:0}
+  @media(max-width:720px){.step{grid-template-columns:44px 1fr}.step .sla{grid-column:2;text-align:left}}
+  .step .n{font-family:var(--serif);font-size:28px;font-weight:300;color:#1F332B4D;font-variant-numeric:tabular-nums}
+  .step h3{font-family:var(--serif);font-size:18px;font-weight:600;margin:0 0 8px}
+  .step p{font-size:13.5px;color:var(--body);margin:0}
+  .step .sla{font-family:var(--serif);font-style:italic;font-size:13.5px;color:var(--leaf);text-align:right}
+
+  .offerchat{max-width:620px;margin:44px auto 0;background:var(--card);border:1px solid var(--hair);border-radius:16px;padding:22px;box-shadow:0 20px 44px -26px rgba(31,51,43,.35)}
+  .offerchat small{display:block;font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:#8B9489;margin-bottom:12px}
+  .bub{background:#F1EEE3;border-radius:12px 12px 12px 3px;padding:10px 14px;margin-bottom:8px;font-size:14px;max-width:85%}
+  .bub.me{background:var(--leaf);color:#fff;border-radius:12px 12px 3px 12px;margin-left:auto}
+  .fake-input{display:flex;gap:10px;margin-top:14px}
+  .fake-input span{flex:1;border:1.5px solid var(--hair);border-radius:999px;padding:11px 18px;font-size:13.5px;color:#9AA097}
+  .center{text-align:center}
+  .center .lead{margin:0 auto}
+
+  .band{background:var(--forest);color:#EFEAE0;position:relative;overflow:hidden}
+  .band .mono-k{position:absolute;right:-40px;bottom:-70px;font-size:340px;font-weight:700;color:rgba(239,234,224,.05);line-height:1;user-select:none}
+  .bandgrid{display:grid;grid-template-columns:1fr 1.4fr;gap:52px;position:relative}
+  @media(max-width:860px){.bandgrid{grid-template-columns:1fr}}
+  .band h2 em{color:#E8B9AE}
+  .band .lead{color:#B9C4BB}
+  .bandseal{margin-top:36px;display:inline-flex;align-items:center;gap:12px;font-family:var(--serif);font-style:italic;font-size:14px;color:#B9C4BB}
+  .bandseal i{width:34px;height:34px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#D65A50,#8E2921 75%);box-shadow:inset 0 1px 3px rgba(255,255,255,.4)}
+  .band dl{margin:0;border-top:1px solid rgba(255,255,255,.12)}
+  .band .drow{display:grid;grid-template-columns:170px 1fr;gap:26px;padding:20px 0;border-bottom:1px solid rgba(255,255,255,.12)}
+  @media(max-width:640px){.band .drow{grid-template-columns:1fr;gap:6px}}
+  .band dt{font-family:var(--serif);font-style:italic;font-size:15px;color:#E8B9AE}
+  .band dd{margin:0;font-size:14px;color:rgba(239,234,224,.9)}
+
+  .faq{max-width:680px}
+  details{border-bottom:1px solid var(--hair);padding:18px 0}
+  details:first-of-type{border-top:1px solid var(--hair)}
+  summary{cursor:pointer;list-style:none;display:flex;justify-content:space-between;align-items:center;gap:16px;font-family:var(--serif);font-size:17.5px}
+  summary::-webkit-details-marker{display:none}
+  summary .plus{font-family:var(--serif);font-size:24px;font-weight:300;color:var(--leaf);transition:transform .25s}
+  details[open] .plus{transform:rotate(45deg)}
+  details p{margin:14px 0 0;font-size:14px;color:var(--body)}
+
+  .notlist{margin:36px 0 0;padding:0;list-style:none;border:1px solid var(--hair);border-radius:10px;overflow:hidden}
+  .notlist li{display:flex;gap:16px;background:var(--card);padding:22px 26px;border-bottom:1px solid var(--hair);align-items:flex-start}
+  .notlist li:last-child{border-bottom:0}
+  .notlist i{margin-top:12px;height:1px;width:16px;background:var(--wax);flex:none}
+  .notlist .t{font-family:var(--serif);font-size:16.5px;font-weight:600}
+  .notlist p{font-size:13.5px;color:var(--body);margin:4px 0 0}
+  .aftern{font-size:13.5px;color:var(--body);margin-top:28px;max-width:58ch}
+
+  .agentstrip{display:flex;justify-content:space-between;align-items:center;gap:20px;flex-wrap:wrap;padding:52px 0}
+  .agentstrip .t{font-family:var(--serif);font-size:19px;margin-top:6px}
+
+  .finale{background:var(--forest);border-radius:14px;color:#EFEAE0;padding:64px 56px;position:relative;overflow:hidden;display:grid;grid-template-columns:1.4fr .6fr;gap:32px;align-items:center}
+  @media(max-width:760px){.finale{grid-template-columns:1fr;padding:44px 28px}}
+  .finale h2{font-size:clamp(36px,5.6vw,64px)}
+  .finale h2 em{color:#E8B9AE}
+  .finale .mono-k{position:absolute;right:-20px;bottom:-90px;font-size:280px;font-weight:700;color:rgba(239,234,224,.06);line-height:1}
+  .finale .btn{background:var(--wax)}
+  .finale .btn:hover{background:#A93229}
+  .finale .cell{position:relative;text-align:right}
+  @media(max-width:760px){.finale .cell{text-align:left}}
+
+  footer{padding:64px 0 40px}
+  .footgrid{display:flex;justify-content:space-between;gap:28px;align-items:center;flex-wrap:wrap}
+  .footmark{display:flex;align-items:center;gap:16px}
+  .footmark i{width:44px;height:44px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#D65A50,#8E2921 75%);box-shadow:inset 0 1px 4px rgba(255,255,255,.4);display:flex;align-items:center;justify-content:center;color:#F7E9E4;font-size:9px;letter-spacing:.08em;font-weight:600}
+  .footmark .w{font-size:19px;font-weight:700;letter-spacing:-.03em}
+  .footmark p{font-family:var(--serif);font-style:italic;font-size:13px;color:#7C8880;margin:4px 0 0}
+  .footlinks{display:flex;flex-wrap:wrap;gap:8px 22px;font-size:13.5px;color:var(--body)}
+  .footlinks a{text-decoration:none}
+  .footlinks a:hover{color:var(--forest)}
+  .legal{border-top:1px solid var(--hair);margin-top:36px;padding-top:22px;font-size:11px;color:#8B9489;line-height:1.7}
+  .legal p+p{margin-top:12px;color:#A5AB9F}
+
+  @media (prefers-reduced-motion: reduce){
+    .nav-dot{animation:none}
+    .rv{opacity:1;transform:none;transition:none}
+    .letter,.rcard,.btn{transition:none}
+  }
+</style>
+
+<header>
+  <div class="shell">
+    <a class="mark" href="#top">kept<span class="dot nav-dot">.</span></a>
+    <nav class="navlinks">
+      <a href="#how">How it works</a>
+      <a href="#faq">FAQ</a>
+      <a href="#m">Methodology</a>
+      <a href="#a">For agents</a>
+      <a class="btn sm" href="#offer">Get an offer</a>
+    </nav>
+  </div>
+</header>
+
+<!-- HERO — copy verbatim -->
+<div class="shell" id="top">
+  <section class="hero">
+    <div class="rv in">
+      <p class="eyebrow">for UK homeowners</p>
+      <h1>A real cash offer,<br><em>in writing.</em></h1>
+      <p class="sub">Tell us about the property and we will come and view it. We aim to make an offer within 24 to 48 hours of viewing, locked for 72 hours so you can take advice. The price we put in writing is the price we complete at.</p>
+      <a class="btn" href="#offer">Get a cash offer</a>
+      <a class="btn ghost" style="margin-left:12px" href="#m">See how we calculate offers</a>
+      <p class="heronotes">Every confirmed offer is a signed document like this one.</p>
+      <p class="heronotes2">Property Redress Scheme · HMRC AML supervised · ICO registered · Zero fees</p>
+    </div>
+    <div class="letterwrap rv in">
+      <div class="letter" role="img" aria-label="Sample signed cash offer letter">
+        <div class="seal" aria-hidden="true">k.</div>
+        <p class="lt-name">Kept<span class="dot">.</span></p>
+        <p class="lt-ref">Sample · Ref KP-2026-0142</p>
+        <div class="lt-sec">
+          <p class="lt-label">PROPERTY</p>
+          <p class="lt-addr">14 Acacia Avenue, Stockport SK4 3HQ</p>
+        </div>
+        <div class="lt-sec">
+          <p class="lt-label green">OUR CASH OFFER</p>
+          <p class="lt-fig">£244,000</p>
+          <p class="lt-lock">Locked for 72 hours</p>
+        </div>
+        <div class="lt-sec">
+          <div class="lt-row"><span>Completion</span><b>Weeks, not months</b></div>
+          <div class="lt-row"><span>Fees to you</span><b>None</b></div>
+        </div>
+        <div class="lt-sig">
+          <svg viewBox="0 0 130 30" width="112" height="26" aria-hidden="true"><path d="M3 21 C 13 3, 22 5, 23 17 S 36 27, 43 13 C 47 5, 54 23, 64 14 C 74 5, 83 25, 102 7 C 111 1, 120 5, 127 11" fill="none" stroke="#22332B" stroke-width="1.5" stroke-linecap="round"/></svg>
+          <p class="lt-sig-note">Signed for Kept Property Co Ltd</p>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<!-- REASONS — copy verbatim -->
+<section class="block tinted bordered">
+  <div class="shell">
+    <div class="rv">
+      <p class="eyebrow">who we buy from</p>
+      <h2>Real reasons people choose <em>certainty</em> over price.</h2>
+    </div>
+    <div class="cards">
+      <div class="rcard rv"><p class="k">Probate</p><p class="t">You inherited a property</p><p>HMRC charges 8.75% interest on inheritance tax six months after the death. Empty homes bleed council tax and insurance. We complete on the grant date so the estate doesn't lose money waiting.</p></div>
+      <div class="rcard rv"><p class="k">Chain break</p><p class="t">Your buyer pulled out</p><p>You've spent months getting to exchange. Don't lose your onward purchase. We step in with a binding offer so the chain holds and your move stays on track.</p></div>
+      <div class="rcard rv"><p class="k">Relocation</p><p class="t">You're moving abroad or for work</p><p>International signatures, time-zone delays, empty house syndrome. You sign once, we complete on your timeline.</p></div>
+      <div class="rcard rv"><p class="k">Divorce or separation</p><p class="t">You need a clean break</p><p>Court-ordered timelines, joint mortgage to clear, emotional weight. We move quietly and quickly. Solicitors talk to solicitors.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- HOW IT WORKS — copy verbatim -->
+<section class="block white bordered" id="how">
+  <div class="shell howgrid">
+    <div class="rv">
+      <p class="eyebrow">how it works</p>
+      <h2>Five steps. <em>No surprises.</em></h2>
+      <p class="lead">Every offer is generated from real comparable sales. The maths are published. Nothing hidden. The price we confirm in writing is the price we complete at.</p>
+    </div>
+    <ol class="steps rv" style="list-style:none;margin:0;padding:0">
+      <li class="step"><span class="n">01</span><div><h3>You get in touch</h3><p>Tell us the address and a little about your situation. We acknowledge receipt and pull what we can from public records, Land Registry, EPC and planning, before bothering you for anything else.</p></div><p class="sla">Straight away</p></li>
+      <li class="step"><span class="n">02</span><div><h3>Indicative offer</h3><p>We send an indicative offer range based on comparable sales, PropertyData valuation, and the public records we found. Clearly labelled INDICATIVE — our honest starting point, subject only to viewing.</p></div><p class="sla">After desk research</p></li>
+      <li class="step"><span class="n">03</span><div><h3>We come and view the property</h3><p>We physically view every property before we confirm a price. We assess condition and anything not clear from the records. We tell you in advance what we are looking for.</p></div><p class="sla">At your convenience</p></li>
+      <li class="step"><span class="n">04</span><div><h3>Confirmed price in writing</h3><p>The price we send is the price we complete at. We share the survey notes that informed it. Locked for 72 hours so you can take advice.</p></div><p class="sla">We aim for 24–48 hours after viewing</p></li>
+      <li class="step"><span class="n">05</span><div><h3>Conveyancing and completion</h3><p>You instruct your own solicitor. We can recommend firms accustomed to working on expedited timelines to keep the transaction efficient. We instruct ours straight away. Regular updates on a live timeline you can share with anyone. We pay all our own legal costs.</p></div><p class="sla">Paced to suit you</p></li>
+    </ol>
+  </div>
+</section>
+
+<!-- GET AN OFFER — copy verbatim -->
+<section class="block" id="offer">
+  <div class="shell center rv">
+    <p class="eyebrow">get an offer</p>
+    <h2>Tell us about your home.</h2>
+    <p class="lead">A few quick details. An indicative figure first, then a confirmed offer in writing after we view the property.</p>
+    <div class="offerchat" role="img" aria-label="Offer chat interface">
+      <small>Kept · usually replies within the hour</small>
+      <div class="bub">Hello — let's get you a figure. What's the address of the property?</div>
+      <div class="bub me">14 Acacia Avenue, Stockport</div>
+      <div class="bub">Thanks. And which of these best describes your situation — probate, chain break, relocation, or something else?</div>
+      <div class="fake-input"><span>Type your answer…</span><a class="btn sm" href="#offer">Send</a></div>
+    </div>
+  </div>
+</section>
+
+<!-- PROMISE — copy verbatim -->
+<section class="block band bordered">
+  <div class="mono-k" aria-hidden="true">k.</div>
+  <div class="shell bandgrid">
+    <div class="rv">
+      <p class="eyebrow light">the written promise</p>
+      <h2>No renegotiation.<br><em>No surprises.</em></h2>
+      <p class="lead">The single biggest complaint about cash buyers is the last-minute price drop. We put the price in writing and stand behind it.</p>
+      <span class="bandseal"><i aria-hidden="true"></i>Kept</span>
+    </div>
+    <dl class="rv">
+      <div class="drow"><dt>Offer validity</dt><dd>Legally binding upon Kept for 72 hours. Time-stamped, in writing, downloadable as PDF.</dd></div>
+      <div class="drow"><dt>No price reduction</dt><dd>We do not renegotiate between issue and exchange. There are three documented exceptions: a survey reveals a material defect not visible at viewing, a title issue emerges that materially affects value, or information provided proves materially incorrect. In each case you can walk away at no cost.</dd></div>
+      <div class="drow"><dt>Walk-away free</dt><dd>You may withdraw at any point before exchange. No penalty, no chase.</dd></div>
+      <div class="drow"><dt>Costs covered</dt><dd>No fee to us at any point. As the buyer we pay our own legals, searches and survey.</dd></div>
+    </dl>
+  </div>
+</section>
+
+<!-- FAQ — copy verbatim -->
+<section class="block" id="faq">
+  <div class="shell">
+    <div class="faq rv">
+      <p class="eyebrow">honest answers</p>
+      <h2>Questions sellers ask us most.</h2>
+      <div style="margin-top:36px">
+        <details open><summary>Why is the offer below open-market?<span class="plus">+</span></summary><p>Because we buy for cash, complete in weeks rather than months, charge no fee, and take the risk of fall-through. The price reflects the speed and certainty of the transaction. You're paying us a speed premium for certainty.</p></details>
+        <details><summary>Can I change my mind after I accept?<span class="plus">+</span></summary><p>Yes. The offer is binding upon Kept for 72 hours. It is not binding upon you until exchange of contracts. You can withdraw at any point before exchange at no cost.</p></details>
+        <details><summary>What does it cost me?<span class="plus">+</span></summary><p>Zero. No agent fee, no survey fee, and no fee to us at any point. As the buyer we pay for our own legals, searches and survey. The figure you see in the offer is the figure that lands in your account on completion day.</p></details>
+        <details><summary>How is the offer calculated?<span class="plus">+</span></summary><p>We pull every comparable sale within 0.5 miles of your home from HM Land Registry's last 24 months, adjust for market trend, score risk factors, then apply a transparent speed-premium discount. The full methodology is published.</p></details>
+        <details><summary>How quickly can you complete?<span class="plus">+</span></summary><p>In weeks rather than months, paced to suit a probate grant or onward move. We instruct solicitors as soon as you accept and share proof of funds straight away.</p></details>
+        <details><summary>Can the offer change later?<span class="plus">+</span></summary><p>The price we confirm in writing is the price we complete at. There are only three exceptions, all documented in writing: (1) a structural survey reveals a material defect that was not visible or disclosed at viewing, (2) a title issue emerges during conveyancing that materially affects value, or (3) information provided about the property turns out to be materially incorrect. None of those apply? The price does not change.</p></details>
+        <details><summary>Are you regulated?<span class="plus">+</span></summary><p>Cash property buying is unregulated by the FCA. We are members of the Property Redress Scheme (PRS) — a government-approved independent redress body — voluntarily follow The Property Ombudsman code, are HMRC-registered for AML supervision, and ICO-registered as a data controller.</p></details>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- WHEN NOT TO USE — copy verbatim -->
+<section class="block tinted bordered">
+  <div class="shell rv">
+    <p class="eyebrow wax">the honest version</p>
+    <h2>When we're probably <em>not</em> the right answer</h2>
+    <p class="lead">We buy below open market value, at a price that reflects the speed and certainty of the transaction. That trade is right for some sellers and wrong for others. We'd rather tell you so up front than waste your time.</p>
+    <ul class="notlist">
+      <li><i aria-hidden="true"></i><div><p class="t">You have plenty of time and no pressure to sell.</p><p>If you can wait 4–8 months for the right buyer, the open market will almost certainly get you a better price. Speed is the trade you're paying for with us.</p></div></li>
+      <li><i aria-hidden="true"></i><div><p class="t">Your property is in excellent condition and high demand.</p><p>Family homes in popular streets, with no chain issues, usually sell fast at full market value through a good high-street agent. That's their wedge, not ours.</p></div></li>
+      <li><i aria-hidden="true"></i><div><p class="t">You want to maximise every pound of sale price.</p><p>Our offer is below open-market value by design — a speed premium for cash, certainty, and no chain. If maximising is the goal, this isn't the route.</p></div></li>
+    </ul>
+    <p class="aftern">If you read those and one of them describes you, we'd genuinely suggest calling a local agent first. We'd rather you sold well than sold to us.</p>
+  </div>
+</section>
+
+<!-- AGENTS LINK — copy verbatim -->
+<section class="white bordered">
+  <div class="shell agentstrip rv">
+    <div>
+      <p class="eyebrow" style="color:#8B9489">are you an estate agent?</p>
+      <p class="t">Partner fee agreed per deal, in writing.</p>
+    </div>
+    <a class="btn ghost" href="#a">See the agent partner programme</a>
+  </div>
+</section>
+
+<!-- FINAL CTA — copy verbatim -->
+<section class="block">
+  <div class="shell">
+    <div class="finale rv">
+      <div class="mono-k" aria-hidden="true">k.</div>
+      <div>
+        <p class="eyebrow light">see the number</p>
+        <h2>A real offer <em>in writing.</em></h2>
+      </div>
+      <div class="cell"><a class="btn" href="#offer">Get my offer</a></div>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER — copy verbatim, name swapped -->
+<footer>
+  <div class="shell">
+    <div class="footgrid">
+      <div class="footmark">
+        <i aria-hidden="true">EST 26</i>
+        <div>
+          <span class="w">kept<span class="dot">.</span></span>
+          <p>Direct-to-vendor property buyers · UK</p>
+        </div>
+      </div>
+      <nav class="footlinks">
+        <a href="#offer">Get an offer</a>
+        <a href="#m">Methodology</a>
+        <a href="#w">What we won't buy</a>
+        <a href="#a">For agents</a>
+        <a href="#r">Regulatory</a>
+      </nav>
+    </div>
+    <div class="legal">
+      <p>Kept Property Co Ltd is a UK cash property buyer, not an FCA-authorised firm. We do not provide financial or legal advice. Seek independent legal advice before accepting any offer. All offers are subject to satisfactory survey and title searches.</p>
+      <p>© 2026 Kept Property Co Ltd.</p>
+    </div>
+  </div>
+</footer>
+
+<script>
+  // Scroll-reveal: sections rise in as they enter the viewport.
+  const io = new IntersectionObserver((entries) => {
+    for (const e of entries) if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); }
+  }, { threshold: 0.12 });
+  document.querySelectorAll('.rv:not(.in)').forEach((el) => io.observe(el));
+</script>

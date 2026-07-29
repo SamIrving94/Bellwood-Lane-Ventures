@@ -1,5 +1,11 @@
 # Bellwood Ventures: Becoming UK Estate Agents' #1 Cash Buyer Partner
 
+> ⚠ **Historical document (April 2026).** Public promises were rewritten in
+> July 2026 — the live site copy is the source of truth: same-day indicative
+> response, viewing, confirmed written offer within 24–48 hours of viewing,
+> completion in weeks not months. Timing/SLA claims below predate that and
+> are kept for the record only.
+
 **A founder-grade research report for Bellwood Ventures | April 2026**
 
 ***

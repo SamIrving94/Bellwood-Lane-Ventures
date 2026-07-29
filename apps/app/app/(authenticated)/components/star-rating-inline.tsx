@@ -3,6 +3,7 @@
 import { StarIcon, ChevronDownIcon, SendIcon } from 'lucide-react';
 import { useState, useTransition, useCallback, useEffect, useRef } from 'react';
 import { submitFeedback } from '@/app/actions/feedback/submit';
+import { VoiceNoteRecorder } from './voice-note-recorder';
 
 type FeedbackTargetType = 'scout_lead' | 'avm_result' | 'outreach_template' | 'outreach_campaign' | 'legal_step' | 'deal' | 'founder_action';
 
@@ -27,6 +28,7 @@ export function StarRatingInline({
   const [confirmed, setConfirmed] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const [notes, setNotes] = useState('');
+  const [voiceNote, setVoiceNote] = useState(false);
   const [isPending, startTransition] = useTransition();
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -61,6 +63,7 @@ export function StarRatingInline({
         targetId,
         rating,
         notes: notes.trim() || undefined,
+        voiceNote: voiceNote || undefined,
       });
       setSubmitted(true);
       setExpanded(false);
@@ -158,11 +161,20 @@ export function StarRatingInline({
           <textarea
             className="w-full rounded-md border bg-background px-3 py-2 text-sm resize-none"
             rows={2}
-            placeholder="Notes (optional)"
+            placeholder="Notes (optional) — or record a voice note"
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
             autoFocus
           />
+          <div className="mt-2">
+            <VoiceNoteRecorder
+              compact
+              onTranscript={(text) => {
+                setNotes((prev) => (prev ? `${prev} ${text}` : text));
+                setVoiceNote(true);
+              }}
+            />
+          </div>
           <div className="mt-2 flex justify-end gap-2">
             <button
               type="button"

@@ -3,6 +3,12 @@
 **For:** my co-founder.
 **Status:** April 2026. Soft-launch ready.
 
+> ⚠ **Historical document (April 2026).** Public promises were rewritten in
+> July 2026 — the live site copy is the source of truth. We no longer promise
+> 60-second figures or 4-hour signed offers publicly: the promise is a
+> same-day indicative response, a viewing, and a confirmed written offer
+> within 24–48 hours of viewing. Timing claims below are kept for the record.
+
 ---
 
 ## In one line

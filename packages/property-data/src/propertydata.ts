@@ -589,6 +589,12 @@ export type SourcedProperty = {
   summary: string | null;
   imageUrl: string | null;
   source: string;
+  /**
+   * True when PropertyData flags the listing as sold-subject-to-contract.
+   * We request exclude_sstc=1 by default, but the flag still comes back set
+   * on some rows — carry it so callers can screen instead of discarding it.
+   */
+  sstc: boolean | null;
 };
 
 /**
@@ -870,6 +876,7 @@ export async function getSourcedProperties(
       summary: typeof p.summary === 'string' ? p.summary : null,
       imageUrl: typeof p.image_url === 'string' ? p.image_url : null,
       source: `propertydata_${listSlug}`,
+      sstc: typeof p.sstc === 'number' ? p.sstc === 1 : null,
     });
   }
   return normalised;

@@ -4,6 +4,7 @@ import { Button } from '@repo/design-system/components/ui/button';
 import { StarIcon, SendIcon, BookmarkIcon } from 'lucide-react';
 import { useState, useTransition, useEffect, useRef, useCallback } from 'react';
 import { submitFeedback } from '@/app/actions/feedback/submit';
+import { VoiceNoteRecorder } from './voice-note-recorder';
 
 type FeedbackPanelProps = {
   targetType: 'scout_lead' | 'avm_result' | 'outreach_template' | 'outreach_campaign' | 'legal_step' | 'deal' | 'founder_action' | 'campaign';
@@ -81,6 +82,7 @@ export function FeedbackPanel({
     return initial;
   });
   const [markedAsTemplate, setMarkedAsTemplate] = useState(false);
+  const [voiceNote, setVoiceNote] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [submitted, setSubmitted] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -105,12 +107,13 @@ export function FeedbackPanel({
         context,
         notes: notes.trim() || undefined,
         markedAsTemplate: markedAsTemplate || undefined,
+        voiceNote: voiceNote || undefined,
       });
 
       setSubmitted(true);
       onComplete?.();
     });
-  }, [rating, overrides, notes, markedAsTemplate, targetType, targetId, context, onComplete]);
+  }, [rating, overrides, notes, markedAsTemplate, voiceNote, targetType, targetId, context, onComplete]);
 
   const handleStarClick = (star: number) => {
     setRating(star);
@@ -323,15 +326,28 @@ export function FeedbackPanel({
         </div>
       )}
 
-      {/* Notes */}
-      <div>
+      {/* Notes — typed, or spoken via the voice recorder. Voice transcripts
+          land in the same field so they can be reviewed/edited pre-submit. */}
+      <div className="space-y-2">
         <textarea
           className="w-full rounded-md border bg-background px-3 py-2 text-sm resize-none"
           rows={2}
-          placeholder="Notes — what did the agent get right or wrong?"
+          placeholder="Notes — what do you like or dislike about it?"
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
         />
+        <div className="flex items-center gap-2">
+          <VoiceNoteRecorder
+            onTranscript={(text) => {
+              setNotes((prev) => (prev ? `${prev} ${text}` : text));
+              setVoiceNote(true);
+            }}
+          />
+          <span className="text-xs text-muted-foreground">
+            Say what you like or dislike — it&apos;s transcribed and learned
+            from.
+          </span>
+        </div>
       </div>
 
       {/* Template flag for outreach */}

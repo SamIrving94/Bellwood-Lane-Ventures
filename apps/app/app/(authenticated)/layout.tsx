@@ -6,6 +6,7 @@ import { secure } from '@repo/security';
 import type { ReactNode } from 'react';
 import { GlobalSidebar } from './components/sidebar';
 import { ConciergeOverlay } from './components/concierge-overlay';
+import { WhatsNewPopup } from './components/whats-new-popup';
 
 type AppLayoutProperties = {
   readonly children: ReactNode;
@@ -33,6 +34,7 @@ const AppLayout = async ({ children }: AppLayoutProperties) => {
         {children}
       </GlobalSidebar>
       <ConciergeOverlay />
+      <WhatsNewPopup />
     </SidebarProvider>
   );
 };

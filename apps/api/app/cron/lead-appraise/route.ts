@@ -84,13 +84,11 @@ export const POST = async (request: Request) => {
     take: 60,
   });
 
-  const pending = candidates
-    .filter((lead) => {
-      const raw = (lead.rawPayload ?? {}) as Record<string, unknown>;
-      const avm = raw.avmFull as { pointEstimatePence?: unknown } | undefined;
-      return typeof avm?.pointEstimatePence !== 'number';
-    })
-    .slice(0, MAX_APPRAISALS_PER_RUN);
+  const pending = candidates.filter((lead) => {
+    const raw = (lead.rawPayload ?? {}) as Record<string, unknown>;
+    const avm = raw.avmFull as { pointEstimatePence?: unknown } | undefined;
+    return typeof avm?.pointEstimatePence !== 'number';
+  });
 
   // Founder-tuned offer policy (highest active avm_confidence EvalConfig).
   const activeConfig = await database.evalConfig.findFirst({
@@ -110,9 +108,11 @@ export const POST = async (request: Request) => {
   const errors: string[] = [];
 
   for (const lead of pending) {
+    if (appraised >= MAX_APPRAISALS_PER_RUN) break;
+    const raw = (lead.rawPayload ?? {}) as Record<string, unknown>;
+    const pd = raw.propertyData as Record<string, unknown> | undefined;
+
     try {
-      const raw = (lead.rawPayload ?? {}) as Record<string, unknown>;
-      const pd = raw.propertyData as Record<string, unknown> | undefined;
       const normalised = normalisePropertyType(pd?.propertyType);
       const avmPropertyType =
         normalised === 'bungalow' ? 'detached' : (normalised ?? 'terraced');
