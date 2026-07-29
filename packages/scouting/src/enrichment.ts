@@ -208,20 +208,28 @@ function flagForManualResearch(lead: ProbateLead): void {
 // Cascade
 // ---------------------------------------------------------------------------
 
+/** An EnrichedLead before any contact-tier lookup has run. */
+export type BaseLead = Omit<
+  EnrichedLead,
+  | 'contactName'
+  | 'contactPhone'
+  | 'contactEmail'
+  | 'enrichmentTier'
+  | 'sourceTrail'
+>;
+
 /**
- * Enrich a single probate lead via the tier cascade.
- * Stops at the first tier that returns a match.
- * Tags leads that exhaust all tiers as Tier 3 (manual queue).
+ * Derive the non-contact half of an EnrichedLead from a raw source lead.
+ *
+ * Pure and free — no network, no credits. That matters beyond tidiness: the
+ * pipeline ranks its candidate pool with these fields BEFORE paying to enrich
+ * anyone (see the shortlist step in index.ts), so this has to stay callable
+ * without an API key. Keeping it as the single derivation site also stops the
+ * ranking pass and the real enrichment from drifting apart on `leadType`,
+ * which is the heaviest input to the acquisition pillar.
  */
-export async function enrichLead(lead: ProbateLead): Promise<EnrichedLead> {
-  const base: Omit<
-    EnrichedLead,
-    | 'contactName'
-    | 'contactPhone'
-    | 'contactEmail'
-    | 'enrichmentTier'
-    | 'sourceTrail'
-  > = {
+export function baseFromProbateLead(lead: ProbateLead): BaseLead {
+  return {
     probateRef: lead.probateRef,
     address: lead.address,
     postcode: lead.postcode,
@@ -241,6 +249,15 @@ export async function enrichLead(lead: ProbateLead): Promise<EnrichedLead> {
     solicitorFirm: lead.solicitorFirm,
     estateValuePence: lead.estateValuePence,
   };
+}
+
+/**
+ * Enrich a single probate lead via the tier cascade.
+ * Stops at the first tier that returns a match.
+ * Tags leads that exhaust all tiers as Tier 3 (manual queue).
+ */
+export async function enrichLead(lead: ProbateLead): Promise<EnrichedLead> {
+  const base = baseFromProbateLead(lead);
 
   // --- Tier 1 ---
   try {

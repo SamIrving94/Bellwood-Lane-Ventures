@@ -36,15 +36,31 @@ import { normaliseUkAddress } from './address-normalise';
 import { fetchShortLeaseLeads } from './short-lease';
 import { fetchCompaniesHouseDistressLeads } from './companies-house-charges';
 import {
+  baseFromProbateLead,
   checkEnrichmentHealth,
   type EnrichmentSummary,
   enrichLeads,
   summariseEnrichment,
 } from './enrichment';
+import {
+  buildSourceHealth,
+  type SourceHealthEntry,
+  summariseSourceHealth,
+} from './source-health';
 import { scoreLead } from './scorer';
 import { DEFAULT_SCORER_CONFIG, type ScorerConfig } from './scorer-config';
 import { sanitisePayload, auditProtectedFields } from './rbac';
 import { enrichRationaleWithLlm } from './rationale-llm';
+
+/**
+ * Hard ceiling on the deduped candidate pool carried into ranking.
+ *
+ * This bounds CPU and memory only — provisional ranking is pure computation
+ * with no network calls, so a large pool costs nothing in credits. It exists
+ * purely so a misconfigured radius can't drag a whole region into memory. Set
+ * far above real volume (~180/day observed) to stay inert in normal operation.
+ */
+const CANDIDATE_POOL_CAP = 500;
 
 /** Return the most-frequent value in an array (first wins on tie). */
 function mostCommon<T extends string>(items: T[]): T | null {
@@ -90,10 +106,21 @@ export type {
   ChDistressScoutOptions,
 } from './companies-house-charges';
 export {
+  baseFromProbateLead,
   checkEnrichmentHealth,
   enrichLeads,
   summariseEnrichment,
 } from './enrichment';
+export {
+  buildSourceHealth,
+  DISCOVERY_SOURCES,
+  summariseSourceHealth,
+} from './source-health';
+export type {
+  SourceHealthEntry,
+  SourceHealthSummary,
+  SourceStatus,
+} from './source-health';
 export { scoreLead, scoreDealRoi, combineScore } from './scorer';
 export type {
   ScoreFactor,
@@ -252,7 +279,12 @@ export interface ScoutingPipelineResult {
     chDistress: number;
     shortLease: number;
     staleListings: number;
+    /** Deduped candidates considered for the shortlist, before the cap. */
+    candidatePool: number;
+    /** Size of the shortlist actually enriched + scored (== `limit` when capped). */
     afterDedupe: number;
+    /** Candidates dropped by the cap — ranked out, never enriched. */
+    droppedByCap: number;
     postcodesScanned: number;
   };
   /** Per-source errors (truncated) for diagnostic surfacing. */
@@ -268,6 +300,13 @@ export interface ScoutingPipelineResult {
     shortLease?: string;
     enrichment?: string;
   };
+  /**
+   * Per-source status for this run. Unlike `sourceErrors` (which only sees
+   * sources that threw), this covers unset API keys and deliberately skipped
+   * sources too — so a silently-dark feed can't hide behind a healthy-looking
+   * lead count.
+   */
+  sourceHealth: SourceHealthEntry[];
   /** Contact-enrichment tier distribution + hit-rate for this run. */
   enrichment: EnrichmentSummary;
 }
@@ -765,7 +804,7 @@ export async function runScoutingPipeline(
   // comma/spacing variants of the same property — "Abbey View, Leeds, LS5" vs
   // "Abbey View, Leeds LS5" — collapse instead of both showing.
   const seen = new Set<string>();
-  const rawGrants = [
+  const candidates = [
     ...hmctsGrants,
     ...gazetteGrants,
     ...sourcedFromPostcodes,
@@ -780,24 +819,17 @@ export async function runScoutingPipeline(
     if (seen.has(key)) return false;
     seen.add(key);
     return true;
-  }).slice(0, limit);
+  }).slice(0, CANDIDATE_POOL_CAP);
 
   console.info(
-    `[scouting] sources: hmcts=${hmctsGrants.length} gazette=${gazetteGrants.length} propertydata=${sourcedFromPostcodes.length} planning=${planningGrants.length} hmo=${hmoGrants.length} chDistress=${chDistressLeads.length} shortLease=${shortLeaseGrants.length} (after dedupe: ${rawGrants.length})`,
+    `[scouting] sources: hmcts=${hmctsGrants.length} gazette=${gazetteGrants.length} propertydata=${sourcedFromPostcodes.length} planning=${planningGrants.length} hmo=${hmoGrants.length} chDistress=${chDistressLeads.length} shortLease=${shortLeaseGrants.length} (candidate pool after dedupe: ${candidates.length})`,
   );
-
-  // Step 2 — GDPR sanitise raw payloads
-  const sanitisedGrants = rawGrants.map((grant) => {
-    const raw = grant as unknown as Record<string, unknown>;
-    const stripped = auditProtectedFields(raw);
-    if (stripped.length) {
-      allGdprStripped.push(...stripped.map((f) => `${grant.probateRef}:${f}`));
-    }
-    return sanitisePayload(raw);
-  });
 
   // Build signals lookup BEFORE enrichment (we lose rawGrant after enrich).
   // Keyed by probateRef so we can rejoin even when enrichLeads drops rows.
+  // Built over the WHOLE candidate pool, not the shortlist: these signals are
+  // free (they arrived with the listing payload) and they are exactly what the
+  // provisional ranking below needs in order to choose the shortlist.
   const signalsByRef = new Map<
     string,
     {
@@ -814,7 +846,7 @@ export async function runScoutingPipeline(
       leaseUrgency?: number;
     }
   >();
-  for (const g of rawGrants) {
+  for (const g of candidates) {
     const lease = (
       g as {
         leaseSignal?: {
@@ -859,6 +891,78 @@ export async function runScoutingPipeline(
             : undefined,
       });
     }
+  }
+
+  // ── Shortlist — rank the whole pool, THEN spend credits on the best ───
+  //
+  // The cap used to be a `.slice(0, limit)` on the deduped pool, i.e. "keep
+  // whatever PropertyData happened to return first". On a 180-property day
+  // that discarded 150 properties unscored, on no criterion at all — the
+  // retained 30 were an arbitrary sample, not the best 30.
+  //
+  // We can't simply score everything and then cap: scoring needs per-postcode
+  // enrichment (demographics + flood + EPC + tenure ≈ 9 credits per unique
+  // postcode) plus contact enrichment per lead. Widening that to the full pool
+  // would multiply the daily credit burn several times over.
+  //
+  // So rank first on what is already free. Every listing-derived signal —
+  // price reductions, discount depth, days on market, velocity, lease term —
+  // arrived with the payload we have already paid for, and `leadType` is
+  // derived purely from the source. Those are precisely the discriminating
+  // features. What the provisional pass misses (postcode demographics, flood,
+  // EPC, HPI trend) is postcode-level, and therefore nearly constant across
+  // leads within a single scan area — it barely separates candidates that sit
+  // in the same few postcodes anyway.
+  //
+  // Net effect: identical credit spend, but the `limit` leads we pay to
+  // enrich are now the most promising in the pool rather than the first ones
+  // off the wire. Same scorer, so ranking can't drift from final scoring.
+  const ranked = candidates
+    .map((grant) => ({
+      grant,
+      provisionalScore: scoreLead(
+        {
+          ...baseFromProbateLead(grant),
+          contactName: null,
+          contactPhone: null,
+          contactEmail: null,
+          enrichmentTier: 3 as const,
+          sourceTrail: grant.source,
+        },
+        null, // no price-paid lookup — costs credits, deferred to the shortlist
+        null, // no HPI lookup — same
+        signalsByRef.get(grant.probateRef),
+        scorerConfig,
+      ).total,
+    }))
+    // Stable sort: equal-scoring candidates keep their original source order.
+    .sort((a, b) => b.provisionalScore - a.provisionalScore);
+
+  const rawGrants = ranked.slice(0, limit).map((r) => r.grant);
+  const droppedByCap = ranked.length - rawGrants.length;
+
+  if (droppedByCap > 0) {
+    // Never let a cap truncate silently — a run that discards most of what it
+    // found should say so, and say what the cut cost.
+    const cutoff = ranked[rawGrants.length - 1]?.provisionalScore ?? 0;
+    const bestDropped = ranked[rawGrants.length]?.provisionalScore ?? 0;
+    console.info(
+      `[scouting] shortlist: kept ${rawGrants.length}/${ranked.length} by provisional score (cutoff ${cutoff}, best dropped ${bestDropped}); ${droppedByCap} not enriched`,
+    );
+  }
+
+  // Step 2 — GDPR sanitise raw payloads.
+  // Keyed by probateRef, NOT by array index: `enrichLeads` drops any lead
+  // whose enrichment rejects, so an index-aligned array would shift every
+  // subsequent lead's payload onto the wrong lead the moment one failed.
+  const sanitisedByRef = new Map<string, Record<string, unknown> | null>();
+  for (const grant of rawGrants) {
+    const raw = grant as unknown as Record<string, unknown>;
+    const stripped = auditProtectedFields(raw);
+    if (stripped.length) {
+      allGdprStripped.push(...stripped.map((f) => `${grant.probateRef}:${f}`));
+    }
+    sanitisedByRef.set(grant.probateRef, sanitisePayload(raw));
   }
 
   // Step 3 — Enrich via tier cascade.
@@ -960,7 +1064,7 @@ export async function runScoutingPipeline(
 
   // Step 4 — Score leads (fan-out postcode lookups)
   const scored = await Promise.all(
-    enriched.map(async (lead, i) => {
+    enriched.map(async (lead) => {
       const [pricePaid, hpi] = await Promise.all([
         getPricePaid(lead.postcode).catch(() => null),
         getHousepriceIndex(lead.postcode).catch(() => null),
@@ -985,7 +1089,7 @@ export async function runScoutingPipeline(
 
       // Stamp the full "why this score" payload onto rawPayload so the UI
       // can render it verbatim — no inference, no guesswork.
-      let enrichedRaw = sanitisedGrants[i] ?? null;
+      let enrichedRaw = sanitisedByRef.get(lead.probateRef) ?? null;
       if (includeRawPayload && enrichedRaw) {
         enrichedRaw = {
           ...enrichedRaw,
@@ -1081,6 +1185,31 @@ export async function runScoutingPipeline(
     summary[lead.verdict]++;
   }
 
+  // Per-source health. Built from the same counts/errors reported above, plus
+  // the env, so a source that never threw because it swallowed its own error
+  // (HMCTS returns `[]` when its key is missing) is still reported as dark.
+  const sourceHealth = buildSourceHealth({
+    counts: {
+      hmcts: hmctsGrants.length,
+      gazette: gazetteGrants.length,
+      propertydata: sourcedFromPostcodes.length,
+      planning: planningGrants.length,
+      hmo: hmoGrants.length,
+      dissolved: dissolvedGrants.length,
+      chDistress: chDistressLeads.length,
+      shortLease: shortLeaseGrants.length,
+    },
+    errors: sourceErrors,
+    // `skipSlowSources` disables these three; the short-lease scout is opt-in.
+    skipped: [
+      ...(skipSlowSources ? ['planning', 'hmo', 'dissolved'] : []),
+      ...(scanShortLeases ? [] : ['shortLease']),
+    ],
+  });
+
+  const healthSummary = summariseSourceHealth(sourceHealth);
+  console.info(`[scouting] source health: ${healthSummary.headline}`);
+
   return {
     runDate,
     fetched: rawGrants.length,
@@ -1099,10 +1228,13 @@ export async function runScoutingPipeline(
       chDistress: chDistressLeads.length,
       shortLease: shortLeaseGrants.length,
       staleListings: 0,
+      candidatePool: candidates.length,
       afterDedupe: rawGrants.length,
+      droppedByCap,
       postcodesScanned: allSeeds.length,
     },
     sourceErrors,
+    sourceHealth,
     enrichment: enrichmentSummary,
   };
 }

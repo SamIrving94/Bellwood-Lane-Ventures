@@ -5,6 +5,7 @@ import {
   mergeScorerConfig,
   runScoutingPipeline,
   screenDealbreakers,
+  summariseSourceHealth,
 } from '@repo/scouting';
 import { getPropertySnapshot } from '@repo/property-data/src/propertydata';
 import { NextResponse, after } from 'next/server';
@@ -357,6 +358,19 @@ export const POST = async (request: Request) => {
           // Persisted per run so a falling hit-rate (the early sign that an
           // enrichment API has silently broken) is trendable over time.
           enrichment: result.enrichment,
+          // Discovery-source health, persisted per run for the same reason:
+          // "when did this source go dark?" should be answerable from the
+          // event log rather than from whoever still has the Vercel logs open.
+          sourceHealth: (result.sourceHealth ?? []).map((h) => ({
+            key: h.key,
+            status: h.status,
+            count: h.count,
+            detail: h.detail ?? null,
+          })),
+          // How much of the pool the per-run cap discarded. A large number
+          // here means the scan is finding far more than it can appraise.
+          candidatePool: result.sources.candidatePool,
+          droppedByCap: result.sources.droppedByCap,
         },
       },
     });
@@ -461,23 +475,77 @@ export const POST = async (request: Request) => {
   }
 
   // ── Surface source failures so silent degradation can't hide ──────────
-  // The pipeline gracefully returns partial results when a source errors, but
-  // that means a dead feed (e.g. Gazette timing out, PropertyData credits
-  // exhausted, enrichment APIs down) is invisible unless someone reads the
-  // response JSON. Raise one deduped founder action per day listing the
-  // failing sources. Dedup bucket is the UTC day, so a persistently-broken
-  // source alerts at most once per day.
-  const failingSources = Object.entries(result.sourceErrors ?? {}).filter(
-    ([, msg]) => Boolean(msg)
+  // The pipeline gracefully returns partial results when a source errors, so a
+  // dead feed is invisible unless someone reads the response JSON. One deduped
+  // founder action carries the current state, refreshed by each run.
+  //
+  // The older version of this block only saw sources that THREW, which missed
+  // the two failure modes that actually bit us:
+  //
+  //   1. A source whose fetcher swallows its own error and returns `[]`
+  //      (HMCTS does exactly this when its API key is unset) never appears in
+  //      `sourceErrors`, so it could never raise an alert.
+  //   2. Volume hid the damage. Priority was only `high` when zero leads
+  //      landed — but PropertyData alone kept filling the per-run cap, so four
+  //      dark sources still produced a full batch and a merely-`medium` card.
+  //      The leads were real listings carrying none of the distress signal the
+  //      sourcing thesis depends on.
+  //
+  // We now alert off `sourceHealth`, which covers unset keys and skipped
+  // sources too, and escalate on how much of the funnel is dark rather than on
+  // whether the batch looked full.
+  const health = result.sourceHealth ?? [];
+  const healthSummary = summariseSourceHealth(health);
+  const faulted = health.filter(
+    (h) => h.status === 'error' || h.status === 'not_configured'
   );
-  if (failingSources.length > 0) {
+  const coreFaulted = faulted.filter((h) => h.core);
+
+  if (faulted.length > 0) {
     try {
       // ONE card, stable key: while sources keep failing, each run refreshes
       // the same card (reopening it if it was completed). No per-day stacking.
       const dedupKey = 'scouting-source-error';
-      const title = `Scouting source${failingSources.length === 1 ? '' : 's'} failing: ${failingSources.map(([s]) => s).join(', ')}`;
-      const description = `The daily scout run completed but ${failingSources.length} source${failingSources.length === 1 ? '' : 's'} errored, so lead volume may be degraded${result.leads.length === 0 ? ' (zero leads found this run)' : ''}:\n\n${failingSources.map(([s, msg]) => `• ${s}: ${msg}`).join('\n')}`;
-      const priority = result.leads.length === 0 ? 'high' : 'medium';
+      const title = `Scouting degraded — ${healthSummary.headline}`;
+
+      // Lead with the consequence, not the stack trace. "4 sources failing" is
+      // a fact; "today's leads carry no distress signal" is the decision.
+      const consequence = healthSummary.allCoreDark
+        ? 'No distressed-seller source is live. Any leads this run are ordinary listings, not motivated sellers.'
+        : coreFaulted.length > 0
+          ? `${coreFaulted.length} of ${healthSummary.coreTotal} core distress sources are down, so lead quality is degraded even when volume looks normal.`
+          : 'Optional sources only — core distress sources are still live.';
+
+      const fixLine = healthSummary.missingKeys.length
+        ? `\n\nTo fix, set on the bellwood-api Vercel project: ${healthSummary.missingKeys.join(', ')}`
+        : '';
+
+      const description = `${consequence}\n\nLeads this run: ${result.leads.length}.\n\n${healthSummary.lines.join('\n')}${fixLine}`;
+
+      // Escalate on how dark the funnel is — NOT on whether leads landed.
+      const priority =
+        healthSummary.allCoreDark ||
+        result.leads.length === 0 ||
+        coreFaulted.length > 0
+          ? 'high'
+          : 'medium';
+
+      const metadata = {
+        source: 'cron_scouting',
+        headline: healthSummary.headline,
+        coreLive: healthSummary.coreLive,
+        coreTotal: healthSummary.coreTotal,
+        missingKeys: healthSummary.missingKeys,
+        sourceHealth: health.map((h) => ({
+          key: h.key,
+          status: h.status,
+          count: h.count,
+          detail: h.detail ?? null,
+          core: h.core,
+        })),
+        leadsThisRun: result.leads.length,
+      };
+
       await database.founderAction.upsert({
         where: { dedupKey },
         create: {
@@ -488,11 +556,7 @@ export const POST = async (request: Request) => {
           dedupKey,
           title,
           description,
-          metadata: {
-            source: 'cron_scouting',
-            failingSources: Object.fromEntries(failingSources),
-            leadsThisRun: result.leads.length,
-          },
+          metadata,
         },
         update: {
           status: 'pending',
@@ -501,11 +565,7 @@ export const POST = async (request: Request) => {
           description,
           resolvedAt: null,
           resolvedBy: null,
-          metadata: {
-            source: 'cron_scouting',
-            failingSources: Object.fromEntries(failingSources),
-            leadsThisRun: result.leads.length,
-          },
+          metadata,
         },
       });
     } catch {
@@ -654,6 +714,8 @@ export const POST = async (request: Request) => {
     gdprFieldsStripped: result.gdprStripped.length,
     sources: result.sources,
     sourceErrors: result.sourceErrors,
+    sourceHealth: result.sourceHealth,
+    sourceHealthHeadline: healthSummary.headline,
   });
 };
 

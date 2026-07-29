@@ -26,6 +26,33 @@ export type WhatsNewEntry = {
 /** Newest first. The popup shows index 0. */
 export const WHATS_NEW: WhatsNewEntry[] = [
   {
+    id: '2026-07-29-scout-picks-the-best',
+    date: '2026-07-29',
+    emoji: '🔦',
+    title: 'The scout now picks the best — and tells you when it is blind',
+    intro:
+      'It was finding 180 properties a day and keeping the first 30. Not the best 30. The first 30.',
+    bullets: [
+      {
+        emoji: '🏆',
+        text: 'Every property found is now ranked before we spend a penny on it. You get the best 30, not a random 30.',
+      },
+      {
+        emoji: '💸',
+        text: 'Same cost. Ranking uses signals we already paid for — price drops, time on market, discount depth.',
+      },
+      {
+        emoji: '🚨',
+        text: 'New alert when a lead source goes dark. It says how many are still live, and exactly which key to set.',
+      },
+      {
+        emoji: '🕳️',
+        text: 'Heads up: 3 of your 4 distress sources are currently off. Open the alert — it lists the fix.',
+      },
+    ],
+    cta: { label: 'Check your Action Centre', href: '/actions' },
+  },
+  {
     id: '2026-07-23-voice-notes-and-learning',
     date: '2026-07-23',
     emoji: '🎙️',
