@@ -9,6 +9,14 @@ import {
 import { getPropertySnapshot } from '@repo/property-data/src/propertydata';
 import { NextResponse, after } from 'next/server';
 import { recordCronHeartbeat } from '../_lib/heartbeat';
+import {
+  DRY_RUN_STREAK_THRESHOLD,
+  type ScoutRunStats,
+  buildDryStreakActionCopy,
+  buildReviewActionCopy,
+  countDryStreak,
+  shouldAlertDryStreak,
+} from '../_lib/scout-freshness';
 
 // Snapshot enrichment is slow (~27s per unique postcode). Allow more time
 // than the default 60s — bumps to Vercel Pro plan cap.
@@ -334,7 +342,12 @@ export const POST = async (request: Request) => {
   // Surface what was found so the Today page knows.
   const highScoreLeads = result.leads.filter((l) => l.leadScore >= 70);
   const strongLeads = result.leads.filter((l) => l.verdict === 'STRONG');
-  const summaryText = `Daily scout cron found ${result.leads.length} leads (${strongLeads.length} STRONG, ${highScoreLeads.length} scored 70+)`;
+  // qualified = cleared the scorer; persisted = actually NEW rows. The gap is
+  // listings we had already sourced, dropped by `skipDuplicates` above. Both
+  // numbers go everywhere from here on — "30 qualified" means nothing to the
+  // founder if all 30 were duplicates.
+  const duplicatesSkipped = Math.max(0, result.leads.length - createdCount);
+  const summaryText = `Daily scout cron found ${result.leads.length} leads (${strongLeads.length} STRONG, ${highScoreLeads.length} scored 70+) — ${createdCount} new, ${duplicatesSkipped} already known`;
 
   // AgentEvent for the run (informational; agent is the system cron itself).
   let eventId: string | undefined;
@@ -352,6 +365,13 @@ export const POST = async (request: Request) => {
           total: result.leads.length,
           strong: strongLeads.length,
           highScore: highScoreLeads.length,
+          // New-lead flow for this run. `total` alone can't answer "when did
+          // new stock dry up?" — a run that re-finds 30 known listings looks
+          // identical to one that finds 30 fresh ones. Persisting both makes
+          // the drought trendable, and lets the dry-streak check below read
+          // its own history back off this log instead of new state.
+          persisted: createdCount,
+          duplicatesSkipped,
           gdprFieldsStripped: result.gdprStripped.length,
           // Contact-enrichment health for this run — tier split + hit-rate.
           // Persisted per run so a falling hit-rate (the early sign that an
@@ -393,21 +413,35 @@ export const POST = async (request: Request) => {
       // run. The card's lead list is rendered live, so yesterday's copy of
       // the same card is pure noise; a stack of eight of them was the
       // founder's top Action Centre complaint.
+      // Nothing new to review is not a "high priority" card no matter how
+      // strong the (already-triaged) leads are — the founder has seen them.
       const reviewPriority =
-        highScoreLeads.length >= 5 || strongLeads.length > 0
-          ? 'high'
-          : highScoreLeads.length > 0
-            ? 'medium'
-            : 'low';
+        createdCount === 0
+          ? 'low'
+          : highScoreLeads.length >= 5 || strongLeads.length > 0
+            ? 'high'
+            : highScoreLeads.length > 0
+              ? 'medium'
+              : 'low';
+      // Copy leads with NEW, not with the qualified count — see
+      // ../_lib/scout-freshness.ts for why the old wording was misleading.
+      const reviewCopy = buildReviewActionCopy({
+        qualified: result.leads.length,
+        persisted: createdCount,
+        strong: strongLeads.length,
+        highScore: highScoreLeads.length,
+      });
       const reviewData = {
         priority: reviewPriority,
         status: 'pending',
-        title: `Review ${result.leads.length} new qualified lead${result.leads.length === 1 ? '' : 's'}${highScoreLeads.length ? ` (${highScoreLeads.length} scored 70+)` : ''}`,
-        description: `Daily scout run found ${result.leads.length} qualified leads — ${strongLeads.length} STRONG, ${highScoreLeads.length} scored ≥ 70. Open Pipeline → Leads to review each and decide invest / pass / refer to another investor.`,
+        title: reviewCopy.title,
+        description: reviewCopy.description,
         metadata: {
           source: 'cron_scouting',
           assignedToAgent: 'board',
           leadCount: result.leads.length,
+          newLeadCount: createdCount,
+          duplicatesSkipped,
           highScoreCount: highScoreLeads.length,
           strongCount: strongLeads.length,
           runDate: result.runDate.toISOString(),
@@ -524,6 +558,108 @@ export const POST = async (request: Request) => {
         data: { status: 'completed', resolvedAt: new Date() },
       })
       .catch(() => undefined);
+  }
+
+  // ── Surface the "scout is spinning" state ────────────────────────────
+  // A run can qualify 30 leads and persist NONE of them: `skipDuplicates` drops
+  // every listing we already sourced. Nothing about that run looks wrong — the
+  // response says `qualified: 30`, the heartbeat is green, sources are healthy —
+  // yet the founder gets nothing new. That is the state behind "how come the
+  // scout isn't finding any properties?".
+  //
+  // One dry run is NORMAL (the rotation re-scans areas probed days ago), so we
+  // alert on a STREAK instead: DRY_RUN_STREAK_THRESHOLD consecutive dry runs =
+  // a full sweep of every scan area with zero new stock. The streak is read
+  // back off the AgentEvent log written above rather than kept in its own
+  // Setting row — one source of truth, and it stays correct if a run is
+  // replayed or skipped. Same shape as the source-error card: ONE stable
+  // dedupKey, upserted while true, auto-completed the moment it isn't.
+  //
+  // Placed here (with the other founder surfacing, before the heartbeat and
+  // the slow enrichment pass) so a timeout in enrichment can never swallow it.
+  try {
+    const thisRun: ScoutRunStats = {
+      qualified: result.leads.length,
+      persisted: createdCount,
+    };
+    // Prior runs, newest first. Over-fetch a little and filter in JS so events
+    // from any other writer of `leads_created` can't pollute the streak.
+    const priorEvents = await database.agentEvent.findMany({
+      where: {
+        agent: 'system',
+        eventType: 'leads_created',
+        ...(eventId ? { id: { not: eventId } } : {}),
+      },
+      orderBy: { createdAt: 'desc' },
+      take: DRY_RUN_STREAK_THRESHOLD * 2,
+      select: { payload: true },
+    });
+    const priorRuns: ScoutRunStats[] = priorEvents
+      .map((e) => (e.payload ?? {}) as Record<string, unknown>)
+      .filter((p) => p.source === 'cron_scouting')
+      .map((p) =>
+        // Events written before `persisted` existed can't prove a dry run —
+        // score them as a non-dry run so an old log can't fabricate a streak.
+        typeof p.persisted === 'number' && typeof p.total === 'number'
+          ? { qualified: p.total, persisted: p.persisted }
+          : { qualified: 0, persisted: 0 },
+      )
+      .slice(0, DRY_RUN_STREAK_THRESHOLD - 1);
+
+    const dryStreak = countDryStreak([thisRun, ...priorRuns]);
+    const dedupKey = 'scout-no-new-leads';
+
+    if (shouldAlertDryStreak(dryStreak)) {
+      const copy = buildDryStreakActionCopy({
+        streak: dryStreak,
+        qualified: result.leads.length,
+      });
+      const metadata = {
+        source: 'cron_scouting',
+        dryStreak,
+        qualified: result.leads.length,
+        persisted: createdCount,
+        duplicatesSkipped,
+        runDate: result.runDate.toISOString(),
+        link: '/settings/scouting',
+      };
+      await database.founderAction.upsert({
+        where: { dedupKey },
+        create: {
+          type: 'general',
+          priority: 'high',
+          status: 'pending',
+          agent: 'system',
+          agentEventId: eventId,
+          dedupKey,
+          title: copy.title,
+          description: copy.description,
+          metadata,
+        },
+        // Refresh (and reopen) the SAME card each run — never stack one per day.
+        update: {
+          status: 'pending',
+          priority: 'high',
+          agentEventId: eventId,
+          title: copy.title,
+          description: copy.description,
+          resolvedAt: null,
+          resolvedBy: null,
+          metadata,
+        },
+      });
+    } else if (createdCount > 0) {
+      // New stock is flowing again — close the card ourselves so the founder
+      // only ever sees alerts that are currently true. A dry run that hasn't
+      // yet reached the streak threshold deliberately does neither: it must
+      // not raise the alarm, and it must not claim the drought is over.
+      await database.founderAction.updateMany({
+        where: { dedupKey, status: { in: ['pending', 'in_progress'] } },
+        data: { status: 'completed', resolvedAt: new Date() },
+      });
+    }
+  } catch (err) {
+    console.warn('[cron/scouting] dry-run streak check failed', err);
   }
 
   // ── Heartbeat BEFORE the slow enrichment loop ───────────────────────
@@ -645,6 +781,7 @@ export const POST = async (request: Request) => {
     enriched: result.enriched,
     qualified: result.leads.length,
     persisted: createdCount,
+    duplicatesSkipped,
     dealbreakersParked: dealbreakerFlags.size,
     snapshotsEnriched: enrichedCount,
     evalConfigVersion,
