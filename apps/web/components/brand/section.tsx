@@ -8,11 +8,14 @@ import { cn } from '@repo/design-system/lib/utils';
 type Bg = 'porcelain' | 'white' | 'sand' | 'brick';
 type Width = '3xl' | '4xl' | '5xl' | '6xl';
 
+// Kept grounds. Prop keys kept stable so existing call sites don't break;
+// values remapped to Kept tokens (KEPT.md): cream page ground, soft tinted
+// sections, forest dark band. `brick` is now the forest ink ground.
 const BG: Record<Bg, string> = {
-  porcelain: 'bg-[#FBF8F5] text-[#2B2220]',
-  white: 'bg-white text-[#2B2220]',
-  sand: 'bg-[#F6ECE7] text-[#2B2220]',
-  brick: 'bg-brand-deep text-white',
+  porcelain: 'bg-cream text-forest',
+  white: 'bg-card text-forest',
+  sand: 'bg-soft text-forest',
+  brick: 'bg-forest text-white',
 };
 
 const MAX: Record<Width, string> = {
@@ -46,7 +49,7 @@ export function Section({
       className={cn(
         'px-6 py-24 md:px-12 md:py-28',
         BG[bg],
-        divider && 'border-y border-[#EBE1DB]/70',
+        divider && 'border-y border-hair/70',
         className,
       )}
     >
