@@ -48,10 +48,6 @@ export const WHATS_NEW: WhatsNewEntry[] = [
         emoji: '🎯',
         text: 'The calibration page now suggests scorer tweaks with one-click Apply. The more you talk, the sharper it gets.',
       },
-      {
-        emoji: '💸',
-        text: 'Bonus: leads that already went SSTC are caught before they waste credits.',
-      },
     ],
     cta: { label: 'See your Taste Profile', href: '/leads/calibration' },
   },

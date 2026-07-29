@@ -108,8 +108,6 @@ export {
 } from './scorer-config';
 export { sanitisePayload, auditProtectedFields } from './rbac';
 export { enrichRationaleWithLlm } from './rationale-llm';
-export { checkListingLiveness, classifyListingHtml } from './listing-status';
-export type { ListingCheck, ListingLiveness } from './listing-status';
 export { dedupeDealbreakerRules, screenDealbreakers } from './dealbreakers';
 export type { DealbreakerCandidate, DealbreakerHit } from './dealbreakers';
 export {
