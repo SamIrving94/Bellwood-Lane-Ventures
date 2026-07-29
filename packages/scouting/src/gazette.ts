@@ -21,6 +21,20 @@
  * unparseable facet reaching the search backend), and it is wrong regardless
  * of what the server does with it.
  *
+ * !! NOT YET CONFIRMED AGAINST THE LIVE SERVER. This rewrite was derived from
+ * the published contract and is covered end-to-end by fixtures, but the
+ * session that wrote it had no outbound network (the egress proxy 403s every
+ * CONNECT, control hosts included), so nobody has watched the real endpoint
+ * accept these requests. One call settles it:
+ *
+ *   curl -sS -H 'Accept: application/json' \
+ *     'https://www.thegazette.co.uk/wills-and-probate/notice/data.json?noticecode=2903&results-page=1&results-page-size=10'
+ *
+ * A 200 with a populated `entry[]` confirms it. If that 500s too, the outage
+ * is genuinely theirs — and the errors below now name every shape tried and
+ * how each failed, rather than the bare `Gazette list HTTP 500` that hid this
+ * for three days.
+ *
  * The real shapes are:
  *
  *   List:   https://www.thegazette.co.uk/{category}/notice/data.json
