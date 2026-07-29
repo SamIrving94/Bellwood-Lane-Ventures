@@ -38,16 +38,20 @@ export const WHATS_NEW: WhatsNewEntry[] = [
         text: 'Every property found is now ranked before we spend a penny on it. You get the best 30, not a random 30.',
       },
       {
-        emoji: '💸',
-        text: 'Same cost. Ranking uses signals we already paid for — price drops, time on market, discount depth.',
+        emoji: '🆕',
+        text: 'Your daily card now says how many leads are actually NEW. "30 found — 0 NEW" instead of pretending all 30 need review.',
+      },
+      {
+        emoji: '⚖️',
+        text: 'Leads are no longer judged on data we have not bought yet. A missing price history used to quietly sink a good lead.',
       },
       {
         emoji: '🚨',
-        text: 'New alert when a lead source goes dark. It says how many are still live, and exactly which key to set.',
+        text: 'New alert when a lead source goes dark — how many are still live, and exactly which key to set.',
       },
       {
         emoji: '🕳️',
-        text: 'Heads up: 3 of your 4 distress sources are currently off. Open the alert — it lists the fix.',
+        text: 'Heads up: 3 of your 4 distress sources are off right now. Open the alert, it lists the fix.',
       },
     ],
     cta: { label: 'Check your Action Centre', href: '/actions' },
