@@ -23,6 +23,12 @@
  * The golden/"hot probate window" recency bonus has been removed: grant-date
  * recency was an unreliable proxy for motivation.
  *
+ * TWO THRESHOLDS, TWO JOBS. `verdictThresholds` band a COMPLETE score and are
+ * only meaningful once the ROI pillar is real (post-appraisal). The scouting
+ * pipeline's keep/drop decision happens BEFORE that, so it uses its own
+ * `sourcingThreshold` against the normalised `sourcingScore` — see the field
+ * docs below and ScoreBreakdown.sourcingScore in scorer.ts.
+ *
  * Design rules (unchanged): DEFAULT_SCORER_CONFIG is the single source of
  * truth; mergeScorerConfig deep-merges a partial, untrusted override and can
  * never crash the cron — a malformed value falls back to the default.
@@ -87,6 +93,34 @@ export interface ScorerConfig {
 
   /** Total-score thresholds for the verdict bands (evaluated high → low). */
   verdictThresholds: { strong: number; viable: number; thin: number };
+
+  /**
+   * Sourcing gate — the minimum NORMALISED pre-appraisal score (0–100) a lead
+   * must clear to be kept by the scouting pipeline.
+   *
+   * Deliberately NOT one of `verdictThresholds`. Those bands describe a fully
+   * scored lead: post-appraisal all ~95 earnable points are live. At sourcing
+   * the ROI pillar (cap 40) is structurally blank — there is no AVM yet — so
+   * comparing a raw sourcing total against a post-appraisal band gates on
+   * MISSING DATA rather than lead quality. In practice two identical leads
+   * landed either side of the old score-30 cut purely on whether their postcode
+   * happened to have HM Land Registry price-paid data (9 points of equity proxy
+   * vs the 4-point no-comparable stub).
+   *
+   * The gate therefore compares `ScoreBreakdown.sourcingScore` — the total
+   * renormalised onto the points that were actually earnable for that lead.
+   *
+   * 50 is calibrated, not picked: a lead carrying NOTHING but its lead-type
+   * credit and an unknown market normalises to 49 whatever data existed for it
+   * (20 + 4 stub out of 59 achievable = 49; 20 + 9 area-average band out of 70
+   * = 49). So 50 is exactly the line "must be better than a lead we know
+   * nothing about", and it is the point at which the with-comparable and
+   * without-comparable curves cross — i.e. where price-paid availability has
+   * the least influence on the decision. On the synthetic population in
+   * __tests__/sourcing-gate-volume.test.ts it holds volume at ~parity with the
+   * old raw-30 gate, so the appraisal bill does not move.
+   */
+  sourcingThreshold: number;
 }
 
 export const DEFAULT_SCORER_CONFIG: ScorerConfig = {
@@ -165,6 +199,8 @@ export const DEFAULT_SCORER_CONFIG: ScorerConfig = {
   marketTrend: { rising: 10, stable: 6, declining: 3, unknown: 5 },
 
   verdictThresholds: { strong: 70, viable: 50, thin: 30 },
+
+  sourcingThreshold: 50,
 };
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -265,5 +301,10 @@ export function mergeScorerConfig(raw: unknown): ScorerConfig {
       viable: num(vt.viable, d.verdictThresholds.viable),
       thin: num(vt.thin, d.verdictThresholds.thin),
     },
+    // Read defensively like every other field: rows written before the sourcing
+    // gate existed simply have no `sourcingThreshold` key, and must keep merging
+    // to the default rather than producing an undefined gate (which would let
+    // every scored lead through).
+    sourcingThreshold: num(raw.sourcingThreshold, d.sourcingThreshold),
   };
 }

@@ -58,6 +58,29 @@ export interface ScoreBreakdown {
   verdict: Verdict;
   /** True once the ROI pillar reflects a real appraisal (BMV + cash ROI). */
   appraised: boolean;
+  /**
+   * `total` renormalised onto the points that were actually EARNABLE for this
+   * lead, 0–100 — the number the scouting pipeline's keep/drop gate uses.
+   *
+   * Why: at sourcing time the ROI pillar (cap 40) is structurally blank, so
+   * `total` under-reads every unappraised lead by roughly 40 points and the
+   * residual spread is dominated by whether the postcode happened to have
+   * price-paid data (a 9-point equity band) or not (a 4-point stub). Comparing
+   * that against a post-appraisal band gated on missing data, not lead quality.
+   * Dividing by `achievablePoints` removes the blank headroom, so two leads with
+   * identical acquisition signals score the same whatever data was available.
+   *
+   * Once appraised every pillar is live, so this is simply `total` — the raw
+   * score and the verdict bands are the comparable scale from then on.
+   */
+  sourcingScore: number;
+  /**
+   * The denominator behind `sourcingScore`: acquisition cap + the ROI ceiling
+   * that was reachable for this lead + market-trend cap. Risk is excluded on
+   * purpose — it is a signed modifier applied to the numerator, not points a
+   * lead earns, so counting it would penalise every lead with no risk data.
+   */
+  achievablePoints: number;
   marketTrendLabel: string;
   riskFlags: string[];
   factors: ScoreFactor[];
@@ -246,24 +269,39 @@ function scoreAcquisition(
 // Pillar 2 — ROI / deal quality
 // ─────────────────────────────────────────────────────────────────────────
 
-/** Provisional pre-appraisal ROI proxy: estate value vs area average. */
+/**
+ * Provisional pre-appraisal ROI proxy: estate value vs area average.
+ *
+ * Returns the CEILING alongside the points, because the sourcing gate scores a
+ * lead as a proportion of what it could have earned. How much the proxy could
+ * ever have paid depends on which data existed: a lead with an estate value and
+ * an area comparable can reach the top equity band, one with no comparable can
+ * only ever reach the `equityNoComparable` stub, and one with no value at all
+ * can earn nothing. Measuring all three against the full 40-point ROI cap is
+ * exactly the flaw that made the old gate a data-availability lottery.
+ */
 function scoreEquityProxy(
   lead: EnrichedLead,
   pricePaid: PricePaid | null,
   factors: ScoreFactor[],
   config: ScorerConfig,
-): number {
-  if (!lead.estateValuePence) return 0;
+): { points: number; ceiling: number } {
+  if (!lead.estateValuePence) return { points: 0, ceiling: 0 };
+  const cap = config.dimensionCaps.roi;
   const avgAreaPence = pricePaid?.avgPrice ? pricePaid.avgPrice * 100 : null;
   if (!avgAreaPence) {
     add(factors, 'Value present, no area comp (ROI pending appraisal)', config.equityNoComparable, 'roi', 'neutral', true);
-    return config.equityNoComparable;
+    return {
+      points: config.equityNoComparable,
+      ceiling: Math.min(cap, config.equityNoComparable),
+    };
   }
   const ratio = lead.estateValuePence / avgAreaPence;
   const band = pickBand(config.equityBands, ratio);
   const pts = band?.points ?? 1;
   add(factors, `${band?.label ?? 'Equity vs area'} (ROI pending appraisal)`, pts, 'roi', undefined, true);
-  return pts;
+  const bestBand = config.equityBands.reduce((m, b) => Math.max(m, b.points), 0);
+  return { points: pts, ceiling: Math.min(cap, Math.max(pts, bestBand)) };
 }
 
 /**
@@ -437,7 +475,15 @@ function buildRationale(
   return s + '.';
 }
 
-/** Assemble a full breakdown from a set of factors. */
+/**
+ * Assemble a full breakdown from a set of factors.
+ *
+ * `roiCeiling` is the most the ROI pillar could have paid for THIS lead at THIS
+ * stage — the full pillar cap once appraised, or whatever the provisional proxy
+ * could reach pre-appraisal. It only feeds the normalised `sourcingScore`;
+ * `total` and therefore `verdict` are computed exactly as before, so appraised
+ * leads (which the dashboard and downstream crons key off) are untouched.
+ */
 function assemble(
   factors: ScoreFactor[],
   hasCriticalData: boolean,
@@ -445,6 +491,7 @@ function assemble(
   riskFlags: string[],
   appraised: boolean,
   config: ScorerConfig,
+  roiCeiling: number,
 ): ScoreBreakdown {
   const acquisition = Math.min(config.dimensionCaps.acquisition, sumDimension(factors, 'acquisition'));
   const roi = Math.min(config.dimensionCaps.roi, sumDimension(factors, 'roi'));
@@ -454,8 +501,22 @@ function assemble(
   const verdict = verdictFromScore(total, hasCriticalData, config);
   const leadingIndicator = pickLeadingIndicator(factors);
   const rationale = buildRationale(verdict, total, leadingIndicator, factors, appraised);
+
+  // Guard the divisor: a pathological config (every cap zeroed) must degrade to
+  // "score 0", never to NaN/Infinity leaking into the gate.
+  const achievablePoints = Math.max(
+    1,
+    config.dimensionCaps.acquisition +
+      Math.max(0, roiCeiling) +
+      config.dimensionCaps.marketTrend,
+  );
+  const sourcingScore = appraised
+    ? total
+    : Math.max(0, Math.min(100, Math.round((total / achievablePoints) * 100)));
+
   return {
     acquisition, roi, marketTrend, risk, total, verdict, appraised,
+    sourcingScore, achievablePoints,
     marketTrendLabel, riskFlags, factors, leadingIndicator, rationale,
   };
 }
@@ -468,6 +529,11 @@ function assemble(
  * Stage 1 — score a lead at sourcing time from cheap signals: acquisition
  * likelihood + market + risk, with a provisional equity proxy for ROI. The
  * real ROI pillar is folded in later by combineScore once the AVM has run.
+ *
+ * Read `sourcingScore` (not `total`) when deciding whether to KEEP a lead: the
+ * ROI pillar is blank here, so `total` is not on the same scale as the verdict
+ * bands and comparing it to them gates on missing data. `verdict`/`total` stay
+ * as-is for display and for the appraised stage.
  */
 export function scoreLead(
   lead: EnrichedLead,
@@ -480,11 +546,11 @@ export function scoreLead(
   const factors: ScoreFactor[] = [];
 
   scoreAcquisition(lead, signals, factors, config);
-  scoreEquityProxy(lead, pricePaid, factors, config); // provisional ROI
+  const { ceiling: roiCeiling } = scoreEquityProxy(lead, pricePaid, factors, config); // provisional ROI
   const { label: marketTrendLabel } = scoreMarketTrend(hpi, factors, config);
   const { flags: riskFlags } = scoreRisk(signals, factors, config);
 
-  return assemble(factors, hasCriticalData, marketTrendLabel, riskFlags, false, config);
+  return assemble(factors, hasCriticalData, marketTrendLabel, riskFlags, false, config, roiCeiling);
 }
 
 /**
@@ -509,5 +575,8 @@ export function combineScore(
     opts.riskFlags ?? [],
     true,
     config,
+    // Appraised: the whole ROI pillar was reachable, nothing is structurally
+    // blank, so the raw total is already the comparable score.
+    config.dimensionCaps.roi,
   );
 }

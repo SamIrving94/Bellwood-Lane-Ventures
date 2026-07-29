@@ -183,7 +183,10 @@ export const POST = async (request: Request) => {
 
   const result = await runScoutingPipeline({
     limit: 30,
-    minScore: 30,
+    // `minScore: 30` removed: it compared a pre-appraisal total that can never
+    // include the 40-point ROI pillar against a post-appraisal band, so it
+    // gated on whether HMLR had price-paid data. The pipeline now uses
+    // scorerConfig.sourcingThreshold (EvalConfig-tunable, no deploy).
     sourcedPropertyPostcodes,
     scanSeeds,
     scorerConfig,

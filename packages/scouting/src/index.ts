@@ -162,8 +162,22 @@ export interface ScoutingPipelineOptions {
   sinceDate?: string;
   /** Max leads to fetch per run. Default: 50. */
   limit?: number;
-  /** Minimum score to include in output. Default: 30 (THIN+). */
+  /**
+   * LEGACY raw-score floor, applied to `leadScore` (the un-normalised total).
+   * Default 0 = no raw floor; the real keep/drop decision is `sourcingThreshold`
+   * below. Kept because it used to BE the gate: callers that explicitly pass 0
+   * ("catch everything", e.g. the scout-debug route) still get everything, since
+   * an explicit 0 also disables the sourcing gate.
+   *
+   * @deprecated Prefer `sourcingThreshold` / `ScorerConfig.sourcingThreshold`.
+   */
   minScore?: number;
+  /**
+   * Minimum NORMALISED pre-appraisal score (0–100) a lead must clear to be
+   * returned. Defaults to the active `ScorerConfig.sourcingThreshold`, so the
+   * founder can retune the gate from the EvalConfig table without a deploy.
+   */
+  sourcingThreshold?: number;
   /** Whether to include raw payload in output. Default: true. */
   includeRawPayload?: boolean;
   /**
@@ -292,7 +306,7 @@ export async function runScoutingPipeline(
   const {
     sinceDate,
     limit = 50,
-    minScore = 30,
+    minScore = 0,
     includeRawPayload = true,
     sourcedPropertyPostcodes = [],
     scanSeeds = [],
@@ -304,6 +318,16 @@ export async function runScoutingPipeline(
     enrichRationaleLlm = false,
     skipSlowSources = false,
   } = options;
+
+  // ── Sourcing gate ────────────────────────────────────────────────────
+  // The keep/drop decision is made on the NORMALISED pre-appraisal score
+  // (ScoreBreakdown.sourcingScore), not on the raw total against the verdict
+  // bands: pre-appraisal the ROI pillar is blank, so a raw-total gate sorted
+  // leads by whether their postcode had price-paid data rather than by quality.
+  // Explicit `minScore: 0` is honoured as the old "catch everything" switch.
+  const sourcingThreshold =
+    options.sourcingThreshold ??
+    (options.minScore === 0 ? 0 : scorerConfig.sourcingThreshold);
 
   const runDate = new Date();
   const allGdprStripped: string[] = [];
@@ -1002,6 +1026,11 @@ export async function runScoutingPipeline(
             // false at sourcing; the appraisal stage folds in real ROI and
             // flips this true (see combineScore in scorer.ts).
             appraised: breakdown.appraised,
+            // The gate's actual input: `total` renormalised onto the points
+            // this lead could earn. Stamped so the founder can see WHY a
+            // 34/100 lead was kept while another 34/100 lead was not.
+            sourcingScore: breakdown.sourcingScore,
+            achievablePoints: breakdown.achievablePoints,
           },
         };
       }
@@ -1060,13 +1089,24 @@ export async function runScoutingPipeline(
         evalConfigVersion,
       };
 
-      return scoutLead;
+      // sourcingScore rides alongside rather than on ScoutLead: the DB column
+      // set is the persisted contract and this is a gate input, not a stored
+      // field (it is still visible via rawPayload.scoreBreakdown).
+      return { scoutLead, sourcingScore: breakdown.sourcingScore };
     })
   );
 
-  // Step 5 — Filter by minScore, sort strongest first
+  // Step 5 — Apply the sourcing gate, sort strongest first.
+  // Ordering stays on the raw leadScore so the founder's list matches the score
+  // shown in the UI; the gate is the only thing that reads sourcingScore.
   const qualified = scored
-    .filter((l) => l.verdict !== 'INSUFFICIENT_DATA' && l.leadScore >= minScore)
+    .filter(
+      ({ scoutLead, sourcingScore }) =>
+        scoutLead.verdict !== 'INSUFFICIENT_DATA' &&
+        sourcingScore >= sourcingThreshold &&
+        scoutLead.leadScore >= minScore,
+    )
+    .map(({ scoutLead }) => scoutLead)
     .sort((a, b) => b.leadScore - a.leadScore);
 
   const summary = {
