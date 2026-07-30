@@ -63,6 +63,43 @@ import { enrichRationaleWithLlm } from './rationale-llm';
  */
 const CANDIDATE_POOL_CAP = 500;
 
+/**
+ * How many ranked candidates to keep, given a per-run limit.
+ *
+ * A plain `.slice(0, limit)` cuts mid-tie. Production on 30 Jul 2026 logged
+ * `cutoff 35, best dropped 35` — the 30th property kept and the 31st dropped
+ * scored IDENTICALLY, and which one survived came down to source order. That
+ * is the arbitrary cut the ranking was meant to remove, just moved along one
+ * step.
+ *
+ * So the shortlist extends past `limit` while the score is still tied with the
+ * cutoff — but bounded, because ties are exactly where a cap earns its keep:
+ * provisional scores are coarse, so a large cohort can land on a single value,
+ * and enriching an unbounded tie band would blow both the credit and time
+ * budgets. Overflow is capped at half the limit: enough to take a normal tie
+ * whole, small enough that the worst case is a predictable 1.5x spend.
+ *
+ * `scores` must be sorted descending. Exported so the pipeline and its tests
+ * share one implementation rather than two that can drift.
+ */
+export function shortlistCutoff(
+  scores: readonly number[],
+  limit: number,
+): { keepCount: number; tiesKept: number } {
+  const base = Math.min(limit, scores.length);
+  const cutoffScore = scores[limit - 1];
+  let keepCount = base;
+
+  if (cutoffScore !== undefined) {
+    const hardMax = Math.min(scores.length, limit + Math.ceil(limit / 2));
+    while (keepCount < hardMax && scores[keepCount] === cutoffScore) {
+      keepCount++;
+    }
+  }
+
+  return { keepCount, tiesKept: keepCount - base };
+}
+
 /** Return the most-frequent value in an array (first wins on tie). */
 function mostCommon<T extends string>(items: T[]): T | null {
   if (items.length === 0) return null;
@@ -301,6 +338,12 @@ export interface ScoutingPipelineResult {
     afterDedupe: number;
     /** Candidates dropped by the cap — ranked out, never enriched. */
     droppedByCap: number;
+    /**
+     * Extra candidates kept because they tied with the cutoff score. Cutting
+     * mid-tie is arbitrary, so the shortlist extends past `limit` (bounded)
+     * while the score is unchanged.
+     */
+    tiesKept: number;
     postcodesScanned: number;
   };
   /** Per-source errors (truncated) for diagnostic surfacing. */
@@ -976,8 +1019,19 @@ export async function runScoutingPipeline(
     // Stable sort: equal-scoring candidates keep their original source order.
     .sort((a, b) => b.provisionalScore - a.provisionalScore);
 
-  const rawGrants = ranked.slice(0, limit).map((r) => r.grant);
+  // Keep ties at the cutoff rather than cutting mid-tie — see shortlistCutoff.
+  const { keepCount, tiesKept } = shortlistCutoff(
+    ranked.map((r) => r.provisionalScore),
+    limit,
+  );
+  const cutoffScore = ranked[limit - 1]?.provisionalScore;
+
+  const rawGrants = ranked.slice(0, keepCount).map((r) => r.grant);
   const droppedByCap = ranked.length - rawGrants.length;
+  // True when the tie band itself was cut — the overflow cap bit, so the
+  // arbitrary-cut problem is still present, just further down. Worth saying.
+  const tieBandTruncated =
+    droppedByCap > 0 && ranked[keepCount]?.provisionalScore === cutoffScore;
 
   if (droppedByCap > 0) {
     // Never let a cap truncate silently — a run that discards most of what it
@@ -985,7 +1039,7 @@ export async function runScoutingPipeline(
     const cutoff = ranked[rawGrants.length - 1]?.provisionalScore ?? 0;
     const bestDropped = ranked[rawGrants.length]?.provisionalScore ?? 0;
     console.info(
-      `[scouting] shortlist: kept ${rawGrants.length}/${ranked.length} by provisional score (cutoff ${cutoff}, best dropped ${bestDropped}); ${droppedByCap} not enriched`,
+      `[scouting] shortlist: kept ${rawGrants.length}/${ranked.length} by provisional score (cutoff ${cutoff}, best dropped ${bestDropped}, ties kept ${tiesKept}${tieBandTruncated ? ', TIE BAND TRUNCATED at overflow cap' : ''}); ${droppedByCap} not enriched`,
     );
   }
 
@@ -1285,6 +1339,7 @@ export async function runScoutingPipeline(
       candidatePool: candidates.length,
       afterDedupe: rawGrants.length,
       droppedByCap,
+      tiesKept,
       postcodesScanned: allSeeds.length,
     },
     sourceErrors,

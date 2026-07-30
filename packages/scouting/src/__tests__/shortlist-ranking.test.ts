@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { baseFromProbateLead } from '../enrichment';
+import { shortlistCutoff } from '../index';
 import type { ProbateLead } from '../probate-data';
 import { scoreLead } from '../scorer';
 import { DEFAULT_SCORER_CONFIG } from '../scorer-config';
@@ -124,5 +125,60 @@ describe('provisional shortlist ranking', () => {
     );
     expect(breakdown.appraised).toBe(false);
     expect(Number.isFinite(breakdown.total)).toBe(true);
+  });
+});
+
+/**
+ * Shortlist tie handling.
+ *
+ * Ranking removed the arbitrary cut... almost. A plain `.slice(0, limit)`
+ * still cuts mid-tie: production on 30 Jul logged `cutoff 35, best dropped 35`
+ * — the 30th property kept and the 31st dropped scored IDENTICALLY, and which
+ * one survived came down to source order.
+ *
+ * The shortlist therefore extends past `limit` while the score is still tied
+ * with the cutoff, bounded at half the limit so a large tie cohort cannot blow
+ * the enrichment budget. These pin both halves of that: ties come along, and
+ * the overflow stays capped.
+ */
+/** Thin adapter over the real implementation — no duplicated logic here. */
+function shortlist(scores: number[], limit: number) {
+  const sorted = [...scores].sort((a, b) => b - a);
+  const { keepCount, tiesKept } = shortlistCutoff(sorted, limit);
+  return { kept: keepCount, tiesKept };
+}
+
+describe('shortlist tie handling', () => {
+  it('keeps candidates tied with the cutoff instead of cutting mid-tie', () => {
+    // 4 above the line, then five leads all on 35 straddling limit=6.
+    const scores = [90, 80, 70, 60, 35, 35, 35, 35, 35, 10];
+    const { kept, tiesKept } = shortlist(scores, 6);
+    expect(kept).toBe(9); // all five 35s come along
+    expect(tiesKept).toBe(3);
+  });
+
+  it('caps the tie overflow at half the limit', () => {
+    // 50 leads all tied on 35 — without a bound this would enrich everything.
+    const scores = Array.from({ length: 50 }, () => 35);
+    const { kept } = shortlist(scores, 10);
+    expect(kept).toBe(15); // limit 10 + ceil(10/2)
+  });
+
+  it('is a plain cut when there is no tie at the boundary', () => {
+    const scores = [90, 80, 70, 60, 50, 40, 30, 20];
+    const { kept, tiesKept } = shortlist(scores, 5);
+    expect(kept).toBe(5);
+    expect(tiesKept).toBe(0);
+  });
+
+  it('keeps everything when the pool is smaller than the limit', () => {
+    const { kept, tiesKept } = shortlist([50, 40, 30], 10);
+    expect(kept).toBe(3);
+    expect(tiesKept).toBe(0);
+  });
+
+  it('handles an entirely tied pool below the limit', () => {
+    const { kept } = shortlist([35, 35, 35], 10);
+    expect(kept).toBe(3);
   });
 });
