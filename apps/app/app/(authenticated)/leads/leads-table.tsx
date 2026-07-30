@@ -323,16 +323,19 @@ export function LeadsTable({ leads, initialFilter }: Props) {
               <p className="font-medium text-foreground">
                 No new leads waiting.
               </p>
+              {/* The scout is a 7am cron — there is no run-now control, so
+                  don't send the founder looking for a button that isn't
+                  there. Point at the one thing they CAN change instead. */}
               <p className="mt-1 text-muted-foreground text-sm">
-                Everything sourced so far has already been triaged. Run a
-                fresh scout from{' '}
+                Everything sourced so far has already been triaged. The scout
+                runs each morning — widen your target areas in{' '}
                 <a
                   href="/settings/scouting"
                   className="font-medium text-primary hover:underline"
                 >
                   Settings → Scouting
-                </a>
-                .
+                </a>{' '}
+                to bring in more.
               </p>
             </>
           ) : activeFilter === 'shortlist' ? (
