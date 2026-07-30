@@ -24,10 +24,25 @@ const LeadsPage = async ({
 
   const { filter } = await searchParams;
 
-  const leads = await database.scoutLead.findMany({
-    orderBy: [{ leadScore: 'desc' }, { createdAt: 'desc' }],
-    take: 200,
-  });
+  // Fetch cap. This was 200, ordered by score DESC — so once the table grew
+  // past 200 rows, every NEW low-scoring lead was cut off before it reached
+  // the page and could never be triaged, no matter which filter was selected.
+  // The scout adds ~24/day, so that ceiling was days away from biting.
+  //
+  // Filtering, counts and optimistic triage all run client-side over this set,
+  // so it has to be one query rather than a filtered page. 1000 rows of lead
+  // metadata is a few hundred KB and the table pages the DOM at 50 cards, so
+  // the cost is payload, not render. `totalCount` goes alongside it: if the
+  // cap ever does bite, the founder is told rather than shown a silent slice.
+  const LEADS_FETCH_CAP = 1000;
+
+  const [leads, totalCount] = await Promise.all([
+    database.scoutLead.findMany({
+      orderBy: [{ leadScore: 'desc' }, { createdAt: 'desc' }],
+      take: LEADS_FETCH_CAP,
+    }),
+    database.scoutLead.count(),
+  ]);
 
   return (
     <>
@@ -140,6 +155,7 @@ const LeadsPage = async ({
             };
           })}
           initialFilter={filter ?? 'new'}
+          totalCount={totalCount}
         />
       </div>
     </>
