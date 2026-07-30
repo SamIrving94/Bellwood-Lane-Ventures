@@ -260,3 +260,137 @@ describe('fetchCompaniesHouseDistressLeads — visibility contract', () => {
     ).rejects.toThrow(/502/);
   });
 });
+
+/**
+ * Candidate discovery — location-scoped search with a nationwide fallback.
+ *
+ * The original implementation asked for 200 active property companies from
+ * anywhere in the UK and then kept the ones registered in the ~6 districts we
+ * were scanning. Against ~1.7m active companies that is a lottery, and it lost
+ * it: production logged `candidates=0 scanned=0 leads=0` for weeks with a
+ * perfectly valid API key — no error, no alert, no leads.
+ *
+ * The fix asks Companies House to filter by registered-office location. That
+ * parameter could not be verified against the live API (no egress), so these
+ * tests pin the safety property rather than the happy path: the new query can
+ * never leave the source worse off than the nationwide sweep it replaces.
+ */
+describe('fetchCompaniesHouseDistressLeads — candidate discovery', () => {
+  const okJson = (body: unknown) =>
+    ({ ok: true, status: 200, json: async () => body }) as unknown as Response;
+
+  it('scopes the search by registered-office location when districts are given', async () => {
+    vi.stubEnv('COMPANIES_HOUSE_API_KEY', 'test-key');
+    const fetchMock = vi.fn(async (url: string) =>
+      okJson(
+        url.includes('/advanced-search/companies')
+          ? fixtures.advancedSearch
+          : url.includes('/charges')
+            ? fixtures.charges
+            : fixtures.filingHistory
+      )
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    await fetchCompaniesHouseDistressLeads({
+      districts: ['M14', 'SK4'],
+      asOf: ASOF,
+    });
+
+    const searchUrl = (fetchMock.mock.calls[0] as unknown as [string])[0];
+    expect(searchUrl).toContain('/advanced-search/companies');
+    // URLSearchParams form-encodes the separator, so the space is a '+'.
+    expect(searchUrl).toContain('location=M14+SK4');
+  });
+
+  it('falls back to the nationwide sweep when the scoped search returns nothing', async () => {
+    // The failure mode that matters: `location` is unverified, so it may
+    // simply match nothing. An empty result must NOT be accepted as "no
+    // distress today" — it must retry the query we know behaves.
+    vi.stubEnv('COMPANIES_HOUSE_API_KEY', 'test-key');
+    let searchCalls = 0;
+    const fetchMock = vi.fn(async (url: string) => {
+      if (url.includes('/advanced-search/companies')) {
+        searchCalls++;
+        // First (scoped) call: no items. Second (nationwide): the fixture.
+        return okJson(searchCalls === 1 ? { items: [] } : fixtures.advancedSearch);
+      }
+      return okJson(
+        url.includes('/charges') ? fixtures.charges : fixtures.filingHistory
+      );
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const result = await fetchCompaniesHouseDistressLeads({
+      districts: ['M14'],
+      asOf: ASOF,
+    });
+
+    expect(searchCalls).toBe(2);
+    expect(result.scanned).toBe(1);
+    expect(result.leads.length).toBeGreaterThan(0);
+  });
+
+  it('falls back to the nationwide sweep when the scoped search errors', async () => {
+    // An unverified parameter can also be rejected outright (this is exactly
+    // how `noticetype` took The Gazette down). A 400 must not kill the source.
+    vi.stubEnv('COMPANIES_HOUSE_API_KEY', 'test-key');
+    let searchCalls = 0;
+    const fetchMock = vi.fn(async (url: string) => {
+      if (url.includes('/advanced-search/companies')) {
+        searchCalls++;
+        if (searchCalls === 1) {
+          return { ok: false, status: 400 } as unknown as Response;
+        }
+        return okJson(fixtures.advancedSearch);
+      }
+      return okJson(
+        url.includes('/charges') ? fixtures.charges : fixtures.filingHistory
+      );
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const result = await fetchCompaniesHouseDistressLeads({
+      districts: ['M14'],
+      asOf: ASOF,
+    });
+
+    expect(searchCalls).toBe(2);
+    expect(result.leads.length).toBeGreaterThan(0);
+  });
+
+  it('still THROWS when both the scoped and nationwide searches fail', async () => {
+    // The visibility contract is load-bearing and unchanged: a genuinely dead
+    // search must reach sourceErrors.chDistress, never a silent zero.
+    vi.stubEnv('COMPANIES_HOUSE_API_KEY', 'test-key');
+    const fetchMock = vi.fn(
+      async () => ({ ok: false, status: 503 }) as unknown as Response
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(
+      fetchCompaniesHouseDistressLeads({ districts: ['M14'], asOf: ASOF })
+    ).rejects.toThrow(/503/);
+  });
+
+  it('skips the scoped search entirely when no districts are configured', async () => {
+    // Nothing to scope by — going straight to the nationwide query avoids
+    // spending a request on a query that cannot narrow anything.
+    vi.stubEnv('COMPANIES_HOUSE_API_KEY', 'test-key');
+    const fetchMock = vi.fn(async (url: string) =>
+      okJson(
+        url.includes('/advanced-search/companies')
+          ? fixtures.advancedSearch
+          : url.includes('/charges')
+            ? fixtures.charges
+            : fixtures.filingHistory
+      )
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    await fetchCompaniesHouseDistressLeads({ districts: [], asOf: ASOF });
+
+    const searchUrl = (fetchMock.mock.calls[0] as unknown as [string])[0];
+    expect(searchUrl).not.toContain('location=');
+  });
+});

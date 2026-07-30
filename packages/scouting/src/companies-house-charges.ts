@@ -492,20 +492,68 @@ export async function fetchCompaniesHouseDistressLeads(
   const asOf = options.asOf ?? new Date();
   const cutoffMs = asOf.getTime() - sinceHours * 3_600_000;
 
-  // ---- 1. Candidate discovery (1 request) ----
-  // NOT wrapped: a search failure (or missing key, thrown inside chGet)
-  // must reject so the pipeline surfaces it — never a silent zero-lead run.
-  const searchJson = await chGet('/advanced-search/companies', {
-    sic_codes: CH_DISTRESS_SIC_CODES.join(','),
-    company_status: 'active',
-    // Over-fetch so the district filter still leaves ~maxCandidates.
-    size: 200,
-  });
-  const candidates = parseAdvancedSearchCandidates(
-    searchJson,
-    districts,
-    maxCandidates,
-  );
+  // ---- 1. Candidate discovery ----
+  //
+  // This used to be a single nationwide search filtered down to our districts
+  // in JS: ask for 200 active property companies from anywhere in the UK, then
+  // keep the ones registered in the ~6 postcode districts we happen to be
+  // scanning. Against ~1.7m active UK companies that is a needle in a
+  // haystack, and it behaved exactly as the arithmetic predicts — production
+  // logged `candidates=0 scanned=0 leads=0` with a perfectly healthy API key.
+  // No error, no alert, no leads: the worst kind of failure.
+  //
+  // Companies House advanced search can filter by registered-office location
+  // server-side, which is the query we actually want. But this parameter could
+  // NOT be verified against the live API from the environment this was written
+  // in, and shipping an unverified query parameter is precisely what took The
+  // Gazette offline for three days.
+  //
+  // So it is belt-and-braces: try the location-scoped search first, and fall
+  // back to the old nationwide sweep if it errors OR returns nothing. The
+  // fallback means this change can never leave us worse off than the broken
+  // behaviour it replaces — the floor is "what we already had".
+  let candidates: ChCandidateCompany[] = [];
+  let discovery: 'location-scoped' | 'nationwide-filtered' =
+    'nationwide-filtered';
+
+  if (districts.length > 0) {
+    try {
+      const scoped = await chGet('/advanced-search/companies', {
+        sic_codes: CH_DISTRESS_SIC_CODES.join(','),
+        company_status: 'active',
+        location: districts.join(' '),
+        size: 200,
+      });
+      // Still district-filter the result: `location` is a text match against
+      // the registered office, so it can return neighbours we do not want.
+      candidates = parseAdvancedSearchCandidates(
+        scoped,
+        districts,
+        maxCandidates,
+      );
+      if (candidates.length > 0) discovery = 'location-scoped';
+    } catch (err) {
+      console.warn(
+        `[scouting/ch-distress] location-scoped search failed, falling back to nationwide: ${(err as Error)?.message ?? String(err)}`,
+      );
+    }
+  }
+
+  if (candidates.length === 0) {
+    // NOT wrapped: a search failure (or missing key, thrown inside chGet)
+    // must reject so the pipeline surfaces it — never a silent zero-lead run.
+    const searchJson = await chGet('/advanced-search/companies', {
+      sic_codes: CH_DISTRESS_SIC_CODES.join(','),
+      company_status: 'active',
+      // Over-fetch so the district filter still leaves ~maxCandidates.
+      size: 200,
+    });
+    candidates = parseAdvancedSearchCandidates(
+      searchJson,
+      districts,
+      maxCandidates,
+    );
+  }
 
   // ---- 2. Per-company polling (2 requests each, serial) ----
   const leads: ChDistressRawLead[] = [];
@@ -545,8 +593,11 @@ export async function fetchCompaniesHouseDistressLeads(
     }
   }
 
+  // Log the discovery path and the districts searched, not just the counts.
+  // `candidates=0 scanned=0 leads=0` was true for weeks and told nobody
+  // anything — a zero has to say WHICH query produced it and over what.
   console.info(
-    `[scouting/ch-distress] candidates=${candidates.length} scanned=${scanned} leads=${leads.length}`,
+    `[scouting/ch-distress] discovery=${discovery} districts=${districts.length ? districts.join(',') : 'none'} candidates=${candidates.length} scanned=${scanned} leads=${leads.length}`,
   );
   return { leads, scanned, error: firstError };
 }
