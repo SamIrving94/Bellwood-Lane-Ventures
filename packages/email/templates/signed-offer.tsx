@@ -33,25 +33,25 @@ export const SignedOfferEmail = ({
     <Html>
       <Head />
       <Preview>Signed binding offer for {propertyAddress}</Preview>
-      <Body className="bg-zinc-50 font-sans">
+      <Body className="bg-[#f7f3ea] font-sans">
         <Container className="mx-auto py-12">
           <Section className="rounded-md bg-white p-8">
-            <Heading className="mt-0 mb-4 font-semibold text-xl text-zinc-900">
+            <Heading className="mt-0 mb-4 font-semibold text-[#1f332b] text-xl">
               {agentFirstName ? `Hi ${agentFirstName},` : 'Hello,'}
             </Heading>
 
-            <Text className="text-zinc-700">
+            <Text className="text-[#4c5a50]">
               Attached is our signed binding offer for {propertyAddress} at{' '}
               {offerFormatted}.
             </Text>
 
-            <Text className="text-zinc-700">
+            <Text className="text-[#4c5a50]">
               Walk-away cover of £1,000 applies if anything changes our side
               after acceptance. Subject only to the carve-outs in the letter,
               this is firm cash, no chain, no finance condition.
             </Text>
 
-            <Text className="text-zinc-700">
+            <Text className="text-[#4c5a50]">
               Reply if anything needs adjusting and we will respond before the
               next working day.
             </Text>
@@ -59,7 +59,7 @@ export const SignedOfferEmail = ({
             <Section className="my-6">
               <Link
                 href={signedOfferUrl}
-                className="rounded-md bg-amber-600 px-5 py-3 font-medium text-white"
+                className="rounded-full bg-[#2e7d5b] px-5 py-3 font-medium text-white"
               >
                 Open signed PDF
               </Link>
@@ -67,7 +67,7 @@ export const SignedOfferEmail = ({
 
             <Hr className="my-6" />
 
-            <Text className="text-sm text-zinc-500">
+            <Text className="text-[#4c5a50] text-sm">
               Sam — Bellwood Ventures
             </Text>
           </Section>

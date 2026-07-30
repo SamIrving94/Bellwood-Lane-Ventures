@@ -28,6 +28,8 @@ export type BrandPhase =
 export type BrandIdentity = {
   /** Human name used in prose and titles. */
   name: string;
+  /** Bare short form used mid-sentence (e.g. "instructed by Bellwood"). */
+  shortName: string;
   /** The typeset mark (lowercase; the full stop is the logo). */
   mark: string;
   /** Registered/trading entity for legal copy and documents. */
@@ -46,6 +48,7 @@ export type BrandIdentity = {
  */
 export const KEPT: BrandIdentity = {
   name: 'Kept',
+  shortName: 'Kept',
   mark: 'kept.',
   legalName: 'Kept',
   domain: 'wearekept.co.uk',
@@ -65,6 +68,7 @@ export const KEPT: BrandIdentity = {
  */
 export const BELLWOODS: BrandIdentity = {
   name: 'Bellwoods Lane',
+  shortName: 'Bellwood',
   mark: 'Bellwoods Lane',
   legalName: 'Bellwood Lane Ventures Ltd',
   domain: 'bellwoodslane.co.uk',
@@ -104,7 +108,12 @@ function resolve(phase: BrandPhase): ActiveBrand {
         former: BELLWOODS.name,
       };
     default:
-      return { ...BELLWOODS, phase: 'legacy', displayName: BELLWOODS.name, former: null };
+      return {
+        ...BELLWOODS,
+        phase: 'legacy',
+        displayName: BELLWOODS.name,
+        former: null,
+      };
   }
 }
 
