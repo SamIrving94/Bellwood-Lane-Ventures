@@ -29,18 +29,18 @@ export default function SellerDisclosurePage() {
         </a>
       </div>
 
-      <header className="border-b-2 border-[#DB5C5C] pb-6">
-        <p className="font-serif text-xl font-semibold tracking-tight">
+      <header className="border-wax border-b-2 pb-6">
+        <p className="font-semibold font-serif text-xl tracking-tight">
           BELLWOODS
-          <span className="mx-2 inline-block h-px w-8 bg-[#DB5C5C] align-middle" />
-          <span className="text-sm font-normal tracking-widest text-stone-500">
+          <span className="mx-2 inline-block h-px w-8 bg-wax align-middle" />
+          <span className="font-normal text-sm text-stone-500 tracking-widest">
             LANE
           </span>
         </p>
-        <p className="mt-4 text-xs uppercase tracking-widest text-[#DB5C5C]">
+        <p className="mt-4 text-leaf text-xs uppercase tracking-widest">
           Seller disclosure form
         </p>
-        <h1 className="mt-2 font-serif text-3xl font-semibold leading-tight">
+        <h1 className="mt-2 font-semibold font-serif text-3xl leading-tight">
           Cash offer disclosure &amp; acknowledgement
         </h1>
         <p className="mt-3 text-sm text-stone-600">
@@ -52,7 +52,7 @@ export default function SellerDisclosurePage() {
 
       {/* Property + parties */}
       <section className="mt-8">
-        <h2 className="mb-3 font-serif text-lg font-semibold">
+        <h2 className="mb-3 font-semibold font-serif text-lg">
           Property and parties
         </h2>
         <div className="grid grid-cols-2 gap-3 text-sm">
@@ -63,7 +63,7 @@ export default function SellerDisclosurePage() {
             ['Referring agent contact', ''],
           ].map(([label]) => (
             <label key={label as string} className="block">
-              <span className="text-xs uppercase tracking-widest text-stone-500">
+              <span className="text-stone-500 text-xs uppercase tracking-widest">
                 {label}
               </span>
               <input
@@ -76,13 +76,13 @@ export default function SellerDisclosurePage() {
       </section>
 
       {/* Offer */}
-      <section className="mt-8 rounded-xl border-2 border-[#DB5C5C] bg-[#F6ECE7] p-6">
-        <h2 className="mb-3 font-serif text-lg font-semibold">
+      <section className="mt-8 rounded-xl border-2 border-wax bg-soft p-6">
+        <h2 className="mb-3 font-semibold font-serif text-lg">
           Bellwoods Lane cash offer
         </h2>
         <div className="grid grid-cols-2 gap-3 text-sm">
           <label className="block">
-            <span className="text-xs uppercase tracking-widest text-stone-500">
+            <span className="text-stone-500 text-xs uppercase tracking-widest">
               Offer (£, all-in)
             </span>
             <input
@@ -91,7 +91,7 @@ export default function SellerDisclosurePage() {
             />
           </label>
           <label className="block">
-            <span className="text-xs uppercase tracking-widest text-stone-500">
+            <span className="text-stone-500 text-xs uppercase tracking-widest">
               Offer as % of open-market value
             </span>
             <input
@@ -100,7 +100,7 @@ export default function SellerDisclosurePage() {
             />
           </label>
           <label className="block">
-            <span className="text-xs uppercase tracking-widest text-stone-500">
+            <span className="text-stone-500 text-xs uppercase tracking-widest">
               Target completion date
             </span>
             <input
@@ -109,7 +109,7 @@ export default function SellerDisclosurePage() {
             />
           </label>
           <label className="block">
-            <span className="text-xs uppercase tracking-widest text-stone-500">
+            <span className="text-stone-500 text-xs uppercase tracking-widest">
               Offer valid until
             </span>
             <input
@@ -122,17 +122,18 @@ export default function SellerDisclosurePage() {
 
       {/* Referral fee disclosure */}
       <section className="mt-8">
-        <h2 className="mb-3 font-serif text-lg font-semibold">
+        <h2 className="mb-3 font-semibold font-serif text-lg">
           Referral fee disclosure
         </h2>
         <p className="text-sm text-stone-700">
           Your estate agent will receive a referral fee if this sale completes
           with Bellwoods Lane. The amount is stated below. This fee is paid by
-          Bellwoods Lane and is separate from any standard estate agency commission.
+          Bellwoods Lane and is separate from any standard estate agency
+          commission.
         </p>
         <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
           <label className="block">
-            <span className="text-xs uppercase tracking-widest text-stone-500">
+            <span className="text-stone-500 text-xs uppercase tracking-widest">
               Referral fee (% of purchase price)
             </span>
             <input
@@ -141,7 +142,7 @@ export default function SellerDisclosurePage() {
             />
           </label>
           <label className="block">
-            <span className="text-xs uppercase tracking-widest text-stone-500">
+            <span className="text-stone-500 text-xs uppercase tracking-widest">
               Sale fee paid to agent (% of purchase price)
             </span>
             <input
@@ -154,7 +155,7 @@ export default function SellerDisclosurePage() {
 
       {/* Key acknowledgements */}
       <section className="mt-8">
-        <h2 className="mb-3 font-serif text-lg font-semibold">
+        <h2 className="mb-3 font-semibold font-serif text-lg">
           Acknowledgements (initial each)
         </h2>
         <ol className="space-y-3 text-sm">
@@ -167,7 +168,10 @@ export default function SellerDisclosurePage() {
             'I understand Bellwoods Lane will only adjust the offer if a survey reveals material issues previously undisclosed — and I have 48 hours to withdraw free of charge in that scenario.',
             'I have not been pressured and have had reasonable time to consider this decision.',
           ].map((t, i) => (
-            <li key={i} className="flex items-start gap-3 rounded-lg bg-white p-4">
+            <li
+              key={i}
+              className="flex items-start gap-3 rounded-lg bg-white p-4"
+            >
               <input
                 type="text"
                 maxLength={3}
@@ -182,17 +186,17 @@ export default function SellerDisclosurePage() {
 
       {/* Vulnerable seller declaration */}
       <section className="mt-8 rounded-xl bg-stone-50 p-6">
-        <h2 className="mb-3 font-serif text-lg font-semibold">
+        <h2 className="mb-3 font-semibold font-serif text-lg">
           Vulnerability declaration
         </h2>
         <p className="text-sm text-stone-700">
-          In line with the Digital Markets, Competition and Consumers Act
-          2024, Bellwoods Lane operates additional safeguards where a seller may be
-          in a vulnerable position (recent bereavement, financial distress,
-          health-related, language barrier, elderly). If you wish to
-          indicate that you are in a vulnerable position, please tick below
-          — this will not affect your offer, but may slow the process to
-          ensure you have appropriate time and support.
+          In line with the Digital Markets, Competition and Consumers Act 2024,
+          Bellwoods Lane operates additional safeguards where a seller may be in
+          a vulnerable position (recent bereavement, financial distress,
+          health-related, language barrier, elderly). If you wish to indicate
+          that you are in a vulnerable position, please tick below — this will
+          not affect your offer, but may slow the process to ensure you have
+          appropriate time and support.
         </p>
         <label className="mt-4 flex items-start gap-3 text-sm">
           <input type="checkbox" className="mt-1 h-4 w-4" />
@@ -206,10 +210,10 @@ export default function SellerDisclosurePage() {
       {/* Signatures */}
       <section className="mt-10 grid grid-cols-2 gap-6">
         <div>
-          <p className="text-xs uppercase tracking-widest text-stone-500">
+          <p className="text-stone-500 text-xs uppercase tracking-widest">
             Seller signature
           </p>
-          <div className="mt-1 h-16 border-b-2 border-stone-400" />
+          <div className="mt-1 h-16 border-stone-400 border-b-2" />
           <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
             <label className="block">
               <span className="text-stone-500">Name</span>
@@ -228,10 +232,10 @@ export default function SellerDisclosurePage() {
           </div>
         </div>
         <div>
-          <p className="text-xs uppercase tracking-widest text-stone-500">
+          <p className="text-stone-500 text-xs uppercase tracking-widest">
             Witness (estate agent)
           </p>
-          <div className="mt-1 h-16 border-b-2 border-stone-400" />
+          <div className="mt-1 h-16 border-stone-400 border-b-2" />
           <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
             <label className="block">
               <span className="text-stone-500">Name</span>
@@ -251,10 +255,10 @@ export default function SellerDisclosurePage() {
         </div>
       </section>
 
-      <footer className="mt-12 border-t border-stone-200 pt-6 text-xs text-stone-500">
-        Bellwoods Lane Ltd · Property Redress Scheme (PRS) · HMRC AML
-        supervised · ICO registered · Disclosure compliant with CPR 2008,
-        DMCC Act 2025, NTSELAT referral-fee guidance.
+      <footer className="mt-12 border-stone-200 border-t pt-6 text-stone-500 text-xs">
+        Bellwoods Lane Ltd · Property Redress Scheme (PRS) · HMRC AML supervised
+        · ICO registered · Disclosure compliant with CPR 2008, DMCC Act 2025,
+        NTSELAT referral-fee guidance.
       </footer>
     </div>
   );

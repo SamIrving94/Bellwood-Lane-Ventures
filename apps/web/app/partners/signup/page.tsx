@@ -7,24 +7,24 @@ export default function SignupPage() {
       <div className="text-center">
         <Link
           href="/instant-offer"
-          className="font-serif text-xl font-semibold tracking-tight"
+          className="font-semibold font-serif text-xl tracking-tight"
         >
           BELLWOODS
-          <span className="mx-2 inline-block h-px w-8 bg-[#DB5C5C] align-middle" />
-          <span className="text-sm font-normal tracking-widest text-stone-500">
+          <span className="mx-2 inline-block h-px w-8 bg-wax align-middle" />
+          <span className="font-normal text-sm text-stone-500 tracking-widest">
             LANE
           </span>
         </Link>
-        <p className="mt-8 text-xs uppercase tracking-widest text-[#DB5C5C]">
+        <p className="mt-8 text-leaf text-xs uppercase tracking-widest">
           Pre-register your firm
         </p>
-        <h1 className="mt-2 font-serif text-4xl font-semibold leading-tight">
+        <h1 className="mt-2 font-semibold font-serif text-4xl leading-tight">
           Grab your referral code early.
         </h1>
         <p className="mt-4 text-stone-600">
           You don&apos;t have to sign up to use our indicative-offer tool — we
-          auto-create your code when you submit your first property. But if
-          you want a code ready to share right now, pre-register here.{' '}
+          auto-create your code when you submit your first property. But if you
+          want a code ready to share right now, pre-register here.{' '}
           <strong>Partner fee agreed in writing per deal.</strong>
         </p>
       </div>
@@ -37,7 +37,7 @@ export default function SignupPage() {
         Already a partner?{' '}
         <Link
           href="/partners/login"
-          className="font-medium text-[#874646] underline underline-offset-4 hover:text-[#DB5C5C]"
+          className="font-medium text-leaf underline underline-offset-4 hover:text-leaf-dark"
         >
           Sign in →
         </Link>

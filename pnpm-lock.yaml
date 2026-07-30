@@ -430,6 +430,9 @@ importers:
       '@repo/ai':
         specifier: workspace:*
         version: link:../../packages/ai
+      '@repo/brand':
+        specifier: workspace:*
+        version: link:../../packages/brand
       '@repo/database':
         specifier: workspace:*
         version: link:../../packages/database
@@ -663,6 +666,18 @@ importers:
       '@types/react-dom':
         specifier: ^19.0.4
         version: 19.0.4(@types/react@19.0.10)
+      typescript:
+        specifier: ^5.8.2
+        version: 5.8.2
+
+  packages/brand:
+    devDependencies:
+      '@repo/typescript-config':
+        specifier: workspace:*
+        version: link:../typescript-config
+      '@types/node':
+        specifier: 22.13.9
+        version: 22.13.9
       typescript:
         specifier: ^5.8.2
         version: 5.8.2
@@ -1231,6 +1246,9 @@ importers:
       '@react-pdf/renderer':
         specifier: ^4.1.5
         version: 4.5.1(react@19.0.0)
+      '@repo/brand':
+        specifier: workspace:*
+        version: link:../brand
       '@repo/database':
         specifier: workspace:*
         version: link:../database

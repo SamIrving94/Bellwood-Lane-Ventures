@@ -1,17 +1,19 @@
-import Link from 'next/link';
 import { cn } from '@repo/design-system/lib/utils';
+import Link from 'next/link';
 
 /**
- * Refined squared button — retires the candy `rounded-full` pill.
- *  - primary: solid brick, gently squared, arrow nudges on hover
- *  - accent : solid terracotta (reserve for the single key action)
- *  - ghost  : text only, underline on hover, ↗ — the considered secondary
+ * Kept. action — leaf-green pill (KEPT.md: leaf is interactive ONLY).
+ *  - primary   : solid leaf pill, white text, arrow nudges on hover
+ *  - secondary : outlined leaf pill — the considered second action
+ *  - accent    : solid WAX pill — reserved. Only on forest poster/finale
+ *                grounds (the two-accent rule; see the Buttons design card).
+ *  - ghost     : leaf text link, underline on hover, → nudge
  *
  * Pure CSS hover (server-safe). Renders an <a>/<Link> when `href` is set,
- * otherwise a <button>.
+ * otherwise a <button>. Geometry + weights follow the Kept. Buttons card.
  */
 
-type Variant = 'primary' | 'accent' | 'ghost';
+type Variant = 'primary' | 'secondary' | 'accent' | 'ghost';
 
 type CommonProps = {
   children: React.ReactNode;
@@ -22,29 +24,19 @@ type CommonProps = {
 };
 
 const SHELL =
-  'group inline-flex items-center gap-2.5 text-[15px] font-medium transition-colors';
+  'group inline-flex items-center gap-2.5 text-[15px] font-semibold transition-colors';
 
 const VARIANTS: Record<Variant, string> = {
   primary:
-    'rounded-md bg-brand-deep px-7 py-3.5 text-white shadow-sm hover:bg-[#743a3a] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:ring-offset-[#FBF8F5]',
+    'rounded-full bg-leaf px-8 py-3.5 text-white shadow-sm hover:bg-leaf-dark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-leaf focus-visible:ring-offset-2 focus-visible:ring-offset-cream',
+  secondary:
+    'rounded-full border-[1.5px] border-leaf bg-transparent px-8 py-3.5 text-leaf hover:bg-leaf/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-leaf focus-visible:ring-offset-2 focus-visible:ring-offset-cream',
   accent:
-    'rounded-md bg-brand px-7 py-3.5 text-[#2B1A18] shadow-sm hover:bg-[#cf5050] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-deep focus-visible:ring-offset-2',
-  ghost:
-    'text-brand-deep underline-offset-[6px] decoration-brand/50 hover:underline',
+    'rounded-full bg-wax px-8 py-3.5 text-white shadow-sm hover:bg-wax/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 focus-visible:ring-offset-2 focus-visible:ring-offset-forest',
+  ghost: 'text-leaf underline-offset-[6px] decoration-leaf/50 hover:underline',
 };
 
-function Arrow({ variant }: { variant: Variant }) {
-  // Ghost reads as a link → diagonal ↗; filled buttons → forward → with nudge.
-  if (variant === 'ghost') {
-    return (
-      <span
-        aria-hidden
-        className="transition-transform duration-200 group-hover:-translate-y-px group-hover:translate-x-px"
-      >
-        ↗
-      </span>
-    );
-  }
+function Arrow() {
   return (
     <span
       aria-hidden
@@ -69,7 +61,7 @@ export function Button({
   const inner = (
     <>
       {children}
-      {arrow ? <Arrow variant={variant} /> : null}
+      {arrow ? <Arrow /> : null}
     </>
   );
 

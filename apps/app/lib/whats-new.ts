@@ -26,6 +26,31 @@ export type WhatsNewEntry = {
 /** Newest first. The popup shows index 0. */
 export const WHATS_NEW: WhatsNewEntry[] = [
   {
+    id: '2026-07-29-kept-brand-ready',
+    date: '2026-07-29',
+    emoji: '🟢',
+    title: 'Meet Kept. — the new brand, built and waiting',
+    intro: 'A price given is a price kept. The whole front door now wears it.',
+    bullets: [
+      {
+        emoji: '🟢',
+        text: '**Leaf green** for every action, **wax red** kept only for the promise — the two-accent rule, enforced in the code.',
+      },
+      {
+        emoji: '📄',
+        text: 'The site, the offer letter and the emails are all re-skinned — **not one word of copy changed** (a build check proves it).',
+      },
+      {
+        emoji: '🔒',
+        text: "Public name stays **Bellwoods Lane** until the trademark clears. When you say go, it's **one setting** to flip.",
+      },
+      {
+        emoji: '🎨',
+        text: 'It all maps to the **Kept.** design project (claude.ai/design), so design and code stay one system.',
+      },
+    ],
+  },
+  {
     id: '2026-07-29-scout-picks-the-best',
     date: '2026-07-29',
     emoji: '🔦',
@@ -78,6 +103,10 @@ export const WHATS_NEW: WhatsNewEntry[] = [
       {
         emoji: '🎯',
         text: 'The calibration page now suggests scorer tweaks with one-click Apply. The more you talk, the sharper it gets.',
+      },
+      {
+        emoji: '💸',
+        text: 'Bonus: leads that already went SSTC are caught before they waste credits.',
       },
     ],
     cta: { label: 'See your Taste Profile', href: '/leads/calibration' },

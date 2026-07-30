@@ -16,7 +16,7 @@ export const metadata: Metadata = {
 
 export default function AgentsLayout({ children }: { children: ReactNode }) {
   return (
-    <div className="min-h-screen bg-[#FBF8F5] font-sans text-[#2B2220] antialiased">
+    <div className="min-h-screen bg-cream font-sans text-forest antialiased">
       {children}
     </div>
   );

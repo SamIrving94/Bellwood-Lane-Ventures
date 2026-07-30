@@ -52,7 +52,7 @@ export function EmailSampleButton() {
         <div
           role="dialog"
           aria-modal="true"
-          className="fixed inset-0 z-50 flex items-center justify-center bg-[#2B2220]/40 p-4 backdrop-blur-sm"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-forest/40 p-4 backdrop-blur-sm"
           onClick={close}
         >
           <div
@@ -61,7 +61,7 @@ export function EmailSampleButton() {
           >
             {status.kind === 'success' ? (
               <div className="text-center">
-                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-md bg-[#DB5C5C]/20 text-2xl text-[#DB5C5C]">
+                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-md bg-leaf/15 text-2xl text-leaf-dark">
                   ✓
                 </div>
                 <p className="mt-5 font-serif text-xl">On its way.</p>
@@ -78,15 +78,15 @@ export function EmailSampleButton() {
               </div>
             ) : (
               <>
-                <p className="font-serif italic text-[13px] text-[#DB5C5C]">
+                <p className="font-serif text-[13px] text-leaf italic">
                   Sample offer pack
                 </p>
-                <h3 className="mt-2 font-serif text-2xl font-semibold">
+                <h3 className="mt-2 font-semibold font-serif text-2xl">
                   Reviewed before you commit?
                 </h3>
                 <p className="mt-3 text-sm text-stone-600">
-                  We&apos;ll email an anonymised sample offer document plus
-                  the methodology. No follow-up unless you ask.
+                  We&apos;ll email an anonymised sample offer document plus the
+                  methodology. No follow-up unless you ask.
                 </p>
 
                 <form onSubmit={submit} className="mt-5 space-y-3">
@@ -94,24 +94,24 @@ export function EmailSampleButton() {
                     name="name"
                     placeholder="Your name"
                     required
-                    className="w-full rounded-xl border border-stone-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-[#DB5C5C]"
+                    className="w-full rounded-xl border border-stone-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-leaf"
                   />
                   <input
                     name="email"
                     type="email"
                     placeholder="Email"
                     required
-                    className="w-full rounded-xl border border-stone-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-[#DB5C5C]"
+                    className="w-full rounded-xl border border-stone-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-leaf"
                   />
                   {status.kind === 'error' && (
-                    <p className="rounded-lg bg-red-50 p-3 text-sm text-red-700">
+                    <p className="rounded-lg bg-red-50 p-3 text-red-700 text-sm">
                       Something went wrong. Try again.
                     </p>
                   )}
                   <button
                     type="submit"
                     disabled={status.kind === 'submitting'}
-                    className="w-full rounded-md bg-[#874646] px-6 py-3 text-sm font-medium text-white transition hover:bg-[#6F3A3A] disabled:opacity-50"
+                    className="w-full rounded-md bg-leaf px-6 py-3 font-medium text-sm text-white transition hover:bg-leaf-dark disabled:opacity-50"
                   >
                     {status.kind === 'submitting'
                       ? 'Sending...'

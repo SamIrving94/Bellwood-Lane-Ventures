@@ -48,20 +48,20 @@ export function SignupForm() {
   if (status.state === 'success') {
     return (
       <div className="text-center">
-        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-md bg-[#DB5C5C]/20 text-2xl text-[#DB5C5C]">
+        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-md bg-leaf/20 text-2xl text-leaf">
           ✓
         </div>
-        <h3 className="mt-6 font-serif text-2xl font-semibold">
+        <h3 className="mt-6 font-semibold font-serif text-2xl">
           Check your email.
         </h3>
         <p className="mt-3 text-stone-600">
           We&apos;ve sent you a sign-in link. Valid for 15 minutes.
         </p>
-        <div className="mt-6 rounded-xl bg-[#F6ECE7] p-4 text-sm">
-          <p className="text-xs uppercase tracking-widest text-stone-500">
+        <div className="mt-6 rounded-xl bg-soft p-4 text-sm">
+          <p className="text-stone-500 text-xs uppercase tracking-widest">
             Your referral code
           </p>
-          <p className="mt-1 font-mono text-xl font-semibold text-[#874646]">
+          <p className="mt-1 font-mono font-semibold text-forest text-xl">
             {status.referralCode}
           </p>
         </div>
@@ -70,7 +70,7 @@ export function SignupForm() {
             <p className="font-semibold">Dev mode — magic link</p>
             <a
               href={status.devMagicLink}
-              className="mt-2 block break-all text-[#874646] underline"
+              className="mt-2 block break-all text-leaf underline"
             >
               {status.devMagicLink}
             </a>
@@ -89,7 +89,7 @@ export function SignupForm() {
       <Field label="Office postcode (optional)" name="postcode" />
 
       {status.state === 'error' && (
-        <p className="rounded-lg bg-red-50 p-3 text-sm text-red-700">
+        <p className="rounded-lg bg-red-50 p-3 text-red-700 text-sm">
           {status.message}
         </p>
       )}
@@ -97,14 +97,14 @@ export function SignupForm() {
       <button
         type="submit"
         disabled={status.state === 'submitting'}
-        className="w-full rounded-md bg-[#DB5C5C] px-6 py-4 text-sm font-medium text-[#2B2220] transition hover:bg-[#b08f52] disabled:opacity-50"
+        className="w-full rounded-md bg-leaf px-6 py-4 font-medium text-sm text-white transition hover:bg-leaf-dark disabled:opacity-50"
       >
         {status.state === 'submitting'
           ? 'Creating account...'
           : 'Create partner account →'}
       </button>
 
-      <p className="text-center text-xs text-stone-500">
+      <p className="text-center text-stone-500 text-xs">
         No credit card. No contract. Start referring today.
       </p>
     </form>
@@ -124,14 +124,14 @@ function Field({
 }) {
   return (
     <label className="block">
-      <span className="text-xs uppercase tracking-widest text-stone-500">
+      <span className="text-stone-500 text-xs uppercase tracking-widest">
         {label}
       </span>
       <input
         name={name}
         type={type}
         required={required}
-        className="mt-1 w-full rounded-xl border border-stone-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-[#DB5C5C]"
+        className="mt-1 w-full rounded-xl border border-stone-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-leaf"
       />
     </label>
   );
