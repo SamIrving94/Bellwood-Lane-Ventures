@@ -94,6 +94,7 @@ function formatGBP(pence: number): string {
 }
 
 type FilterKey =
+  | 'new'
   | 'shortlist'
   | 'triage'
   | 'watching'
@@ -125,7 +126,7 @@ const SECONDARY_FILTERS: FilterKey[] = [
 
 export function LeadsTable({ leads, initialFilter }: Props) {
   const [activeFilter, setActiveFilter] = useState<FilterKey>(
-    (initialFilter as FilterKey) ?? 'triage',
+    (initialFilter as FilterKey) ?? 'new',
   );
   const [showMoreFilters, setShowMoreFilters] = useState(false);
   // Optimistic triage state so cards re-filter instantly on Shortlist/Pass.
@@ -140,6 +141,11 @@ export function LeadsTable({ leads, initialFilter }: Props) {
   const filteredLeads = leads.filter((lead) => {
     const status = getStatus(lead);
     switch (activeFilter) {
+      case 'new':
+        // Everything freshly sourced and not yet triaged — every verdict,
+        // not just STRONG/VIABLE. This is the overnight-scout inbox: a place
+        // to see all of it without passed/watching/shortlisted mixed in.
+        return status === 'new';
       case 'shortlist':
         // OUR shortlist — leads a founder explicitly shortlisted.
         return status === 'shortlisted';
@@ -180,6 +186,7 @@ export function LeadsTable({ leads, initialFilter }: Props) {
     leads.filter((l) => getStatus(l) === s).length;
 
   const filters: { key: FilterKey; label: string; count: number }[] = [
+    { key: 'new', label: 'New', count: countByStatus('new') },
     { key: 'shortlist', label: 'Shortlist', count: countByStatus('shortlisted') },
     {
       key: 'triage',
@@ -311,7 +318,24 @@ export function LeadsTable({ leads, initialFilter }: Props) {
 
       {filteredLeads.length === 0 ? (
         <div className="rounded-lg border bg-card p-8 text-center">
-          {activeFilter === 'shortlist' ? (
+          {activeFilter === 'new' ? (
+            <>
+              <p className="font-medium text-foreground">
+                No new leads waiting.
+              </p>
+              <p className="mt-1 text-muted-foreground text-sm">
+                Everything sourced so far has already been triaged. Run a
+                fresh scout from{' '}
+                <a
+                  href="/settings/scouting"
+                  className="font-medium text-primary hover:underline"
+                >
+                  Settings → Scouting
+                </a>
+                .
+              </p>
+            </>
+          ) : activeFilter === 'shortlist' ? (
             <>
               <p className="font-medium text-foreground">
                 Your shortlist is empty.

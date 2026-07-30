@@ -54,8 +54,10 @@ async function handle(request: Request) {
       where: {
         verdict: 'STRONG',
         createdAt: { gte: since },
-        // Passed leads are out — that's where lead-appraise parks listings it
-        // found dead (SSTC/withdrawn), and where the founder puts rejects.
+        // Passed leads are out — the founder's rejects, anything the scout
+        // parked on a recorded dealbreaker, and listings lead-appraise found
+        // dead (SSTC/withdrawn). Deep appraisal is the most expensive step in
+        // the pipeline; don't spend it on a lead already ruled out.
         status: { not: 'passed' },
       },
       orderBy: { leadScore: 'desc' },

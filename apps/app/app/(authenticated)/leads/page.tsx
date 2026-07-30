@@ -139,7 +139,7 @@ const LeadsPage = async ({
                 .map((f) => f.label),
             };
           })}
-          initialFilter={filter ?? 'triage'}
+          initialFilter={filter ?? 'new'}
         />
       </div>
     </>

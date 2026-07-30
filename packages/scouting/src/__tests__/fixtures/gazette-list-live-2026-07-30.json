@@ -1,0 +1,120 @@
+{
+  "_comment": "VERBATIM excerpt of a real response from https://www.thegazette.co.uk/wills-and-probate/notice/data.json?noticecode=2903&results-page=1&results-page-size=10 captured 2026-07-30T05:15:47Z (HTTP 200). Four of the ten entries are kept, chosen to cover the shapes that matter: an overseas notice with no UK postcode, a clean UK notice with a geo:Point, a UK notice whose address carries literal '/n' instead of newlines, and a care-home address. Each entry's `link` array is trimmed to its first two members; every other field is untouched.",
+  "id": "https://www.thegazette.co.uk/wills-and-probate/notice/data.feed?noticecode=2903&results-page-size=10&results-page=1",
+  "link": [
+    {
+      "@href": "https://www.thegazette.co.uk/wills-and-probate/notice/data.json?noticecode=2903&results-page=1",
+      "@rel": "first",
+      "@type": "application/json"
+    },
+    {
+      "@href": "https://www.thegazette.co.uk/wills-and-probate/notice/data.json?noticecode=2903&results-page=2",
+      "@rel": "next",
+      "@type": "application/json"
+    },
+    {
+      "@href": "https://www.thegazette.co.uk/wills-and-probate/notice/data.json?noticecode=2903&results-page=87993",
+      "@rel": "last",
+      "@type": "application/json"
+    },
+    {
+      "@href": "https://www.thegazette.co.uk/wills-and-probate/notice/data.json?noticecode=2903&results-page-size=10&results-page=1",
+      "@rel": "self",
+      "@type": "application/json"
+    }
+  ],
+  "title": "Search Result",
+  "updated": "2026-07-30T05:15:46.773774Z",
+  "f:page-number": "1",
+  "f:page-size": "10",
+  "f:page-start": "1",
+  "f:page-stop": "10",
+  "f:total": "879922",
+  "f:total-errors": "97",
+  "f:facets": null,
+  "entry": [
+    {
+      "id": "https://www.thegazette.co.uk/id/notice/5182440",
+      "f:status": "published",
+      "f:notice-code": "2903",
+      "f:name": "London",
+      "f:familyName": "Gazette",
+      "title": "Peter Watson",
+      "link": [
+        {
+          "@href": "https://www.thegazette.co.uk/id/notice/5182440",
+          "@rel": "self"
+        },
+        { "@href": "https://www.thegazette.co.uk/notice/5182440" }
+      ],
+      "author": { "name": "tso" },
+      "updated": "2026-07-30T00:05:11Z",
+      "published": "2026-07-30T01:05:11",
+      "category": { "@term": "Deceased Estates" },
+      "content": "<div><dl><dt>Address of Deceased</dt><dd>10 Moorlands Road, Kloof, Kwazulu Natal, South Africa</dd><dt>Date of Claim Deadline</dt><dd><time datetime=\"2026-10-01\"></time></dd></dl></div>"
+    },
+    {
+      "id": "https://www.thegazette.co.uk/id/notice/5182437",
+      "f:status": "published",
+      "f:notice-code": "2903",
+      "f:name": "London",
+      "f:familyName": "Gazette",
+      "title": "David Courcoux",
+      "link": [
+        {
+          "@href": "https://www.thegazette.co.uk/id/notice/5182437",
+          "@rel": "self"
+        },
+        { "@href": "https://www.thegazette.co.uk/notice/5182437" }
+      ],
+      "author": { "name": "tso" },
+      "updated": "2026-07-30T00:05:08Z",
+      "published": "2026-07-30T01:05:08",
+      "category": { "@term": "Deceased Estates" },
+      "geo:Point": { "geo:lat": "53.38865", "geo:long": "-2.257223" },
+      "content": "<div><dl><dt>Address of Deceased</dt><dd>12 Brownley Court Road, Wythenshawe, Manchester, M22 8UG</dd><dt>Date of Claim Deadline</dt><dd><time datetime=\"2026-10-05\"></time></dd></dl></div>"
+    },
+    {
+      "id": "https://www.thegazette.co.uk/id/notice/5182418",
+      "f:status": "published",
+      "f:notice-code": "2903",
+      "f:name": "London",
+      "f:familyName": "Gazette",
+      "title": "Margaret Townsend",
+      "link": [
+        {
+          "@href": "https://www.thegazette.co.uk/id/notice/5182418",
+          "@rel": "self"
+        },
+        { "@href": "https://www.thegazette.co.uk/notice/5182418" }
+      ],
+      "author": { "name": "tso" },
+      "updated": "2026-07-30T00:04:46Z",
+      "published": "2026-07-30T01:04:46",
+      "category": { "@term": "Deceased Estates" },
+      "geo:Point": { "geo:lat": "52.21687", "geo:long": "-2.215758" },
+      "content": "<div><dl><dt>Address of Deceased</dt><dd>The Belmont Care Home, John Comyn Drive, Worcester, WR3 7NS</dd><dt>Date of Claim Deadline</dt><dd><time datetime=\"2026-10-05\"></time></dd></dl></div>"
+    },
+    {
+      "id": "https://www.thegazette.co.uk/id/notice/5182207",
+      "f:status": "published",
+      "f:notice-code": "2903",
+      "f:name": "apiThorpes",
+      "f:familyName": "PROBSON",
+      "title": "Edward Day",
+      "link": [
+        {
+          "@href": "https://www.thegazette.co.uk/id/notice/5182207",
+          "@rel": "self"
+        },
+        { "@href": "https://www.thegazette.co.uk/notice/5182207" }
+      ],
+      "author": { "name": "tso" },
+      "updated": "2026-07-30T00:02:24Z",
+      "published": "2026-07-30T01:02:24",
+      "category": { "@term": "Deceased Estates" },
+      "geo:Point": { "geo:lat": "51.60619", "geo:long": "-0.237624" },
+      "content": "<div><dl><dt>Address of Deceased</dt><dd>76 Longfield Avenue,/nLondon/nNW7 2SB</dd><dt>Date of Claim Deadline</dt><dd><time datetime=\"2026-10-01\"></time></dd></dl></div>"
+    }
+  ]
+}
