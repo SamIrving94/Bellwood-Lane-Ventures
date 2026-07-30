@@ -14,7 +14,7 @@ import { TriageButtons } from '../../components/triage-buttons';
 import { PropertyImage } from './property-image';
 
 export const metadata: Metadata = {
-  title: 'Lead Detail — Bellwood Ventures',
+  title: 'Lead Detail — Kept',
 };
 
 function formatGBP(pence: number): string {

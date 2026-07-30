@@ -9,7 +9,7 @@ import {
 } from '../lib/marketing-types';
 
 export const metadata: Metadata = {
-  title: 'Performance — Marketing — Bellwoods Lane',
+  title: 'Performance — Marketing — Kept',
   description: 'KPIs and counts for marketing activity.',
 };
 

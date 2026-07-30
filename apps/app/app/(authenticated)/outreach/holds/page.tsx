@@ -6,7 +6,7 @@ import { Header } from '../../components/header';
 import { HoldCard } from './components/hold-card';
 
 export const metadata: Metadata = {
-  title: 'Review Vendor Emails — Bellwood Ventures',
+  title: 'Review Vendor Emails — Kept',
   description: 'Approve or edit vendor communications before sending',
 };
 

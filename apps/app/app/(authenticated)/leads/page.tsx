@@ -7,7 +7,7 @@ import { Header } from '../components/header';
 import { LeadsTable } from './leads-table';
 
 export const metadata: Metadata = {
-  title: 'Leads — Bellwood Ventures',
+  title: 'Leads — Kept',
   description: 'Scouted leads with scoring and verdicts',
 };
 

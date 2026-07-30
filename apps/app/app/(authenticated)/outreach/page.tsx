@@ -8,7 +8,7 @@ import { Header } from '../components/header';
 import { AddContactDialog } from '../contacts/add-contact-dialog';
 
 export const metadata: Metadata = {
-  title: 'Outreach — Bellwoods Lane',
+  title: 'Outreach — Kept',
   description: 'People, campaigns, inbox and templates in one place.',
 };
 

@@ -6,7 +6,7 @@ import { Header } from '../components/header';
 import { ConciergeChat } from './concierge-chat';
 
 export const metadata: Metadata = {
-  title: 'Research — Bellwoods Lane',
+  title: 'Research — Kept',
   description:
     'Ask George — PropertyData’s AI assistant — anything about the UK property market.',
 };
@@ -60,7 +60,7 @@ export default async function ResearchPage() {
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <h1 className="font-semibold text-2xl tracking-tight">
-              Bellwoods Concierge
+              Kept Concierge
             </h1>
             <p className="max-w-2xl text-muted-foreground text-sm">
               Ask George anything about UK property — comps, demand, agents,

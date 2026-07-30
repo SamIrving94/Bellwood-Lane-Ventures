@@ -6,7 +6,7 @@ import { Header } from '../components/header';
 import { AddContactDialog } from './add-contact-dialog';
 
 export const metadata: Metadata = {
-  title: 'Contacts — Bellwood Ventures',
+  title: 'Contacts — Kept',
   description: 'CRM contacts — estate agents, solicitors, vendors, investors',
 };
 

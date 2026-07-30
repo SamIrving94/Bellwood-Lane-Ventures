@@ -7,7 +7,7 @@ import { redirect } from 'next/navigation';
 import { Header } from './components/header';
 
 export const metadata: Metadata = {
-  title: 'Today — Bellwoods Lane',
+  title: 'Today — Kept',
   description: 'Your decisions for today.',
 };
 

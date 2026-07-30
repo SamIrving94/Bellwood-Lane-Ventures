@@ -8,7 +8,7 @@ import { Header } from '../../components/header';
 import { MethodologyEditor } from './methodology-editor';
 
 export const metadata: Metadata = {
-  title: 'Valuation methodology — Bellwood Lane',
+  title: 'Valuation methodology — Kept',
   description: 'How we value a deal: the maths, the data, the rules.',
 };
 

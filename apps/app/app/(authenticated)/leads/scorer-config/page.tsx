@@ -12,7 +12,7 @@ import { ConfigEditor } from './config-editor';
 import { VersionHistory } from './version-history';
 
 export const metadata: Metadata = {
-  title: 'Tune the lead scorer — Bellwood Ventures',
+  title: 'Tune the lead scorer — Kept',
   description: 'Adjust the weights the scorer uses, review, and activate.',
 };
 

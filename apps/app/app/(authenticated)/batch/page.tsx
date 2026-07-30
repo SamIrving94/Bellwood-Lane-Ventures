@@ -7,7 +7,7 @@ import { Header } from '../components/header';
 import { UploadForm } from './components/upload-form';
 
 export const metadata: Metadata = {
-  title: 'Batch Appraisals — Bellwoods Lane',
+  title: 'Batch Appraisals — Kept',
   description: 'Upload a pipeline spreadsheet and rank every property by discount to market.',
 };
 

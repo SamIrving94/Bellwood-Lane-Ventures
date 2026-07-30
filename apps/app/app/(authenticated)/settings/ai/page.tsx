@@ -7,7 +7,7 @@ import { getRoutingTable } from '../../../actions/ai-routing/update';
 import { RoutingTable } from './routing-table';
 
 export const metadata: Metadata = {
-  title: 'AI models — Bellwood Ventures',
+  title: 'AI models — Kept',
   description: 'Per-feature model routing and shadow evals',
 };
 

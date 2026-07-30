@@ -19,7 +19,7 @@ import {
 } from '../lib/marketing-types';
 
 export const metadata: Metadata = {
-  title: 'Calendar — Marketing — Bellwoods Lane',
+  title: 'Calendar — Marketing — Kept',
   description: 'Month view of published marketing posts.',
 };
 

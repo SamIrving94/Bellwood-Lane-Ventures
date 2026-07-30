@@ -8,7 +8,7 @@ import { Header } from '../components/header';
 import { PasteForm } from './paste-form';
 
 export const metadata: Metadata = {
-  title: 'WhatsApp Intake — Bellwood Ventures',
+  title: 'WhatsApp Intake — Kept',
   description:
     'Receive and parse property leads shared in WhatsApp groups.',
 };

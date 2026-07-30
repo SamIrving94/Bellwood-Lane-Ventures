@@ -6,7 +6,7 @@ import { revalidatePath } from 'next/cache';
 
 /**
  * Horizon 2 guardrail. A deal only becomes shareable to investors / referral
- * partners AFTER Bellwood passes on it for its own book. This action is the
+ * partners AFTER Kept passes on it for its own book. This action is the
  * single gate that flips `releasedForResale`: it marks the deal `rejected`
  * (we passed), records who released it and why, and logs the decision to the
  * activity timeline. Until this runs, nothing leaves the pipeline.
@@ -31,7 +31,7 @@ export async function releaseForResale(
   await database.deal.update({
     where: { id: dealId },
     data: {
-      status: 'rejected', // Bellwood has passed on it for its own book
+      status: 'rejected', // Kept has passed on it for its own book
       releasedForResale: true,
       releasedAt: new Date(),
       releasedBy: userId,

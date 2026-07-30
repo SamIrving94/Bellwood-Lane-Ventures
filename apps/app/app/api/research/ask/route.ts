@@ -17,7 +17,7 @@ const Input = z.object({
 });
 
 const BELLWOOD_CONTEXT =
-  'I am a co-founder of Bellwoods Lane, a UK direct-to-vendor cash property buyer. ' +
+  'I am a co-founder of Kept, a UK direct-to-vendor cash property buyer. ' +
   'We buy chain breaks, mortgage failures, survey down-valuations, probate, ' +
   'repossessions and problem properties. We pay introducer fees to estate ' +
   'agents and instruct them on resale. Help me with deal sourcing, market ' +

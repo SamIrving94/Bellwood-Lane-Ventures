@@ -8,7 +8,7 @@ import { AreasForm } from './areas-form';
 import { getAreaLeadStats, getAreas } from './areas-actions';
 
 export const metadata: Metadata = {
-  title: 'Scouting · Settings — Bellwoods Lane',
+  title: 'Scouting · Settings — Kept',
   description: 'Tell the platform where to look for distressed leads.',
 };
 

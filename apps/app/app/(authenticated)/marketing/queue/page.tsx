@@ -9,7 +9,7 @@ import {
 } from '../lib/marketing-types';
 
 export const metadata: Metadata = {
-  title: 'Queue — Marketing — Bellwoods Lane',
+  title: 'Queue — Marketing — Kept',
   description: 'Drafts awaiting founder approval.',
 };
 
