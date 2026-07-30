@@ -46,13 +46,9 @@ export const WHATS_NEW: WhatsNewEntry[] = [
       },
       {
         emoji: '🎨',
-        text: 'It all maps to the **Kept.** design project, so design and code stay one system.',
+        text: 'It all maps to the **Kept.** design project (claude.ai/design), so design and code stay one system.',
       },
     ],
-    cta: {
-      label: 'See the Kept. design system',
-      href: 'https://claude.ai/design/p/c6edbcd9-1c8e-45dd-ad74-6d6f7fc3ca39',
-    },
   },
   {
     id: '2026-07-23-voice-notes-and-learning',
