@@ -79,7 +79,7 @@ interface TriageResult {
   recommendedNextStep: string;
 }
 
-const TRIAGE_SYSTEM_PROMPT = `You are the head of operations at Bellwood Ventures, a UK property-buying company. An estate agent has just submitted a fall-through deal via /save-the-sale. Your job: produce a 30-second briefing for the founder's inbox.
+const TRIAGE_SYSTEM_PROMPT = `You are the head of operations at Kept, a UK property-buying company. An estate agent has just submitted a fall-through deal via /save-the-sale. Your job: produce a 30-second briefing for the founder's inbox.
 
 Output strict JSON only, no prose, no markdown fences. Schema:
 
@@ -531,7 +531,7 @@ export async function POST(request: Request) {
             'We will be in touch to arrange the viewing.',
             followUpLine,
             '',
-            'Bellwoods Lane',
+            'Kept',
             'Member of the Property Redress Scheme (PRS) · HMRC AML supervised · ICO registered',
             'hello@bellwoodslane.co.uk',
           ].join('\n'),

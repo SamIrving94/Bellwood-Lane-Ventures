@@ -18,7 +18,7 @@ const inter = Inter({
 });
 
 export const metadata = {
-  title: 'Agent Portal · Bellwoods Lane',
+  title: 'Agent Portal · Kept',
   robots: 'noindex',
 };
 

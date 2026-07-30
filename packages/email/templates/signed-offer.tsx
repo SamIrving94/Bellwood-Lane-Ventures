@@ -68,7 +68,7 @@ export const SignedOfferEmail = ({
             <Hr className="my-6" />
 
             <Text className="text-[#4c5a50] text-sm">
-              Sam — Bellwood Ventures
+              Sam — Kept
             </Text>
           </Section>
         </Container>

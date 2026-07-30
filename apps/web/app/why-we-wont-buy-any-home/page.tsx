@@ -16,11 +16,11 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Why we won't buy any home · Bellwoods Lane",
+  title: "Why we won't buy any home · Kept",
   description:
     "Some companies will buy any home. We won't. Here's what we buy, what we don't, and what we recommend instead. UK direct-to-vendor cash buyer.",
   openGraph: {
-    title: "Why we won't buy any home · Bellwoods Lane",
+    title: "Why we won't buy any home · Kept",
     description:
       'A deliberate refusal of "We Buy Any House" territory. Selectivity is in the vendor\'s interest.',
     type: 'website',
@@ -372,13 +372,13 @@ export default function WhyWeWontBuyAnyHomePage() {
             </nav>
           </div>
           <p className="mt-10 font-mono text-[11px] text-stone-500 leading-relaxed">
-            Bellwoods Lane Ltd is a UK cash property buyer, not an
+            Kept is a UK cash property buyer, not an
             FCA-authorised firm. We do not provide financial or legal advice.
             Seek independent legal and debt advice before accepting any offer.
             All offers are subject to satisfactory survey and title searches.
           </p>
           <p className="mt-4 font-mono text-[11px] text-stone-400">
-            © {new Date().getFullYear()} Bellwoods Lane Ltd.
+            © {new Date().getFullYear()} Kept.
           </p>
         </div>
       </footer>

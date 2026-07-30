@@ -17,11 +17,11 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: 'Sale fallen through? · Bellwoods Lane',
+  title: 'Sale fallen through? · Kept',
   description:
     'Buyer pulled out, mortgage refused, survey down-valued or chain broken? An indicative cash figure on screen, fast. We aim to make a signed offer within 24–48 hours of viewing. For UK estate agents.',
   openGraph: {
-    title: 'Sale fallen through? · Bellwoods Lane',
+    title: 'Sale fallen through? · Kept',
     description:
       'A cash figure on screen fast, and we aim to make a signed offer within 24–48 hours of viewing. For UK estate agents whose sale just collapsed.',
     type: 'website',
@@ -140,7 +140,7 @@ export default function SaveTheSalePage() {
           </nav>
         </div>
         <p className="mx-auto mt-8 max-w-5xl font-mono text-[10px] text-stone-400 leading-relaxed">
-          Bellwoods Lane Ltd is a UK cash property buyer, not an FCA-authorised
+          Kept is a UK cash property buyer, not an FCA-authorised
           firm. We do not provide financial or legal advice. All offers are
           subject to satisfactory survey and title searches.
         </p>

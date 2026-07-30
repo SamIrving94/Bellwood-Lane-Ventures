@@ -1,6 +1,6 @@
 // Public, token-gated investor feed. No login — the link alone grants
 // read-only access. Deliberately a numbers-and-location view: seller PII and
-// Bellwood's own economics (our offer, margin, pass reason, sourcing fee) are
+// Kept's own economics (our offer, margin, pass reason, sourcing fee) are
 // NEVER selected here.
 
 import { database } from '@repo/database';
@@ -10,7 +10,7 @@ import { notFound } from 'next/navigation';
 export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
-  title: 'Sourced deals · Bellwoods Lane',
+  title: 'Sourced deals · Kept',
   robots: 'noindex',
 };
 
@@ -60,7 +60,7 @@ export default async function InvestorFeedPage({
     <main className="mx-auto w-full max-w-5xl space-y-6 p-6">
       <div>
         <p className="font-serif italic text-[13px] text-neutral-500">
-          Bellwoods Lane · Sourced deals
+          Kept · Sourced deals
         </p>
         <h1 className="mt-1 font-semibold text-2xl tracking-tight">
           Sourced deals
@@ -147,7 +147,7 @@ export default async function InvestorFeedPage({
       )}
 
       <p className="border-t pt-4 text-center text-[11px] text-neutral-400">
-        Private link · not for redistribution · Bellwoods Lane Ventures
+        Private link · not for redistribution · Kept
       </p>
     </main>
   );

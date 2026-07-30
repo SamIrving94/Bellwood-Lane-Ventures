@@ -22,7 +22,7 @@ export async function generateMetadata({
   const property =
     t?.quoteRequest?.address ?? t?.deal?.address ?? 'your property';
   return {
-    title: `Live timeline · ${property} · Bellwoods Lane`,
+    title: `Live timeline · ${property} · Kept`,
     robots: 'noindex',
   };
 }
@@ -241,7 +241,7 @@ export default async function TrackPage({
         </section>
 
         <p className="mt-12 font-serif text-[13px] text-stone-400 italic">
-          Bellwoods Lane Ltd · Property Redress Scheme (PRS) · HMRC AML
+          Kept · Property Redress Scheme (PRS) · HMRC AML
           supervised · ICO registered
         </p>
       </div>

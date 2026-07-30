@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 
 export const metadata: Metadata = {
-  title: 'The team · Bellwoods Lane',
+  title: 'The team · Kept',
 };
 
 export default function TeamPage() {
@@ -46,7 +46,7 @@ export default function TeamPage() {
             {
               name: 'Anthony',
               role: 'Founder',
-              bio: 'Runs the Bellwoods Lane deal engine end-to-end — sourcing, appraisals, offers, completions, and capital. Former [role] with experience across [sector].',
+              bio: 'Runs the Kept deal engine end-to-end — sourcing, appraisals, offers, completions, and capital. Former [role] with experience across [sector].',
               linkedin: '#',
             },
           ].map((p) => (

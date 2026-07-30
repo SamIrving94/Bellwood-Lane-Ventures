@@ -272,7 +272,7 @@ export const POST = async (request: Request) => {
           ``,
           `Open the dashboard to action: https://bellwood-app.vercel.app/contacts`,
           ``,
-          `— Bellwoods scout`,
+          `— Kept scout`,
         ].join('\n'),
       });
     } catch (err) {
@@ -301,7 +301,7 @@ export const POST = async (request: Request) => {
 // estate agents in cold prospecting — relationship risk too high.
 // ────────────────────────────────────────────────────────────────────────────
 
-const OUTREACH_SYSTEM_PROMPT = `You write peer-to-peer outreach for Bellwood Ventures, a UK property-buying firm specialising in fall-through deals, probate, and distressed sales.
+const OUTREACH_SYSTEM_PROMPT = `You write peer-to-peer outreach for Kept, a UK property-buying firm specialising in fall-through deals, probate, and distressed sales.
 
 You are writing to branch managers and partners at independent estate agents — busy professionals who get 5+ cold outreach messages a day. Most go straight to bin. Yours must NOT.
 
@@ -312,7 +312,7 @@ You will receive a structured profile of one firm. Produce a JSON object contain
 {
   "email": {
     "subject": string,              // ≤ 7 words, specific, no clickbait
-    "bodyPlainText": string         // 3 short paragraphs, ≤ 110 words total. Sign off as "Sam — Bellwood Ventures, hello@bellwoodslane.co.uk".
+    "bodyPlainText": string         // 3 short paragraphs, ≤ 110 words total. Sign off as "Sam — Kept, hello@bellwoodslane.co.uk".
   },
   "linkedInDm": {
     "openingHook": string,          // 1 sentence, ≤ 18 words, references something specific about their firm or patch

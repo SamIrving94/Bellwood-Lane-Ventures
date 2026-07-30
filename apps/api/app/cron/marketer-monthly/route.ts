@@ -27,7 +27,7 @@ import { NextResponse } from 'next/server';
 const MAX_SOLICITORS_PER_RUN = 15;
 
 // ─── Outreach draft prompt (lifted from cron/agent-prospecting) ─────────
-const OUTREACH_SYSTEM_PROMPT = `You write peer-to-peer outreach for Bellwood Ventures, a UK property-buying firm specialising in fall-through deals, probate, and distressed sales.
+const OUTREACH_SYSTEM_PROMPT = `You write peer-to-peer outreach for Kept, a UK property-buying firm specialising in fall-through deals, probate, and distressed sales.
 
 You are writing to senior solicitors at independent firms — busy professionals who get cold outreach daily. Most go straight to bin. Yours must NOT.
 
@@ -38,7 +38,7 @@ You will receive a structured profile of one firm. Produce a JSON object contain
 {
   "email": {
     "subject": string,              // ≤ 7 words, specific, no clickbait
-    "bodyPlainText": string         // 3 short paragraphs, ≤ 110 words total. Sign off as "Sam — Bellwood Ventures, hello@bellwoodslane.co.uk".
+    "bodyPlainText": string         // 3 short paragraphs, ≤ 110 words total. Sign off as "Sam — Kept, hello@bellwoodslane.co.uk".
   },
   "linkedInDm": {
     "openingHook": string,          // 1 sentence, ≤ 18 words, references something specific about the firm or their probate / divorce practice
@@ -64,7 +64,7 @@ interface OutreachDraft {
 
 // ─── Paid ad copy prompt ─────────────────────────────────────────────────
 
-const PAID_AD_SYSTEM_PROMPT = `You write Google / Meta paid search and social ad variants for Bellwood Ventures, a UK direct-to-vendor property buyer.
+const PAID_AD_SYSTEM_PROMPT = `You write Google / Meta paid search and social ad variants for Kept, a UK direct-to-vendor property buyer.
 
 Voice (marketing plan §2):
 - Numbers and specifics over adjectives. Plain English. UK spelling.
@@ -74,13 +74,13 @@ You will be given a single vendor segment (e.g. "probate", "chain_break"). Produ
 
 NEVER use:
 - "AI", "machine learning", "algorithm", "powered by"
-- "We buy any house" — Bellwood is selective; that's the brand
+- "We buy any house" — Kept is selective; that's the brand
 - "Get cash today!", countdown timers, urgency language
 - Stock-photo platitudes about families/happiness
 - "World-class", "best-in-class", "industry-leading", "revolutionary"
 
 ALWAYS:
-- Lead with the reader's situation, not Bellwood
+- Lead with the reader's situation, not Kept
 - One concrete promise per variant (24h cash backup, 8 week completion, no agent fee, etc.)
 - ASA/CAP code compliant — every numeric claim must be substantiable
 

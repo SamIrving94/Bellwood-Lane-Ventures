@@ -24,7 +24,7 @@ function coercePropertyType(raw: string): PropertyType {
 const FULL_POSTCODE_RE = /^[A-Z]{1,2}\d{1,2}[A-Z]?\s?\d[A-Z]{2}$/i;
 
 /**
- * Bellwood Score — indicative offer range for an agent during a valuation
+ * Kept Score — indicative offer range for an agent during a valuation
  * appointment. Runs the same AVM as /api/quote (without persisting), plus a
  * preflight that pulls EPC + tenure + market temperature. Returns a range
  * tagged INDICATIVE — explicitly NOT a confirmed offer.
@@ -87,7 +87,7 @@ export async function calculateBellwoodScore(input: {
     ]);
 
     // Apply the same ±5% temperature adjustment used by /api/quote so the
-    // Bellwood Score matches what a real submission would see.
+    // Kept Score matches what a real submission would see.
     const adjPct = Math.max(
       -0.05,
       Math.min(0.05, preflight?.offerAdjustment ?? 0),

@@ -4,7 +4,7 @@ import { validateAgentAuth, unauthorizedResponse } from '../_lib/auth';
 
 // Auction scraper pushes upcoming auction lots into the platform
 // Upserts AuctionLots + logs AgentEvent + creates FounderAction when a lot
-// looks like a strong Bellwood match (cheap terraced/semi distressed stock).
+// looks like a strong Kept match (cheap terraced/semi distressed stock).
 //
 // Shape expected:
 // {
@@ -91,7 +91,7 @@ export const POST = async (request: Request) => {
     }
   }
 
-  // Bellwood match: cheap terraced/semi = classic distressed chain-break stock
+  // Kept match: cheap terraced/semi = classic distressed chain-break stock
   const STRONG_MAX_GUIDE_PENCE = 100_000_00; // £100k
   const strongMatches = lots.filter(
     (l) =>
@@ -103,7 +103,7 @@ export const POST = async (request: Request) => {
 
   const summary =
     runSummary?.summary ??
-    `Auction scraper found ${lots.length} lots (${createdCount} new, ${updatedCount} updated, ${strongMatches.length} strong Bellwood matches)`;
+    `Auction scraper found ${lots.length} lots (${createdCount} new, ${updatedCount} updated, ${strongMatches.length} strong Kept matches)`;
 
   const event = await database.agentEvent.create({
     data: {
@@ -126,7 +126,7 @@ export const POST = async (request: Request) => {
       data: {
         type: 'review_leads',
         priority: strongMatches.length >= 5 ? 'high' : 'medium',
-        title: `Review ${strongMatches.length} auction lot${strongMatches.length === 1 ? '' : 's'} matching Bellwood profile`,
+        title: `Review ${strongMatches.length} auction lot${strongMatches.length === 1 ? '' : 's'} matching Kept profile`,
         description: `Auction scan found ${lots.length} upcoming lots; ${strongMatches.length} are terraced/semi under £100k guide — classic distressed / chain-break stock. Review before the sale date.`,
         agent: 'scout',
         agentEventId: event.id,
