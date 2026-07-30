@@ -64,6 +64,23 @@ if (process.env.NODE_ENV === 'production') {
       destination: '/legal/privacy',
       statusCode: 301,
     },
+    // Kept. domain cutover — GATED. Only active once the brand phase has
+    // flipped (NEXT_PUBLIC_BRAND_PHASE=dual|kept), which is itself gated on the
+    // trademark search + founder go (see docs/brand/REBRAND-NOTES.md). Until
+    // then the old domain is primary and this is omitted entirely. After the
+    // flip, every old-domain link 301s to Kept, permanently — no saved vendor
+    // link ever dies. Inert until bellwoodslane.co.uk is attached to the project.
+    ...(process.env.NEXT_PUBLIC_BRAND_PHASE === 'dual' ||
+    process.env.NEXT_PUBLIC_BRAND_PHASE === 'kept'
+      ? [
+          {
+            source: '/:path*',
+            has: [{ type: 'host' as const, value: 'bellwoodslane.co.uk' }],
+            destination: 'https://wearekept.co.uk/:path*',
+            statusCode: 301 as const,
+          },
+        ]
+      : []),
   ];
 
   nextConfig.redirects = redirects;
