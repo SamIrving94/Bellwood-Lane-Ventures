@@ -1,6 +1,6 @@
-import Link from 'next/link';
 import type { Metadata } from 'next';
 import { Fraunces, Inter } from 'next/font/google';
+import Link from 'next/link';
 import { AgentQuickForm } from '../agents/components/agent-quick-form';
 
 const fraunces = Fraunces({
@@ -31,24 +31,24 @@ export const metadata: Metadata = {
 export default function SaveTheSalePage() {
   return (
     <div
-      className={`${fraunces.variable} ${inter.variable} min-h-screen bg-[#FBF8F5] font-sans text-[#2B2220] antialiased`}
+      className={`${fraunces.variable} ${inter.variable} min-h-screen bg-cream font-sans text-forest antialiased`}
     >
       {/* ————— MINIMAL HEADER ————— */}
-      <header className="border-b border-stone-200/60 bg-white">
+      <header className="border-stone-200/60 border-b bg-white">
         <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-4 md:px-10">
           <Link
             href="/agents"
-            className="font-serif text-xl font-semibold tracking-tight"
+            className="font-semibold font-serif text-xl tracking-tight"
           >
             BELLWOODS
-            <span className="mx-2 inline-block h-px w-8 bg-[#DB5C5C] align-middle" />
-            <span className="text-sm font-normal tracking-[0.22em] text-stone-500">
+            <span className="mx-2 inline-block h-px w-8 bg-wax align-middle" />
+            <span className="font-normal text-sm text-stone-500 tracking-[0.22em]">
               LANE
             </span>
           </Link>
           <Link
             href="/agents"
-            className="text-[13px] text-stone-500 underline-offset-4 hover:text-[#874646] hover:underline"
+            className="text-[13px] text-stone-500 underline-offset-4 hover:text-leaf hover:underline"
           >
             Full partner programme →
           </Link>
@@ -59,51 +59,53 @@ export default function SaveTheSalePage() {
       <section className="px-6 pt-12 pb-20 md:px-12 md:pt-16 md:pb-24">
         <div className="mx-auto grid max-w-6xl grid-cols-1 gap-12 lg:grid-cols-[1fr_1.2fr] lg:gap-16">
           <div>
-            <p className="font-serif italic text-[13px] text-[#DB5C5C]">
+            <p className="font-serif text-[13px] text-leaf italic">
               For UK estate agents
             </p>
             <h1
-              className="mt-4 font-serif font-semibold leading-[0.98] tracking-[-0.025em] text-[#2B2220]"
+              className="mt-4 font-semibold font-serif text-forest leading-[0.98] tracking-[-0.025em]"
               style={{ fontSize: 'clamp(40px, 6vw, 68px)' }}
             >
               Sale fallen through?
               <br />
-              <span className="italic text-[#DB5C5C]">
+              <span className="text-leaf italic">
                 Save it before you re-list.
               </span>
             </h1>
-            <p className="mt-7 max-w-md text-lg leading-relaxed text-stone-600">
+            <p className="mt-7 max-w-md text-lg text-stone-600 leading-relaxed">
               Buyer pulled out, mortgage refused, survey down-valued, chain
-              broken. Whatever&rsquo;s collapsed, we step in with an
-              indicative figure on screen, fast (drawn from HM Land
-              Registry comps), and we aim to make a signed offer within
-              24&ndash;48 hours of viewing the property.
+              broken. Whatever&rsquo;s collapsed, we step in with an indicative
+              figure on screen, fast (drawn from HM Land Registry comps), and we
+              aim to make a signed offer within 24&ndash;48 hours of viewing the
+              property.
             </p>
             <ul className="mt-8 space-y-3 text-[14px] text-stone-700">
               <li className="flex items-start gap-3">
-                <span className="mt-1 inline-block h-1.5 w-1.5 shrink-0 rounded-md bg-[#DB5C5C]" />
+                <span className="mt-1 inline-block h-1.5 w-1.5 shrink-0 rounded-md bg-leaf" />
                 <span>
-                  <strong className="text-[#2B2220]">No price cuts.</strong>{' '}
-                  The price we confirm in writing is the price we complete at,
-                  and your client can walk away at no cost any time before
-                  exchange.
+                  <strong className="text-forest">No price cuts.</strong> The
+                  price we confirm in writing is the price we complete at, and
+                  your client can walk away at no cost any time before exchange.
                 </span>
               </li>
               <li className="flex items-start gap-3">
-                <span className="mt-1 inline-block h-1.5 w-1.5 shrink-0 rounded-md bg-[#DB5C5C]" />
+                <span className="mt-1 inline-block h-1.5 w-1.5 shrink-0 rounded-md bg-leaf" />
                 <span>
-                  <strong className="text-[#2B2220]">You keep your commission.</strong>{' '}
+                  <strong className="text-forest">
+                    You keep your commission.
+                  </strong>{' '}
                   You keep your commission on the sale, and when we resell
                   through the market we instruct you.
                 </span>
               </li>
               <li className="flex items-start gap-3">
-                <span className="mt-1 inline-block h-1.5 w-1.5 shrink-0 rounded-md bg-[#DB5C5C]" />
+                <span className="mt-1 inline-block h-1.5 w-1.5 shrink-0 rounded-md bg-leaf" />
                 <span>
-                  <strong className="text-[#2B2220]">WhatsApp-able vendor link.</strong>{' '}
-                  After you submit, you get a link you can WhatsApp the
-                  vendor in two taps. No PDF download, no login on their
-                  end.
+                  <strong className="text-forest">
+                    WhatsApp-able vendor link.
+                  </strong>{' '}
+                  After you submit, you get a link you can WhatsApp the vendor
+                  in two taps. No PDF download, no login on their end.
                 </span>
               </li>
             </ul>
@@ -111,11 +113,11 @@ export default function SaveTheSalePage() {
               Prefer email?{' '}
               <a
                 href="mailto:hello@bellwoodslane.co.uk?subject=Sale%20fallen%20through%20%E2%80%94%20urgent"
-                className="text-[#874646] underline underline-offset-4"
+                className="text-leaf underline underline-offset-4"
               >
                 hello@bellwoodslane.co.uk
-              </a>
-              {' '}&ndash; it reaches the same team.
+              </a>{' '}
+              &ndash; it reaches the same team.
             </p>
           </div>
           <div>
@@ -125,10 +127,11 @@ export default function SaveTheSalePage() {
       </section>
 
       {/* ————— TRUST FOOTER ————— */}
-      <footer className="border-t border-stone-200/60 bg-white px-6 py-10 md:px-12">
+      <footer className="border-stone-200/60 border-t bg-white px-6 py-10 md:px-12">
         <div className="mx-auto flex max-w-5xl flex-col items-start justify-between gap-4 md:flex-row md:items-center">
-          <p className="font-serif italic text-[13px] text-stone-500">
-            Property Redress Scheme (PRS) &middot; HMRC AML supervised &middot; ICO registered
+          <p className="font-serif text-[13px] text-stone-500 italic">
+            Property Redress Scheme (PRS) &middot; HMRC AML supervised &middot;
+            ICO registered
           </p>
           <nav className="flex flex-wrap items-center gap-6 text-[13px] text-stone-600">
             <Link href="/agents">Partner programme</Link>
@@ -136,10 +139,10 @@ export default function SaveTheSalePage() {
             <Link href="/legal/fca-disclosure">Regulatory</Link>
           </nav>
         </div>
-        <p className="mx-auto mt-8 max-w-5xl font-mono text-[10px] leading-relaxed text-stone-400">
-          Bellwoods Lane Ltd is a UK cash property buyer, not an
-          FCA-authorised firm. We do not provide financial or legal advice.
-          All offers are subject to satisfactory survey and title searches.
+        <p className="mx-auto mt-8 max-w-5xl font-mono text-[10px] text-stone-400 leading-relaxed">
+          Bellwoods Lane Ltd is a UK cash property buyer, not an FCA-authorised
+          firm. We do not provide financial or legal advice. All offers are
+          subject to satisfactory survey and title searches.
         </p>
       </footer>
     </div>

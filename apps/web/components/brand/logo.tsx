@@ -35,8 +35,9 @@ export function KeptDot({
       aria-hidden
       className={cn(
         'inline-block text-wax',
-        animate && 'motion-safe:animate-[kept-dot-land_0.8s_cubic-bezier(0.3,1.5,0.4,1)_both]',
-        className,
+        animate &&
+          'motion-safe:animate-[kept-dot-land_0.8s_cubic-bezier(0.3,1.5,0.4,1)_both]',
+        className
       )}
     >
       .
@@ -62,8 +63,8 @@ export function Monogram({ className }: { className?: string }) {
     <span
       aria-hidden
       className={cn(
-        'inline-flex items-baseline font-serif text-2xl font-bold lowercase leading-none tracking-[-0.03em] text-forest',
-        className,
+        'inline-flex items-baseline font-bold font-serif text-2xl text-forest lowercase leading-none tracking-[-0.03em]',
+        className
       )}
     >
       k<KeptDot />
@@ -86,13 +87,15 @@ export function Wordmark({
     return (
       <span
         className={cn(
-          'font-serif font-medium uppercase leading-none tracking-[0.22em] text-forest',
-          className,
+          'font-medium font-serif text-forest uppercase leading-none tracking-[0.22em]',
+          className
         )}
       >
         Bellwoods&nbsp;Lane
         {ventures ? (
-          <span className="tracking-[0.22em] text-forest/70">&nbsp;Ventures</span>
+          <span className="text-forest/70 tracking-[0.22em]">
+            &nbsp;Ventures
+          </span>
         ) : null}
       </span>
     );
@@ -101,8 +104,8 @@ export function Wordmark({
   return (
     <span
       className={cn(
-        'inline-flex items-baseline font-serif font-bold lowercase leading-none tracking-[-0.03em] text-forest',
-        className,
+        'inline-flex items-baseline font-bold font-serif text-forest lowercase leading-none tracking-[-0.03em]',
+        className
       )}
     >
       kept
@@ -165,13 +168,13 @@ export function Seal({
       <span
         className={cn(
           'relative inline-flex h-20 w-20 shrink-0 items-center justify-center rounded-full border border-forest/30',
-          className,
+          className
         )}
       >
         <span className="absolute inset-1.5 rounded-full border border-forest/15" />
         <Monogram className="h-6 w-auto" />
         {label ? (
-          <span className="absolute -bottom-5 left-1/2 -translate-x-1/2 whitespace-nowrap font-serif text-[9px] italic text-forest/60">
+          <span className="-bottom-5 -translate-x-1/2 absolute left-1/2 whitespace-nowrap font-serif text-[9px] text-forest/60 italic">
             {label}
           </span>
         ) : null}
@@ -182,15 +185,15 @@ export function Seal({
     <span
       className={cn(
         'relative inline-flex h-20 w-20 shrink-0 items-center justify-center rounded-full border border-wax/40',
-        className,
+        className
       )}
     >
       <span className="absolute inset-1.5 rounded-full border border-wax/20" />
-      <span className="inline-flex items-baseline font-serif text-lg font-bold lowercase leading-none tracking-[-0.03em] text-wax">
+      <span className="inline-flex items-baseline font-bold font-serif text-lg text-wax lowercase leading-none tracking-[-0.03em]">
         k<span aria-hidden>.</span>
       </span>
       {label ? (
-        <span className="absolute -bottom-5 left-1/2 -translate-x-1/2 whitespace-nowrap font-serif text-[9px] italic text-forest/60">
+        <span className="-bottom-5 -translate-x-1/2 absolute left-1/2 whitespace-nowrap font-serif text-[9px] text-forest/60 italic">
           {label}
         </span>
       ) : null}

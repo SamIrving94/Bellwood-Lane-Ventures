@@ -33,8 +33,7 @@ const VARIANTS: Record<Variant, string> = {
     'rounded-full border-[1.5px] border-leaf bg-transparent px-8 py-3.5 text-leaf hover:bg-leaf/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-leaf focus-visible:ring-offset-2 focus-visible:ring-offset-cream',
   accent:
     'rounded-full bg-wax px-8 py-3.5 text-white shadow-sm hover:bg-wax/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 focus-visible:ring-offset-2 focus-visible:ring-offset-forest',
-  ghost:
-    'text-leaf underline-offset-[6px] decoration-leaf/50 hover:underline',
+  ghost: 'text-leaf underline-offset-[6px] decoration-leaf/50 hover:underline',
 };
 
 function Arrow() {

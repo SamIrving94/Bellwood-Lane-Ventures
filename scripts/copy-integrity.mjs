@@ -39,7 +39,10 @@ const NAME_ALLOWLIST = [
 ];
 
 function sh(cmd) {
-  return execSync(cmd, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim();
+  return execSync(cmd, {
+    encoding: 'utf8',
+    stdio: ['ignore', 'pipe', 'ignore'],
+  }).trim();
 }
 
 function resolveBase(arg) {
@@ -65,29 +68,43 @@ function visibleText(src) {
   s = s.replace(/\/\*[\s\S]*?\*\//g, ' '); // block comments (incl. license/jsx comments)
   s = s.replace(/<style[\s\S]*?<\/style>/gi, ' ');
   s = s.replace(/<script[\s\S]*?<\/script>/gi, ' ');
+  // JSX whitespace spacers are formatting, not copy: Biome freely moves
+  // `{' '}` between line ends when re-wrapping, which would otherwise shift
+  // text in/out of our static captures and raise false alarms.
+  s = s.replace(/\{\s*['"`] ['"`]\s*\}/g, ' ');
 
   const texts = [];
   const re = />([^<>{}]*?[A-Za-z][^<>{}]*?)</g;
   let m;
   while ((m = re.exec(s)) !== null) {
     let t = m[1];
-    t = t.replace(/&nbsp;/gi, ' ').replace(/&amp;/gi, '&').replace(/&[a-z]+;/gi, ' ');
+    t = t
+      .replace(/&nbsp;/gi, ' ')
+      .replace(/&amp;/gi, '&')
+      .replace(/&[a-z]+;/gi, ' ');
     // ignore captures that are obviously code, not prose (e.g. `=> (`), by
     // requiring at least one alphabetic word run
     if (/[A-Za-z]{2,}/.test(t)) texts.push(t);
   }
+  // Compare a punctuation-stripped word stream: formatter re-wraps shuffle
+  // brackets/space-adjacent punctuation without touching prose, so only word
+  // tokens are load-bearing. (Trade-off, documented: a punctuation-only copy
+  // change — e.g. "." -> "!" — is not caught.)
   return texts
     .join(' ')
-    .replace(/[''""`]/g, "'")
+    .toLowerCase()
+    .replace(/[^a-z0-9£%&''\-\s]/g, ' ')
     .replace(/\s+/g, ' ')
-    .trim()
-    .toLowerCase();
+    .trim();
 }
 
 function stripNames(text) {
   let t = text;
   for (const re of NAME_ALLOWLIST) t = t.replace(re, '§');
-  return t.replace(/§[\s§]*/g, '§ ').replace(/\s+/g, ' ').trim();
+  return t
+    .replace(/§[\s§]*/g, '§ ')
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
 function wordDiff(a, b) {
@@ -112,7 +129,7 @@ try {
         !f.endsWith('.d.ts') &&
         // The brand component layer is explicitly allowed to change — this
         // guard protects PAGE copy, not the intentional brand rewrite.
-        !f.includes('apps/web/components/brand/'),
+        !f.includes('apps/web/components/brand/')
     );
 } catch (e) {
   console.error(`copy-integrity: cannot diff against ${base}: ${e.message}`);
@@ -120,7 +137,9 @@ try {
 }
 
 if (changed.length === 0) {
-  console.log(`copy-integrity: no changed apps/web source files vs ${base.slice(0, 12)}. OK.`);
+  console.log(
+    `copy-integrity: no changed apps/web source files vs ${base.slice(0, 12)}. OK.`
+  );
   process.exit(0);
 }
 
@@ -146,12 +165,14 @@ for (const file of changed) {
 if (violations.length === 0) {
   console.log(
     `copy-integrity: ${changed.length} changed file(s) vs ${base.slice(0, 12)} — ` +
-      `static visible copy unchanged (aside from the allow-listed name swap). OK.`,
+      `static visible copy unchanged (aside from the allow-listed name swap). OK.`
   );
   process.exit(0);
 }
 
-console.error(`\ncopy-integrity: FAILED — static copy changed in ${violations.length} file(s):\n`);
+console.error(
+  `\ncopy-integrity: FAILED — static copy changed in ${violations.length} file(s):\n`
+);
 for (const v of violations) {
   console.error(`  ${v.file}`);
   if (v.removed.length) console.error(`    − ${v.removed.join(' ')}`);
@@ -160,6 +181,6 @@ for (const v of violations) {
 console.error(
   `\nA rebrand change may only alter styles/tokens/brand/name — not copy.\n` +
     `If a change above is legitimate (e.g. a new allow-listed name form), update\n` +
-    `NAME_ALLOWLIST in scripts/copy-integrity.mjs; otherwise revert the wording.\n`,
+    `NAME_ALLOWLIST in scripts/copy-integrity.mjs; otherwise revert the wording.\n`
 );
 process.exit(1);

@@ -24,26 +24,26 @@ export default async function LoginPage({
       <div className="text-center">
         <Link
           href="/instant-offer"
-          className="font-serif text-xl font-semibold tracking-tight"
+          className="font-semibold font-serif text-xl tracking-tight"
         >
           BELLWOODS
-          <span className="mx-2 inline-block h-px w-8 bg-[#DB5C5C] align-middle" />
-          <span className="text-sm font-normal tracking-widest text-stone-500">
+          <span className="mx-2 inline-block h-px w-8 bg-wax align-middle" />
+          <span className="font-normal text-sm text-stone-500 tracking-widest">
             LANE
           </span>
         </Link>
-        <h1 className="mt-10 font-serif text-4xl font-semibold">
+        <h1 className="mt-10 font-semibold font-serif text-4xl">
           Claim your partner dashboard.
         </h1>
         <p className="mt-3 text-stone-600">
           Already used our instant-offer tool as an agent? Your account is
-          already there. Enter your work email — we&apos;ll send you a
-          one-click sign-in link.
+          already there. Enter your work email — we&apos;ll send you a one-click
+          sign-in link.
         </p>
       </div>
 
       {errorMsg && (
-        <div className="mt-8 rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-800">
+        <div className="mt-8 rounded-lg border border-amber-300 bg-amber-50 p-4 text-amber-800 text-sm">
           {errorMsg}
         </div>
       )}
@@ -56,7 +56,7 @@ export default async function LoginPage({
         Not a partner yet?{' '}
         <Link
           href="/partners/signup"
-          className="font-medium text-[#874646] underline underline-offset-4 hover:text-[#DB5C5C]"
+          className="font-medium text-leaf underline underline-offset-4 hover:text-leaf-dark"
         >
           Apply →
         </Link>

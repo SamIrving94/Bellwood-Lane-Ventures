@@ -52,7 +52,7 @@ export function ProofOfFundsButton() {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="rounded-md bg-[#874646] px-6 py-3 text-sm text-white transition hover:bg-[#6F3A3A]"
+        className="rounded-md bg-leaf px-6 py-3 text-sm text-white transition hover:bg-leaf-dark"
       >
         Request proof of funds
       </button>
@@ -62,7 +62,7 @@ export function ProofOfFundsButton() {
           role="dialog"
           aria-modal="true"
           aria-labelledby="pof-title"
-          className="fixed inset-0 z-50 flex items-center justify-center bg-[#2B2220]/40 p-4 backdrop-blur-sm"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-forest/40 p-4 backdrop-blur-sm"
           onClick={close}
         >
           <div
@@ -71,18 +71,18 @@ export function ProofOfFundsButton() {
           >
             {status.kind === 'success' ? (
               <div className="text-center">
-                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-[#1F6B3A]/15 text-2xl text-[#1F6B3A]">
+                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-leaf/15 text-2xl text-leaf-dark">
                   ✓
                 </div>
                 <h3
                   id="pof-title"
-                  className="mt-5 font-serif text-2xl font-semibold"
+                  className="mt-5 font-semibold font-serif text-2xl"
                 >
                   Request received.
                 </h3>
                 <p className="mt-3 text-sm text-stone-600">
-                  We&apos;ll email you a signed bank letter as soon as one
-                  of the team has prepared it.
+                  We&apos;ll email you a signed bank letter as soon as one of
+                  the team has prepared it.
                 </p>
                 <button
                   type="button"
@@ -94,18 +94,18 @@ export function ProofOfFundsButton() {
               </div>
             ) : (
               <>
-                <p className="font-serif italic text-[13px] text-[#DB5C5C]">
+                <p className="font-serif text-[13px] text-leaf italic">
                   Proof of funds
                 </p>
                 <h3
                   id="pof-title"
-                  className="mt-2 font-serif text-2xl font-semibold"
+                  className="mt-2 font-semibold font-serif text-2xl"
                 >
                   Signed bank letter, direct to your inbox.
                 </h3>
                 <p className="mt-3 text-sm text-stone-600">
-                  Tell us where to send it. No automated chasers — one
-                  human will email you a single PDF.
+                  Tell us where to send it. No automated chasers — one human
+                  will email you a single PDF.
                 </p>
 
                 <form onSubmit={submit} className="mt-6 space-y-3">
@@ -117,19 +117,19 @@ export function ProofOfFundsButton() {
                     required
                   />
                   <label className="block">
-                    <span className="text-xs uppercase tracking-widest text-stone-500">
+                    <span className="text-stone-500 text-xs uppercase tracking-widest">
                       Context (optional)
                     </span>
                     <textarea
                       name="context"
                       rows={3}
                       placeholder="e.g. negotiating a Manchester probate sale, vendor wants assurance"
-                      className="mt-1 w-full rounded-xl border border-stone-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-[#DB5C5C]"
+                      className="mt-1 w-full rounded-xl border border-stone-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-leaf"
                     />
                   </label>
 
                   {status.kind === 'error' && (
-                    <p className="rounded-lg bg-red-50 p-3 text-sm text-red-700">
+                    <p className="rounded-lg bg-red-50 p-3 text-red-700 text-sm">
                       {status.message}
                     </p>
                   )}
@@ -138,14 +138,14 @@ export function ProofOfFundsButton() {
                     <button
                       type="button"
                       onClick={close}
-                      className="text-sm text-stone-500 hover:text-[#874646]"
+                      className="text-sm text-stone-500 hover:text-leaf"
                     >
                       Cancel
                     </button>
                     <button
                       type="submit"
                       disabled={status.kind === 'submitting'}
-                      className="rounded-md bg-[#DB5C5C] px-6 py-3 text-sm font-medium text-[#2B2220] transition hover:bg-[#b08f52] disabled:opacity-50"
+                      className="rounded-md bg-leaf px-6 py-3 font-medium text-sm text-white transition hover:bg-leaf-dark disabled:opacity-50"
                     >
                       {status.kind === 'submitting'
                         ? 'Sending...'
@@ -175,14 +175,14 @@ function Input({
 }) {
   return (
     <label className="block">
-      <span className="text-xs uppercase tracking-widest text-stone-500">
+      <span className="text-stone-500 text-xs uppercase tracking-widest">
         {label}
       </span>
       <input
         name={name}
         type={type}
         required={required}
-        className="mt-1 w-full rounded-xl border border-stone-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-[#DB5C5C]"
+        className="mt-1 w-full rounded-xl border border-stone-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-leaf"
       />
     </label>
   );

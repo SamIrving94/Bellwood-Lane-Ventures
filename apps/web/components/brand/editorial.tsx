@@ -42,9 +42,9 @@ export function Eyebrow({
   return (
     <span
       className={cn(
-        'inline-flex items-center gap-3 text-[11px] font-medium uppercase tracking-[0.26em]',
+        'inline-flex items-center gap-3 font-medium text-[11px] uppercase tracking-[0.26em]',
         text,
-        className,
+        className
       )}
     >
       <span className={cn('h-px w-6 shrink-0', rule)} aria-hidden />
@@ -66,9 +66,9 @@ export function SectionNumber({
   return (
     <span
       className={cn(
-        'block font-serif text-5xl font-light leading-none tabular-nums md:text-6xl',
+        'block font-light font-serif text-5xl tabular-nums leading-none md:text-6xl',
         tone === 'light' ? 'text-white/25' : 'text-forest/20',
-        className,
+        className
       )}
     >
       {children}
@@ -87,8 +87,8 @@ export function StatusNote({
   return (
     <span
       className={cn(
-        'inline-flex items-center gap-2.5 font-serif text-sm italic text-body',
-        className,
+        'inline-flex items-center gap-2.5 font-serif text-body text-sm italic',
+        className
       )}
     >
       <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-leaf" aria-hidden />

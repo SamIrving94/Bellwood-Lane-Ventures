@@ -19,14 +19,14 @@
 /* Named brand tokens → utilities like bg-cream, text-forest, bg-leaf,
    text-wax, border-hair. Vocabulary matches the Kept. Design cards 1:1. */
 @theme {
-  --color-cream: #f7f3ea;      /* page ground */
-  --color-forest: #1f332b;     /* ink — headlines, dark bands, footer */
-  --color-body: #4c5a50;       /* body text */
-  --color-leaf: #2e7d5b;       /* interactive ONLY */
-  --color-leaf-dark: #256a4c;  /* hover state */
-  --color-wax: #c33f35;        /* the dot, seals, promise moments ONLY */
-  --color-hair: #e2dccb;       /* hairlines / borders */
-  --color-soft: #ede7d8;       /* tinted section grounds */
+  --color-cream: #f7f3ea; /* page ground */
+  --color-forest: #1f332b; /* ink — headlines, dark bands, footer */
+  --color-body: #4c5a50; /* body text */
+  --color-leaf: #2e7d5b; /* interactive ONLY */
+  --color-leaf-dark: #256a4c; /* hover state */
+  --color-wax: #c33f35; /* the dot, seals, promise moments ONLY */
+  --color-hair: #e2dccb; /* hairlines / borders */
+  --color-soft: #ede7d8; /* tinted section grounds */
 }
 
 /* Semantic override, public-root only: repoints the shadcn/Bellwoods vars to
@@ -34,27 +34,27 @@
    Legacy brand aliases: --brand → leaf (the general interactive accent),
    --brand-deep → forest (ink). Wax is deliberately NOT aliased here. */
 :root {
-  --background: #f7f3ea;          /* cream */
-  --foreground: #1f332b;          /* forest ink */
+  --background: #f7f3ea; /* cream */
+  --foreground: #1f332b; /* forest ink */
   --card: #ffffff;
   --card-foreground: #1f332b;
   --popover: #ffffff;
   --popover-foreground: #1f332b;
-  --primary: #2e7d5b;             /* leaf — actions */
+  --primary: #2e7d5b; /* leaf — actions */
   --primary-foreground: #ffffff;
-  --secondary: #ede7d8;           /* soft ground */
+  --secondary: #ede7d8; /* soft ground */
   --secondary-foreground: #1f332b;
   --muted: #ede7d8;
-  --muted-foreground: #4c5a50;    /* body */
-  --accent: #e7efe9;              /* faint leaf tint — hover/active surfaces */
+  --muted-foreground: #4c5a50; /* body */
+  --accent: #e7efe9; /* faint leaf tint — hover/active surfaces */
   --accent-foreground: #1f332b;
-  --destructive: #b3261e;         /* true red — NOT wax (wax is reserved) */
+  --destructive: #b3261e; /* true red — NOT wax (wax is reserved) */
   --destructive-foreground: #ffffff;
-  --border: #e2dccb;              /* hair */
+  --border: #e2dccb; /* hair */
   --input: #d9d0bc;
-  --ring: #2e7d5b;                /* leaf — focus is interactive */
-  --brand: #2e7d5b;               /* alias → leaf */
-  --brand-deep: #1f332b;          /* alias → forest */
+  --ring: #2e7d5b; /* leaf — focus is interactive */
+  --brand: #2e7d5b; /* alias → leaf */
+  --brand-deep: #1f332b; /* alias → forest */
 }
 
 /* The full stop lands: drop + settle, once per load, in the nav mark.

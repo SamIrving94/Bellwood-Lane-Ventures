@@ -30,7 +30,7 @@ export function LoginForm() {
   if (status.state === 'success') {
     return (
       <div className="text-center">
-        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-md bg-[#DB5C5C]/20 text-xl text-[#DB5C5C]">
+        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-md bg-leaf/20 text-leaf text-xl">
           ✓
         </div>
         <p className="mt-5 font-serif text-xl">Check your inbox.</p>
@@ -42,7 +42,7 @@ export function LoginForm() {
             <p className="font-semibold">Dev mode — magic link</p>
             <a
               href={status.devMagicLink}
-              className="mt-2 block break-all text-[#874646] underline"
+              className="mt-2 block break-all text-leaf underline"
             >
               {status.devMagicLink}
             </a>
@@ -55,7 +55,7 @@ export function LoginForm() {
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <label className="block">
-        <span className="text-xs uppercase tracking-widest text-stone-500">
+        <span className="text-stone-500 text-xs uppercase tracking-widest">
           Work email
         </span>
         <input
@@ -63,18 +63,18 @@ export function LoginForm() {
           type="email"
           required
           autoFocus
-          className="mt-1 w-full rounded-xl border border-stone-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-[#DB5C5C]"
+          className="mt-1 w-full rounded-xl border border-stone-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-leaf"
         />
       </label>
       {status.state === 'error' && (
-        <p className="rounded-lg bg-red-50 p-3 text-sm text-red-700">
+        <p className="rounded-lg bg-red-50 p-3 text-red-700 text-sm">
           {status.message}
         </p>
       )}
       <button
         type="submit"
         disabled={status.state === 'submitting'}
-        className="w-full rounded-md bg-[#874646] px-6 py-4 text-sm font-medium text-white transition hover:bg-[#6F3A3A] disabled:opacity-50"
+        className="w-full rounded-md bg-leaf px-6 py-4 font-medium text-sm text-white transition hover:bg-leaf-dark disabled:opacity-50"
       >
         {status.state === 'submitting'
           ? 'Sending link...'

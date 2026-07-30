@@ -1246,6 +1246,9 @@ importers:
       '@react-pdf/renderer':
         specifier: ^4.1.5
         version: 4.5.1(react@19.0.0)
+      '@repo/brand':
+        specifier: workspace:*
+        version: link:../brand
       '@repo/database':
         specifier: workspace:*
         version: link:../database
