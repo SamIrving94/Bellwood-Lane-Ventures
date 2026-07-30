@@ -35,6 +35,7 @@ import { matchProbateAddressToSale } from './hmlr-match';
 import { normaliseUkAddress } from './address-normalise';
 import { fetchShortLeaseLeads } from './short-lease';
 import { fetchCompaniesHouseDistressLeads } from './companies-house-charges';
+import { leadTypeForListing } from './lead-type';
 import {
   baseFromProbateLead,
   checkEnrichmentHealth,
@@ -121,6 +122,7 @@ export type {
   SourceHealthSummary,
   SourceStatus,
 } from './source-health';
+export { leadTypeForListing, LISTING_LEAD_TYPE_MAP } from './lead-type';
 export { scoreLead, scoreDealRoi, combineScore } from './scorer';
 export type {
   ScoreFactor,
@@ -486,6 +488,12 @@ export async function runScoutingPipeline(
         estateValuePence: number | null;
         grantType: 'unknown';
         source: string;
+        /**
+         * Motivation implied by the distress list this property came from.
+         * Required, not optional: omitting it is what silently defaulted
+         * every listing to 'probate'.
+         */
+        leadTypeHint: string;
         daysSinceGrant: number;
         /** Rich PropertyData fields — flow through rawPayload to the UI. */
         propertyData?: {
@@ -555,6 +563,12 @@ export async function runScoutingPipeline(
               estateValuePence: p.originalPricePence ?? p.pricePence,
               grantType: 'unknown' as const,
               source: `propertydata_${p.listingType}`,
+              // Without an explicit hint `enrichLead` defaults to 'probate',
+              // which handed every listing on the market a 20-point probate
+              // credit it had not earned. Derive the type from the distress
+              // list the property actually came from instead — see
+              // ./lead-type.ts.
+              leadTypeHint: leadTypeForListing(p.listingType),
               daysSinceGrant: p.daysOnMarket ?? 0,
               propertyData: {
                 id: p.id,
