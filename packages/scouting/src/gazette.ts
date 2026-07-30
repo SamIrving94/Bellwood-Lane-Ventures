@@ -21,19 +21,24 @@
  * unparseable facet reaching the search backend), and it is wrong regardless
  * of what the server does with it.
  *
- * !! NOT YET CONFIRMED AGAINST THE LIVE SERVER. This rewrite was derived from
- * the published contract and is covered end-to-end by fixtures, but the
- * session that wrote it had no outbound network (the egress proxy 403s every
- * CONNECT, control hosts included), so nobody has watched the real endpoint
- * accept these requests. One call settles it:
+ * CONFIRMED AGAINST THE LIVE SERVER, 2026-07-30T05:15:47Z. The corrected URL
+ * returned HTTP 200 with a populated `entry[]` (`f:total` ≈ 879,922 Deceased
+ * Estates notices) while the old `?noticetype=deceased-estates` shape was
+ * still 500ing. So the outage was ours, not theirs.
+ *
+ * That response is checked in verbatim as
+ * `__tests__/fixtures/gazette-list-live-2026-07-30.json` and asserted against
+ * in `__tests__/gazette-live-shape.test.ts`, so a future drift in the real
+ * feed shape breaks a test rather than the daily cron. Re-capture with:
  *
  *   curl -sS -H 'Accept: application/json' \
  *     'https://www.thegazette.co.uk/wills-and-probate/notice/data.json?noticecode=2903&results-page=1&results-page-size=10'
  *
- * A 200 with a populated `entry[]` confirms it. If that 500s too, the outage
- * is genuinely theirs — and the errors below now name every shape tried and
- * how each failed, rather than the bare `Gazette list HTTP 500` that hid this
- * for three days.
+ * Two things that sample made obvious, both already handled below: a
+ * meaningful share of notices are OVERSEAS (South Africa, Mauritius, Nigeria
+ * in a single page of ten) and are dropped by the UK-postcode requirement in
+ * `parseNoticeDetail`; and some addresses carry a literal `/n` where a line
+ * break belongs.
  *
  * The real shapes are:
  *
