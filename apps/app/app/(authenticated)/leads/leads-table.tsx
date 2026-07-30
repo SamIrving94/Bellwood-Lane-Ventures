@@ -126,7 +126,7 @@ const SECONDARY_FILTERS: FilterKey[] = [
 
 export function LeadsTable({ leads, initialFilter }: Props) {
   const [activeFilter, setActiveFilter] = useState<FilterKey>(
-    (initialFilter as FilterKey) ?? 'triage',
+    (initialFilter as FilterKey) ?? 'new',
   );
   const [showMoreFilters, setShowMoreFilters] = useState(false);
   // Optimistic triage state so cards re-filter instantly on Shortlist/Pass.
