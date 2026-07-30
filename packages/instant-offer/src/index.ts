@@ -54,7 +54,7 @@ export interface InstantOfferResult {
   /** Human-readable reasoning lines for transparency panel */
   reasoning: string[];
   /**
-   * LLM-generated 2-3 paragraph narrative in Bellwood voice, suitable for
+   * LLM-generated 2-3 paragraph narrative in Kept voice, suitable for
    * dropping into the signed PDF or follow-up email. Null when Claude is
    * unavailable — callers fall back to the `reasoning` array.
    */
@@ -225,11 +225,11 @@ export async function generateInstantOffer(
 // LLM offer narrative
 //
 // Turns the AVM payload into 2-3 short paragraphs the vendor can actually
-// read — what the offer is, what drives it, and what happens next. Bellwood
+// read — what the offer is, what drives it, and what happens next. Kept
 // voice: professional, specific, no marketing fluff.
 // ───────────────────────────────────────────────────────────────────────────
 
-const NARRATIVE_SYSTEM_PROMPT = `You write vendor-facing offer narratives for Bellwood Ventures, a UK cash buyer of fall-through and probate properties.
+const NARRATIVE_SYSTEM_PROMPT = `You write vendor-facing offer narratives for Kept, a UK cash buyer of fall-through and probate properties.
 
 Audience: a UK homeowner or estate executor reading the indicative offer for the first time. Often distressed, often dyslexic, always tired.
 

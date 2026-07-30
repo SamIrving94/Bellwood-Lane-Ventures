@@ -44,7 +44,7 @@ const FAQ: Array<{ q: string; a: string }> = [
   },
   {
     q: 'What about my AML obligations on the seller?',
-    a: 'We carry the load. Bellwoods Lane is HMRC-registered for AML supervision. We run KYC and source-of-funds checks, then issue a written compliance receipt for your file.',
+    a: 'We carry the load. Kept is HMRC-registered for AML supervision. We run KYC and source-of-funds checks, then issue a written compliance receipt for your file.',
   },
   {
     q: 'Are you regulated?',
@@ -98,15 +98,15 @@ function SampleOfferDocument() {
       </dl>
 
       <p className="mt-6 border-hair border-t pt-4 font-serif text-[11px] text-stone-500 italic leading-relaxed">
-        Signed for and on behalf of Bellwoods Lane Ltd. This offer is legally
-        binding upon Bellwoods Lane Ltd for 72 hours from issue.
+        Signed for and on behalf of Kept. This offer is legally
+        binding upon Kept for 72 hours from issue.
       </p>
     </div>
   );
 }
 
 const NAV = [
-  { href: '/agents/score', label: 'Bellwood Score' },
+  { href: '/agents/score', label: 'Kept Score' },
   { href: '#how', label: 'How it works' },
   { href: '#faq', label: 'FAQ' },
   { href: '/sell', label: 'For sellers' },
@@ -352,7 +352,7 @@ export default function AgentsPage() {
               </h2>
             </div>
             <Seal
-              label="Bellwoods Lane"
+              label="Kept"
               className="mt-2 hidden shrink-0 sm:inline-flex"
             />
           </div>
@@ -607,13 +607,13 @@ export default function AgentsPage() {
               &middot; ICO registered
             </p>
             <p className="mt-4 text-[11px] text-stone-500 leading-relaxed">
-              Bellwoods Lane Ltd is a UK cash property buyer, not an
+              Kept is a UK cash property buyer, not an
               FCA-authorised firm. We do not provide financial or legal advice.
               Seek independent legal advice before accepting any offer. All
               offers are subject to satisfactory survey and title searches.
             </p>
             <p className="mt-4 text-[11px] text-stone-400">
-              © {new Date().getFullYear()} Bellwoods Lane Ltd.
+              © {new Date().getFullYear()} Kept.
             </p>
           </div>
         </div>

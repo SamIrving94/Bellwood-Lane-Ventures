@@ -11,7 +11,7 @@ export const maxDuration = 300;
  * Overnight analyst — runs at 05:30 UTC, before the founders wake up.
  *
  * Uses Claude's server-side web search tool to scan overnight/recent local
- * signals for Bellwood's target areas (planning news, market shifts, auction
+ * signals for Kept's target areas (planning news, market shifts, auction
  * activity, distressed-seller-relevant items) and writes ONE morning-brief
  * FounderAction that the Today page and Action Centre surface.
  *
@@ -134,7 +134,7 @@ export const POST = async (request: Request) => {
       .join(', ');
 
     const prompt = [
-      `You are the overnight market analyst for Bellwood, a two-founder UK company that buys property directly from vendors for cash. Their deal types: probate sales, chain breaks, short leases, and repossessions.`,
+      `You are the overnight market analyst for Kept, a two-founder UK company that buys property directly from vendors for cash. Their deal types: probate sales, chain breaks, short leases, and repossessions.`,
       ``,
       `Target areas (UK postcodes): ${areaList}.`,
       ``,

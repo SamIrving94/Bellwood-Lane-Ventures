@@ -87,7 +87,7 @@ export async function sendSignedOffer(
       '',
       `Signed PDF: ${input.signedOfferUrl}`,
       '',
-      'Sam — Bellwood Ventures',
+      'Sam — Kept',
     ].join('\n'),
   }).catch((err: unknown) => {
     console.warn('[quote-ops/send-signed-offer] email send failed', err);

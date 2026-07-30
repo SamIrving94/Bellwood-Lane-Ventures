@@ -33,9 +33,13 @@ import { join } from 'node:path';
 const NAME_ALLOWLIST = [
   /bellwood lane ventures(?: ltd)?/gi,
   /bellwoods lane ventures/gi,
+  /bellwoods? lane ltd/gi,
   /bellwoods lane/gi,
-  /bellwoods/gi,
-  /kept\.?/gi,
+  /bellwood ventures/gi,
+  /bellwood score/gi,
+  /bellwoods?(?:['’]s)?/gi,
+  /kept score/gi,
+  /kept(?:['’]s)?\.?/gi,
 ];
 
 function sh(cmd) {

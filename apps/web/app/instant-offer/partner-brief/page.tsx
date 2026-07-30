@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'Agent Partner Brief · Bellwoods Lane',
+  title: 'Agent Partner Brief · Kept',
   robots: 'noindex',
 };
 
@@ -49,7 +49,7 @@ export default function PartnerBriefPage() {
 
       <section className="mt-10 space-y-6">
         <p className="text-base text-stone-700 leading-relaxed">
-          Bellwoods Lane is a UK direct-to-vendor cash property buyer. We
+          Kept is a UK direct-to-vendor cash property buyer. We
           partner exclusively with estate agents to rescue chain breaks, probate
           sales, repossessions, and problem properties that conventional buyers
           will not touch.
@@ -167,7 +167,7 @@ export default function PartnerBriefPage() {
       <section className="mt-10 rounded-2xl border-2 border-forest bg-forest p-8 text-white">
         <p className="text-leaf text-xs uppercase tracking-widest">Contact</p>
         <p className="mt-3 font-semibold font-serif text-2xl">Anthony</p>
-        <p className="text-sm text-white/70">Founder · Bellwoods Lane</p>
+        <p className="text-sm text-white/70">Founder · Kept</p>
         <div className="mt-4 grid grid-cols-1 gap-1 text-sm md:grid-cols-2">
           <p>Email: anthony@bellwoodslane.co.uk</p>
           <p>Phone: +44 (0)&nbsp;[phone]</p>
@@ -177,7 +177,7 @@ export default function PartnerBriefPage() {
 
       <footer className="mt-10 border-stone-200 border-t pt-6 text-stone-500 text-xs">
         <p>
-          Bellwoods Lane Ltd is a UK cash property buyer. Member of the Property
+          Kept is a UK cash property buyer. Member of the Property
           Redress Scheme (PRS), HMRC-registered for AML supervision under the
           Money Laundering Regulations 2017, and ICO-registered as a data
           controller. Fees disclosed to sellers in writing per NTSELAT /

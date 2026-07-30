@@ -2,9 +2,9 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 
 export const metadata: Metadata = {
-  title: 'Regulatory status — Bellwoods Lane',
+  title: 'Regulatory status — Kept',
   description:
-    'How Bellwoods Lane is regulated, what that means for you, and the legal footing of our cash offers.',
+    'How Kept is regulated, what that means for you, and the legal footing of our cash offers.',
 };
 
 const SECTIONS: Array<{
@@ -20,7 +20,7 @@ const SECTIONS: Array<{
     body: (
       <>
         <p>
-          Bellwoods Lane Ltd is a UK private company (registered in England
+          Kept is a UK private company (registered in England
           &amp; Wales) that buys residential property for its own account, using
           its own capital. We are not an estate agent, not a broker, not a
           mortgage lender, and not a member of any property portal.
@@ -93,7 +93,7 @@ const SECTIONS: Array<{
       <>
         <p>
           Property buyers are regulated businesses under the Money Laundering
-          Regulations 2017. Bellwoods Lane is registered with HMRC for AML
+          Regulations 2017. Kept is registered with HMRC for AML
           supervision. Every transaction includes Customer Due Diligence on the
           seller — identity verification, source of funds, risk assessment.
         </p>
@@ -175,7 +175,7 @@ const SECTIONS: Array<{
           your estate agent can too.
         </p>
         <p>
-          We will not pressure you to sign. If anyone from Bellwoods Lane ever
+          We will not pressure you to sign. If anyone from Kept ever
           does, email{' '}
           <a href="mailto:anthony@bellwoodslane.co.uk" className="underline">
             anthony@bellwoodslane.co.uk
@@ -251,7 +251,7 @@ export default function FCADisclosurePage() {
             <dt className="font-serif text-[13px] text-stone-500 italic">
               Legal name
             </dt>
-            <dd>Bellwoods Lane Ltd</dd>
+            <dd>Kept</dd>
             <dt className="font-serif text-[13px] text-stone-500 italic">
               Registered in
             </dt>

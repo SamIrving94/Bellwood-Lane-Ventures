@@ -283,7 +283,7 @@ export const POST = async (request: Request) => {
   try {
     await sendEmail({
       to: inbound.ReplyTo ?? fromEmail,
-      subject: `Re: ${inbound.Subject || '(no subject)'} — Bellwood docs intake`,
+      subject: `Re: ${inbound.Subject || '(no subject)'} — Kept docs intake`,
       text: buildAckBody({
         extractedCount,
         summaries,
@@ -364,7 +364,7 @@ function buildAckBody(input: {
   dealId: string | null;
   postcodesFound: string[];
 }): string {
-  const lines: string[] = [`Bellwood docs intake received your forward.`, ''];
+  const lines: string[] = [`Kept docs intake received your forward.`, ''];
 
   if (input.extractedCount === 0 && input.summaries.length === 0) {
     lines.push('No attachments found. Nothing was filed.');
@@ -407,6 +407,6 @@ function buildAckBody(input: {
     );
   }
 
-  lines.push('', 'Bellwoods Lane');
+  lines.push('', 'Kept');
   return lines.join('\n');
 }

@@ -160,7 +160,7 @@ export default async function OfferCertificatePage({
           {[
             [
               'Validity',
-              `Legally binding upon Bellwoods Lane until ${lockedUntil}`,
+              `Legally binding upon Kept until ${lockedUntil}`,
             ],
             ['Completion target', `${o.completionDays} days from acceptance`],
             [
@@ -215,7 +215,7 @@ export default async function OfferCertificatePage({
         </div>
         <div>
           <p className="font-serif text-[13px] text-stone-500 italic">
-            For Bellwoods Lane Ltd
+            For Kept
           </p>
           <div className="mt-2 h-16 border-stone-400 border-b-2" />
           <p className="mt-2 text-stone-500 text-xs">Authorised signatory</p>
@@ -224,9 +224,9 @@ export default async function OfferCertificatePage({
 
       <footer className="mt-12 border-stone-200 border-t pt-6 font-mono text-[10px] text-stone-500 leading-relaxed">
         <p>
-          Bellwoods Lane Ltd · Registered in England &amp; Wales · Property
-          Redress Scheme (PRS) · HMRC AML supervised · ICO registered. Bellwoods
-          Lane is a cash property buyer, not an FCA-authorised firm. This offer
+          Kept · Registered in England &amp; Wales · Property
+          Redress Scheme (PRS) · HMRC AML supervised · ICO registered. Kept is
+          a cash property buyer, not an FCA-authorised firm. This offer
           does not constitute financial or legal advice. The seller is
           encouraged to seek independent legal advice. Full regulatory
           disclosure: bellwoodslane.co.uk/legal/fca-disclosure

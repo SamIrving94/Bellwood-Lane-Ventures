@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'Seller Disclosure Form · Bellwoods Lane',
+  title: 'Seller Disclosure Form · Kept',
   robots: 'noindex',
 };
 
@@ -78,7 +78,7 @@ export default function SellerDisclosurePage() {
       {/* Offer */}
       <section className="mt-8 rounded-xl border-2 border-wax bg-soft p-6">
         <h2 className="mb-3 font-semibold font-serif text-lg">
-          Bellwoods Lane cash offer
+          Kept cash offer
         </h2>
         <div className="grid grid-cols-2 gap-3 text-sm">
           <label className="block">
@@ -127,8 +127,8 @@ export default function SellerDisclosurePage() {
         </h2>
         <p className="text-sm text-stone-700">
           Your estate agent will receive a referral fee if this sale completes
-          with Bellwoods Lane. The amount is stated below. This fee is paid by
-          Bellwoods Lane and is separate from any standard estate agency
+          with Kept. The amount is stated below. This fee is paid by
+          Kept and is separate from any standard estate agency
           commission.
         </p>
         <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
@@ -163,9 +163,9 @@ export default function SellerDisclosurePage() {
             'I understand the offer is below open-market value and the reasons (speed, certainty, cash completion, no chain).',
             'I understand I have the right to seek independent legal advice before accepting.',
             'I understand I may withdraw without penalty at any time before exchange of contracts.',
-            'I understand Bellwoods Lane is paying a referral fee to my estate agent as disclosed above.',
-            'I understand Bellwoods Lane is a cash buyer, not an FCA-authorised firm, and is registered for AML supervision with HMRC.',
-            'I understand Bellwoods Lane will only adjust the offer if a survey reveals material issues previously undisclosed — and I have 48 hours to withdraw free of charge in that scenario.',
+            'I understand Kept is paying a referral fee to my estate agent as disclosed above.',
+            'I understand Kept is a cash buyer, not an FCA-authorised firm, and is registered for AML supervision with HMRC.',
+            'I understand Kept will only adjust the offer if a survey reveals material issues previously undisclosed — and I have 48 hours to withdraw free of charge in that scenario.',
             'I have not been pressured and have had reasonable time to consider this decision.',
           ].map((t, i) => (
             <li
@@ -191,7 +191,7 @@ export default function SellerDisclosurePage() {
         </h2>
         <p className="text-sm text-stone-700">
           In line with the Digital Markets, Competition and Consumers Act 2024,
-          Bellwoods Lane operates additional safeguards where a seller may be in
+          Kept operates additional safeguards where a seller may be in
           a vulnerable position (recent bereavement, financial distress,
           health-related, language barrier, elderly). If you wish to indicate
           that you are in a vulnerable position, please tick below — this will
@@ -201,7 +201,7 @@ export default function SellerDisclosurePage() {
         <label className="mt-4 flex items-start gap-3 text-sm">
           <input type="checkbox" className="mt-1 h-4 w-4" />
           <span className="text-stone-700">
-            I identify as a vulnerable seller and wish Bellwoods Lane&apos;s
+            I identify as a vulnerable seller and wish Kept&apos;s
             additional safeguards to apply.
           </span>
         </label>
@@ -256,7 +256,7 @@ export default function SellerDisclosurePage() {
       </section>
 
       <footer className="mt-12 border-stone-200 border-t pt-6 text-stone-500 text-xs">
-        Bellwoods Lane Ltd · Property Redress Scheme (PRS) · HMRC AML supervised
+        Kept · Property Redress Scheme (PRS) · HMRC AML supervised
         · ICO registered · Disclosure compliant with CPR 2008, DMCC Act 2025,
         NTSELAT referral-fee guidance.
       </footer>

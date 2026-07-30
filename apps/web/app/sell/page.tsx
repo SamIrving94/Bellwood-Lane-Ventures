@@ -43,7 +43,7 @@ const FAQ: Array<{ q: string; a: string }> = [
   },
   {
     q: 'Can I change my mind after I accept?',
-    a: 'Yes. The offer is binding upon Bellwoods Lane for 72 hours. It is not binding upon you until exchange of contracts. You can withdraw at any point before exchange at no cost.',
+    a: 'Yes. The offer is binding upon Kept for 72 hours. It is not binding upon you until exchange of contracts. You can withdraw at any point before exchange at no cost.',
   },
   {
     q: 'What does it cost me?',
@@ -83,7 +83,7 @@ function OfferLetter() {
         <Seal />
       </div>
       <p className="font-bold font-serif text-[17px] text-brand-deep tracking-[0.01em]">
-        Bellwoods Lane
+        Kept
       </p>
       <p className="mt-1 text-[11px] text-stone-400 [font-family:var(--font-courier)]">
         Sample &middot; Ref BW-2026-0142
@@ -127,7 +127,7 @@ function OfferLetter() {
         />
       </svg>
       <p className="mt-1 font-serif text-[11px] text-stone-400 italic">
-        Signed for Bellwoods Lane Ltd
+        Signed for Kept
       </p>
     </div>
   );
@@ -345,7 +345,7 @@ export default function SellPage() {
               price drop. We put the price in writing and stand behind it.
             </p>
             <Seal
-              label="Bellwoods Lane"
+              label="Kept"
               className="mt-10 hidden lg:inline-flex"
             />
           </div>
@@ -353,7 +353,7 @@ export default function SellPage() {
             {[
               [
                 'Offer validity',
-                'Legally binding upon Bellwoods Lane for 72 hours. Time-stamped, in writing, downloadable as PDF.',
+                'Legally binding upon Kept for 72 hours. Time-stamped, in writing, downloadable as PDF.',
               ],
               [
                 'No price reduction',
@@ -540,13 +540,13 @@ export default function SellPage() {
           </div>
           <div className="mt-10 border-hair border-t pt-6">
             <p className="text-[11px] text-stone-500 leading-relaxed">
-              Bellwoods Lane Ltd is a UK cash property buyer, not an
+              Kept is a UK cash property buyer, not an
               FCA-authorised firm. We do not provide financial or legal advice.
               Seek independent legal advice before accepting any offer. All
               offers are subject to satisfactory survey and title searches.
             </p>
             <p className="mt-4 text-[11px] text-stone-400">
-              © {new Date().getFullYear()} Bellwoods Lane Ltd.
+              © {new Date().getFullYear()} Kept.
             </p>
           </div>
         </div>

@@ -10,7 +10,7 @@ import { validateAgentAuth, unauthorizedResponse } from '../../_lib/auth';
  * The Marketer agent (or the founder via curl) asks for a draft SEO blog
  * post on a specific topic + vendor segment. We:
  *
- *   1. DRAFT — Claude writes the post in Bellwood voice (matches the
+ *   1. DRAFT — Claude writes the post in Kept voice (matches the
  *      marketing plan in docs/marketing/PLAN.md §2).
  *   2. AUDIT — a second Claude pass reviews the draft against the UK
  *      compliance ruleset (CPR 2008, NTSELAT, ICO/UK GDPR, PECR, ASA/CAP)
@@ -67,7 +67,7 @@ const SEGMENT_BRIEF: Record<z.infer<typeof Body>['segment'], string> = {
     'UK estate agents (branch managers, partners at independents). NOT a vendor — peer-to-peer professional tone. Landing page CTA: /save-the-sale agent form. Top need: how the introducer fee works + the 4-hour SLA promise.',
 };
 
-const DRAFT_SYSTEM_PROMPT = `You write SEO blog posts for Bellwood Ventures, a UK direct-to-vendor property buyer specialising in chain-break, probate, and problem properties.
+const DRAFT_SYSTEM_PROMPT = `You write SEO blog posts for Kept, a UK direct-to-vendor property buyer specialising in chain-break, probate, and problem properties.
 
 Marketing plan §2 voice (iron rule):
 - Numbers and specifics over adjectives. Plain English.
@@ -77,13 +77,13 @@ Marketing plan §2 voice (iron rule):
 
 NEVER use:
 - "AI", "machine learning", "algorithm", "powered by"
-- "We buy any house" — Bellwood is selective; that's the brand
+- "We buy any house" — Kept is selective; that's the brand
 - "Get cash today!", countdown timers, urgency language
 - Stock-photo platitudes about families/happiness
 - "World-class", "best-in-class", "industry-leading", "revolutionary"
 
 ALWAYS:
-- Lead with the reader's situation, not Bellwood
+- Lead with the reader's situation, not Kept
 - Use real numbers (typical discount bands, completion timeframes, fee structures)
 - Signpost free debt advice (StepChange, Citizens Advice) when the topic touches financial difficulty
 - Include 1 clear CTA at the end pointing to the right landing page
@@ -97,7 +97,7 @@ You MUST return JSON only, no markdown fences, no preamble. Schema:
   "h1": string,                        // matches or rephrases title
   "bodyMarkdown": string,              // 800-1200 words, proper headings (## and ###), short paragraphs (≤ 3 sentences)
   "ctaLine": string,                   // 1 sentence, plain text, end-of-post call to action
-  "internalLinks": Array<{ anchor: string; target: string }>,  // 2-4 internal links to other Bellwood pages
+  "internalLinks": Array<{ anchor: string; target: string }>,  // 2-4 internal links to other Kept pages
   "keywordsUsedNaturally": string[]    // list of which provided keywords actually appear in the body
 }`;
 

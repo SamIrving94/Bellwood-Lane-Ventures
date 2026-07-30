@@ -238,7 +238,7 @@ interface BriefingInput {
   }>;
 }
 
-const BRIEFING_SYSTEM_PROMPT = `You are the Chief of Staff for Bellwood Ventures, a UK property deal-sourcer.
+const BRIEFING_SYSTEM_PROMPT = `You are the Chief of Staff for Kept, a UK property deal-sourcer.
 
 Your job: write the founder's morning briefing. The founder is dyslexic — short sentences, plain English, no jargon, no marketing fluff.
 

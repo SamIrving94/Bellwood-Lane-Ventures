@@ -32,14 +32,14 @@ import { z as zod } from 'zod';
 
 const WINDOW_MS = 30 * 60 * 1000;
 
-const VENDOR_TRIAGE_SYSTEM_PROMPT = `You triage held vendor outreach for Bellwood Ventures, a UK direct-to-vendor property buyer.
+const VENDOR_TRIAGE_SYSTEM_PROMPT = `You triage held vendor outreach for Kept, a UK direct-to-vendor property buyer.
 
 You will receive ONE held outreach record (subject + body + recipient context). Your job: classify what the founder needs to know in 30 seconds, then draft the suggested reply.
 
 Voice:
 - Empathetic, plain, slightly formal. UK spelling. No emoji.
 - Short paragraphs. No marketing fluff. No urgency or countdown language.
-- Never claim "we will buy any house" — Bellwood is selective.
+- Never claim "we will buy any house" — Kept is selective.
 
 Return ONLY JSON (no markdown fences, no preamble):
 
@@ -49,7 +49,7 @@ Return ONLY JSON (no markdown fences, no preamble):
   "urgency": "high" | "medium" | "low",
   "suggestedReply": {
     "subject": string,                     // ≤ 60 chars
-    "bodyPlainText": string                // 2-3 short paragraphs, ≤ 140 words total. Sign off as "Sam — Bellwood Ventures".
+    "bodyPlainText": string                // 2-3 short paragraphs, ≤ 140 words total. Sign off as "Sam — Kept".
   },
   "complianceFlags": string[]              // ICO / CPR / anonymisation concerns. Empty array if clean.
 }`;
@@ -77,7 +77,7 @@ type VendorTriage = zod.infer<typeof VendorTriageSchema>;
 
 // Mirrored from cron/marketer-daily — kept in-file to avoid a shared util just
 // for two callers.
-const IG_SYSTEM_PROMPT = `You write Instagram captions for Bellwood Ventures, a UK direct-to-vendor property buyer.
+const IG_SYSTEM_PROMPT = `You write Instagram captions for Kept, a UK direct-to-vendor property buyer.
 
 Voice: short, dry, UK property professional. Plain English. ≤ 150 words.
 

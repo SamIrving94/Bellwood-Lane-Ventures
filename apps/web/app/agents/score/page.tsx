@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { BellwoodScoreForm } from './bellwood-score-form';
 
 export const metadata: Metadata = {
-  title: 'Bellwood Score · An indicative range in seconds · Bellwoods Lane',
+  title: 'Kept Score · An indicative range in seconds · Kept',
   description:
     'A free tool for UK estate agents. Enter postcode + property details, get an indicative offer range during a valuation appointment. Based on publicly available data — not a substitute for viewing.',
   robots: 'noindex',
@@ -23,7 +23,7 @@ export default function BellwoodScorePage() {
         </Link>
 
         <p className="mt-10 font-serif text-[13px] text-leaf italic">
-          Bellwood Score · For partner agents
+          Kept Score · For partner agents
         </p>
         <h1
           className="mt-3 font-semibold font-serif text-forest leading-[1.02] tracking-[-0.025em]"
@@ -61,7 +61,7 @@ export default function BellwoodScorePage() {
               data. Real PropertyData calls. Real Land Registry comparables.
             </li>
             <li>
-              · <strong>Not a guarantee.</strong> Bellwood&rsquo;s confirmed
+              · <strong>Not a guarantee.</strong> Kept&rsquo;s confirmed
               offer is issued after a physical viewing and may differ.
             </li>
             <li>
@@ -76,7 +76,7 @@ export default function BellwoodScorePage() {
         </div>
 
         <p className="mt-12 font-serif text-[13px] text-stone-400 italic">
-          Bellwoods Lane Ltd · Property Redress Scheme (PRS) · HMRC AML
+          Kept · Property Redress Scheme (PRS) · HMRC AML
           supervised · ICO registered
         </p>
       </div>

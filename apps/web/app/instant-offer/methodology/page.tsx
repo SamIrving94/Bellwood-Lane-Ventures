@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 
 export const metadata: Metadata = {
-  title: 'How we price your property · Bellwoods Lane',
+  title: 'How we price your property · Kept',
   description:
     'Full transparency on how we calculate our cash offers: comps, trend, risk, seller-situation margin, and floor/ceiling.',
 };

@@ -38,7 +38,7 @@ export async function POST(request: Request) {
       <p><strong>Name:</strong> ${escapeHtml(name)}</p>
       <p><strong>Email:</strong> <a href="mailto:${email}">${escapeHtml(email)}</a></p>
       ${context ? `<p><strong>Context:</strong><br/>${escapeHtml(context).replace(/\n/g, '<br/>')}</p>` : ''}
-      <p style="color:#6B7280;font-size:12px;margin-top:24px">Bellwoods Lane · received via instant-offer</p>
+      <p style="color:#6B7280;font-size:12px;margin-top:24px">Kept · received via instant-offer</p>
     </div>
   `;
 

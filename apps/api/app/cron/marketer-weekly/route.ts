@@ -24,7 +24,7 @@ import { NextResponse } from 'next/server';
  * NEVER auto-publishes anything. Always founder-approved.
  */
 
-const LINKEDIN_SYSTEM_PROMPT = `You plan a week of LinkedIn content for Bellwood Ventures, a UK direct-to-vendor property buyer (chain-break, probate, problem properties).
+const LINKEDIN_SYSTEM_PROMPT = `You plan a week of LinkedIn content for Kept, a UK direct-to-vendor property buyer (chain-break, probate, problem properties).
 
 Audience: UK estate agents, conveyancers, IFAs, mortgage brokers, property professionals. NOT vendors. Peer-to-peer voice.
 
