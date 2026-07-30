@@ -10,15 +10,15 @@
  * See docs/brand/KEPT.md for the brand rules, and the Kept. Claude Design
  * project for the visual spec.
  *
- * GATED: `BRAND_PHASE` must stay `'legacy'` in production until the class-36
- * trademark search clears and the founders give the go. With `'legacy'`, the
- * resolved `brand.name` is byte-for-byte "Bellwoods Lane", so wiring copy to
- * `brand.name` changes nothing visible — the copy-integrity guard passes —
- * and the eventual flip is a single, reviewable change.
+ * FLIPPED 2026-07-30 on founder instruction: the default phase is now
+ * `'kept'`. `NEXT_PUBLIC_BRAND_PHASE` can still force `'legacy'` or `'dual'`
+ * as an emergency rollback without a code change. Note the old-domain 301 in
+ * apps/web/next.config.ts keys off the env var directly, so it stays inert
+ * until wearekept.co.uk DNS is attached and the env var is set explicitly.
  */
 
 export type BrandPhase =
-  /** Pre-flip. Still "Bellwoods Lane". Current production. */
+  /** Pre-flip. Still "Bellwoods Lane". Rollback lever only. */
   | 'legacy'
   /** 90-day transition: "Kept, formerly Bellwoods Lane". */
   | 'dual'
@@ -78,15 +78,15 @@ export const BELLWOODS: BrandIdentity = {
 };
 
 /**
- * The active rebrand phase. Defaults to `'legacy'`; an optional public env var
- * lets ops advance it at deploy time without a code change (Next inlines
- * NEXT_PUBLIC_* at build; node surfaces read it at runtime).
- *
- * Do NOT set this to `'dual'`/`'kept'` in production before the gate clears.
+ * The active rebrand phase. Defaults to `'kept'` — the founder gave the go on
+ * 2026-07-30 and the name is flipped. The public env var remains as an
+ * emergency lever: set it to `'legacy'` or `'dual'` to roll back at deploy
+ * time without a code change (Next inlines NEXT_PUBLIC_* at build; node
+ * surfaces read it at runtime).
  */
 const envPhase = process.env.NEXT_PUBLIC_BRAND_PHASE as BrandPhase | undefined;
 export const BRAND_PHASE: BrandPhase =
-  envPhase === 'dual' || envPhase === 'kept' ? envPhase : 'legacy';
+  envPhase === 'legacy' || envPhase === 'dual' ? envPhase : 'kept';
 
 export type ActiveBrand = BrandIdentity & {
   phase: BrandPhase;

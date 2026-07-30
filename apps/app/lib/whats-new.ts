@@ -26,6 +26,27 @@ export type WhatsNewEntry = {
 /** Newest first. The popup shows index 0. */
 export const WHATS_NEW: WhatsNewEntry[] = [
   {
+    id: '2026-07-30-kept-is-live',
+    date: '2026-07-30',
+    emoji: '🎉',
+    title: 'You said go — the company is now Kept.',
+    intro: 'The name flipped today. The whole front door reads kept. — wax dot and all.',
+    bullets: [
+      {
+        emoji: '✍️',
+        text: 'The public site, the offer letter and the emails now all say **Kept** — the three old name variants are gone in one move.',
+      },
+      {
+        emoji: '🌐',
+        text: 'The site still lives at **bellwoodslane.co.uk** for now — the 301 to **wearekept.co.uk** stays off until the new domain and mailboxes are wired up.',
+      },
+      {
+        emoji: '⏪',
+        text: 'Instant rollback if ever needed: one env setting (`NEXT_PUBLIC_BRAND_PHASE=legacy`) brings Bellwoods back — no code change.',
+      },
+    ],
+  },
+  {
     id: '2026-07-29-kept-brand-ready',
     date: '2026-07-29',
     emoji: '🟢',

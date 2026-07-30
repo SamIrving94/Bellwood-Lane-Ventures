@@ -28,9 +28,12 @@ domain / email. `BRAND_PHASE` controls it: `legacy` (default) → `dual`
 is byte-for-byte the current Bellwoods string, so wiring copy to `brand.*`
 changes nothing visible and the eventual flip is one value.
 
-**Do not advance `BRAND_PHASE` in production** (env `NEXT_PUBLIC_BRAND_PHASE`)
-until the **class-36 trademark search clears and the founders give the go**
-(KEPT.md). In-flight deals complete under the name on their signed offer.
+**FLIPPED 2026-07-30** — the founder gave the go and the default phase in
+`@repo/brand` is now `'kept'`. `NEXT_PUBLIC_BRAND_PHASE` remains as an
+emergency rollback lever (`legacy`/`dual`). The old-domain 301 in
+`apps/web/next.config.ts` keys off the **env var** directly, so it stays
+inert until wearekept.co.uk DNS is attached and the var is set explicitly.
+In-flight deals complete under the name on their signed offer.
 
 ## Name / domain inconsistencies found (reconcile at the flip)
 
