@@ -7,7 +7,7 @@ import { EvalConfigCard } from './components/eval-config-card';
 import { SeedButton } from './components/seed-button';
 
 export const metadata: Metadata = {
-  title: 'Eval Models — Bellwood Ventures',
+  title: 'Eval Models — Kept',
   description: 'Configure agent scoring and evaluation parameters',
 };
 

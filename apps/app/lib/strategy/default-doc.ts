@@ -6,7 +6,7 @@
  */
 export const STRATEGY_SETTING_KEY = 'strategy.decisionStack';
 
-export const DEFAULT_DECISION_STACK = `# Bellwoods Lane — Decision Stack
+export const DEFAULT_DECISION_STACK = `# Kept — Decision Stack
 
 **An evergreen strategy document.** Based on Martin Eriksson's Decision Stack: each layer should justify the one below it. If a piece of work doesn't ladder up to a bet, and a bet up to the mission, and the mission up to the vision — question it.
 

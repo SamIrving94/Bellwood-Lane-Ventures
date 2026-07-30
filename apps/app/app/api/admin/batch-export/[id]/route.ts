@@ -6,7 +6,7 @@ import * as XLSX from 'xlsx';
 /**
  * Download the batch as an .xlsx — the founder's exact original spreadsheet
  * (all columns, sheets and data preserved), with two columns added on the right:
- *   - Estimated Market Value (Bellwood AVM)
+ *   - Estimated Market Value (Kept AVM)
  *   - % Discount vs Underwriting
  *
  * When we have the stored original upload (originalFile) we round-trip it through
@@ -50,7 +50,7 @@ export async function GET(
     'Content-Disposition': `attachment; filename="${safeName} - appraised.xlsx"`,
   };
 
-  const EMV_HEADER = 'Estimated Market Value (Bellwood AVM)';
+  const EMV_HEADER = 'Estimated Market Value (Kept AVM)';
   const DISCOUNT_HEADER = '% Discount vs Underwriting';
 
   // Preferred path: round-trip the founder's exact original spreadsheet,

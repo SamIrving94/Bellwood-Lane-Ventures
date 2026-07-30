@@ -5,7 +5,7 @@ import { redirect } from 'next/navigation';
 import { Header } from '../components/header';
 
 export const metadata: Metadata = {
-  title: 'Settings — Bellwood Ventures',
+  title: 'Settings — Kept',
 };
 
 const SettingsPage = async () => {

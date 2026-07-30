@@ -6,8 +6,8 @@ import { getStrategyDoc } from './actions';
 import { StrategyDoc } from './strategy-doc';
 
 export const metadata: Metadata = {
-  title: 'Strategy — Bellwoods Lane',
-  description: 'The Bellwoods Lane decision stack — vision, mission, bets, OKRs.',
+  title: 'Strategy — Kept',
+  description: 'The Kept decision stack — vision, mission, bets, OKRs.',
 };
 
 export const dynamic = 'force-dynamic';

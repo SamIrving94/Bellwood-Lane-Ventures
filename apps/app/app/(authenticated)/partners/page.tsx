@@ -4,7 +4,7 @@ import { database } from '@repo/database';
 import { Header } from '../components/header';
 
 export const metadata: Metadata = {
-  title: 'Partners — Bellwoods Lane',
+  title: 'Partners — Kept',
 };
 
 export const dynamic = 'force-dynamic';

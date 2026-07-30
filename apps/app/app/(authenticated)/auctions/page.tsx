@@ -6,7 +6,7 @@ import { Header } from '../components/header';
 import { AuctionsTable } from './auctions-table';
 
 export const metadata: Metadata = {
-  title: 'Auctions — Bellwood Ventures',
+  title: 'Auctions — Kept',
   description: 'Upcoming UK auction lots scraped from free public sources',
 };
 

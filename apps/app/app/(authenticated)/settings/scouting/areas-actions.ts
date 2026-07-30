@@ -51,7 +51,7 @@ function appendHistory(
 
 /**
  * Sample central postcode per district for the ~120 districts we expect
- * Bellwood to operate in. Manually curated from OS data. Extend by adding
+ * Kept to operate in. Manually curated from OS data. Extend by adding
  * rows — no schema changes needed. If a district isn't in here, we still
  * accept the input but the seed becomes "<DISTRICT> 1AA" as a best-guess
  * which PropertyData may or may not accept.

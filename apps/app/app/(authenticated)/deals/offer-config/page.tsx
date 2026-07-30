@@ -12,7 +12,7 @@ import { OfferConfigEditor } from './offer-config-editor';
 import { OfferVersionHistory } from './offer-version-history';
 
 export const metadata: Metadata = {
-  title: 'Tune the offer policy — Bellwood Ventures',
+  title: 'Tune the offer policy — Kept',
   description: 'Adjust the acquisition margins and guard rails the AVM uses.',
 };
 

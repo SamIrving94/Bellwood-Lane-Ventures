@@ -181,10 +181,12 @@ export const GlobalSidebar = ({
           <SidebarMenu>
             <SidebarMenuItem>
               <Link href="/" className="flex items-center gap-2 px-2 py-1.5">
-                <BuildingIcon className="h-5 w-5 text-primary" />
-                {sidebar.open && (
-                  <span className="font-semibold text-sm">Bellwoods Lane</span>
-                )}
+                {/* kept. wordmark — lowercase, the full stop is the logo (wax).
+                    Collapsed rail shows the k. monogram. */}
+                <span className="font-semibold text-base tracking-tight">
+                  {sidebar.open ? 'kept' : 'k'}
+                  <span className="text-wax">.</span>
+                </span>
               </Link>
             </SidebarMenuItem>
           </SidebarMenu>

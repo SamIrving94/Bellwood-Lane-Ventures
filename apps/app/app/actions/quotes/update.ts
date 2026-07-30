@@ -33,7 +33,7 @@ export async function acceptQuote(quoteRequestId: string): Promise<void> {
   await recordDealUpdate({
     quoteRequestId,
     kind: 'offer_accepted',
-    title: 'Cash offer accepted by Bellwoods Lane',
+    title: 'Cash offer accepted by Kept',
     detail: `We've confirmed acceptance. Solicitors will be instructed within 24 hours and you'll see the next update here.`,
     notifiedBy: userId,
   });
@@ -159,7 +159,7 @@ export async function postNote(
   await recordDealUpdate({
     quoteRequestId,
     kind: 'note',
-    title: 'Update from the Bellwoods Lane team',
+    title: 'Update from the Kept team',
     detail: text.trim(),
     notifiedBy: userId,
   });

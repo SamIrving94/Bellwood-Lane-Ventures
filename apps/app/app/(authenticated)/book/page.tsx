@@ -6,8 +6,8 @@ import { redirect } from 'next/navigation';
 import { Header } from '../components/header';
 
 export const metadata: Metadata = {
-  title: 'Book — Bellwood Ventures',
-  description: 'Realised trade P&L on deals Bellwood bought for its own book.',
+  title: 'Book — Kept',
+  description: 'Realised trade P&L on deals Kept bought for its own book.',
 };
 
 export const dynamic = 'force-dynamic';

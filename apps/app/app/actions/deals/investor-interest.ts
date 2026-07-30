@@ -11,7 +11,7 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
  * B-3 — register an investor's interest in a released deal. The interest row
  * doubles as the notification subscription: with notify=true the investor
  * receives live DealUpdate emails (B-2). A deal must be released to the feed
- * first (Bellwood has passed on it for its own book).
+ * first (Kept has passed on it for its own book).
  */
 export async function registerInvestorInterest(
   dealId: string,

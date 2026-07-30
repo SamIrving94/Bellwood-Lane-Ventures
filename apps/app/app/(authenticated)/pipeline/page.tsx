@@ -9,7 +9,7 @@ import { AddDealDialog } from './components/add-deal-dialog';
 import { PipelineBoard } from './components/pipeline-board';
 
 export const metadata: Metadata = {
-  title: 'Pipeline — Bellwoods Lane',
+  title: 'Pipeline — Kept',
   description: 'Deals, leads and archive in one workspace.',
 };
 

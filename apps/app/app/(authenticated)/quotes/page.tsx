@@ -4,7 +4,7 @@ import { database } from '@repo/database';
 import { Header } from '../components/header';
 
 export const metadata: Metadata = {
-  title: 'Quotes — Bellwoods Lane',
+  title: 'Quotes — Kept',
   description: 'Public Instant Offer submissions and their generated quotes.',
 };
 

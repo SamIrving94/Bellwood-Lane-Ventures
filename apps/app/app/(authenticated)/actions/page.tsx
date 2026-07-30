@@ -6,7 +6,7 @@ import { Header } from '../components/header';
 import { ActionCard } from './components/action-card';
 
 export const metadata: Metadata = {
-  title: 'Action Centre — Bellwood Ventures',
+  title: 'Action Centre — Kept',
   description: 'Review items that need your attention',
 };
 

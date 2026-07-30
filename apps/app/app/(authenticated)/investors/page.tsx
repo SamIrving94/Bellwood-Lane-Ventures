@@ -7,8 +7,8 @@ import { Header } from '../components/header';
 import { InvestorAccessLinks } from './access-links';
 
 export const metadata: Metadata = {
-  title: 'Investor feed — Bellwood Ventures',
-  description: 'Deals Bellwood has passed on, released to the investor feed.',
+  title: 'Investor feed — Kept',
+  description: 'Deals Kept has passed on, released to the investor feed.',
 };
 
 export const dynamic = 'force-dynamic';
@@ -94,7 +94,7 @@ const InvestorFeedPage = async () => {
             Investor feed
           </h1>
           <p className="mt-2 max-w-2xl text-muted-foreground text-sm">
-            Deals Bellwood has passed on for its own book and released to
+            Deals Kept has passed on for its own book and released to
             investors. {deals.length} live{' '}
             {deals.length === 1 ? 'deal' : 'deals'}. Seller contact details are
             never shown here — release a deal from its page with{' '}

@@ -13,7 +13,7 @@ import { SourcingFeePanel } from './sourcing-fee-panel';
 import { DealStatusControl } from './status-control';
 
 export const metadata: Metadata = {
-  title: 'Deal Detail — Bellwood Ventures',
+  title: 'Deal Detail — Kept',
 };
 
 function formatGBP(pence: number): string {

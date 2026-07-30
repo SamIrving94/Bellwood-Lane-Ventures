@@ -13,7 +13,7 @@ import { Header } from '../../components/header';
 import { SuggestionCards } from './suggestion-cards';
 
 export const metadata: Metadata = {
-  title: 'Scorer calibration — Bellwood Ventures',
+  title: 'Scorer calibration — Kept',
   description:
     'How well the lead scorer matches founder judgement, and where to tune.',
 };

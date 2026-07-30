@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 
 export const metadata: Metadata = {
-  title: 'Marketing — Bellwoods Lane',
+  title: 'Marketing — Kept',
   description: 'Approve drafts, see publication cadence, and track KPIs.',
 };
 

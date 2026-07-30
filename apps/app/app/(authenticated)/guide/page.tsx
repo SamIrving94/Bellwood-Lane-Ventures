@@ -18,7 +18,7 @@ import { Header } from '../components/header';
 import { TourCard } from './tour-card';
 
 export const metadata: Metadata = {
-  title: 'Guide — Bellwood Ventures',
+  title: 'Guide — Kept',
   description: 'Launch a guided tour of any section in the app.',
 };
 

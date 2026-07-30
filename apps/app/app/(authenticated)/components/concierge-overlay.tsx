@@ -56,7 +56,7 @@ export function ConciergeOverlay() {
       <DialogContent className="max-w-3xl gap-0 overflow-hidden p-0">
         <div className="flex items-center justify-between border-b px-6 py-3">
           <DialogTitle className="font-mono text-[11px] uppercase tracking-[0.22em] text-amber-700">
-            Bellwoods Concierge
+            Kept Concierge
           </DialogTitle>
           <p className="font-mono text-[10px] text-muted-foreground">
             Powered by PropertyData · Esc to close

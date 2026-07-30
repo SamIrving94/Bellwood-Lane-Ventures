@@ -5,7 +5,7 @@ import { database } from '@repo/database';
 import { revalidatePath } from 'next/cache';
 
 /**
- * Line 1 — record the *actuals* for a deal Bellwood buys for its own book:
+ * Line 1 — record the *actuals* for a deal Kept buys for its own book:
  * what we paid, what it cost us, and what we sold it for. This is the trade
  * P&L the system was missing. We store realisedProfitPence (exit − acquisition
  * − all costs) so the Book/Portfolio view can sum it cheaply, and so the AVM

@@ -1,2 +1,113 @@
 @import "tailwindcss";
 @import "@repo/design-system/styles/globals.css";
+
+/* ───────────────────────────────────────────────────────────────────────
+   Kept. — dashboard palette  (scoped to apps/app ONLY)
+   ------------------------------------------------------------------------
+   Mirrors the public-site override in apps/web/app/[locale]/styles.css.
+   This file is imported solely by apps/app, so everything below re-skins
+   the authenticated dashboard and leaves the shared design-system tokens
+   untouched for any other consumer.
+
+   Palette + roles are the source of truth in docs/brand/KEPT.md.
+   The two-accent rule is load-bearing:
+     • leaf  = interactive ONLY (buttons, links, focus)  → the --brand alias
+     • wax   = the promise ONLY (the dot, seals) — reachable ONLY via the
+               explicit `text-wax` / `bg-wax` utility, never a general alias
+     • destructive stays a true red, distinct from wax.
+
+   Unlike the public site, the dashboard has charts, a sidebar rail and a
+   dark mode — those tokens are re-pointed here too. KEPT.md defines no
+   dark palette, so dark is derived: forest-tinted grounds, brightened
+   leaf so interactive still passes contrast on dark.
+   ─────────────────────────────────────────────────────────────────────── */
+
+/* Named brand tokens → utilities like bg-cream, text-forest, bg-leaf,
+   text-wax, border-hair. Vocabulary matches the Kept. Design cards 1:1. */
+@theme {
+  --color-cream: #f7f3ea; /* page ground */
+  --color-forest: #1f332b; /* ink — headlines, dark bands, the rail */
+  --color-body: #4c5a50; /* body text */
+  --color-leaf: #2e7d5b; /* interactive ONLY */
+  --color-leaf-dark: #256a4c; /* hover state */
+  --color-wax: #c33f35; /* the dot, seals, promise moments ONLY */
+  --color-hair: #e2dccb; /* hairlines / borders */
+  --color-soft: #ede7d8; /* tinted section grounds */
+}
+
+/* Semantic override, dashboard-root only: repoints the shadcn/Bellwoods vars
+   to Kept so every existing token-based class re-skins with no component
+   edits. Wax is deliberately NOT aliased here. */
+:root {
+  --background: #f7f3ea; /* cream */
+  --foreground: #1f332b; /* forest ink */
+  --card: #ffffff;
+  --card-foreground: #1f332b;
+  --popover: #ffffff;
+  --popover-foreground: #1f332b;
+  --primary: #2e7d5b; /* leaf — actions */
+  --primary-foreground: #ffffff;
+  --secondary: #ede7d8; /* soft ground */
+  --secondary-foreground: #1f332b;
+  --muted: #ede7d8;
+  --muted-foreground: #4c5a50; /* body */
+  --accent: #e7efe9; /* faint leaf tint — hover/active surfaces */
+  --accent-foreground: #1f332b;
+  --destructive: #b3261e; /* true red — NOT wax (wax is reserved) */
+  --destructive-foreground: #ffffff;
+  --border: #e2dccb; /* hair */
+  --input: #d9d0bc;
+  --ring: #2e7d5b; /* leaf — focus is interactive */
+  --chart-1: #2e7d5b; /* leaf */
+  --chart-2: #1f332b; /* forest */
+  --chart-3: #6e8b7e; /* sage */
+  --chart-4: #e0a24e; /* amber — kept for warm contrast */
+  --chart-5: #4c5a50; /* body */
+  --brand: #2e7d5b; /* alias → leaf */
+  --brand-deep: #1f332b; /* alias → forest */
+  --sidebar: #1f332b; /* deep forest rail — branded + distinctive */
+  --sidebar-foreground: #e9e5d6;
+  --sidebar-primary: #57b98a; /* leaf, brightened for the dark rail */
+  --sidebar-primary-foreground: #12211b;
+  --sidebar-accent: #2a4237; /* active item */
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: #2a4237;
+  --sidebar-ring: #57b98a;
+}
+
+.dark {
+  --background: #14201b; /* dark forest, not pure black */
+  --foreground: #eef0e9;
+  --card: #1b2a23;
+  --card-foreground: #eef0e9;
+  --popover: #1b2a23;
+  --popover-foreground: #eef0e9;
+  --primary: #4caf87; /* leaf brightened — pops on dark */
+  --primary-foreground: #0f1f18;
+  --secondary: #24332b;
+  --secondary-foreground: #eef0e9;
+  --muted: #24332b;
+  --muted-foreground: #a8b5aa;
+  --accent: #2a3c33;
+  --accent-foreground: #eef0e9;
+  --destructive: #e5484d; /* true red — NOT wax */
+  --destructive-foreground: #14201b;
+  --border: #2c3b33;
+  --input: #2c3b33;
+  --ring: #4caf87;
+  --chart-1: #4caf87;
+  --chart-2: #8fb8a3;
+  --chart-3: #6e8b7e;
+  --chart-4: #e0a24e;
+  --chart-5: #c9d4c9;
+  --brand: #4caf87;
+  --brand-deep: #d8e3da;
+  --sidebar: #0f1a15;
+  --sidebar-foreground: #e9e5d6;
+  --sidebar-primary: #57b98a;
+  --sidebar-primary-foreground: #0f1a15;
+  --sidebar-accent: #24332b;
+  --sidebar-accent-foreground: #e9e5d6;
+  --sidebar-border: #24332b;
+  --sidebar-ring: #57b98a;
+}

@@ -26,6 +26,31 @@ export type WhatsNewEntry = {
 /** Newest first. The popup shows index 0. */
 export const WHATS_NEW: WhatsNewEntry[] = [
   {
+    id: '2026-07-30-dashboard-wears-kept',
+    date: '2026-07-30',
+    emoji: '🌿',
+    title: 'Your dashboard wears Kept. now too',
+    intro: 'The last room in the house got painted. Cream walls, forest ink, leaf buttons.',
+    bullets: [
+      {
+        emoji: '🎨',
+        text: 'The whole dashboard is on the **Kept palette** — same rules as the site: **leaf** for actions, **wax** only for the dot.',
+      },
+      {
+        emoji: '✒️',
+        text: 'The sidebar now carries the **kept.** wordmark on a deep forest rail.',
+      },
+      {
+        emoji: '🌙',
+        text: '**Dark mode** came along — forest-tinted, easy on late-night deal reviews.',
+      },
+      {
+        emoji: '🏷️',
+        text: 'Every page title and internal mention now says **Kept** — including two vendor-facing quote messages that were hiding in here.',
+      },
+    ],
+  },
+  {
     id: '2026-07-30-kept-is-live',
     date: '2026-07-30',
     emoji: '🎉',

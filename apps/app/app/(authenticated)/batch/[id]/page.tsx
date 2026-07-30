@@ -7,7 +7,7 @@ import { Header } from '../../components/header';
 import { RunButton } from './run-button';
 
 export const metadata: Metadata = {
-  title: 'Batch review — Bellwoods Lane',
+  title: 'Batch review — Kept',
 };
 
 export const dynamic = 'force-dynamic';
