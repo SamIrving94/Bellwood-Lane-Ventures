@@ -1,0 +1,37 @@
+{
+  "result": {
+    "primaryTopic": {
+      "type": [
+        "https://www.thegazette.co.uk/def/publication#Notice",
+        "https://www.thegazette.co.uk/def/legislation/deceased-estate"
+      ],
+      "hasNoticeID": "4890400",
+      "hasNoticeNumber": "4890400",
+      "hasPublicationDate": "Wednesday, 22-Jul-2026 09:00:02 UTC",
+      "isAbout": {
+        "type": [
+          "https://www.thegazette.co.uk/def/legislation/deceased-estate"
+        ],
+        "postcode": [
+          {
+            "label": "CV6 1NJ",
+            "lat": "52.435211",
+            "long": "-1.516923"
+          }
+        ],
+        "person": {
+          "name": "O'HANLON David William",
+          "familyName": "O'Hanlon",
+          "firstName": "David",
+          "hasPersonDetails": "O'HANLON David William, of 5 Hewitt Avenue, Coundon, Coventry, CV6 1NJ, lately of 38 Parkville Highway, Coventry, CV6 4HZ, died on 2 June 2026."
+        },
+        "administrator": {
+          "name": "Alsters Kelley LLP",
+          "adr": {
+            "extendedAddress": "Alsters Kelley LLP, 8 Butts, Coventry, CV1 3GJ"
+          }
+        }
+      }
+    }
+  }
+}
