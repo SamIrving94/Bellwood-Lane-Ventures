@@ -1,3 +1,4 @@
+import { LIMITS, checkRateLimit, retryAfterSeconds } from '@/lib/rate-limit';
 import { database } from '@repo/database';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
@@ -23,9 +24,25 @@ const Input = z.object({
 
 export const POST = async (
   request: Request,
-  { params }: { params: Promise<{ token: string }> },
+  { params }: { params: Promise<{ token: string }> }
 ) => {
   const { token } = await params;
+
+  // Track links are designed to be shared around a chain, so the token is the
+  // right subject here: one leaked link cannot flood the founder queue.
+  const limit = await checkRateLimit(
+    LIMITS.trackReplyByToken,
+    `token:${token}`
+  );
+  if (!limit.ok) {
+    return NextResponse.json(
+      { error: 'Too many messages. Please try again later.' },
+      {
+        status: 429,
+        headers: { 'Retry-After': retryAfterSeconds(limit.resetAt) },
+      }
+    );
+  }
 
   let body: unknown;
   try {
@@ -37,7 +54,7 @@ export const POST = async (
   if (!parsed.success) {
     return NextResponse.json(
       { error: 'Validation failed', details: parsed.error.flatten() },
-      { status: 400 },
+      { status: 400 }
     );
   }
   const input = parsed.data;

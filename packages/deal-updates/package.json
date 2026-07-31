@@ -9,6 +9,7 @@
     "typecheck": "tsc --noEmit --emitDeclarationOnly false"
   },
   "dependencies": {
+    "@repo/brand": "workspace:*",
     "@repo/database": "workspace:*",
     "@repo/email": "workspace:*",
     "server-only": "^0.0.1",
