@@ -1,10 +1,10 @@
 // Public deal-timeline page. No login. Anyone with the link sees every
 // update in real time. This is the transparency moat made literal.
 
-import { notFound } from 'next/navigation';
-import Link from 'next/link';
-import type { Metadata } from 'next';
 import { database } from '@repo/database';
+import type { Metadata } from 'next';
+import Link from 'next/link';
+import { notFound } from 'next/navigation';
 import { VendorReplyForm } from './vendor-reply-form';
 
 export const dynamic = 'force-dynamic';
@@ -113,16 +113,16 @@ export default async function TrackPage({
       <div className="mx-auto max-w-3xl">
         <Link
           href="/instant-offer"
-          className="inline-flex items-center gap-2 font-serif italic text-[13px] text-stone-500 transition hover:text-[#874646]"
+          className="inline-flex items-center gap-2 font-serif text-[13px] text-stone-500 italic transition hover:text-[#874646]"
         >
           <span aria-hidden>←</span> bellwoodslane.co.uk
         </Link>
 
-        <p className="mt-12 font-serif italic text-[13px] text-[#DB5C5C]">
+        <p className="mt-12 font-serif text-[#DB5C5C] text-[13px] italic">
           Live timeline · transparent
         </p>
         <h1
-          className="mt-3 font-serif font-semibold leading-[1.05] tracking-[-0.025em] text-[#2B2220]"
+          className="mt-3 font-semibold font-serif text-[#2B2220] leading-[1.05] tracking-[-0.025em]"
           style={{ fontSize: 'clamp(36px, 5vw, 56px)' }}
         >
           {property?.address ?? 'Your sale'}
@@ -135,11 +135,11 @@ export default async function TrackPage({
 
         {/* Headline offer card */}
         {offer && (
-          <div className="mt-10 rounded-2xl border-2 border-[#DB5C5C]/40 bg-[#F6ECE7] p-7">
-            <p className="font-serif italic text-[13px] text-stone-500">
+          <div className="mt-10 rounded-[2px] border border-[#DB5C5C]/40 bg-[#F6ECE7] p-7">
+            <p className="font-serif text-[13px] text-stone-500 italic">
               Cash offer
             </p>
-            <p className="mt-2 font-serif text-[48px] font-semibold leading-none tracking-[-0.025em] text-[#874646] md:text-[64px]">
+            <p className="mt-2 font-semibold font-serif text-[#874646] text-[48px] leading-none tracking-[-0.025em] md:text-[64px]">
               {formatGBP(offer.offerPence)}
             </p>
             <div className="mt-3 flex flex-wrap items-center gap-x-4 font-mono text-[12px]">
@@ -164,13 +164,13 @@ export default async function TrackPage({
             <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#1F6B3A] opacity-70" />
             <span className="relative inline-flex h-2 w-2 rounded-full bg-[#1F6B3A]" />
           </span>
-          <span className="font-serif italic text-[13px] text-stone-600">
+          <span className="font-serif text-[13px] text-stone-600 italic">
             Live · refresh any time to see new events
           </span>
         </div>
 
         {/* Timeline */}
-        <ol className="mt-10 space-y-0 border-l-2 border-stone-200">
+        <ol className="mt-10 space-y-0 border-stone-200 border-l-2">
           {updates.length === 0 ? (
             <li className="ml-6 py-6 text-sm text-stone-500">
               No updates yet. New events will appear here as the deal
@@ -183,7 +183,7 @@ export default async function TrackPage({
                 className={`relative ml-6 ${i === 0 ? 'pb-8' : 'py-8'}`}
               >
                 <span
-                  className={`absolute -left-[33px] top-8 flex h-4 w-4 items-center justify-center rounded-full border-2 ${
+                  className={`-left-[33px] absolute top-8 flex h-4 w-4 items-center justify-center rounded-full border-2 ${
                     i === 0
                       ? 'border-[#DB5C5C] bg-[#DB5C5C]'
                       : 'border-stone-300 bg-[#FBF8F5]'
@@ -193,14 +193,14 @@ export default async function TrackPage({
                     <span className="block h-1.5 w-1.5 rounded-full bg-white" />
                   )}
                 </span>
-                <p className="font-serif italic text-[13px] text-[#DB5C5C]">
+                <p className="font-serif text-[#DB5C5C] text-[13px] italic">
                   {KIND_LABEL[u.kind] ?? u.kind}
                 </p>
-                <h2 className="mt-2 font-serif text-2xl font-semibold leading-tight">
+                <h2 className="mt-2 font-semibold font-serif text-2xl leading-tight">
                   {u.title}
                 </h2>
                 {u.detail && (
-                  <p className="mt-3 text-[15px] leading-relaxed text-stone-700">
+                  <p className="mt-3 text-[15px] text-stone-700 leading-relaxed">
                     {u.detail}
                   </p>
                 )}
@@ -218,15 +218,15 @@ export default async function TrackPage({
         <hr className="my-16 border-stone-200" />
 
         <section>
-          <p className="font-serif italic text-[13px] text-stone-500">
+          <p className="font-serif text-[13px] text-stone-500 italic">
             Why this page exists
           </p>
-          <p className="mt-4 text-[15px] leading-relaxed text-stone-700">
+          <p className="mt-4 text-[15px] text-stone-700 leading-relaxed">
             Most cash buyers go silent between offer and completion. We
-            don&rsquo;t. Every party in the chain — seller, agent,
-            solicitor — sees this same timeline at the same moment.
+            don&rsquo;t. Every party in the chain — seller, agent, solicitor —
+            sees this same timeline at the same moment.
           </p>
-          <p className="mt-4 text-[15px] leading-relaxed text-stone-700">
+          <p className="mt-4 text-[15px] text-stone-700 leading-relaxed">
             If anything looks wrong, reply to any of our emails or contact{' '}
             <a
               href="mailto:anthony@bellwoodslane.co.uk"
@@ -240,8 +240,9 @@ export default async function TrackPage({
           <VendorReplyForm token={token} />
         </section>
 
-        <p className="mt-12 font-serif italic text-[13px] text-stone-400">
-          Bellwoods Lane Ltd · Property Redress Scheme (PRS) · HMRC AML supervised · ICO registered
+        <p className="mt-12 font-serif text-[13px] text-stone-400 italic">
+          Bellwoods Lane Ltd · Property Redress Scheme (PRS) · HMRC AML
+          supervised · ICO registered
         </p>
       </div>
     </main>

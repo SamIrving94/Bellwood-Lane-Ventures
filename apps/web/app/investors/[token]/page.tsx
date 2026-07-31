@@ -3,6 +3,7 @@
 // Bellwood's own economics (our offer, margin, pass reason, sourcing fee) are
 // NEVER selected here.
 
+import { Eyebrow } from '@/components/brand';
 import { database } from '@repo/database';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
@@ -15,7 +16,7 @@ export const metadata: Metadata = {
 };
 
 function formatGBP(pence: number | null): string {
-  if (pence === null) return '—';
+  if (pence === null) return '–';
   return `£${Math.round(pence / 100).toLocaleString('en-GB')}`;
 }
 
@@ -59,24 +60,23 @@ export default async function InvestorFeedPage({
   return (
     <main className="mx-auto w-full max-w-5xl space-y-6 p-6">
       <div>
-        <p className="font-serif italic text-[13px] text-neutral-500">
+        <p className="font-serif text-[13px] text-stone-500 italic">
           Bellwoods Lane · Sourced deals
         </p>
         <h1 className="mt-1 font-semibold text-2xl tracking-tight">
           Sourced deals
         </h1>
-        <p className="mt-2 max-w-2xl text-neutral-600 text-sm">
+        <p className="mt-2 max-w-2xl text-sm text-stone-600">
           Off-market deals we&apos;ve sourced and are offering to investors.
           {deals.length} live{' '}
           {deals.length === 1 ? 'opportunity' : 'opportunities'}. Shared with{' '}
-          <span className="font-medium text-neutral-900">{access.label}</span>.
-          To register interest in any deal, reply to the email this link came
-          from.
+          <span className="font-medium text-stone-900">{access.label}</span>. To
+          register interest in any deal, reply to the email this link came from.
         </p>
       </div>
 
       {deals.length === 0 ? (
-        <div className="rounded-xl border border-dashed bg-neutral-50 p-8 text-center text-sm text-neutral-500">
+        <div className="rounded-md border border-[#EAE0D9] border-dashed bg-stone-50 p-8 text-center text-sm text-stone-500">
           No live deals right now. New opportunities will appear here.
         </div>
       ) : (
@@ -93,19 +93,19 @@ export default async function InvestorFeedPage({
             return (
               <div
                 key={d.id}
-                className="rounded-xl border bg-white p-5"
+                className="rounded-md border border-[#EAE0D9] bg-white p-5"
               >
                 <div className="flex items-start justify-between gap-2">
                   <div>
                     <p className="font-semibold">{d.postcode}</p>
-                    <p className="text-xs text-neutral-500 capitalize">
+                    <p className="text-stone-500 text-xs capitalize">
                       {d.propertyType}
                       {d.bedrooms ? ` · ${d.bedrooms} bed` : ''} ·{' '}
                       {d.sellerType.replace('_', ' ')}
                     </p>
                   </div>
                   {discount !== null && discount > 0 && (
-                    <span className="shrink-0 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-medium text-emerald-800">
+                    <span className="shrink-0 rounded-full bg-[#F6ECE7] px-2 py-0.5 font-medium text-[#874646] text-[10px]">
                       {discount.toFixed(0)}% below EMV
                     </span>
                   )}
@@ -113,24 +113,24 @@ export default async function InvestorFeedPage({
 
                 <div className="mt-4 grid grid-cols-2 gap-2 text-center">
                   <div>
-                    <p className="text-[10px] uppercase tracking-wide text-neutral-500">
-                      Market value
-                    </p>
-                    <p className="font-mono text-sm font-semibold tabular-nums">
+                    <Eyebrow tone="muted" className="text-xs">
+                      market value
+                    </Eyebrow>
+                    <p className="font-mono font-semibold text-sm tabular-nums">
                       {formatGBP(d.estimatedMarketValuePence)}
                     </p>
                   </div>
                   <div>
-                    <p className="text-[10px] uppercase tracking-wide text-neutral-500">
-                      Price
-                    </p>
-                    <p className="font-mono text-sm font-semibold tabular-nums">
+                    <Eyebrow tone="muted" className="text-xs">
+                      price
+                    </Eyebrow>
+                    <p className="font-mono font-semibold text-sm tabular-nums">
                       {formatGBP(d.resalePricePence)}
                     </p>
                   </div>
                 </div>
 
-                <p className="mt-3 text-[10px] text-neutral-400">
+                <p className="mt-3 text-[10px] text-stone-400">
                   Listed{' '}
                   {d.releasedAt
                     ? new Date(d.releasedAt).toLocaleDateString('en-GB', {
@@ -138,7 +138,7 @@ export default async function InvestorFeedPage({
                         month: 'short',
                         year: 'numeric',
                       })
-                    : '—'}
+                    : '–'}
                 </p>
               </div>
             );
@@ -146,7 +146,7 @@ export default async function InvestorFeedPage({
         </div>
       )}
 
-      <p className="border-t pt-4 text-center text-[11px] text-neutral-400">
+      <p className="border-[#EAE0D9] border-t pt-4 text-center text-[11px] text-stone-400">
         Private link · not for redistribution · Bellwoods Lane Ventures
       </p>
     </main>

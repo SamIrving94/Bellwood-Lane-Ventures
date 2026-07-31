@@ -1,8 +1,8 @@
+import { createMagicLinkToken } from '@/app/partners/_lib/auth';
+import { database } from '@repo/database';
+import { sendEmail } from '@repo/email';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { database } from '@repo/database';
-import { createMagicLinkToken } from '@/app/partners/_lib/auth';
-import { sendEmail } from '@repo/email';
 
 const InputSchema = z.object({
   email: z.string().email(),

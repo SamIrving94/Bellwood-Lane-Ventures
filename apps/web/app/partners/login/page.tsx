@@ -1,3 +1,4 @@
+import { LogoLockup } from '@/components/brand';
 import Link from 'next/link';
 import { LoginForm } from './login-form';
 
@@ -22,33 +23,24 @@ export default async function LoginPage({
   return (
     <div className="mx-auto max-w-md px-6 py-20">
       <div className="text-center">
-        <Link
-          href="/instant-offer"
-          className="font-serif text-xl font-semibold tracking-tight"
-        >
-          BELLWOODS
-          <span className="mx-2 inline-block h-px w-8 bg-[#DB5C5C] align-middle" />
-          <span className="text-sm font-normal tracking-widest text-stone-500">
-            LANE
-          </span>
-        </Link>
-        <h1 className="mt-10 font-serif text-4xl font-semibold">
+        <LogoLockup href="/instant-offer" className="justify-center" />
+        <h1 className="mt-10 font-semibold font-serif text-4xl">
           Claim your partner dashboard.
         </h1>
         <p className="mt-3 text-stone-600">
           Already used our instant-offer tool as an agent? Your account is
-          already there. Enter your work email — we&apos;ll send you a
-          one-click sign-in link.
+          already there. Enter your work email. We&apos;ll send you a one-click
+          sign-in link.
         </p>
       </div>
 
       {errorMsg && (
-        <div className="mt-8 rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-800">
+        <div className="mt-8 rounded-md border border-[#DB5C5C]/30 bg-[#F6ECE7] p-4 text-[#874646] text-sm">
           {errorMsg}
         </div>
       )}
 
-      <div className="mt-10 rounded-3xl border border-stone-200 bg-white p-8 shadow-sm">
+      <div className="mt-10 rounded-md border border-stone-200 bg-white p-8 shadow-sm">
         <LoginForm />
       </div>
 

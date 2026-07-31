@@ -1,5 +1,5 @@
-import Link from 'next/link';
 import { cn } from '@repo/design-system/lib/utils';
+import Link from 'next/link';
 
 /**
  * Bellwoods Lane brand marks.
@@ -34,13 +34,15 @@ export function Wordmark({
   return (
     <span
       className={cn(
-        'font-serif font-medium uppercase leading-none tracking-[0.22em] text-brand-deep',
-        className,
+        'font-medium font-serif text-brand-deep uppercase leading-none tracking-[0.22em]',
+        className
       )}
     >
       Bellwoods&nbsp;Lane
       {ventures ? (
-        <span className="tracking-[0.22em] text-brand-deep/70">&nbsp;Ventures</span>
+        <span className="text-brand-deep/70 tracking-[0.22em]">
+          &nbsp;Ventures
+        </span>
       ) : null}
     </span>
   );
@@ -95,13 +97,13 @@ export function Seal({
     <span
       className={cn(
         'relative inline-flex h-20 w-20 shrink-0 items-center justify-center rounded-full border border-brand-deep/30',
-        className,
+        className
       )}
     >
       <span className="absolute inset-1.5 rounded-full border border-brand-deep/15" />
       <Monogram className="h-6 w-auto" />
       {label ? (
-        <span className="absolute -bottom-5 left-1/2 -translate-x-1/2 whitespace-nowrap font-serif text-[9px] italic text-brand-deep/60">
+        <span className="-bottom-5 -translate-x-1/2 absolute left-1/2 whitespace-nowrap font-serif text-[9px] text-brand-deep/60 italic">
           {label}
         </span>
       ) : null}

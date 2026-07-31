@@ -41,8 +41,7 @@ export function Sparkline({
 
   const areaPath = `${path} L ${width} ${height} L 0 ${height} Z`;
 
-  const computedFillColor =
-    fillColor ?? (fill ? `${color}1F` : 'transparent');
+  const computedFillColor = fillColor ?? (fill ? `${color}1F` : 'transparent');
 
   return (
     <svg
@@ -52,9 +51,7 @@ export function Sparkline({
       aria-hidden
       style={{ display: 'block' }}
     >
-      {fill && (
-        <path d={areaPath} fill={computedFillColor} stroke="none" />
-      )}
+      {fill && <path d={areaPath} fill={computedFillColor} stroke="none" />}
       <path
         d={path}
         fill="none"

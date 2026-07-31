@@ -1,9 +1,9 @@
-import { NextResponse } from 'next/server';
 import { database } from '@repo/database';
+import { NextResponse } from 'next/server';
 
 export async function POST(
   _request: Request,
-  { params }: { params: Promise<{ id: string }> },
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
 
@@ -24,7 +24,7 @@ export async function POST(
     if (quote.offer.lockedUntil < new Date()) {
       return NextResponse.json(
         { error: 'This offer has expired.' },
-        { status: 410 },
+        { status: 410 }
       );
     }
 
@@ -43,7 +43,7 @@ export async function POST(
     console.error('[quote/accept] failed', err);
     return NextResponse.json(
       { error: 'Could not reserve this offer.' },
-      { status: 500 },
+      { status: 500 }
     );
   }
 }

@@ -1,5 +1,5 @@
-import { NextResponse } from 'next/server';
 import { database } from '@repo/database';
+import { NextResponse } from 'next/server';
 import { createSessionCookie, verifyMagicLinkToken } from '../_lib/auth';
 
 // Route handler (not a page) — cookies can only be mutated here in Next 15.

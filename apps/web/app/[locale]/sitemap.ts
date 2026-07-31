@@ -5,7 +5,7 @@ const protocol = env.VERCEL_PROJECT_PRODUCTION_URL?.startsWith('https')
   ? 'https'
   : 'http';
 const base = new URL(
-  `${protocol}://${env.VERCEL_PROJECT_PRODUCTION_URL || 'bellwoodslane.co.uk'}`,
+  `${protocol}://${env.VERCEL_PROJECT_PRODUCTION_URL || 'bellwoodslane.co.uk'}`
 );
 
 const sitemap = async (): Promise<MetadataRoute.Sitemap> => [

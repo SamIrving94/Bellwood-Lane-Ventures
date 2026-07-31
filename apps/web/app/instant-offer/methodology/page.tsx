@@ -1,5 +1,6 @@
-import Link from 'next/link';
+import { Eyebrow, LogoLockup } from '@/components/brand';
 import type { Metadata } from 'next';
+import Link from 'next/link';
 
 export const metadata: Metadata = {
   title: 'How we price your property · Bellwoods Lane',
@@ -10,18 +11,9 @@ export const metadata: Metadata = {
 export default function MethodologyPage() {
   return (
     <>
-      <header className="border-b border-stone-200/60">
+      <header className="border-stone-200/60 border-b">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
-          <Link
-            href="/instant-offer"
-            className="font-serif text-xl font-semibold tracking-tight"
-          >
-            BELLWOODS
-            <span className="mx-2 inline-block h-px w-8 bg-[#DB5C5C] align-middle" />
-            <span className="text-sm font-normal tracking-widest text-stone-500">
-              LANE
-            </span>
-          </Link>
+          <LogoLockup href="/instant-offer" />
           <Link
             href="/instant-offer#chat"
             className="rounded-md bg-[#874646] px-5 py-2 text-sm text-white transition hover:bg-[#6F3A3A]"
@@ -32,10 +24,10 @@ export default function MethodologyPage() {
       </header>
 
       <article className="mx-auto max-w-3xl px-6 py-20">
-        <p className="mb-3 text-xs uppercase tracking-widest text-[#DB5C5C]">
-          Methodology
+        <p className="mb-3">
+          <Eyebrow>methodology</Eyebrow>
         </p>
-        <h1 className="font-serif text-5xl font-semibold leading-tight">
+        <h1 className="font-semibold font-serif text-5xl leading-tight">
           How we price your property.
         </h1>
         <p className="mt-6 text-lg text-stone-600">
@@ -49,11 +41,12 @@ export default function MethodologyPage() {
             title="Comparable sales"
             body={
               <>
-                We pull every recorded sale within <strong>0.5 miles</strong>{' '}
-                of the property from the <strong>HM Land Registry Price Paid</strong>{' '}
-                dataset for the <strong>last 24 months</strong>. We filter to
-                the same property type and adjust for floor area where the
-                Energy Performance Register holds a verified figure.
+                We pull every recorded sale within <strong>0.5 miles</strong> of
+                the property from the{' '}
+                <strong>HM Land Registry Price Paid</strong> dataset for the{' '}
+                <strong>last 24 months</strong>. We filter to the same property
+                type and adjust for floor area where the Energy Performance
+                Register holds a verified figure.
               </>
             }
           />
@@ -64,8 +57,8 @@ export default function MethodologyPage() {
               <>
                 Every historical comp is adjusted to today&apos;s value using
                 the <strong>UK House Price Index (ONS)</strong> for the local
-                authority. This stops us from undervaluing based on stale
-                sales or overpaying in a falling market.
+                authority. This stops us from undervaluing based on stale sales
+                or overpaying in a falling market.
               </>
             }
           />
@@ -74,11 +67,14 @@ export default function MethodologyPage() {
             title="Environmental and building risk"
             body={
               <>
-                We score five environmental factors — <strong>radon,
-                coal-mining, Japanese knotweed proximity, flood zone,
-                noise</strong> — plus <strong>construction type</strong> and{' '}
-                <strong>EPC rating</strong>. Each produces a small,
-                disclosed discount. No hidden adjustments.
+                We score five environmental factors —{' '}
+                <strong>
+                  radon, coal-mining, Japanese knotweed proximity, flood zone,
+                  noise
+                </strong>{' '}
+                — plus <strong>construction type</strong> and{' '}
+                <strong>EPC rating</strong>. Each produces a small, disclosed
+                discount. No hidden adjustments.
               </>
             }
           />
@@ -87,8 +83,8 @@ export default function MethodologyPage() {
             title="Seller-situation margin"
             body={
               <>
-                Our base acquisition margin reflects the speed and
-                certainty you&apos;re buying:
+                Our base acquisition margin is what pays for a fast, guaranteed
+                purchase:
                 <table className="mt-4 w-full text-sm">
                   <tbody>
                     {[
@@ -101,7 +97,7 @@ export default function MethodologyPage() {
                     ].map(([row, val]) => (
                       <tr
                         key={row}
-                        className="border-b border-stone-100 last:border-0"
+                        className="border-stone-100 border-b last:border-0"
                       >
                         <td className="py-2 text-stone-600">{row}</td>
                         <td className="py-2 text-right font-medium">{val}</td>
@@ -117,11 +113,10 @@ export default function MethodologyPage() {
             title="Floor and ceiling"
             body={
               <>
-                No offer can go below <strong>60%</strong> of AVM point
-                without founder escalation. No offer can go above{' '}
-                <strong>88%</strong>. Total discount capped at{' '}
-                <strong>40%</strong>. These are hard rules, not rules of
-                thumb.
+                No offer can go below <strong>60%</strong> of AVM point without
+                founder escalation. No offer can go above <strong>88%</strong>.
+                Total discount capped at <strong>40%</strong>. These are hard
+                rules, not rules of thumb.
               </>
             }
           />
@@ -129,7 +124,7 @@ export default function MethodologyPage() {
             n="06"
             title="Worked example"
             body={
-              <div className="rounded-2xl border border-stone-200 bg-[#F6ECE7] p-6">
+              <div className="rounded-[2px] border border-stone-200 bg-[#F6ECE7] p-6">
                 <p className="text-sm text-stone-600">
                   Manchester M40, 3-bed terrace, probate, EPC D, flood zone 1.
                 </p>
@@ -143,35 +138,35 @@ export default function MethodologyPage() {
                   ].map(([k, v]) => (
                     <div
                       key={k}
-                      className="flex justify-between border-b border-stone-200 py-1 last:border-0"
+                      className="flex justify-between border-stone-200 border-b py-1 last:border-0"
                     >
                       <dt className="text-stone-600">{k}</dt>
                       <dd className="font-medium">{v}</dd>
                     </div>
                   ))}
                 </dl>
-                <div className="mt-4 flex items-baseline justify-between border-t-2 border-[#DB5C5C] pt-4">
+                <div className="mt-4 flex items-baseline justify-between border-[#DB5C5C] border-t-2 pt-4">
                   <span className="text-sm text-stone-600">Cash offer</span>
-                  <span className="font-serif text-3xl font-semibold">
+                  <span className="font-semibold font-serif text-3xl">
                     £150,700
                   </span>
                 </div>
-                <p className="mt-3 text-xs text-stone-500">
-                  (a price that reflects the speed and certainty of the
-                  transaction, completion in weeks not months)
+                <p className="mt-3 text-stone-500 text-xs">
+                  (below open market, in exchange for a chain-free cash
+                  completion in weeks not months)
                 </p>
               </div>
             }
           />
         </div>
 
-        <div className="mt-20 rounded-3xl bg-[#874646] p-10 text-center text-white">
-          <h2 className="font-serif text-3xl font-semibold">
+        <div className="mt-20 rounded-lg bg-[#874646] p-10 text-center text-white">
+          <h2 className="font-semibold font-serif text-3xl">
             See your number.
           </h2>
           <Link
             href="/instant-offer#chat"
-            className="mt-6 inline-flex items-center gap-2 rounded-md bg-[#DB5C5C] px-8 py-3 text-sm font-medium text-[#2B2220] transition hover:bg-[#b08f52]"
+            className="mt-6 inline-flex items-center gap-2 rounded-md bg-[#DB5C5C] px-8 py-3 font-medium text-[#2B2220] text-sm transition hover:bg-[#b08f52]"
           >
             Get an indicative offer →
           </Link>
@@ -192,8 +187,8 @@ function Section({
 }) {
   return (
     <div>
-      <p className="font-serif text-sm text-[#DB5C5C]">{n}</p>
-      <h2 className="mt-2 font-serif text-3xl font-semibold">{title}</h2>
+      <p className="font-serif text-[#DB5C5C] text-sm">{n}</p>
+      <h2 className="mt-2 font-semibold font-serif text-3xl">{title}</h2>
       <div className="mt-4 text-stone-700">{body}</div>
     </div>
   );

@@ -5,12 +5,7 @@ import { keys as security } from '@repo/security/keys';
 import { createEnv } from '@t3-oss/env-nextjs';
 
 export const env = createEnv({
-  extends: [
-    core(),
-    email(),
-    observability(),
-    security(),
-  ],
+  extends: [core(), email(), observability(), security()],
   server: {},
   client: {},
   runtimeEnv: {},

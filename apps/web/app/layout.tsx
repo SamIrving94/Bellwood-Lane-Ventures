@@ -1,6 +1,6 @@
-import type { CSSProperties, ReactNode } from 'react';
 import { fonts } from '@repo/design-system/lib/fonts';
 import { cn } from '@repo/design-system/lib/utils';
+import type { CSSProperties, ReactNode } from 'react';
 import './[locale]/styles.css';
 
 // Public-site type system. The design system maps `font-serif` → --font-fraunces

@@ -1,5 +1,6 @@
 'use client';
 
+import { Eyebrow } from '@/components/brand';
 import { useState } from 'react';
 
 type Status =
@@ -66,23 +67,20 @@ export function ProofOfFundsButton() {
           onClick={close}
         >
           <div
-            className="w-full max-w-lg rounded-3xl bg-white p-8 shadow-xl"
+            className="w-full max-w-lg rounded-lg bg-white p-8 shadow-xl"
             onClick={(e) => e.stopPropagation()}
           >
             {status.kind === 'success' ? (
               <div className="text-center">
-                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-[#1F6B3A]/15 text-2xl text-[#1F6B3A]">
-                  ✓
-                </div>
                 <h3
                   id="pof-title"
-                  className="mt-5 font-serif text-2xl font-semibold"
+                  className="font-semibold font-serif text-2xl"
                 >
                   Request received.
                 </h3>
                 <p className="mt-3 text-sm text-stone-600">
-                  We&apos;ll email you a signed bank letter as soon as one
-                  of the team has prepared it.
+                  We&apos;ll email you a signed bank letter as soon as one of
+                  the team has prepared it.
                 </p>
                 <button
                   type="button"
@@ -94,42 +92,42 @@ export function ProofOfFundsButton() {
               </div>
             ) : (
               <>
-                <p className="font-serif italic text-[13px] text-[#DB5C5C]">
+                <p className="font-serif text-[#DB5C5C] text-[13px] italic">
                   Proof of funds
                 </p>
                 <h3
                   id="pof-title"
-                  className="mt-2 font-serif text-2xl font-semibold"
+                  className="mt-2 font-semibold font-serif text-2xl"
                 >
                   Signed bank letter, direct to your inbox.
                 </h3>
                 <p className="mt-3 text-sm text-stone-600">
-                  Tell us where to send it. No automated chasers — one
-                  human will email you a single PDF.
+                  Tell us where to send it. No automated chasers. One human will
+                  email you a single PDF.
                 </p>
 
                 <form onSubmit={submit} className="mt-6 space-y-3">
-                  <Input name="name" label="Your name" required />
+                  <Input name="name" label="your name" required />
                   <Input
                     name="email"
-                    label="Work email"
+                    label="work email"
                     type="email"
                     required
                   />
                   <label className="block">
-                    <span className="text-xs uppercase tracking-widest text-stone-500">
-                      Context (optional)
-                    </span>
+                    <Eyebrow tone="muted" className="text-[13px]">
+                      context (optional)
+                    </Eyebrow>
                     <textarea
                       name="context"
                       rows={3}
                       placeholder="e.g. negotiating a Manchester probate sale, vendor wants assurance"
-                      className="mt-1 w-full rounded-xl border border-stone-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-[#DB5C5C]"
+                      className="mt-1 w-full rounded-md border border-stone-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-[#DB5C5C]"
                     />
                   </label>
 
                   {status.kind === 'error' && (
-                    <p className="rounded-lg bg-red-50 p-3 text-sm text-red-700">
+                    <p className="rounded-[2px] border border-[#DB5C5C]/40 bg-[#F6ECE7] p-3 text-[#874646] text-sm">
                       {status.message}
                     </p>
                   )}
@@ -145,7 +143,7 @@ export function ProofOfFundsButton() {
                     <button
                       type="submit"
                       disabled={status.kind === 'submitting'}
-                      className="rounded-md bg-[#DB5C5C] px-6 py-3 text-sm font-medium text-[#2B2220] transition hover:bg-[#b08f52] disabled:opacity-50"
+                      className="rounded-md bg-[#DB5C5C] px-6 py-3 font-medium text-[#2B2220] text-sm transition hover:bg-[#b08f52] disabled:opacity-50"
                     >
                       {status.kind === 'submitting'
                         ? 'Sending...'
@@ -175,14 +173,14 @@ function Input({
 }) {
   return (
     <label className="block">
-      <span className="text-xs uppercase tracking-widest text-stone-500">
+      <Eyebrow tone="muted" className="text-[13px]">
         {label}
-      </span>
+      </Eyebrow>
       <input
         name={name}
         type={type}
         required={required}
-        className="mt-1 w-full rounded-xl border border-stone-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-[#DB5C5C]"
+        className="mt-1 w-full rounded-md border border-stone-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-[#DB5C5C]"
       />
     </label>
   );

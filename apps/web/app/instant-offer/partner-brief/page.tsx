@@ -1,3 +1,4 @@
+import { Eyebrow, Wordmark } from '@/components/brand';
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
@@ -16,10 +17,11 @@ export default function PartnerBriefPage() {
         }
       `}</style>
 
-      <div className="no-print mb-10 flex items-center justify-between rounded-xl bg-stone-100 p-4 text-sm">
+      <div className="no-print mb-10 flex items-center justify-between rounded-lg bg-stone-100 p-4 text-sm">
         <span className="text-stone-600">
-          Press <kbd className="rounded bg-white px-2 py-1 text-xs">Ctrl + P</kbd>{' '}
-          (or <kbd className="rounded bg-white px-2 py-1 text-xs">⌘ + P</kbd>) to
+          Press{' '}
+          <kbd className="rounded bg-white px-2 py-1 text-xs">Ctrl + P</kbd> (or{' '}
+          <kbd className="rounded bg-white px-2 py-1 text-xs">⌘ + P</kbd>) to
           save this as a PDF.
         </span>
         <a
@@ -30,65 +32,59 @@ export default function PartnerBriefPage() {
         </a>
       </div>
 
-      <header className="border-b-2 border-[#DB5C5C] pb-6">
-        <p className="font-serif text-xl font-semibold tracking-tight">
-          BELLWOODS
-          <span className="mx-2 inline-block h-px w-8 bg-[#DB5C5C] align-middle" />
-          <span className="text-sm font-normal tracking-widest text-stone-500">
-            LANE
-          </span>
+      <header className="border-[#DB5C5C] border-b-2 pb-6">
+        <p>
+          <Wordmark className="text-xl" />
         </p>
-        <p className="mt-4 text-xs uppercase tracking-widest text-[#DB5C5C]">
-          Agent Partner Brief
+        <p className="mt-4">
+          <Eyebrow>agent partner brief</Eyebrow>
         </p>
-        <h1 className="mt-2 font-serif text-4xl font-semibold leading-tight">
+        <h1 className="mt-2 font-semibold font-serif text-4xl leading-tight">
           The UK cash buyer built for estate agents.
         </h1>
       </header>
 
       <section className="mt-10 space-y-6">
-        <p className="text-base leading-relaxed text-stone-700">
+        <p className="text-base text-stone-700 leading-relaxed">
           Bellwoods Lane is a UK direct-to-vendor cash property buyer. We
-          partner exclusively with estate agents to rescue chain breaks,
-          probate sales, repossessions, and problem properties that
-          conventional buyers will not touch.
+          partner exclusively with estate agents to rescue chain breaks, probate
+          sales, repossessions, and problem properties that conventional buyers
+          will not touch.
         </p>
 
-        <div className="grid grid-cols-2 gap-4 border-y border-stone-200 py-8">
+        <div className="grid grid-cols-2 gap-4 border-stone-200 border-y py-8">
           {[
-            ['In writing', 'Every confirmed offer'],
-            ['Weeks not months', 'Target completion'],
-            ['Per deal, in writing', 'Partner fee terms'],
-            ['Zero', 'Fees charged to the seller'],
+            ['In writing', 'every confirmed offer'],
+            ['Weeks not months', 'target completion'],
+            ['Per deal, in writing', 'partner fee terms'],
+            ['Zero', 'fees charged to the seller'],
           ].map(([v, l]) => (
             <div key={l}>
-              <p className="font-serif text-3xl font-semibold text-[#874646]">
+              <p className="font-semibold font-serif text-3xl text-[#874646]">
                 {v}
               </p>
-              <p className="text-xs uppercase tracking-widest text-stone-500">
+              <Eyebrow tone="muted" className="mt-1 text-[13px]">
                 {l}
-              </p>
+              </Eyebrow>
             </div>
           ))}
         </div>
       </section>
 
       <section className="mt-10">
-        <h2 className="font-serif text-2xl font-semibold">
+        <h2 className="font-semibold font-serif text-2xl">
           What you earn per referral
         </h2>
         <p className="mt-3 text-sm text-stone-600">
-          Your terms are agreed in writing per deal. You keep your commission
-          on the sale, and when we resell we instruct you. Exact figures are
+          Your terms are agreed in writing per deal. You keep your commission on
+          the sale, and when we resell we instruct you. Exact figures are
           confirmed before the deal proceeds and disclosed to the seller in
           writing per NTSELAT guidance.
         </p>
       </section>
 
       <section className="mt-10">
-        <h2 className="font-serif text-2xl font-semibold">
-          The four promises
-        </h2>
+        <h2 className="font-semibold font-serif text-2xl">The four promises</h2>
         <ol className="mt-4 space-y-4 text-sm text-stone-700">
           {[
             {
@@ -108,7 +104,7 @@ export default function PartnerBriefPage() {
               b: 'When we resell the property, we instruct you. One referral, two transactions on your books.',
             },
           ].map((p) => (
-            <li key={p.t} className="rounded-xl bg-[#F6ECE7] p-5">
+            <li key={p.t} className="rounded-[2px] bg-[#F6ECE7] p-5">
               <p className="font-semibold">{p.t}</p>
               <p className="mt-2 text-stone-600">{p.b}</p>
             </li>
@@ -117,9 +113,7 @@ export default function PartnerBriefPage() {
       </section>
 
       <section className="mt-10">
-        <h2 className="font-serif text-2xl font-semibold">
-          Who we buy from
-        </h2>
+        <h2 className="font-semibold font-serif text-2xl">Who we buy from</h2>
         <div className="mt-4 grid grid-cols-2 gap-3 text-sm text-stone-700 md:grid-cols-3">
           {[
             'Chain-break sellers',
@@ -146,17 +140,15 @@ export default function PartnerBriefPage() {
       </section>
 
       <section className="mt-10">
-        <h2 className="font-serif text-2xl font-semibold">
-          How to refer
-        </h2>
+        <h2 className="font-semibold font-serif text-2xl">How to refer</h2>
         <ol className="mt-4 space-y-3 text-sm text-stone-700">
           <li>
             <strong>1.</strong> Send us the property address + seller situation
             by email, WhatsApp, or via our indicative offer tool.
           </li>
           <li>
-            <strong>2.</strong> We send you the indicative offer, and we aim
-            to confirm the price within 24–48 hours of viewing.
+            <strong>2.</strong> We send you the indicative offer, and we aim to
+            confirm the price within 24–48 hours of viewing.
           </li>
           <li>
             <strong>3.</strong> You present the offer to your seller using our
@@ -169,13 +161,11 @@ export default function PartnerBriefPage() {
         </ol>
       </section>
 
-      <section className="mt-10 rounded-2xl border-2 border-[#874646] bg-[#874646] p-8 text-white">
-        <p className="text-xs uppercase tracking-widest text-[#DB5C5C]">
-          Contact
+      <section className="mt-10 rounded-[2px] border-2 border-[#874646] bg-[#874646] p-8 text-white">
+        <p>
+          <Eyebrow tone="light">contact</Eyebrow>
         </p>
-        <p className="mt-3 font-serif text-2xl font-semibold">
-          Anthony
-        </p>
+        <p className="mt-3 font-semibold font-serif text-2xl">Anthony</p>
         <p className="text-sm text-white/70">Founder · Bellwoods Lane</p>
         <div className="mt-4 grid grid-cols-1 gap-1 text-sm md:grid-cols-2">
           <p>Email: anthony@bellwoodslane.co.uk</p>
@@ -184,14 +174,14 @@ export default function PartnerBriefPage() {
         </div>
       </section>
 
-      <footer className="mt-10 border-t border-stone-200 pt-6 text-xs text-stone-500">
+      <footer className="mt-10 border-stone-200 border-t pt-6 text-stone-500 text-xs">
         <p>
-          Bellwoods Lane Ltd is a UK cash property buyer. Member of the
-          Property Redress Scheme (PRS), HMRC-registered for AML supervision
-          under the Money Laundering Regulations 2017, and ICO-registered as
-          a data controller. Fees disclosed to sellers in writing per
-          NTSELAT / National Trading Standards guidance and the DMCC Act
-          2025. This document is intended for professional recipients only.
+          Bellwoods Lane Ltd is a UK cash property buyer. Member of the Property
+          Redress Scheme (PRS), HMRC-registered for AML supervision under the
+          Money Laundering Regulations 2017, and ICO-registered as a data
+          controller. Fees disclosed to sellers in writing per NTSELAT /
+          National Trading Standards guidance and the DMCC Act 2025. This
+          document is intended for professional recipients only.
         </p>
       </footer>
     </div>

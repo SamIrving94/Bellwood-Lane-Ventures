@@ -1,3 +1,4 @@
+import { Eyebrow } from '@/components/brand';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { BellwoodScoreForm } from './bellwood-score-form';
@@ -17,29 +18,30 @@ export default function BellwoodScorePage() {
       <div className="mx-auto max-w-3xl">
         <Link
           href="/agents"
-          className="inline-flex items-center gap-2 font-serif italic text-[13px] text-stone-500 transition hover:text-[#874646]"
+          className="inline-flex items-center gap-2 font-serif text-[13px] text-stone-500 italic transition hover:text-[#874646]"
         >
           <span aria-hidden>←</span> Back to agents
         </Link>
 
-        <p className="mt-10 font-serif italic text-[13px] text-[#DB5C5C]">
-          Bellwood Score · For partner agents
-        </p>
+        <div className="mt-10">
+          <Eyebrow>Bellwood Score, for partner agents</Eyebrow>
+        </div>
         <h1
-          className="mt-3 font-serif font-semibold leading-[1.02] tracking-[-0.025em] text-[#2B2220]"
+          className="mt-3 font-semibold font-serif text-[#2B2220] leading-[1.02] tracking-[-0.025em]"
           style={{ fontSize: 'clamp(32px, 5vw, 52px)' }}
         >
           An indicative offer range you can show a seller{' '}
-          <span className="italic text-[#DB5C5C]">
+          <span className="text-[#DB5C5C] italic">
             before you&rsquo;ve left their living room.
           </span>
         </h1>
-        <p className="mt-5 max-w-2xl text-[15px] leading-relaxed text-stone-600">
+        <p className="mt-5 max-w-2xl text-[15px] text-stone-600 leading-relaxed">
           Enter the postcode and a few details. We pull comparable sales,
           PropertyData valuation, and EPC + tenure data, then return an
-          indicative range in seconds. <strong>Clearly labelled INDICATIVE.</strong>{' '}
-          Our confirmed offer is issued after a physical viewing and may differ
-          — see the three documented exceptions on{' '}
+          indicative range in seconds.{' '}
+          <strong>Clearly labelled INDICATIVE.</strong> Our confirmed offer is
+          issued after a physical viewing and may differ — see the three
+          documented exceptions on{' '}
           <Link
             href="/legal/fca-disclosure"
             className="text-[#874646] underline"
@@ -49,19 +51,18 @@ export default function BellwoodScorePage() {
           .
         </p>
 
-        <div className="mt-10 rounded-2xl border border-stone-200 bg-white p-6 md:p-8">
+        <div className="mt-10 rounded-[2px] border border-[#EAE0D9] bg-white p-6 md:p-8">
           <BellwoodScoreForm />
         </div>
 
-        <div className="mt-10 rounded-2xl border border-dashed border-stone-300 bg-stone-50/50 p-5 text-sm text-stone-600">
+        <div className="mt-10 rounded-[2px] border border-stone-300 border-dashed bg-stone-50/50 p-5 text-sm text-stone-600">
           <p className="font-medium text-stone-800">
             What this is, and what it isn&rsquo;t
           </p>
           <ul className="mt-2 space-y-1.5">
             <li>
-              · An <strong>indicative range</strong> based on publicly
-              available data. Real PropertyData calls. Real Land Registry
-              comparables.
+              · An <strong>indicative range</strong> based on publicly available
+              data. Real PropertyData calls. Real Land Registry comparables.
             </li>
             <li>
               · <strong>Not a guarantee.</strong> Bellwood&rsquo;s confirmed
@@ -78,7 +79,7 @@ export default function BellwoodScorePage() {
           </ul>
         </div>
 
-        <p className="mt-12 font-serif italic text-[13px] text-stone-400">
+        <p className="mt-12 font-serif text-[13px] text-stone-400 italic">
           Bellwoods Lane Ltd · Property Redress Scheme (PRS) · HMRC AML
           supervised · ICO registered
         </p>

@@ -23,7 +23,7 @@ const Input = z.object({
 
 export const POST = async (
   request: Request,
-  { params }: { params: Promise<{ token: string }> },
+  { params }: { params: Promise<{ token: string }> }
 ) => {
   const { token } = await params;
 
@@ -37,7 +37,7 @@ export const POST = async (
   if (!parsed.success) {
     return NextResponse.json(
       { error: 'Validation failed', details: parsed.error.flatten() },
-      { status: 400 },
+      { status: 400 }
     );
   }
   const input = parsed.data;

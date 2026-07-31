@@ -58,7 +58,7 @@ Status colours come from the brick/terracotta/sand family (for example
 pills. The one allowed off-warm colour is the earth green `#1F6B3A` for a live
 state on `/track`.
 
-## The ten tells we never ship
+## The tells we never ship
 
 Each is a verified marker of AI or template generation. If a PR adds one, it
 does not merge.
@@ -87,6 +87,53 @@ does not merge.
 9. **The faint giant monogram watermark.** Retired.
 10. **Uppercase `tracking-widest` mono eyebrows.** Use the brand `<Eyebrow>`
     (Caslon italic kicker plus a short terracotta rule).
+11. **Gradient anything as decoration.** No purple/violet/indigo washes, no
+    glowing orbs or gradient meshes as background filler, no gradient buttons,
+    no gradient text. Buttons are solid brand colour.
+12. **The icon-in-circle 3-column feature grid** (icon in a coloured circle +
+    bold title + two-line description, repeated identically). The single most
+    recognisable AI tell. Present features as narrative, asymmetric, or
+    document-styled sections instead.
+13. **Centered everything.** Headings, body, and cards all `text-align: center`
+    is the template default. Our baseline is left-aligned editorial; centre only
+    as a deliberate exception (e.g. the seal, a letterhead).
+14. **The Notion-callout card**: `border-left` accent stripe on a flat box. Use
+    a hairline full border or a rule instead.
+15. **Repeated template phrases.** The same sentence stamped across pages reads
+    as generated copy. Any standard phrase ("a price that reflects the speed
+    and certainty of the transaction") may appear **once** site-wide; everywhere
+    else, say the same true thing in different, page-specific words.
+16. **Monotonous section rhythm.** Every section the same height and padding
+    (hero → 3 features → testimonials → CTA). Vary density with intent: tight
+    for dense content, generous for the hero and letter moments.
+17. **Flat grey borders and pure-black shadows** on warm surfaces. Borders are
+    alpha-blended from the warm ink (`border-[#241C1A]/12` style), shadows are
+    tone-matched and layered, never `shadow-black`.
+18. **Nested radius that ignores padding.** Inner radius = outer radius minus
+    the gap between them; identical inner/outer radii read as a "lump".
+
+## What reads as handcrafted (the positive rubric)
+
+| Dimension | Signal |
+|---|---|
+| Typography | Distinctive faces with a clear display-vs-body hierarchy; 3–4 sizes per page max. Never default Inter/Roboto vibes. |
+| Colour | One accent + warm neutrals; at most two non-neutral hues per viewport. |
+| Layout | Grid-disciplined baseline with 1–2 deliberate surprise moments per page (asymmetric hero, one grid-breaking element, varied column counts between sections). |
+| Spacing | Varies per section with intent — tight for dense content, generous for the letter/hero moments. Never uniform padding everywhere. |
+| Borders/shadows | Alpha-blended warm-ink borders; tone-matched layered shadows; nested radius respects the padding math. |
+| Copy | So specific it could only belong to this one firm. If a sentence would fit any cash buyer's site, rewrite it. |
+| Motion | Physical and continuous; functional, not decorative. Nothing teleports. |
+| Detail | Empty states, loaders, and error states get the same craft as the hero. |
+
+## Open question: Roboto
+
+The body font is Roboto because the brand kit specifies it. But Roboto is the
+Android system default — it is on the banned-defaults list in the rubric above,
+and it flattens every page it touches. Display (Libre Caslon) and documents
+(Courier Prime) carry the personality; the body does not. **Decision needed
+with Ant:** keep Roboto for kit fidelity, or move body/UI to a characterful
+grotesk (e.g. Fontshare Satoshi or General Sans) while the logo lockup keeps
+Roboto. Until decided, do not swap fonts in code.
 
 ## The human moves we always make
 
@@ -106,7 +153,11 @@ does not merge.
 - [ ] No em dashes in labels, buttons, chips, or empty states.
 - [ ] No `rounded-2xl`/`rounded-3xl`; radius is intentional, not uniform.
 - [ ] Eyebrows use `<Eyebrow>`, not `uppercase tracking-widest`.
-- [ ] No gradient standing in for an image.
+- [ ] No gradient standing in for an image, and no gradient as decoration.
+- [ ] No icon-in-circle feature grids; no centered-everything sections.
+- [ ] No `border-left` accent callout cards.
+- [ ] No template sentence that already appears on another page.
+- [ ] Borders alpha-blended from warm ink; shadows tone-matched, never black.
 - [ ] The page leads with something real and specific.
 
 ## Page status
@@ -122,49 +173,33 @@ Reviewed every public route against the standard.
 - `/legal/fca-disclosure`
 - `components/brand/*` and `live-pill.tsx` (the counter system itself)
 
-### Needs fixing (adopt the brand system)
+### Cleared (31 July 2026 sweep)
 
-`agent-quick-form`, `agents/score` (+ form), `instant-offer/methodology`,
-`instant-offer/partner-brief`, `instant-offer/seller-disclosure`,
-`save-the-sale`, `why-we-wont-buy-any-home`, `partners/login` (+ form),
-`partners/signup` (+ form), `portal/layout`, `ledger-ticker`.
+The whole governed backlog was executed in one pass. Zero remaining, verified
+by grep audit + `turbo build --filter=web`:
 
-### Replace (worst offenders)
+- `tracking-widest` eyebrows: 39 → 0 (all `<Eyebrow>` / `<Wordmark>` /
+  `<LogoLockup>` now)
+- `rounded-2xl`/`rounded-3xl`: 36 → 0
+- Cool-tone colour classes (emerald/blue/amber/rose/red): 10+ → 0 (warm scale)
+- Emoji as icons (full Unicode-range sweep, incl. 🔒/🎁 in chat-flow): → 0
+- Local `next/font` re-imports: 5 → 0 (root inheritance everywhere)
+- Gradients: → 0 (team fake-photo gradient replaced by porcelain panel +
+  Courier "photograph to follow" caption)
+- Em dashes in UI strings: → 0 (74 remain in long editorial prose + code
+  comments, which the standard allows)
+- "a price that reflects the speed and certainty of the transaction": 8 → 0
+  (each instance reworded page-specifically, honest-claims constraints kept)
+- Off-palette one-offs (`#b08f52` gold, `neutral-*`): → 0
 
-- **`instant-offer/components/chat-flow.tsx`**: the emoji condition scale
-  (`chat-flow.tsx:88-97`, `💀` through `🏆`), chat bubbles, and fake "thinking"
-  delay. Replace with a calm document/ledger styled form. This sits inside
-  `/sell` and `/agents`, so it drags the flagships down.
-- **`portal/page.tsx`**: emerald/blue status pills (`:16-17`), a four card grid
-  (`:82`), em dash greeting (`:51`).
+### Still open
 
-## Shared offenders (fix once, applies everywhere)
-
-1. **Local `next/font` re-imports** (still present): `instant-offer/layout.tsx:2`,
-   `partners/layout.tsx:2`, `portal/layout.tsx:3`, `save-the-sale/page.tsx:3`,
-   `why-we-wont-buy-any-home/page.tsx:3`. Delete them; inherit the root.
-   (`sell/layout.tsx` and `agents/layout.tsx` are already done.)
-2. **Old `uppercase tracking-widest` eyebrow** on ~14 files: `methodology:21,35`,
-   `team:19,33`, `partner-brief:37,41,68,174`,
-   `seller-disclosure:36,40,66,85,94,103,112,135,144,209,231`,
-   `chat-flow:649,680,820`, `login/page:31`, `login-form:58`,
-   `signup/page:14,18`, `signup-form:61,127`, `portal/layout:47`,
-   `portal/page:47,57,72,93,115,174`, `ledger-ticker:32`,
-   `investors/[token]:116,124`. Replace with `<Eyebrow>`.
-3. **Emoji icons**: `chat-flow:88-97,592,718,806,834`,
-   `agent-quick-form:420,427,430,467,445`,
-   `bellwood-score-form:420,427,467`, `login-form:33`, `signup-form:51`.
-4. **Status pills**: `portal/page:16,17`, `investors/[token]:108`.
-5. **Gradient fake photo**: `team/page.tsx:58` (plus placeholder bio at `:50`).
-   Needs a real headshot.
-6. **Four card grids**: `portal/page:82`, `bellwood-score-form:172`,
-   `agent-quick-form:316,413`.
-7. **Soft/oversized radius and doubled borders**: `agent-quick-form:144,283,301,405`,
-   `score/page:52,56,158`, `why-we-wont-buy:176`.
-8. **Em dashes in UI strings**: `portal/page:9,51`, `investors/[token]:18`,
-   `bellwood-score-form:188,194`, `agent-quick-form:61`.
-9. **Off palette one offs**: `signup-form:100` (`hover:bg-[#b08f52]`),
-   `investors/[token]:116,124` (`neutral-` not brand `stone-`).
+- **Chat bubbles in `chat-flow.tsx`**: emoji scale, eyebrows, radii and error
+  states are fixed, but the full "replace chat with a calm document/ledger
+  styled form" redesign (and the fake thinking delay) remains to do.
+- **Photography**: still zero real photos site-wide (the biggest gap; see
+  Photography section). Team page needs a real headshot + bio.
+- **Roboto decision** (see Open question above).
 
 ## Photography
 

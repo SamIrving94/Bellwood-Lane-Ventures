@@ -1,6 +1,3 @@
-import Link from 'next/link';
-import { Suspense } from 'react';
-import { ChatFlow } from '../instant-offer/components/chat-flow';
 import {
   Button,
   Eyebrow,
@@ -8,9 +5,11 @@ import {
   Monogram,
   Seal,
   SectionNumber,
-  StatusNote,
   Wordmark,
 } from '@/components/brand';
+import Link from 'next/link';
+import { Suspense } from 'react';
+import { ChatFlow } from '../instant-offer/components/chat-flow';
 
 export const revalidate = 300;
 
@@ -40,7 +39,7 @@ const REASONS: Array<{ k: string; t: string; b: string }> = [
 const FAQ: Array<{ q: string; a: string }> = [
   {
     q: 'Why is the offer below open-market?',
-    a: "Because we buy for cash, complete in weeks rather than months, charge no fee, and take the risk of fall-through. The price reflects the speed and certainty of the transaction. You're paying us a speed premium for certainty.",
+    a: "Because we buy for cash, complete in weeks rather than months, charge no fee, and take the risk of fall-through. That certainty is what the discount pays for. You're trading some of the price for a completion you can plan around.",
   },
   {
     q: 'Can I change my mind after I accept?',
@@ -79,36 +78,36 @@ const NAV = [
  *  not type on a flat field: Caslon letterhead, Courier body, wax seal. */
 function OfferLetter() {
   return (
-    <div className="relative w-[290px] -rotate-[1.6deg] rounded-[2px] border border-[#E2D7CF] bg-[#FFFEFB] p-6 shadow-[0_28px_52px_-24px_rgba(36,28,26,0.5)]">
-      <div className="absolute -right-5 -top-5 hidden sm:block">
+    <div className="-rotate-[1.6deg] relative w-[290px] rounded-[2px] border border-[#E2D7CF] bg-[#FFFEFB] p-6 shadow-[0_28px_52px_-24px_rgba(36,28,26,0.5)]">
+      <div className="-right-5 -top-5 absolute hidden sm:block">
         <Seal />
       </div>
-      <p className="font-serif text-[17px] font-bold tracking-[0.01em] text-brand-deep">
+      <p className="font-bold font-serif text-[17px] text-brand-deep tracking-[0.01em]">
         Bellwoods Lane
       </p>
       <p className="mt-1 text-[11px] text-stone-400 [font-family:var(--font-courier)]">
         Sample &middot; Ref BW-2026-0142
       </p>
-      <div className="mt-4 border-t border-[#EAE0D9] pt-3">
+      <div className="mt-4 border-[#EAE0D9] border-t pt-3">
         <p className="text-[11px] text-stone-400 [font-family:var(--font-courier)]">
           PROPERTY
         </p>
-        <p className="mt-1 font-serif text-[15px] leading-snug text-[#352B27]">
+        <p className="mt-1 font-serif text-[#352B27] text-[15px] leading-snug">
           14 Acacia Avenue, Stockport SK4 3HQ
         </p>
       </div>
-      <div className="mt-3 border-t border-[#EAE0D9] pt-3">
+      <div className="mt-3 border-[#EAE0D9] border-t pt-3">
         <p className="text-[11px] text-brand [font-family:var(--font-courier)]">
           OUR CASH OFFER
         </p>
-        <p className="mt-1 font-serif text-[40px] font-bold leading-none text-[#241C1A]">
+        <p className="mt-1 font-bold font-serif text-[#241C1A] text-[40px] leading-none">
           £244,000
         </p>
         <p className="mt-1.5 text-[11px] text-stone-500 [font-family:var(--font-courier)]">
           Locked for 72 hours
         </p>
       </div>
-      <dl className="mt-3 space-y-2 border-t border-[#EAE0D9] pt-3 text-[12px] text-stone-600 [font-family:var(--font-courier)]">
+      <dl className="mt-3 space-y-2 border-[#EAE0D9] border-t pt-3 text-[12px] text-stone-600 [font-family:var(--font-courier)]">
         <div className="flex justify-between gap-6">
           <dt>Completion</dt>
           <dd className="text-[#352B27]">Weeks, not months</dd>
@@ -127,7 +126,7 @@ function OfferLetter() {
           strokeLinecap="round"
         />
       </svg>
-      <p className="mt-1 font-serif text-[11px] italic text-stone-400">
+      <p className="mt-1 font-serif text-[11px] text-stone-400 italic">
         Signed for Bellwoods Lane Ltd
       </p>
     </div>
@@ -138,7 +137,7 @@ export default function SellPage() {
   return (
     <>
       {/* ————— NAV ————— */}
-      <header className="sticky top-0 z-40 border-b border-[#EBE1DB]/70 bg-[#FBF8F5]/85 backdrop-blur-md">
+      <header className="sticky top-0 z-40 border-[#EBE1DB]/70 border-b bg-[#FBF8F5]/85 backdrop-blur-md">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-3.5 md:px-10">
           <LogoLockup href="/sell" />
           <nav className="hidden items-center gap-7 text-[14px] text-stone-600 md:flex">
@@ -164,14 +163,14 @@ export default function SellPage() {
           <div>
             <Eyebrow>for UK homeowners</Eyebrow>
             <h1
-              className="mt-5 font-serif font-bold leading-[1.07] text-[#241C1A]"
+              className="mt-5 font-bold font-serif text-[#241C1A] leading-[1.07]"
               style={{ fontSize: 'clamp(40px, 5.4vw, 62px)' }}
             >
               A real cash offer,
               <br />
-              <span className="italic font-normal text-brand">in writing.</span>
+              <span className="font-normal text-brand italic">in writing.</span>
             </h1>
-            <p className="mt-6 max-w-md text-[17px] leading-relaxed text-stone-600">
+            <p className="mt-6 max-w-md text-[17px] text-stone-600 leading-relaxed">
               Tell us about the property and we will come and view it. We aim to
               make an offer within 24 to 48 hours of viewing, locked for 72
               hours so you can take advice. The price we put in writing is the
@@ -186,7 +185,7 @@ export default function SellPage() {
             <p className="mt-7 text-[13px] text-stone-500 [font-family:var(--font-courier)]">
               Every confirmed offer is a signed document like this one.
             </p>
-            <p className="mt-4 font-serif text-[13px] italic text-stone-500">
+            <p className="mt-4 font-serif text-[13px] text-stone-500 italic">
               Property Redress Scheme &middot; HMRC AML supervised &middot; ICO
               registered &middot; Zero fees
             </p>
@@ -198,13 +197,13 @@ export default function SellPage() {
       </section>
 
       {/* ————— REASONS / SITUATIONS ————— */}
-      <section className="border-y border-[#EBE1DB]/70 bg-[#F6ECE7] px-6 py-24 md:px-12 md:py-28">
+      <section className="border-[#EBE1DB]/70 border-y bg-[#F6ECE7] px-6 py-24 md:px-12 md:py-28">
         <div className="mx-auto max-w-6xl">
           <div className="mb-12 max-w-3xl">
             <Eyebrow>who we buy from</Eyebrow>
-            <h2 className="mt-4 font-serif text-4xl font-semibold leading-[1.05] tracking-[-0.02em] md:text-5xl">
+            <h2 className="mt-4 font-semibold font-serif text-4xl leading-[1.05] tracking-[-0.02em] md:text-5xl">
               Real reasons people choose{' '}
-              <span className="italic font-normal text-brand">certainty</span>{' '}
+              <span className="font-normal text-brand italic">certainty</span>{' '}
               over price.
             </h2>
           </div>
@@ -214,9 +213,9 @@ export default function SellPage() {
                 key={r.k}
                 className="rounded-sm border border-[#E4D8D1] bg-white p-7 transition-shadow hover:shadow-[0_24px_48px_-32px_rgba(43,34,32,0.4)]"
               >
-                <p className="font-serif text-sm italic text-brand">{r.k}</p>
-                <p className="mt-3 font-serif text-xl font-semibold">{r.t}</p>
-                <p className="mt-3 text-sm leading-relaxed text-stone-600">
+                <p className="font-serif text-brand text-sm italic">{r.k}</p>
+                <p className="mt-3 font-semibold font-serif text-xl">{r.t}</p>
+                <p className="mt-3 text-sm text-stone-600 leading-relaxed">
                   {r.b}
                 </p>
               </div>
@@ -228,23 +227,25 @@ export default function SellPage() {
       {/* ————— HOW IT WORKS ————— */}
       <section
         id="how"
-        className="border-y border-[#EBE1DB]/70 bg-white px-6 py-24 md:px-12 md:py-28"
+        className="border-[#EBE1DB]/70 border-y bg-white px-6 py-24 md:px-12 md:py-28"
       >
         <div className="mx-auto grid max-w-6xl grid-cols-1 gap-12 lg:grid-cols-[1fr_2fr] lg:gap-16">
           <div>
             <SectionNumber>01</SectionNumber>
             <Eyebrow className="mt-5">how it works</Eyebrow>
-            <h2 className="mt-4 font-serif text-4xl font-semibold leading-[1] tracking-[-0.02em] md:text-6xl">
+            <h2 className="mt-4 font-semibold font-serif text-4xl leading-[1] tracking-[-0.02em] md:text-6xl">
               Five steps.{' '}
-              <span className="italic font-normal text-brand">No surprises.</span>
+              <span className="font-normal text-brand italic">
+                No surprises.
+              </span>
             </h2>
-            <p className="mt-6 text-[15px] leading-relaxed text-stone-600">
+            <p className="mt-6 text-[15px] text-stone-600 leading-relaxed">
               Every offer is generated from real comparable sales. The maths are
               published. Nothing hidden. The price we confirm in writing is the
               price we complete at.
             </p>
           </div>
-          <ol className="divide-y divide-[#EBE1DB] border-y border-[#EBE1DB]">
+          <ol className="divide-y divide-[#EBE1DB] border-[#EBE1DB] border-y">
             {[
               {
                 n: '01',
@@ -281,18 +282,18 @@ export default function SellPage() {
                 key={s.n}
                 className="grid grid-cols-[44px_1fr] items-start gap-5 py-6 md:grid-cols-[56px_1fr_170px] md:gap-7"
               >
-                <span className="font-serif text-3xl font-light text-brand-deep/30 tabular-nums">
+                <span className="font-light font-serif text-3xl text-brand-deep/30 tabular-nums">
                   {s.n}
                 </span>
                 <div>
-                  <h3 className="font-serif text-lg font-semibold md:text-xl">
+                  <h3 className="font-semibold font-serif text-lg md:text-xl">
                     {s.t}
                   </h3>
-                  <p className="mt-2 text-[14px] leading-relaxed text-stone-600">
+                  <p className="mt-2 text-[14px] text-stone-600 leading-relaxed">
                     {s.d}
                   </p>
                 </div>
-                <p className="font-serif text-sm italic text-brand md:text-right">
+                <p className="font-serif text-brand text-sm italic md:text-right">
                   {s.sla}
                 </p>
               </li>
@@ -304,12 +305,12 @@ export default function SellPage() {
       {/* ————— THE OFFER (CHAT) ————— */}
       <section
         id="offer"
-        className="border-b border-[#EBE1DB]/70 px-6 py-24 md:px-12 md:py-28"
+        className="border-[#EBE1DB]/70 border-b px-6 py-24 md:px-12 md:py-28"
       >
         <div className="mx-auto max-w-3xl">
           <div className="mb-12 flex flex-col items-center text-center">
             <Eyebrow>get an offer</Eyebrow>
-            <h2 className="mt-4 font-serif text-4xl font-semibold md:text-5xl">
+            <h2 className="mt-4 font-semibold font-serif text-4xl md:text-5xl">
               Tell us about your home.
             </h2>
             <p className="mt-4 text-stone-600">
@@ -324,39 +325,54 @@ export default function SellPage() {
       </section>
 
       {/* ————— PROMISE ————— */}
-      <section className="relative overflow-hidden border-b border-[#EBE1DB]/70 bg-brand-deep px-6 py-24 text-white md:px-12 md:py-28">
+      <section className="relative overflow-hidden border-[#EBE1DB]/70 border-b bg-brand-deep px-6 py-24 text-white md:px-12 md:py-28">
         <Monogram
           aria-hidden
-          className="pointer-events-none absolute -bottom-16 -right-16 h-80 w-auto opacity-[0.06]"
+          className="-bottom-16 -right-16 pointer-events-none absolute h-80 w-auto opacity-[0.06]"
         />
         <div className="relative mx-auto grid max-w-6xl grid-cols-1 gap-12 lg:grid-cols-[1fr_1.4fr]">
           <div>
             <Eyebrow tone="light">the written promise</Eyebrow>
-            <h2 className="mt-4 font-serif text-4xl font-semibold leading-[1.05] tracking-[-0.02em] md:text-5xl">
+            <h2 className="mt-4 font-semibold font-serif text-4xl leading-[1.05] tracking-[-0.02em] md:text-5xl">
               No renegotiation.
               <br />
-              <span className="italic font-normal text-[#f0c9c0]">
+              <span className="font-normal text-[#f0c9c0] italic">
                 No surprises.
               </span>
             </h2>
-            <p className="mt-6 text-[15px] leading-relaxed text-white/70">
+            <p className="mt-6 text-[15px] text-white/70 leading-relaxed">
               The single biggest complaint about cash buyers is the last-minute
               price drop. We put the price in writing and stand behind it.
             </p>
-            <Seal label="Bellwoods Lane" className="mt-10 hidden lg:inline-flex" />
+            <Seal
+              label="Bellwoods Lane"
+              className="mt-10 hidden lg:inline-flex"
+            />
           </div>
-          <dl className="divide-y divide-white/10 border-t border-white/10">
+          <dl className="divide-y divide-white/10 border-white/10 border-t">
             {[
-              ['Offer validity', 'Legally binding upon Bellwoods Lane for 72 hours. Time-stamped, in writing, downloadable as PDF.'],
-              ['No price reduction', 'We do not renegotiate between issue and exchange. There are three documented exceptions: a survey reveals a material defect not visible at viewing, a title issue emerges that materially affects value, or information provided proves materially incorrect. In each case you can walk away at no cost.'],
-              ['Walk-away free', 'You may withdraw at any point before exchange. No penalty, no chase.'],
-              ['Costs covered', 'No fee to us at any point. As the buyer we pay our own legals, searches and survey.'],
+              [
+                'Offer validity',
+                'Legally binding upon Bellwoods Lane for 72 hours. Time-stamped, in writing, downloadable as PDF.',
+              ],
+              [
+                'No price reduction',
+                'We do not renegotiate between issue and exchange. There are three documented exceptions: a survey reveals a material defect not visible at viewing, a title issue emerges that materially affects value, or information provided proves materially incorrect. In each case you can walk away at no cost.',
+              ],
+              [
+                'Walk-away free',
+                'You may withdraw at any point before exchange. No penalty, no chase.',
+              ],
+              [
+                'Costs covered',
+                'No fee to us at any point. As the buyer we pay our own legals, searches and survey.',
+              ],
             ].map(([k, v]) => (
               <div
                 key={k as string}
                 className="grid grid-cols-1 gap-2 py-5 sm:grid-cols-[180px_1fr] sm:gap-8"
               >
-                <dt className="font-serif text-[15px] italic text-[#f0c9c0]">
+                <dt className="font-serif text-[#f0c9c0] text-[15px] italic">
                   {k}
                 </dt>
                 <dd className="text-white/90">{v}</dd>
@@ -369,23 +385,23 @@ export default function SellPage() {
       {/* ————— FAQ ————— */}
       <section
         id="faq"
-        className="border-b border-[#EBE1DB]/70 px-6 py-24 md:px-12 md:py-28"
+        className="border-[#EBE1DB]/70 border-b px-6 py-24 md:px-12 md:py-28"
       >
         <div className="mx-auto max-w-3xl">
           <Eyebrow>honest answers</Eyebrow>
-          <h2 className="mt-4 font-serif text-4xl font-semibold md:text-5xl">
+          <h2 className="mt-4 font-semibold font-serif text-4xl md:text-5xl">
             Questions sellers ask us most.
           </h2>
-          <div className="mt-12 divide-y divide-[#EBE1DB] border-y border-[#EBE1DB]">
+          <div className="mt-12 divide-y divide-[#EBE1DB] border-[#EBE1DB] border-y">
             {FAQ.map((item, i) => (
               <details key={item.q} className="group py-5" open={i === 0}>
                 <summary className="flex cursor-pointer list-none items-center justify-between gap-4 font-serif text-[18px] text-brand-deep">
                   <span>{item.q}</span>
-                  <span className="ml-4 font-serif text-2xl font-light text-brand transition-transform duration-200 group-open:rotate-45">
+                  <span className="ml-4 font-light font-serif text-2xl text-brand transition-transform duration-200 group-open:rotate-45">
                     +
                   </span>
                 </summary>
-                <p className="mt-4 leading-relaxed text-stone-600">{item.a}</p>
+                <p className="mt-4 text-stone-600 leading-relaxed">{item.a}</p>
               </details>
             ))}
           </div>
@@ -393,19 +409,19 @@ export default function SellPage() {
       </section>
 
       {/* ————— WHEN NOT TO USE BELLWOODS ————— */}
-      <section className="border-b border-[#EBE1DB]/70 bg-[#F6ECE7] px-6 py-20 md:px-12 md:py-24">
+      <section className="border-[#EBE1DB]/70 border-b bg-[#F6ECE7] px-6 py-20 md:px-12 md:py-24">
         <div className="mx-auto max-w-4xl">
           <Eyebrow>the honest version</Eyebrow>
-          <h2 className="mt-4 font-serif text-3xl font-semibold leading-tight tracking-[-0.02em] md:text-5xl">
+          <h2 className="mt-4 font-semibold font-serif text-3xl leading-tight tracking-[-0.02em] md:text-5xl">
             When we&rsquo;re probably{' '}
-            <span className="italic font-normal text-brand">not</span> the right
+            <span className="font-normal text-brand italic">not</span> the right
             answer
           </h2>
-          <p className="mt-5 max-w-2xl text-[15px] leading-relaxed text-stone-700">
-            We buy below open market value, at a price that reflects the speed
-            and certainty of the transaction. That trade is right for some
-            sellers and wrong for others. We&rsquo;d rather tell you so up front
-            than waste your time.
+          <p className="mt-5 max-w-2xl text-[15px] text-stone-700 leading-relaxed">
+            We buy below open market value. The discount is the cost of a
+            guaranteed cash completion on your timescale. That trade is right
+            for some sellers and wrong for others. We&rsquo;d rather tell you so
+            up front than waste your time.
           </p>
           <ul className="mt-8 space-y-px overflow-hidden rounded-sm border border-[#E4D8D1] bg-[#E4D8D1]">
             {[
@@ -425,26 +441,26 @@ export default function SellPage() {
               <li key={item.t} className="flex items-start gap-4 bg-white p-6">
                 <span className="mt-2.5 h-px w-4 shrink-0 bg-brand" />
                 <div>
-                  <p className="font-serif text-[17px] font-semibold text-[#2B2220]">
+                  <p className="font-semibold font-serif text-[#2B2220] text-[17px]">
                     {item.t}
                   </p>
-                  <p className="mt-1 text-[14px] leading-relaxed text-stone-600">
+                  <p className="mt-1 text-[14px] text-stone-600 leading-relaxed">
                     {item.d}
                   </p>
                 </div>
               </li>
             ))}
           </ul>
-          <p className="mt-8 max-w-2xl text-[14px] leading-relaxed text-stone-600">
-            If you read those and one of them describes you, we&rsquo;d genuinely
-            suggest calling a local agent first. We&rsquo;d rather you sold well
-            than sold to us.
+          <p className="mt-8 max-w-2xl text-[14px] text-stone-600 leading-relaxed">
+            If you read those and one of them describes you, we&rsquo;d
+            genuinely suggest calling a local agent first. We&rsquo;d rather you
+            sold well than sold to us.
           </p>
         </div>
       </section>
 
       {/* ————— AGENTS LINK ————— */}
-      <section className="border-b border-[#EBE1DB]/70 bg-white px-6 py-14 md:px-12">
+      <section className="border-[#EBE1DB]/70 border-b bg-white px-6 py-14 md:px-12">
         <div className="mx-auto flex max-w-5xl flex-col items-center justify-between gap-5 text-center md:flex-row md:text-left">
           <div>
             <Eyebrow tone="muted">are you an estate agent?</Eyebrow>
@@ -463,14 +479,14 @@ export default function SellPage() {
         <div className="relative mx-auto max-w-6xl overflow-hidden rounded-sm bg-brand-deep px-8 py-16 text-white md:px-16 md:py-20">
           <Monogram
             aria-hidden
-            className="pointer-events-none absolute -bottom-12 right-6 h-64 w-auto opacity-[0.07]"
+            className="-bottom-12 pointer-events-none absolute right-6 h-64 w-auto opacity-[0.07]"
           />
           <div className="relative grid grid-cols-1 items-center gap-10 lg:grid-cols-2">
             <div>
               <Eyebrow tone="light">see the number</Eyebrow>
-              <h2 className="mt-4 font-serif text-5xl font-semibold leading-[1] tracking-[-0.025em] md:text-7xl">
+              <h2 className="mt-4 font-semibold font-serif text-5xl leading-[1] tracking-[-0.025em] md:text-7xl">
                 A real offer{' '}
-                <span className="italic font-normal text-[#f0c9c0]">
+                <span className="font-normal text-[#f0c9c0] italic">
                   in writing.
                 </span>
               </h2>
@@ -492,7 +508,7 @@ export default function SellPage() {
               <Seal label="Est. 2026" />
               <div className="pl-1">
                 <Wordmark ventures className="text-base" />
-                <p className="mt-2 font-serif text-sm italic text-stone-500">
+                <p className="mt-2 font-serif text-sm text-stone-500 italic">
                   Direct-to-vendor property buyers &middot; UK
                 </p>
               </div>
@@ -501,26 +517,35 @@ export default function SellPage() {
               <a href="#offer" className="hover:text-brand-deep">
                 Get an offer
               </a>
-              <Link href="/instant-offer/methodology" className="hover:text-brand-deep">
+              <Link
+                href="/instant-offer/methodology"
+                className="hover:text-brand-deep"
+              >
                 Methodology
               </Link>
-              <Link href="/why-we-wont-buy-any-home" className="hover:text-brand-deep">
+              <Link
+                href="/why-we-wont-buy-any-home"
+                className="hover:text-brand-deep"
+              >
                 What we won&rsquo;t buy
               </Link>
               <Link href="/agents" className="hover:text-brand-deep">
                 For agents
               </Link>
-              <Link href="/legal/fca-disclosure" className="hover:text-brand-deep">
+              <Link
+                href="/legal/fca-disclosure"
+                className="hover:text-brand-deep"
+              >
                 Regulatory
               </Link>
             </nav>
           </div>
-          <div className="mt-10 border-t border-[#EBE1DB] pt-6">
-            <p className="text-[11px] leading-relaxed text-stone-500">
+          <div className="mt-10 border-[#EBE1DB] border-t pt-6">
+            <p className="text-[11px] text-stone-500 leading-relaxed">
               Bellwoods Lane Ltd is a UK cash property buyer, not an
               FCA-authorised firm. We do not provide financial or legal advice.
-              Seek independent legal advice before accepting any offer. All offers
-              are subject to satisfactory survey and title searches.
+              Seek independent legal advice before accepting any offer. All
+              offers are subject to satisfactory survey and title searches.
             </p>
             <p className="mt-4 text-[11px] text-stone-400">
               © {new Date().getFullYear()} Bellwoods Lane Ltd.

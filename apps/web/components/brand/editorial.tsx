@@ -26,13 +26,17 @@ export function Eyebrow({
         ? 'text-stone-500'
         : 'text-brand';
   const rule =
-    tone === 'light' ? 'bg-white/40' : tone === 'muted' ? 'bg-stone-400' : 'bg-brand';
+    tone === 'light'
+      ? 'bg-white/40'
+      : tone === 'muted'
+        ? 'bg-stone-400'
+        : 'bg-brand';
   return (
     <span
       className={cn(
         'inline-flex items-center gap-3 font-serif text-[15px] italic',
         text,
-        className,
+        className
       )}
     >
       <span className={cn('h-px w-6 shrink-0', rule)} aria-hidden />
@@ -54,9 +58,9 @@ export function SectionNumber({
   return (
     <span
       className={cn(
-        'block font-serif text-5xl font-light leading-none tabular-nums md:text-6xl',
+        'block font-light font-serif text-5xl tabular-nums leading-none md:text-6xl',
         tone === 'light' ? 'text-white/25' : 'text-brand-deep/25',
-        className,
+        className
       )}
     >
       {children}
@@ -75,11 +79,14 @@ export function StatusNote({
   return (
     <span
       className={cn(
-        'inline-flex items-center gap-2.5 font-serif text-sm italic text-stone-600',
-        className,
+        'inline-flex items-center gap-2.5 font-serif text-sm text-stone-600 italic',
+        className
       )}
     >
-      <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-brand" aria-hidden />
+      <span
+        className="h-1.5 w-1.5 shrink-0 rounded-full bg-brand"
+        aria-hidden
+      />
       {children}
     </span>
   );

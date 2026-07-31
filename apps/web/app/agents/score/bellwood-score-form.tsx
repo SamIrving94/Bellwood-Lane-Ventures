@@ -57,7 +57,7 @@ export function BellwoodScoreForm() {
       <form onSubmit={onSubmit} className="space-y-4">
         <div className="grid gap-4 md:grid-cols-2">
           <label className="block">
-            <span className="font-serif italic text-[13px] text-stone-600">
+            <span className="font-serif text-[13px] text-stone-600 italic">
               Postcode *
             </span>
             <input
@@ -66,11 +66,11 @@ export function BellwoodScoreForm() {
               onChange={(e) => setPostcode(e.target.value.toUpperCase())}
               required
               placeholder="M14 5LL"
-              className="mt-2 w-full rounded-xl border border-stone-300 bg-white px-4 py-3 text-[15px] font-mono uppercase outline-none focus:border-[#DB5C5C]"
+              className="mt-2 w-full rounded-xl border border-stone-300 bg-white px-4 py-3 font-mono text-[15px] uppercase outline-none focus:border-[#DB5C5C]"
             />
           </label>
           <label className="block">
-            <span className="font-serif italic text-[13px] text-stone-600">
+            <span className="font-serif text-[13px] text-stone-600 italic">
               Address (optional)
             </span>
             <input
@@ -85,7 +85,7 @@ export function BellwoodScoreForm() {
 
         <div className="grid gap-4 md:grid-cols-3">
           <label className="block">
-            <span className="font-serif italic text-[13px] text-stone-600">
+            <span className="font-serif text-[13px] text-stone-600 italic">
               Property type
             </span>
             <select
@@ -101,7 +101,7 @@ export function BellwoodScoreForm() {
             </select>
           </label>
           <label className="block">
-            <span className="font-serif italic text-[13px] text-stone-600">
+            <span className="font-serif text-[13px] text-stone-600 italic">
               Bedrooms
             </span>
             <input
@@ -114,7 +114,7 @@ export function BellwoodScoreForm() {
             />
           </label>
           <label className="block">
-            <span className="font-serif italic text-[13px] text-stone-600">
+            <span className="font-serif text-[13px] text-stone-600 italic">
               Condition (1–10)
             </span>
             <input
@@ -129,7 +129,7 @@ export function BellwoodScoreForm() {
         </div>
 
         <label className="block">
-          <span className="font-serif italic text-[13px] text-stone-600">
+          <span className="font-serif text-[13px] text-stone-600 italic">
             Seller situation
           </span>
           <select
@@ -148,18 +148,18 @@ export function BellwoodScoreForm() {
         <button
           type="submit"
           disabled={pending || !postcode}
-          className="inline-flex w-full items-center justify-center gap-2 rounded-md bg-[#874646] px-7 py-3.5 text-sm font-medium text-white transition hover:bg-[#6F3A3A] disabled:cursor-not-allowed disabled:opacity-50 md:w-auto"
+          className="inline-flex w-full items-center justify-center gap-2 rounded-md bg-[#874646] px-7 py-3.5 font-medium text-sm text-white transition hover:bg-[#6F3A3A] disabled:cursor-not-allowed disabled:opacity-50 md:w-auto"
         >
           {pending ? 'Calculating…' : 'Get indicative range →'}
         </button>
       </form>
 
       {result && result.ok && (
-        <div className="mt-8 rounded-2xl border-2 border-[#DB5C5C]/40 bg-[#F6ECE7] p-6 md:p-8">
-          <p className="font-serif italic text-[13px] text-[#DB5C5C]">
+        <div className="mt-8 rounded-[2px] bg-[#F6ECE7] p-6 md:p-8">
+          <p className="font-serif text-[#DB5C5C] text-[13px] italic">
             Indicative range
           </p>
-          <p className="mt-2 font-serif text-3xl font-semibold tracking-[-0.02em] text-[#2B2220] md:text-5xl">
+          <p className="mt-2 font-semibold font-serif text-3xl text-[#2B2220] tracking-[-0.02em] md:text-5xl">
             {formatGBP(result.indicativeMinPence)} –{' '}
             {formatGBP(result.indicativeMaxPence)}
           </p>
@@ -169,29 +169,29 @@ export function BellwoodScoreForm() {
             Confidence {Math.round(result.confidenceScore * 100)}%
           </p>
 
-          <dl className="mt-6 grid grid-cols-2 gap-3 text-[12px] md:grid-cols-4">
-            <div>
+          <dl className="mt-6 divide-y divide-[#EAE0D9] border-[#EAE0D9] border-y text-[12px]">
+            <div className="flex items-baseline justify-between gap-4 py-2">
               <dt className="text-stone-500">AVM low</dt>
-              <dd className="font-mono text-[13px] font-semibold text-[#2B2220]">
+              <dd className="font-mono font-semibold text-[#2B2220] text-[13px]">
                 {formatGBP(result.avmMinPence)}
               </dd>
             </div>
-            <div>
+            <div className="flex items-baseline justify-between gap-4 py-2">
               <dt className="text-stone-500">AVM high</dt>
-              <dd className="font-mono text-[13px] font-semibold text-[#2B2220]">
+              <dd className="font-mono font-semibold text-[#2B2220] text-[13px]">
                 {formatGBP(result.avmMaxPence)}
               </dd>
             </div>
-            <div>
+            <div className="flex items-baseline justify-between gap-4 py-2">
               <dt className="text-stone-500">EPC</dt>
-              <dd className="font-mono text-[13px] font-semibold text-[#2B2220]">
-                {result.epcRating ?? '—'}
+              <dd className="font-mono font-semibold text-[#2B2220] text-[13px]">
+                {result.epcRating ?? '–'}
               </dd>
             </div>
-            <div>
+            <div className="flex items-baseline justify-between gap-4 py-2">
               <dt className="text-stone-500">Market</dt>
-              <dd className="font-mono text-[13px] font-semibold capitalize text-[#2B2220]">
-                {result.marketBand ?? '—'}
+              <dd className="font-mono font-semibold text-[#2B2220] text-[13px] capitalize">
+                {result.marketBand ?? '–'}
               </dd>
             </div>
           </dl>
@@ -207,7 +207,7 @@ export function BellwoodScoreForm() {
 
           {result.reasoning.length > 0 && (
             <details className="mt-5">
-              <summary className="cursor-pointer font-serif italic text-[13px] text-stone-500 hover:text-[#2B2220]">
+              <summary className="cursor-pointer font-serif text-[13px] text-stone-500 italic hover:text-[#2B2220]">
                 Reasoning ({result.reasoning.length})
               </summary>
               <ul className="mt-3 space-y-1.5 text-[12px] text-stone-600">
@@ -218,19 +218,19 @@ export function BellwoodScoreForm() {
             </details>
           )}
 
-          <div className="mt-6 border-t border-amber-200 pt-4 text-[12px] leading-relaxed text-stone-600">
+          <div className="mt-6 border-[#EAE0D9] border-t pt-4 text-[12px] text-stone-600 leading-relaxed">
             <p>
               <strong>This is an indicative range</strong> based on publicly
-              available data. Bellwood&rsquo;s confirmed offer is issued after
-              a physical viewing and may differ. The price we confirm in
-              writing is the price we complete at.
+              available data. Bellwood&rsquo;s confirmed offer is issued after a
+              physical viewing and may differ. The price we confirm in writing
+              is the price we complete at.
             </p>
           </div>
 
           <div className="mt-5 flex flex-col gap-3 sm:flex-row">
             <a
               href="/save-the-sale"
-              className="inline-flex items-center justify-center gap-2 rounded-md bg-[#DB5C5C] px-6 py-3 text-sm font-medium text-[#2B2220] transition hover:bg-[#b08f52]"
+              className="inline-flex items-center justify-center gap-2 rounded-md bg-[#DB5C5C] px-6 py-3 font-medium text-[#2B2220] text-sm transition hover:bg-[#C0492F] hover:text-white"
             >
               Send this property to us →
             </a>
@@ -245,7 +245,7 @@ export function BellwoodScoreForm() {
       )}
 
       {result && !result.ok && (
-        <div className="mt-6 rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800">
+        <div className="mt-6 rounded-[2px] border border-[#DB5C5C]/40 bg-[#F6ECE7] p-4 text-[#874646] text-sm">
           <strong>Couldn&rsquo;t calculate:</strong> {result.error}
         </div>
       )}

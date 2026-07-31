@@ -46,11 +46,11 @@ export function VendorReplyForm({ token }: { token: string }) {
 
   if (status === 'sent') {
     return (
-      <div className="mt-6 rounded-2xl border border-[#1F6B3A]/30 bg-[#F1F7F1] p-6">
-        <p className="font-serif italic text-[13px] text-[#1F6B3A]">
+      <div className="mt-6 rounded-[2px] border border-[#1F6B3A]/30 bg-[#F1F7F1] p-6">
+        <p className="font-serif text-[#1F6B3A] text-[13px] italic">
           Message received
         </p>
-        <p className="mt-3 text-[15px] leading-relaxed text-stone-700">
+        <p className="mt-3 text-[15px] text-stone-700 leading-relaxed">
           Thank you. Anthony or someone on the team will reply within one
           working day. Anything urgent — phone 0203 488 5612.
         </p>
@@ -61,7 +61,7 @@ export function VendorReplyForm({ token }: { token: string }) {
   return (
     <form onSubmit={onSubmit} className="mt-6 space-y-4">
       <label className="block">
-        <span className="font-serif italic text-[13px] text-stone-600">
+        <span className="font-serif text-[13px] text-stone-600 italic">
           Message
         </span>
         <textarea
@@ -71,7 +71,7 @@ export function VendorReplyForm({ token }: { token: string }) {
           rows={4}
           maxLength={2000}
           className="mt-2 w-full rounded-xl border border-stone-300 bg-white px-4 py-3 text-[15px] text-stone-900 focus:border-[#874646] focus:outline-none"
-          placeholder="What would you like us to know? Question, concern, status request — anything."
+          placeholder="What would you like us to know? Question, concern, status request, anything."
         />
       </label>
 
@@ -109,17 +109,15 @@ export function VendorReplyForm({ token }: { token: string }) {
         tabIndex={-1}
         autoComplete="off"
         aria-hidden="true"
-        className="absolute -left-[10000px] h-0 w-0 overflow-hidden opacity-0"
+        className="-left-[10000px] absolute h-0 w-0 overflow-hidden opacity-0"
       />
 
-      {error && (
-        <p className="font-mono text-[12px] text-red-600">{error}</p>
-      )}
+      {error && <p className="font-mono text-[#C0492F] text-[12px]">{error}</p>}
 
       <button
         type="submit"
         disabled={status === 'submitting' || !message.trim()}
-        className="inline-flex items-center gap-2 rounded-md bg-[#874646] px-6 py-3 font-serif italic text-[13px] text-white transition hover:bg-[#2B2220] disabled:cursor-not-allowed disabled:opacity-50"
+        className="inline-flex items-center gap-2 rounded-md bg-[#874646] px-6 py-3 font-serif text-[13px] text-white italic transition hover:bg-[#2B2220] disabled:cursor-not-allowed disabled:opacity-50"
       >
         {status === 'submitting' ? 'Sending…' : 'Send message'}
       </button>

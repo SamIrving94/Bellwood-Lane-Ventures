@@ -29,7 +29,7 @@ export function EmailSampleButton() {
         body: JSON.stringify({
           name: fd.get('name'),
           email: fd.get('email'),
-          context: 'Sample offer pack request — sent from final CTA',
+          context: 'Sample offer pack request, sent from final CTA',
         }),
       });
       setStatus({ kind: res.ok ? 'success' : 'error' });
@@ -56,15 +56,12 @@ export function EmailSampleButton() {
           onClick={close}
         >
           <div
-            className="w-full max-w-md rounded-3xl bg-white p-8 shadow-xl"
+            className="w-full max-w-md rounded-lg bg-white p-8 shadow-xl"
             onClick={(e) => e.stopPropagation()}
           >
             {status.kind === 'success' ? (
               <div className="text-center">
-                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-md bg-[#DB5C5C]/20 text-2xl text-[#DB5C5C]">
-                  ✓
-                </div>
-                <p className="mt-5 font-serif text-xl">On its way.</p>
+                <p className="font-serif text-xl">On its way.</p>
                 <p className="mt-2 text-sm text-stone-600">
                   Check your inbox in the next few minutes.
                 </p>
@@ -78,15 +75,15 @@ export function EmailSampleButton() {
               </div>
             ) : (
               <>
-                <p className="font-serif italic text-[13px] text-[#DB5C5C]">
+                <p className="font-serif text-[#DB5C5C] text-[13px] italic">
                   Sample offer pack
                 </p>
-                <h3 className="mt-2 font-serif text-2xl font-semibold">
+                <h3 className="mt-2 font-semibold font-serif text-2xl">
                   Reviewed before you commit?
                 </h3>
                 <p className="mt-3 text-sm text-stone-600">
-                  We&apos;ll email an anonymised sample offer document plus
-                  the methodology. No follow-up unless you ask.
+                  We&apos;ll email an anonymised sample offer document plus the
+                  methodology. No follow-up unless you ask.
                 </p>
 
                 <form onSubmit={submit} className="mt-5 space-y-3">
@@ -104,14 +101,14 @@ export function EmailSampleButton() {
                     className="w-full rounded-xl border border-stone-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-[#DB5C5C]"
                   />
                   {status.kind === 'error' && (
-                    <p className="rounded-lg bg-red-50 p-3 text-sm text-red-700">
+                    <p className="rounded-[2px] border border-[#DB5C5C]/40 bg-[#F6ECE7] p-3 text-[#874646] text-sm">
                       Something went wrong. Try again.
                     </p>
                   )}
                   <button
                     type="submit"
                     disabled={status.kind === 'submitting'}
-                    className="w-full rounded-md bg-[#874646] px-6 py-3 text-sm font-medium text-white transition hover:bg-[#6F3A3A] disabled:opacity-50"
+                    className="w-full rounded-md bg-[#874646] px-6 py-3 font-medium text-sm text-white transition hover:bg-[#6F3A3A] disabled:opacity-50"
                   >
                     {status.kind === 'submitting'
                       ? 'Sending...'

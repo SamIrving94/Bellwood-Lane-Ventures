@@ -1,5 +1,5 @@
-import Link from 'next/link';
 import { cn } from '@repo/design-system/lib/utils';
+import Link from 'next/link';
 
 /**
  * Refined squared button — retires the candy `rounded-full` pill.
@@ -39,7 +39,7 @@ function Arrow({ variant }: { variant: Variant }) {
     return (
       <span
         aria-hidden
-        className="transition-transform duration-200 group-hover:-translate-y-px group-hover:translate-x-px"
+        className="group-hover:-translate-y-px transition-transform duration-200 group-hover:translate-x-px"
       >
         ↗
       </span>

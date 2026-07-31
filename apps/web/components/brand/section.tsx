@@ -46,11 +46,13 @@ export function Section({
       className={cn(
         'px-6 py-24 md:px-12 md:py-28',
         BG[bg],
-        divider && 'border-y border-[#EBE1DB]/70',
-        className,
+        divider && 'border-[#EBE1DB]/70 border-y',
+        className
       )}
     >
-      <div className={cn('mx-auto', MAX[width], innerClassName)}>{children}</div>
+      <div className={cn('mx-auto', MAX[width], innerClassName)}>
+        {children}
+      </div>
     </section>
   );
 }
