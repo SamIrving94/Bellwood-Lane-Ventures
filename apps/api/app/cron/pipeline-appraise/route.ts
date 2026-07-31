@@ -1,0 +1,227 @@
+import { env } from '@/env';
+import { recordCronHeartbeat } from '../_lib/heartbeat';
+import { database } from '@repo/database';
+import { mergeOfferConfig, runAVM } from '@repo/valuation';
+import { NextResponse } from 'next/server';
+
+// Pipeline Stage 2: Auto-appraise top leads (7:15am daily)
+// Finds leads scored >= 70 with no existing AVM, runs valuation, pushes results
+export const POST = async (request: Request) => {
+  const authHeader = request.headers.get('authorization');
+  if (authHeader !== `Bearer ${env.CRON_SECRET}`) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  const pipelineRunId = `run_${Date.now()}`;
+
+  // Founder-tuned offer policy (highest active avm_confidence EvalConfig).
+  // No active config → built-in defaults. Loaded once for the whole run.
+  const activeOfferConfig = await database.evalConfig.findFirst({
+    where: { evalType: 'avm_confidence', activatedAt: { not: null } },
+    orderBy: { version: 'desc' },
+    select: { version: true, config: true },
+  });
+  const offerConfig = mergeOfferConfig(activeOfferConfig?.config);
+  const offerConfigVersion = activeOfferConfig?.version ?? null;
+
+  // Find high-scoring leads from today that have been converted to deals
+  // OR deals in 'new_lead' or 'valuation' stage with no AVM result
+  const dealsNeedingValuation = await database.deal.findMany({
+    where: {
+      status: { in: ['new_lead', 'contacted', 'valuation'] },
+      avmResults: { none: {} },
+    },
+    select: {
+      id: true,
+      address: true,
+      postcode: true,
+      propertyType: true,
+      bedrooms: true,
+      sellerType: true,
+    },
+    take: 10, // Cap per run to avoid timeouts
+  });
+
+  // Also find unconverted high-scoring leads without deals
+  const topLeads = await database.scoutLead.findMany({
+    where: {
+      leadScore: { gte: 70 },
+      // Founder-triaged leads (shortlisted/watching) stay in scope; passed
+      // and converted leads drop out.
+      status: { in: ['new', 'shortlisted', 'watching'] },
+      convertedDealId: null,
+    },
+    orderBy: { leadScore: 'desc' },
+    take: 5,
+    select: {
+      id: true,
+      address: true,
+      postcode: true,
+      leadType: true,
+    },
+  });
+
+  const results: Array<{
+    type: string;
+    id: string;
+    address: string;
+    riskScore: number;
+    verdict: string;
+    offerPence?: number;
+    error?: string;
+  }> = [];
+
+  // Appraise deals
+  for (const deal of dealsNeedingValuation) {
+    try {
+      // Map property type string to AVM enum
+      const propertyTypeMap: Record<string, string> = {
+        detached: 'detached',
+        'semi-detached': 'semi-detached',
+        semi: 'semi-detached',
+        terraced: 'terraced',
+        terrace: 'terraced',
+        flat: 'flat',
+        apartment: 'flat',
+        bungalow: 'detached',
+      };
+      const avmPropertyType = propertyTypeMap[deal.propertyType.toLowerCase()] ?? 'terraced';
+
+      // Map seller type
+      const sellerTypeMap: Record<string, string> = {
+        probate: 'probate',
+        chain_break: 'chain_break',
+        short_lease: 'short_lease',
+        repossession: 'repossession',
+        relocation: 'relocation',
+        standard: 'standard',
+      };
+      const avmSellerType = sellerTypeMap[deal.sellerType] ?? 'standard';
+
+      const avmResult = await runAVM({
+        postcode: deal.postcode,
+        propertyType: avmPropertyType as any,
+        address: deal.address,
+        bedrooms: deal.bedrooms ?? undefined,
+        sellerType: avmSellerType as any,
+        dealId: deal.id,
+        offerConfig,
+      });
+
+      // Store AVM result
+      await database.avmResult.create({
+        data: {
+          dealId: deal.id,
+          postcode: avmResult.postcode,
+          propertyType: avmResult.propertyType,
+          riskScore: avmResult.riskScore,
+          resultJson: avmResult.resultJson as any,
+          expiresAt: avmResult.expiresAt,
+          evalConfigVersion: offerConfigVersion,
+        },
+      });
+
+      // Update deal with valuation data.
+      // AVM engine works in POUNDS (HMLR is recorded in pounds); DB money
+      // columns are integer PENCE — convert at this boundary.
+      const resultJson = avmResult.resultJson;
+      // Margin = how far our offer sits below the AVM (discount to market),
+      // matching the deal-page "Generate offer" action so both writers agree.
+      const marginPercent =
+        resultJson.avmPointEstimate > 0
+          ? ((resultJson.avmPointEstimate - resultJson.finalOffer) /
+              resultJson.avmPointEstimate) *
+            100
+          : null;
+      await database.deal.update({
+        where: { id: deal.id },
+        data: {
+          estimatedMarketValuePence: Math.round(resultJson.avmPointEstimate * 100),
+          ourOfferPence: Math.round(resultJson.finalOffer * 100),
+          marginPercent,
+          verdict: resultJson.requiresCeoEscalation ? 'THIN' :
+                   resultJson.confidenceLevel === 'high' ? 'STRONG' : 'VIABLE',
+        },
+      });
+
+      // Log deal activity
+      await database.dealActivity.create({
+        data: {
+          dealId: deal.id,
+          action: 'avm_completed',
+          detail: `Auto-valuation: risk ${avmResult.riskScore}/100, offer ${resultJson.finalOffer.toLocaleString('en-GB', { style: 'currency', currency: 'GBP', maximumFractionDigits: 0 })}`,
+        },
+      });
+
+      // Create FounderAction
+      const actionType = resultJson.requiresCeoEscalation ? 'ceo_escalation' : 'approve_offer';
+      const actionPriority = resultJson.requiresCeoEscalation ? 'critical' : 'medium';
+
+      await database.founderAction.create({
+        data: {
+          type: actionType as any,
+          priority: actionPriority as any,
+          title: resultJson.requiresCeoEscalation
+            ? `CEO escalation: offer < 60% AVM on ${deal.address}`
+            : `Approve offer on ${deal.address} — ${resultJson.finalOffer.toLocaleString('en-GB', { style: 'currency', currency: 'GBP', maximumFractionDigits: 0 })} (margin ${marginPercent !== null ? marginPercent.toFixed(1) : '—'}%)`,
+          description: `Auto-valuation complete. Risk: ${avmResult.riskScore}/100. ${resultJson.preRicsFlags.length > 0 ? `Pre-RICS flags: ${resultJson.preRicsFlags.join(', ')}` : 'No pre-RICS flags.'}`,
+          agent: 'appraiser',
+          dealId: deal.id,
+          metadata: {
+            riskScore: avmResult.riskScore,
+            estimatedValuePence: Math.round(resultJson.avmPointEstimate * 100),
+            finalOfferPence: Math.round(resultJson.finalOffer * 100),
+            marginPercent,
+            preRicsFlags: resultJson.preRicsFlags,
+          },
+        },
+      });
+
+      results.push({
+        type: 'deal',
+        id: deal.id,
+        address: deal.address,
+        riskScore: avmResult.riskScore,
+        verdict: resultJson.requiresCeoEscalation ? 'CEO_ESCALATION' : 'OK',
+        offerPence: Math.round(resultJson.finalOffer * 100),
+      });
+    } catch (error) {
+      results.push({
+        type: 'deal',
+        id: deal.id,
+        address: deal.address,
+        riskScore: 0,
+        verdict: 'ERROR',
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
+  }
+
+  // Log agent event for the run
+  const successCount = results.filter((r) => r.verdict !== 'ERROR').length;
+  await database.agentEvent.create({
+    data: {
+      agent: 'appraiser',
+      eventType: 'pipeline_appraise',
+      summary: `Auto-appraised ${successCount}/${dealsNeedingValuation.length} deals${topLeads.length > 0 ? `, ${topLeads.length} top leads pending conversion` : ''}`,
+      count: successCount,
+      pipelineRunId,
+      payload: { results, topLeadsSkipped: topLeads.length },
+    },
+  });
+
+  await recordCronHeartbeat('pipeline-appraise', { runId: pipelineRunId });
+
+  return NextResponse.json({
+    success: true,
+    pipelineRunId,
+    appraised: successCount,
+    errors: results.filter((r) => r.verdict === 'ERROR').length,
+    topLeadsPendingConversion: topLeads.length,
+    results,
+  });
+};
+
+// Vercel cron sends GET by default. Accept either method so a manual
+// POST and an automated GET both reach the same handler.
+export const GET = POST;
