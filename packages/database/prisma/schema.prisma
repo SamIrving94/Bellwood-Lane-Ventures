@@ -693,7 +693,7 @@ enum DealUpdateVisibility {
 // deal status without logging in.
 model TrackToken {
   id             String        @id @default(cuid())
-  token          String        @unique // url-safe, 32 chars
+  token          String        @unique // url-safe base64, 24 chars (18 random bytes)
   quoteRequestId String?       @unique
   quoteRequest   QuoteRequest? @relation(fields: [quoteRequestId], references: [id])
   dealId         String?       @unique

@@ -159,4 +159,10 @@ export const LIMITS = {
     limit: 10,
     windowMs: 60 * 60 * 1000,
   },
+  /** Backstop for guessed tokens, which each land in their own token bucket. */
+  trackReplyByIp: {
+    bucket: 'track-reply:ip',
+    limit: 30,
+    windowMs: 60 * 60 * 1000,
+  },
 } as const satisfies Record<string, RateLimitRule>;

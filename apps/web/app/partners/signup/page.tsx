@@ -1,3 +1,4 @@
+import { LogoLockup } from '@/components/brand';
 import Link from 'next/link';
 import { SignupForm } from './signup-form';
 
@@ -5,16 +6,11 @@ export default function SignupPage() {
   return (
     <div className="mx-auto max-w-xl px-6 py-20">
       <div className="text-center">
-        <Link
+        <LogoLockup
           href="/instant-offer"
-          className="font-semibold font-serif text-xl tracking-tight"
-        >
-          BELLWOODS
-          <span className="mx-2 inline-block h-px w-8 bg-wax align-middle" />
-          <span className="font-normal text-sm text-stone-500 tracking-widest">
-            LANE
-          </span>
-        </Link>
+          className="justify-center"
+          wordmarkClassName="text-lg md:text-xl"
+        />
         <p className="mt-8 text-leaf text-xs uppercase tracking-widest">
           Pre-register your firm
         </p>

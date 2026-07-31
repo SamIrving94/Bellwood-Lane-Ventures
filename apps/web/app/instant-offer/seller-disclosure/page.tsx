@@ -1,3 +1,4 @@
+import { Wordmark } from '@/components/brand';
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
@@ -30,13 +31,7 @@ export default function SellerDisclosurePage() {
       </div>
 
       <header className="border-wax border-b-2 pb-6">
-        <p className="font-semibold font-serif text-xl tracking-tight">
-          BELLWOODS
-          <span className="mx-2 inline-block h-px w-8 bg-wax align-middle" />
-          <span className="font-normal text-sm text-stone-500 tracking-widest">
-            LANE
-          </span>
-        </p>
+        <Wordmark className="text-xl" />
         <p className="mt-4 text-leaf text-xs uppercase tracking-widest">
           Seller disclosure form
         </p>

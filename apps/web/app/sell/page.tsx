@@ -406,7 +406,7 @@ export default function SellPage() {
         </div>
       </section>
 
-      {/* ————— WHEN NOT TO USE BELLWOODS ————— */}
+      {/* ————— WHEN NOT TO USE US ————— */}
       <section className="border-hair/70 border-b bg-soft px-6 py-20 md:px-12 md:py-24">
         <div className="mx-auto max-w-4xl">
           <Eyebrow>the honest version</Eyebrow>

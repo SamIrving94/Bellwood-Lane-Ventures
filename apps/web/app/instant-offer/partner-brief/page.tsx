@@ -1,3 +1,4 @@
+import { brand } from '@repo/brand';
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
@@ -31,13 +32,9 @@ export default function PartnerBriefPage() {
         </a>
       </div>
 
-      <header className="border-leaf border-b-2 pb-6">
-        <p className="font-semibold font-serif text-xl tracking-tight">
-          BELLWOODS
-          <span className="mx-2 inline-block h-px w-8 bg-wax align-middle" />
-          <span className="font-normal text-sm text-stone-500 tracking-widest">
-            LANE
-          </span>
+      <header className="border-hair border-b pb-6">
+        <p className="font-bold font-serif text-2xl text-forest tracking-[-0.03em]">
+          {brand.mark}
         </p>
         <p className="mt-4 text-leaf text-xs uppercase tracking-widest">
           Agent Partner Brief

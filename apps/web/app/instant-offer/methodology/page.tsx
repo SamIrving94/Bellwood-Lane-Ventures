@@ -1,3 +1,4 @@
+import { LogoLockup } from '@/components/brand';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 
@@ -12,16 +13,10 @@ export default function MethodologyPage() {
     <>
       <header className="border-stone-200/60 border-b">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
-          <Link
+          <LogoLockup
             href="/instant-offer"
-            className="font-semibold font-serif text-xl tracking-tight"
-          >
-            BELLWOODS
-            <span className="mx-2 inline-block h-px w-8 bg-wax align-middle" />
-            <span className="font-normal text-sm text-stone-500 tracking-widest">
-              LANE
-            </span>
-          </Link>
+            wordmarkClassName="text-lg md:text-xl"
+          />
           <Link
             href="/instant-offer#chat"
             className="rounded-md bg-leaf px-5 py-2 text-sm text-white transition hover:bg-leaf-dark"

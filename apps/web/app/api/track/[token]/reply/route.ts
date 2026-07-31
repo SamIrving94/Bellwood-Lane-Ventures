@@ -1,4 +1,9 @@
-import { LIMITS, checkRateLimit, retryAfterSeconds } from '@/lib/rate-limit';
+import {
+  LIMITS,
+  checkRateLimits,
+  clientIp,
+  retryAfterSeconds,
+} from '@/lib/rate-limit';
 import { database } from '@repo/database';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
@@ -28,12 +33,23 @@ export const POST = async (
 ) => {
   const { token } = await params;
 
-  // Track links are designed to be shared around a chain, so the token is the
-  // right subject here: one leaked link cannot flood the founder queue.
-  const limit = await checkRateLimit(
-    LIMITS.trackReplyByToken,
-    `token:${token}`
-  );
+  // Reject anything that cannot be one of our tokens before it reaches the
+  // rate limiter. Tokens are url-safe base64 (currently 24 chars, from 18
+  // random bytes); the range is deliberately loose so a future length change
+  // does not 404 live links, while still refusing junk.
+  if (!/^[A-Za-z0-9_-]{16,64}$/.test(token)) {
+    return NextResponse.json({ error: 'Not found' }, { status: 404 });
+  }
+
+  // Two subjects. The token cap is the meaningful one: track links are shared
+  // around a chain, so one leaked link cannot flood the founder queue. The IP
+  // cap covers guessed tokens, which would otherwise land in a fresh counter
+  // bucket each time and both evade the cap and grow the counter table.
+  const ip = clientIp(request) ?? 'anonymous';
+  const limit = await checkRateLimits([
+    { rule: LIMITS.trackReplyByToken, subject: `token:${token}` },
+    { rule: LIMITS.trackReplyByIp, subject: `ip:${ip}` },
+  ]);
   if (!limit.ok) {
     return NextResponse.json(
       { error: 'Too many messages. Please try again later.' },

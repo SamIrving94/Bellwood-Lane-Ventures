@@ -1,3 +1,4 @@
+import { LogoLockup } from '@/components/brand';
 import type { Metadata } from 'next';
 import { Fraunces, Inter } from 'next/font/google';
 import Link from 'next/link';
@@ -36,16 +37,7 @@ export default function SaveTheSalePage() {
       {/* ————— MINIMAL HEADER ————— */}
       <header className="border-stone-200/60 border-b bg-white">
         <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-4 md:px-10">
-          <Link
-            href="/agents"
-            className="font-semibold font-serif text-xl tracking-tight"
-          >
-            BELLWOODS
-            <span className="mx-2 inline-block h-px w-8 bg-wax align-middle" />
-            <span className="font-normal text-sm text-stone-500 tracking-[0.22em]">
-              LANE
-            </span>
-          </Link>
+          <LogoLockup href="/agents" wordmarkClassName="text-lg md:text-xl" />
           <Link
             href="/agents"
             className="text-[13px] text-stone-500 underline-offset-4 hover:text-leaf hover:underline"

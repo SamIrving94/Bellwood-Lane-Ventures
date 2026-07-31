@@ -71,6 +71,10 @@
     {
       "path": "/cron/quote-ops",
       "schedule": "*/30 * * * *"
+    },
+    {
+      "path": "/cron/rate-limit-sweep",
+      "schedule": "30 3 * * *"
     }
   ]
 }

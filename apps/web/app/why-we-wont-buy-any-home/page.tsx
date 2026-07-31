@@ -1,3 +1,4 @@
+import { LogoLockup, Wordmark } from '@/components/brand';
 import type { Metadata } from 'next';
 import { Fraunces, Inter } from 'next/font/google';
 import Link from 'next/link';
@@ -133,16 +134,7 @@ export default function WhyWeWontBuyAnyHomePage() {
       {/* ————— HEADER ————— */}
       <header className="border-stone-200/60 border-b bg-white">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4 md:px-10">
-          <Link
-            href="/"
-            className="font-semibold font-serif text-xl tracking-tight"
-          >
-            BELLWOODS
-            <span className="mx-2 inline-block h-px w-8 bg-wax align-middle" />
-            <span className="font-normal text-sm text-stone-500 tracking-[0.22em]">
-              LANE
-            </span>
-          </Link>
+          <LogoLockup href="/" wordmarkClassName="text-lg md:text-xl" />
           <nav className="hidden items-center gap-6 text-[13px] text-stone-600 md:flex">
             <Link href="/agents" className="hover:text-leaf">
               For agents
@@ -352,13 +344,7 @@ export default function WhyWeWontBuyAnyHomePage() {
         <div className="mx-auto max-w-6xl">
           <div className="flex flex-col items-start justify-between gap-8 md:flex-row md:items-center">
             <div>
-              <p className="font-semibold font-serif text-xl tracking-tight">
-                BELLWOODS
-                <span className="mx-2 inline-block h-px w-8 bg-wax align-middle" />
-                <span className="font-normal text-sm text-stone-500 tracking-[0.22em]">
-                  LANE
-                </span>
-              </p>
+              <Wordmark className="text-xl" />
               <p className="mt-2 text-sm text-stone-500">
                 Direct-to-vendor property buyers · UK
               </p>
