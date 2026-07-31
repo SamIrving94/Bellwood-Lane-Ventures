@@ -75,6 +75,26 @@ The sweep (`apps/web`, ~32 files) mapped:
   CTA → leaf pill. Copy unchanged (incl. the "Bellwood Ventures" signature —
   flagged above).
 
+## Legal entity — RESOLVED 2026-07-31
+
+The open question ("do legal footers need the registered name restored?") is
+answered from the Companies House register, checked 2026-07-31:
+
+- Registered entity: **BELLWOODS LANE VENTURES LTD**, Company No. **16454416**,
+  incorporated 15 May 2025, registered office 20 Wenlock Road, London N1 7GU.
+- No "Kept" entity exists on the register; "Kept" is a **trading name**.
+- The legacy legal string "Bellwood Lane Ventures Ltd" (no "s") never matched
+  the register — it was a pre-existing typo, preserved only in the `BELLWOODS`
+  legacy capture in `@repo/brand`.
+
+Applied: `KEPT.legalName` now carries the registered entity, a `companyNumber`
+field was added to `@repo/brand`, and the offer PDF, FCA-disclosure page, and
+deal-update email footer print "Bellwoods Lane Ventures Ltd (trading as Kept)"
+/ Company No. where the entity is named. `pnpm copy-integrity` intentionally
+flags the disclosure-page change — it is a deliberate legal-facts correction,
+not a rebrand copy drift. Revisit only if a Kept entity is incorporated after
+the class-36 trademark search.
+
 ## Known-pending / not done here
 
 - **Wordmark typeface is still an open decision** (KEPT.md: Trial A Libre Caslon
