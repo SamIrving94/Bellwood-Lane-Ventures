@@ -53,7 +53,10 @@
  *   - `noticecode`         2903 = Deceased Estates
  *   - `results-page`       1-based positive integer
  *   - `results-page-size`  positive integer (we cap at 100)
- *   - `start-publish-date` / `end-publish-date`  ISO 8601 `YYYY-MM-DD`
+ *
+ * `start-publish-date` is documented too, but we do NOT send it — it is the
+ * one difference between a request observed returning 200 and one observed
+ * returning 500. See `buildListUrl`.
  *
  * Response is Atom-shaped JSON: `{ entry: [...], link: [{ '@rel': 'next' }] }`.
  * Pagination is HATEOAS — the presence of a `rel="next"` link is the only
@@ -67,9 +70,9 @@
  *
  * NON-OBVIOUS: the list feed returns notice HEADERS only — the deceased's
  * address lives exclusively on the per-notice linked-data document, so one
- * detail fetch per candidate notice is unavoidable. We therefore filter by
- * date SERVER-side (`start-publish-date`) so we don't spend detail requests
- * on notices we would only throw away afterwards.
+ * detail fetch per candidate notice is unavoidable. We date-filter CLIENT-side
+ * after that fetch; see `buildListUrl` for why the server-side
+ * `start-publish-date` filter was removed, and why it costs us almost nothing.
  *
  * FAILURE CONTRACT: a persistent failure of the LIST fetch THROWS. It must
  * never silently return [] — the scouting pipeline's health reporting can
@@ -140,15 +143,11 @@ export async function fetchGazetteProbateNotices(
   limit = 50
 ): Promise<ProbateLead[]> {
   const pageSize = Math.min(Math.max(limit, MIN_PAGE_SIZE), MAX_PAGE_SIZE);
-  const startPublishDate = isoDate(Date.now() - sinceDays * 86_400_000);
   const cutoffMs = Date.now() - sinceDays * 86_400_000;
 
   // ---- 1. Resolve which documented feed shape the server actually serves ----
   // Throws (never returns []) if no shape works — see FAILURE CONTRACT above.
-  const { feed, json: firstPage } = await resolveListFeed(
-    pageSize,
-    startPublishDate
-  );
+  const { feed, json: firstPage } = await resolveListFeed(pageSize);
 
   const leads: ProbateLead[] = [];
   let page = firstPage;
@@ -206,7 +205,7 @@ export async function fetchGazetteProbateNotices(
 
     await sleep(LIST_PAGE_PAUSE_MS);
     pageNumber++;
-    const url = buildListUrl(feed.path, pageNumber, pageSize, startPublishDate);
+    const url = buildListUrl(feed.path, pageNumber, pageSize);
     const next = await fetchListPage(url);
     if (!next) break;
     page = next;
@@ -222,17 +221,40 @@ export async function fetchGazetteProbateNotices(
 // List fetching
 // ---------------------------------------------------------------------------
 
-function buildListUrl(
-  path: string,
-  page: number,
-  pageSize: number,
-  startPublishDate: string
-): string {
+/**
+ * Build a list-feed URL.
+ *
+ * NOTE the parameter that ISN'T here: `start-publish-date`.
+ *
+ * It was added as an optimisation — filter by date server-side so we don't
+ * spend a detail request per notice we'd only discard. It is documented, and
+ * it could not be tested (no egress). Then production told us what a test
+ * couldn't. Two requests, same host, same day:
+ *
+ *   ?noticecode=2903&results-page=1&results-page-size=10                → 200
+ *   ?noticecode=2903&results-page=1&results-page-size=30
+ *     &start-publish-date=2026-06-30                                    → 500
+ *
+ * The date parameter is the only meaningful difference between a feed that
+ * works and one that has been down since we shipped it — the same failure
+ * mode as the `noticetype` parameter it replaced, on the same endpoint,
+ * introduced by the fix for the first one.
+ *
+ * It is dropped rather than made conditional, because the optimisation was
+ * close to worthless anyway: **the feed is sorted newest-first**. Verified
+ * against a live response — page 1 came back with notices published within
+ * the hour, descending. Paging from page 1 already yields recent notices, so
+ * a daily cron looking back 30 days walks a couple of pages either way. The
+ * client-side date filter in `fetchGazetteProbateNotices` still bounds the
+ * window; all we lose is a handful of detail fetches.
+ *
+ * Trading the entire probate source for that was a bad deal.
+ */
+function buildListUrl(path: string, page: number, pageSize: number): string {
   const url = new URL(path, GAZETTE_ORIGIN);
   url.searchParams.set('noticecode', NOTICE_CODE_DECEASED_ESTATES);
   url.searchParams.set('results-page', String(page));
   url.searchParams.set('results-page-size', String(pageSize));
-  url.searchParams.set('start-publish-date', startPublishDate);
   return url.toString();
 }
 
@@ -244,17 +266,14 @@ function buildListUrl(
  * needing someone to re-run curl by hand (which is how this bug survived
  * three days of identical "Gazette list HTTP 500" lines).
  */
-async function resolveListFeed(
-  pageSize: number,
-  startPublishDate: string
-): Promise<{
+async function resolveListFeed(pageSize: number): Promise<{
   feed: (typeof LIST_FEEDS)[number];
   json: Record<string, unknown>;
 }> {
   const failures: string[] = [];
 
   for (const feed of LIST_FEEDS) {
-    const url = buildListUrl(feed.path, 1, pageSize, startPublishDate);
+    const url = buildListUrl(feed.path, 1, pageSize);
     try {
       const json = await requestListPage(url);
       return { feed, json };

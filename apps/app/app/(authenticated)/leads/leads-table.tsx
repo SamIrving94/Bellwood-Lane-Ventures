@@ -52,7 +52,17 @@ type Lead = {
 type Props = {
   leads: Lead[];
   initialFilter: string;
+  /**
+   * Total ScoutLead rows in the database. The page fetches a bounded slice
+   * (highest-scoring first), so when this exceeds `leads.length` there are
+   * leads the founder simply cannot see from here — say so rather than
+   * quietly presenting a truncated list as the whole picture.
+   */
+  totalCount?: number;
 };
+
+/** Cards rendered per page. Keeps the DOM small on a multi-hundred-lead list. */
+const PAGE_SIZE = 50;
 
 const verdictColors: Record<string, string> = {
   STRONG: 'bg-emerald-100 text-emerald-800 border-emerald-200',
@@ -124,11 +134,19 @@ const SECONDARY_FILTERS: FilterKey[] = [
   'shortlease',
 ];
 
-export function LeadsTable({ leads, initialFilter }: Props) {
+export function LeadsTable({ leads, initialFilter, totalCount }: Props) {
   const [activeFilter, setActiveFilter] = useState<FilterKey>(
     (initialFilter as FilterKey) ?? 'new',
   );
+  const [page, setPage] = useState(1);
   const [showMoreFilters, setShowMoreFilters] = useState(false);
+
+  // Switching filter must reset paging — landing on page 4 of a list you have
+  // just replaced looks like an empty tab.
+  const selectFilter = (key: FilterKey) => {
+    setActiveFilter(key);
+    setPage(1);
+  };
   // Optimistic triage state so cards re-filter instantly on Shortlist/Pass.
   const [localStatus, setLocalStatus] = useState<Record<string, string>>({});
 
@@ -181,6 +199,16 @@ export function LeadsTable({ leads, initialFilter }: Props) {
         return true;
     }
   });
+
+  // Page the FILTERED list, so counts and filters keep working over the whole
+  // fetched set while the DOM only ever holds one page of cards.
+  const pageCount = Math.max(1, Math.ceil(filteredLeads.length / PAGE_SIZE));
+  const safePage = Math.min(page, pageCount);
+  const pageStart = (safePage - 1) * PAGE_SIZE;
+  const pagedLeads = filteredLeads.slice(pageStart, pageStart + PAGE_SIZE);
+  // True when the server had to cut the fetch — there are leads not loaded.
+  const truncated =
+    typeof totalCount === 'number' && totalCount > leads.length;
 
   const countByStatus = (s: string) =>
     leads.filter((l) => getStatus(l) === s).length;
@@ -266,7 +294,7 @@ export function LeadsTable({ leads, initialFilter }: Props) {
           <button
             key={f.key}
             type="button"
-            onClick={() => setActiveFilter(f.key)}
+            onClick={() => selectFilter(f.key)}
             className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
               activeFilter === f.key
                 ? 'bg-primary text-primary-foreground'
@@ -298,7 +326,7 @@ export function LeadsTable({ leads, initialFilter }: Props) {
             <button
               key={f.key}
               type="button"
-              onClick={() => setActiveFilter(f.key)}
+              onClick={() => selectFilter(f.key)}
               className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
                 activeFilter === f.key
                   ? 'bg-primary text-primary-foreground'
@@ -313,7 +341,18 @@ export function LeadsTable({ leads, initialFilter }: Props) {
       )}
 
       <p className="text-muted-foreground text-sm">
-        {filteredLeads.length} lead{filteredLeads.length !== 1 ? 's' : ''}
+        {filteredLeads.length === 0
+          ? '0 leads'
+          : `Showing ${pageStart + 1}–${pageStart + pagedLeads.length} of ${filteredLeads.length} lead${filteredLeads.length !== 1 ? 's' : ''}`}
+        {truncated && (
+          <>
+            {' '}
+            <span className="text-amber-700">
+              · loaded the top {leads.length} of {totalCount} by score; older
+              lower-scoring leads are not shown
+            </span>
+          </>
+        )}
       </p>
 
       {filteredLeads.length === 0 ? (
@@ -323,16 +362,19 @@ export function LeadsTable({ leads, initialFilter }: Props) {
               <p className="font-medium text-foreground">
                 No new leads waiting.
               </p>
+              {/* The scout is a 7am cron — there is no run-now control, so
+                  don't send the founder looking for a button that isn't
+                  there. Point at the one thing they CAN change instead. */}
               <p className="mt-1 text-muted-foreground text-sm">
-                Everything sourced so far has already been triaged. Run a
-                fresh scout from{' '}
+                Everything sourced so far has already been triaged. The scout
+                runs each morning — widen your target areas in{' '}
                 <a
                   href="/settings/scouting"
                   className="font-medium text-primary hover:underline"
                 >
                   Settings → Scouting
-                </a>
-                .
+                </a>{' '}
+                to bring in more.
               </p>
             </>
           ) : activeFilter === 'shortlist' ? (
@@ -381,16 +423,42 @@ export function LeadsTable({ leads, initialFilter }: Props) {
           )}
         </div>
       ) : (
-        <div className="grid gap-3">
-          {filteredLeads.map((lead) => (
-            <LeadCard
-              key={lead.id}
-              lead={lead}
-              status={getStatus(lead)}
-              onTriaged={(s) => handleTriaged(lead.id, s)}
-            />
-          ))}
-        </div>
+        <>
+          <div className="grid gap-3">
+            {pagedLeads.map((lead) => (
+              <LeadCard
+                key={lead.id}
+                lead={lead}
+                status={getStatus(lead)}
+                onTriaged={(s) => handleTriaged(lead.id, s)}
+              />
+            ))}
+          </div>
+
+          {pageCount > 1 && (
+            <div className="flex items-center justify-center gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={safePage <= 1}
+                className="rounded-full border px-3 py-1 font-medium text-xs transition-colors enabled:hover:bg-muted disabled:opacity-40"
+              >
+                ← Previous
+              </button>
+              <span className="text-muted-foreground text-xs">
+                Page {safePage} of {pageCount}
+              </span>
+              <button
+                type="button"
+                onClick={() => setPage((p) => Math.min(pageCount, p + 1))}
+                disabled={safePage >= pageCount}
+                className="rounded-full border px-3 py-1 font-medium text-xs transition-colors enabled:hover:bg-muted disabled:opacity-40"
+              >
+                Next →
+              </button>
+            </div>
+          )}
+        </>
       )}
     </>
   );

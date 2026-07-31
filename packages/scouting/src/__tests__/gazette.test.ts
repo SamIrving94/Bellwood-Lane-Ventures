@@ -8,7 +8,7 @@
  *     a parameter that does not exist in The Gazette's documented API. These
  *     lock the shape we actually ask for so a bogus filter cannot creep back:
  *     the `wills-and-probate` category path, `noticecode=2903`, documented
- *     pagination params, and a server-side `start-publish-date`.
+ *     pagination params, and NO date filter (see the regression lock below).
  *
  *  2. RESILIENCE + VISIBILITY. Requests carry a descriptive User-Agent (the
  *     gov WAF 5xx's UA-less bots), transient 5xx are retried, and a persistent
@@ -124,7 +124,7 @@ describe('fetchGazetteProbateNotices — request contract', () => {
     }
   });
 
-  it('sends documented pagination params and an ISO start-publish-date from sinceDays', async () => {
+  it('sends documented pagination params', async () => {
     const fetchMock = routedFetch();
     vi.stubGlobal('fetch', fetchMock);
 
@@ -133,13 +133,29 @@ describe('fetchGazetteProbateNotices — request contract', () => {
     const url = new URL(listUrls(fetchMock)[0] as string);
     expect(url.searchParams.get('results-page')).toBe('1');
     expect(url.searchParams.get('results-page-size')).toBe('25');
+  });
 
-    const start = url.searchParams.get('start-publish-date') as string;
-    expect(start).toMatch(/^\d{4}-\d{2}-\d{2}$/);
-    // ~30 days ago, allowing a day of slack for clock/rounding.
-    const deltaDays = (Date.now() - Date.parse(start)) / 86_400_000;
-    expect(deltaDays).toBeGreaterThan(29);
-    expect(deltaDays).toBeLessThan(31.5);
+  it('NEVER sends start-publish-date — the parameter that caused the second 500', async () => {
+    // Regression lock. `start-publish-date` is documented, was added as a
+    // detail-fetch optimisation, and could not be tested from CI (no egress).
+    // Production then observed, same host and day:
+    //   ...&results-page-size=10                                  -> 200
+    //   ...&results-page-size=30&start-publish-date=2026-06-30     -> 500
+    // Same failure mode as the `noticetype` parameter it replaced. The feed is
+    // sorted newest-first, so the optimisation bought almost nothing; the
+    // client-side cutoff still bounds the window.
+    const fetchMock = routedFetch();
+    vi.stubGlobal('fetch', fetchMock);
+
+    await fetchGazetteProbateNotices(30, 25);
+
+    for (const raw of listUrls(fetchMock)) {
+      const url = new URL(raw as string);
+      expect(url.searchParams.get('start-publish-date')).toBeNull();
+      expect(url.searchParams.get('end-publish-date')).toBeNull();
+      // The parameter from the FIRST outage must stay gone too.
+      expect(url.searchParams.get('noticetype')).toBeNull();
+    }
   });
 
   it('caps results-page-size at the documented maximum of 100', async () => {
