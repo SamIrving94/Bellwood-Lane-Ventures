@@ -8,7 +8,6 @@ import {
   Wordmark,
 } from '@/components/brand';
 import Link from 'next/link';
-import { Suspense } from 'react';
 import { ChatFlow } from '../instant-offer/components/chat-flow';
 
 export const revalidate = 300;
@@ -302,7 +301,7 @@ export default function SellPage() {
         </div>
       </section>
 
-      {/* ————— THE OFFER (CHAT) ————— */}
+      {/* ————— THE OFFER (REQUEST FORM) ————— */}
       <section
         id="offer"
         className="border-[#EBE1DB]/70 border-b px-6 py-24 md:px-12 md:py-28"
@@ -318,9 +317,7 @@ export default function SellPage() {
               offer in writing after we view the property.
             </p>
           </div>
-          <Suspense fallback={<div className="h-96" />}>
-            <ChatFlow defaultRole="seller" />
-          </Suspense>
+          <ChatFlow defaultRole="seller" />
         </div>
       </section>
 
