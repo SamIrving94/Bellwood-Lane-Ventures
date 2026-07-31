@@ -1,0 +1,287 @@
+import type { Metadata } from 'next';
+import Link from 'next/link';
+
+export const metadata: Metadata = {
+  title: 'Regulatory status — Kept',
+  description:
+    'How Kept is regulated, what that means for you, and the legal footing of our cash offers.',
+};
+
+const SECTIONS: Array<{
+  id: string;
+  eyebrow: string;
+  title: string;
+  body: React.ReactNode;
+}> = [
+  {
+    id: 'who',
+    eyebrow: 'Who we are',
+    title: 'A direct cash buyer, not a broker or intermediary.',
+    body: (
+      <>
+        <p>
+          Kept is a UK private company (registered in England
+          &amp; Wales) that buys residential property for its own account, using
+          its own capital. We are not an estate agent, not a broker, not a
+          mortgage lender, and not a member of any property portal.
+        </p>
+        <p>
+          When we quote you a price, that price is an offer from us to buy — not
+          an estimate of what someone else might pay. If you accept, we are the
+          buyer.
+        </p>
+      </>
+    ),
+  },
+  {
+    id: 'fca',
+    eyebrow: 'FCA status',
+    title: 'We are not authorised or regulated by the FCA.',
+    body: (
+      <>
+        <p>
+          The Financial Conduct Authority authorises firms that carry out
+          regulated financial activities — lending, deposit-taking, insurance,
+          investment advice. Buying a residential property with our own money is
+          not a regulated activity, and we do not perform any activity that
+          requires FCA authorisation.
+        </p>
+        <p>This means three practical things for you:</p>
+        <ul>
+          <li>
+            The Financial Services Compensation Scheme does not apply to any
+            transaction with us.
+          </li>
+          <li>
+            The Financial Ombudsman Service cannot adjudicate disputes between
+            us — the normal civil courts are the route.
+          </li>
+          <li>
+            We do not and cannot offer financial or legal advice. You must take
+            your own, independently.
+          </li>
+        </ul>
+      </>
+    ),
+  },
+  {
+    id: 'standards',
+    eyebrow: 'Industry standards',
+    title: 'Code-of-practice bodies we voluntarily follow.',
+    body: (
+      <>
+        <p>
+          Although cash property buyers are not FCA-regulated, there are
+          voluntary industry bodies and statutory frameworks that govern how we
+          operate. We are members of the Property Redress Scheme (PRS) — a
+          government-approved independent redress body — and voluntarily follow
+          The Property Ombudsman code for seller-facing communications. We are
+          HMRC-registered for AML supervision under the Money Laundering
+          Regulations 2017 and ICO-registered as a data controller. These commit
+          us to, among other things: never making an offer we cannot honour,
+          never reducing the price we confirm without one of three documented
+          exceptions, and giving you clear written terms before you commit.
+        </p>
+      </>
+    ),
+  },
+  {
+    id: 'aml',
+    eyebrow: 'Anti-money-laundering',
+    title: 'We are HMRC-supervised for AML and we cover the seller side.',
+    body: (
+      <>
+        <p>
+          Property buyers are regulated businesses under the Money Laundering
+          Regulations 2017. Kept is registered with HMRC for AML
+          supervision. Every transaction includes Customer Due Diligence on the
+          seller — identity verification, source of funds, risk assessment.
+        </p>
+        <p>
+          When we work with an estate agent on a referral, we issue a written
+          compliance receipt that confirms CDD has been carried out. The agent
+          keeps it on file — it materially reduces their own exposure.
+        </p>
+      </>
+    ),
+  },
+  {
+    id: 'contract',
+    eyebrow: 'The offer itself',
+    title: 'What "legally binding" means here.',
+    body: (
+      <>
+        <p>
+          Our <em>confirmed</em> offers (issued in writing after a physical
+          viewing) are legally binding upon us for 72 hours from the issue
+          time-stamp. Our <em>indicative</em> offers (issued before viewing,
+          based on public data and comparables) are our honest starting point —
+          a price we intend to confirm at, subject only to viewing and the three
+          documented exceptions. During the 72-hour confirmed window, we may not
+          withdraw without cause.
+        </p>
+        <p>
+          The offer is <em>not</em> binding upon you until you sign
+          solicitors&rsquo; documents to sell. You may walk away at any point
+          before exchange at no cost. We do not charge vendors any fee, ever.
+        </p>
+        <p>
+          We may only revise the offer in three documented circumstances: where
+          an independent RICS-panel survey identifies a material defect not
+          visible or disclosed at viewing, where a title issue emerges during
+          conveyancing that materially affects value, or where information
+          provided about the property proves materially incorrect. If that
+          happens, you may choose to accept the revision or walk away, and there
+          is no penalty for the latter.
+        </p>
+      </>
+    ),
+  },
+  {
+    id: 'data',
+    eyebrow: 'Your data',
+    title: 'What we collect, and when.',
+    body: (
+      <>
+        <p>
+          Until you request an offer, we store nothing identifiable. The
+          address-lookup step uses Ordnance Survey&rsquo;s Places API; we pass
+          your query through and keep no record.
+        </p>
+        <p>
+          When you request an offer, we persist the address, the answers you
+          gave, and the resulting valuation for as long as the offer is live (72
+          hours) plus seven years for regulatory record-keeping thereafter. See
+          our{' '}
+          <Link href="/legal/privacy" className="underline">
+            privacy notice
+          </Link>{' '}
+          for the full detail.
+        </p>
+      </>
+    ),
+  },
+  {
+    id: 'advice',
+    eyebrow: 'Independent advice',
+    title: 'Please take it.',
+    body: (
+      <>
+        <p>
+          Selling a house for cash below open-market value is often the right
+          decision — probate, chain break, short lease, tenancy issues, speed of
+          need. It is just as often the wrong one. We cannot tell you which you
+          are. A solicitor can, a qualified financial adviser can, and often
+          your estate agent can too.
+        </p>
+        <p>
+          We will not pressure you to sign. If anyone from Kept ever
+          does, email{' '}
+          <a href="mailto:anthony@bellwoodslane.co.uk" className="underline">
+            anthony@bellwoodslane.co.uk
+          </a>{' '}
+          and we will respond within two working days.
+        </p>
+      </>
+    ),
+  },
+];
+
+export default function FCADisclosurePage() {
+  return (
+    <main className="min-h-screen bg-cream px-6 py-20 md:px-12 md:py-28">
+      <div className="mx-auto max-w-3xl">
+        <Link
+          href="/instant-offer"
+          className="inline-flex items-center gap-2 font-serif text-[13px] text-stone-500 italic transition hover:text-leaf"
+        >
+          <span aria-hidden>←</span> Back to indicative offer
+        </Link>
+
+        <p className="mt-12 font-serif text-[13px] text-leaf italic">
+          Regulatory disclosure
+        </p>
+        <h1
+          className="mt-5 font-semibold font-serif text-forest leading-[1.02] tracking-[-0.025em]"
+          style={{ fontSize: 'clamp(44px, 6vw, 72px)' }}
+        >
+          Where we stand,
+          <br />
+          written plainly.
+        </h1>
+        <p className="mt-8 max-w-2xl text-[17px] text-stone-600 leading-relaxed">
+          Cash property buying is an unregulated corner of the market. That is
+          not a loophole we are exploiting — it is a fact we&rsquo;d rather you
+          understood up-front. This page sets out, in ordinary language, what it
+          means to do business with us.
+        </p>
+        <p className="mt-4 font-mono text-[11px] text-stone-400">
+          Last updated{' '}
+          {new Date().toLocaleDateString('en-GB', {
+            day: 'numeric',
+            month: 'long',
+            year: 'numeric',
+          })}{' '}
+          · version 1.0
+        </p>
+
+        <div className="mt-16 space-y-16">
+          {SECTIONS.map((s) => (
+            <section key={s.id} id={s.id}>
+              <p className="font-serif text-[13px] text-leaf italic">
+                {s.eyebrow}
+              </p>
+              <h2 className="mt-3 font-semibold font-serif text-3xl leading-[1.15] tracking-[-0.02em] md:text-4xl">
+                {s.title}
+              </h2>
+              <div className="prose prose-slate mt-5 max-w-none text-[16px] text-stone-700 leading-relaxed [&_a]:text-leaf [&_a]:underline [&_li]:my-2 [&_p]:mt-4 [&_ul]:mt-4 [&_ul]:list-disc [&_ul]:pl-5">
+                {s.body}
+              </div>
+            </section>
+          ))}
+        </div>
+
+        <hr className="my-20 border-stone-200" />
+
+        <section>
+          <p className="font-serif text-[13px] text-stone-500 italic">
+            Company details
+          </p>
+          <dl className="mt-5 grid grid-cols-1 gap-x-8 gap-y-3 text-[14px] sm:grid-cols-[160px_1fr]">
+            <dt className="font-serif text-[13px] text-stone-500 italic">
+              Legal name
+            </dt>
+            <dd>Kept</dd>
+            <dt className="font-serif text-[13px] text-stone-500 italic">
+              Registered in
+            </dt>
+            <dd>England &amp; Wales</dd>
+            <dt className="font-serif text-[13px] text-stone-500 italic">
+              Company number
+            </dt>
+            <dd className="text-stone-400">[pending]</dd>
+            <dt className="font-serif text-[13px] text-stone-500 italic">
+              Registered office
+            </dt>
+            <dd>London, United Kingdom</dd>
+            <dt className="font-serif text-[13px] text-stone-500 italic">
+              Compliance contact
+            </dt>
+            <dd>
+              <a
+                className="underline"
+                href="mailto:anthony@bellwoodslane.co.uk"
+              >
+                anthony@bellwoodslane.co.uk
+              </a>
+            </dd>
+          </dl>
+        </section>
+
+        <p className="mt-16 font-serif text-[13px] text-stone-400 italic">
+          Nothing on this page constitutes financial or legal advice.
+        </p>
+      </div>
+    </main>
+  );
+}
