@@ -1,3 +1,4 @@
+import { Wordmark } from '@/components/brand';
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
@@ -29,15 +30,9 @@ export default function SellerDisclosurePage() {
         </a>
       </div>
 
-      <header className="border-wax border-b-2 pb-6">
-        <p className="font-semibold font-serif text-xl tracking-tight">
-          BELLWOODS
-          <span className="mx-2 inline-block h-px w-8 bg-wax align-middle" />
-          <span className="font-normal text-sm text-stone-500 tracking-widest">
-            LANE
-          </span>
-        </p>
-        <p className="mt-4 text-leaf text-xs uppercase tracking-widest">
+      <header className="border-wax border-b pb-6">
+        <Wordmark className="text-2xl" />
+        <p className="mt-4 text-stone-500 text-xs uppercase [font-family:var(--font-courier)]">
           Seller disclosure form
         </p>
         <h1 className="mt-2 font-semibold font-serif text-3xl leading-tight">
@@ -63,7 +58,7 @@ export default function SellerDisclosurePage() {
             ['Referring agent contact', ''],
           ].map(([label]) => (
             <label key={label as string} className="block">
-              <span className="text-stone-500 text-xs uppercase tracking-widest">
+              <span className="text-stone-500 text-xs uppercase [font-family:var(--font-courier)]">
                 {label}
               </span>
               <input
@@ -76,13 +71,13 @@ export default function SellerDisclosurePage() {
       </section>
 
       {/* Offer */}
-      <section className="mt-8 rounded-xl border-2 border-wax bg-soft p-6">
+      <section className="mt-8 rounded-[2px] border border-wax bg-soft p-6">
         <h2 className="mb-3 font-semibold font-serif text-lg">
           Kept cash offer
         </h2>
         <div className="grid grid-cols-2 gap-3 text-sm">
           <label className="block">
-            <span className="text-stone-500 text-xs uppercase tracking-widest">
+            <span className="text-stone-500 text-xs uppercase [font-family:var(--font-courier)]">
               Offer (£, all-in)
             </span>
             <input
@@ -91,7 +86,7 @@ export default function SellerDisclosurePage() {
             />
           </label>
           <label className="block">
-            <span className="text-stone-500 text-xs uppercase tracking-widest">
+            <span className="text-stone-500 text-xs uppercase [font-family:var(--font-courier)]">
               Offer as % of open-market value
             </span>
             <input
@@ -100,7 +95,7 @@ export default function SellerDisclosurePage() {
             />
           </label>
           <label className="block">
-            <span className="text-stone-500 text-xs uppercase tracking-widest">
+            <span className="text-stone-500 text-xs uppercase [font-family:var(--font-courier)]">
               Target completion date
             </span>
             <input
@@ -109,7 +104,7 @@ export default function SellerDisclosurePage() {
             />
           </label>
           <label className="block">
-            <span className="text-stone-500 text-xs uppercase tracking-widest">
+            <span className="text-stone-500 text-xs uppercase [font-family:var(--font-courier)]">
               Offer valid until
             </span>
             <input
@@ -127,13 +122,12 @@ export default function SellerDisclosurePage() {
         </h2>
         <p className="text-sm text-stone-700">
           Your estate agent will receive a referral fee if this sale completes
-          with Kept. The amount is stated below. This fee is paid by
-          Kept and is separate from any standard estate agency
-          commission.
+          with Kept. The amount is stated below. This fee is paid by Kept and is
+          separate from any standard estate agency commission.
         </p>
         <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
           <label className="block">
-            <span className="text-stone-500 text-xs uppercase tracking-widest">
+            <span className="text-stone-500 text-xs uppercase [font-family:var(--font-courier)]">
               Referral fee (% of purchase price)
             </span>
             <input
@@ -142,7 +136,7 @@ export default function SellerDisclosurePage() {
             />
           </label>
           <label className="block">
-            <span className="text-stone-500 text-xs uppercase tracking-widest">
+            <span className="text-stone-500 text-xs uppercase [font-family:var(--font-courier)]">
               Sale fee paid to agent (% of purchase price)
             </span>
             <input
@@ -191,8 +185,8 @@ export default function SellerDisclosurePage() {
         </h2>
         <p className="text-sm text-stone-700">
           In line with the Digital Markets, Competition and Consumers Act 2024,
-          Kept operates additional safeguards where a seller may be in
-          a vulnerable position (recent bereavement, financial distress,
+          Kept operates additional safeguards where a seller may be in a
+          vulnerable position (recent bereavement, financial distress,
           health-related, language barrier, elderly). If you wish to indicate
           that you are in a vulnerable position, please tick below — this will
           not affect your offer, but may slow the process to ensure you have
@@ -201,8 +195,8 @@ export default function SellerDisclosurePage() {
         <label className="mt-4 flex items-start gap-3 text-sm">
           <input type="checkbox" className="mt-1 h-4 w-4" />
           <span className="text-stone-700">
-            I identify as a vulnerable seller and wish Kept&apos;s
-            additional safeguards to apply.
+            I identify as a vulnerable seller and wish Kept&apos;s additional
+            safeguards to apply.
           </span>
         </label>
       </section>
@@ -210,10 +204,10 @@ export default function SellerDisclosurePage() {
       {/* Signatures */}
       <section className="mt-10 grid grid-cols-2 gap-6">
         <div>
-          <p className="text-stone-500 text-xs uppercase tracking-widest">
+          <p className="text-stone-500 text-xs uppercase [font-family:var(--font-courier)]">
             Seller signature
           </p>
-          <div className="mt-1 h-16 border-stone-400 border-b-2" />
+          <div className="mt-1 h-16 border-stone-400 border-b" />
           <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
             <label className="block">
               <span className="text-stone-500">Name</span>
@@ -232,10 +226,10 @@ export default function SellerDisclosurePage() {
           </div>
         </div>
         <div>
-          <p className="text-stone-500 text-xs uppercase tracking-widest">
+          <p className="text-stone-500 text-xs uppercase [font-family:var(--font-courier)]">
             Witness (estate agent)
           </p>
-          <div className="mt-1 h-16 border-stone-400 border-b-2" />
+          <div className="mt-1 h-16 border-stone-400 border-b" />
           <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
             <label className="block">
               <span className="text-stone-500">Name</span>
@@ -256,9 +250,9 @@ export default function SellerDisclosurePage() {
       </section>
 
       <footer className="mt-12 border-stone-200 border-t pt-6 text-stone-500 text-xs">
-        Kept · Property Redress Scheme (PRS) · HMRC AML supervised
-        · ICO registered · Disclosure compliant with CPR 2008, DMCC Act 2025,
-        NTSELAT referral-fee guidance.
+        Kept · Property Redress Scheme (PRS) · HMRC AML supervised · ICO
+        registered · Disclosure compliant with CPR 2008, DMCC Act 2025, NTSELAT
+        referral-fee guidance.
       </footer>
     </div>
   );

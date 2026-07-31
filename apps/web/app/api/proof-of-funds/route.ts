@@ -1,9 +1,9 @@
 // Proof-of-funds capture endpoint.
 // Persists a request, optionally emails the founder, returns 200.
 
+import { sendEmail } from '@repo/email';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { sendEmail } from '@repo/email';
 
 export const runtime = 'nodejs';
 
@@ -24,7 +24,7 @@ export async function POST(request: Request) {
   if (!parsed.success) {
     return NextResponse.json(
       { error: 'Validation failed', issues: parsed.error.issues },
-      { status: 400 },
+      { status: 400 }
     );
   }
 

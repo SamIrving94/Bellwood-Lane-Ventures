@@ -1,3 +1,5 @@
+import { Wordmark } from '@/components/brand';
+import { brand } from '@repo/brand';
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
@@ -31,15 +33,9 @@ export default function PartnerBriefPage() {
         </a>
       </div>
 
-      <header className="border-leaf border-b-2 pb-6">
-        <p className="font-semibold font-serif text-xl tracking-tight">
-          BELLWOODS
-          <span className="mx-2 inline-block h-px w-8 bg-wax align-middle" />
-          <span className="font-normal text-sm text-stone-500 tracking-widest">
-            LANE
-          </span>
-        </p>
-        <p className="mt-4 text-leaf text-xs uppercase tracking-widest">
+      <header className="border-hair border-b pb-6">
+        <Wordmark className="text-2xl" />
+        <p className="mt-4 text-stone-500 text-xs uppercase [font-family:var(--font-courier)]">
           Agent Partner Brief
         </p>
         <h1 className="mt-2 font-semibold font-serif text-4xl leading-tight">
@@ -49,10 +45,10 @@ export default function PartnerBriefPage() {
 
       <section className="mt-10 space-y-6">
         <p className="text-base text-stone-700 leading-relaxed">
-          Kept is a UK direct-to-vendor cash property buyer. We
-          partner exclusively with estate agents to rescue chain breaks, probate
-          sales, repossessions, and problem properties that conventional buyers
-          will not touch.
+          Kept is a UK direct-to-vendor cash property buyer. We partner
+          exclusively with estate agents to rescue chain breaks, probate sales,
+          repossessions, and problem properties that conventional buyers will
+          not touch.
         </p>
 
         <div className="grid grid-cols-2 gap-4 border-stone-200 border-y py-8">
@@ -66,7 +62,7 @@ export default function PartnerBriefPage() {
               <p className="font-semibold font-serif text-3xl text-forest">
                 {v}
               </p>
-              <p className="text-stone-500 text-xs uppercase tracking-widest">
+              <p className="text-stone-500 text-xs uppercase [font-family:var(--font-courier)]">
                 {l}
               </p>
             </div>
@@ -164,25 +160,27 @@ export default function PartnerBriefPage() {
         </ol>
       </section>
 
-      <section className="mt-10 rounded-2xl border-2 border-forest bg-forest p-8 text-white">
-        <p className="text-leaf text-xs uppercase tracking-widest">Contact</p>
+      <section className="mt-10 rounded-[2px] bg-forest p-8 text-white">
+        <p className="text-white/70 text-xs uppercase [font-family:var(--font-courier)]">
+          Contact
+        </p>
         <p className="mt-3 font-semibold font-serif text-2xl">Anthony</p>
         <p className="text-sm text-white/70">Founder · Kept</p>
         <div className="mt-4 grid grid-cols-1 gap-1 text-sm md:grid-cols-2">
-          <p>Email: anthony@bellwoodslane.co.uk</p>
+          <p>Email: anthony@{brand.domain}</p>
           <p>Phone: +44 (0)&nbsp;[phone]</p>
-          <p>Web: bellwoodslane.co.uk/instant-offer</p>
+          <p>Web: {brand.domain}/instant-offer</p>
         </div>
       </section>
 
       <footer className="mt-10 border-stone-200 border-t pt-6 text-stone-500 text-xs">
         <p>
-          Kept is a UK cash property buyer. Member of the Property
-          Redress Scheme (PRS), HMRC-registered for AML supervision under the
-          Money Laundering Regulations 2017, and ICO-registered as a data
-          controller. Fees disclosed to sellers in writing per NTSELAT /
-          National Trading Standards guidance and the DMCC Act 2025. This
-          document is intended for professional recipients only.
+          Kept is a UK cash property buyer. Member of the Property Redress
+          Scheme (PRS), HMRC-registered for AML supervision under the Money
+          Laundering Regulations 2017, and ICO-registered as a data controller.
+          Fees disclosed to sellers in writing per NTSELAT / National Trading
+          Standards guidance and the DMCC Act 2025. This document is intended
+          for professional recipients only.
         </p>
       </footer>
     </div>

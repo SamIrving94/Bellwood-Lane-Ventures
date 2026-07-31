@@ -16,11 +16,11 @@ export const revalidate = 300;
 const FAQ: Array<{ q: string; a: string }> = [
   {
     q: 'Will my client think I sold them short?',
-    a: 'No, because the offer is below open-market by a defensible margin: a price that reflects the speed and certainty of a cash purchase with zero fall-through risk. You hand them the methodology page and a signed offer. They make the call.',
+    a: 'No, because the offer is below open-market by a defensible margin: that margin is the cost of a cash purchase with zero fall-through risk. You hand them the methodology page and a signed offer. They make the call.',
   },
   {
     q: 'My buyer’s mortgage was just refused. Can you replace them at the same price?',
-    a: 'Almost certainly not at the original asking price. Our offer is below open-market in exchange for cash and certainty. But for a vendor whose buyer just collapsed, that trade-off is often worth it: a quick completion at a price that reflects the speed and certainty of the transaction, instead of 4–8 months of re-marketing with no guarantee.',
+    a: 'Almost certainly not at the original asking price. Our offer is below open-market in exchange for cash and certainty. But for a vendor whose buyer just collapsed, that trade-off is often worth it: a quick, certain completion instead of 4–8 months of re-marketing with no guarantee.',
   },
   {
     q: 'The survey came back and the buyer wants a £15k reduction. What now?',
@@ -98,8 +98,8 @@ function SampleOfferDocument() {
       </dl>
 
       <p className="mt-6 border-hair border-t pt-4 font-serif text-[11px] text-stone-500 italic leading-relaxed">
-        Signed for and on behalf of Kept. This offer is legally
-        binding upon Kept for 72 hours from issue.
+        Signed for and on behalf of Kept. This offer is legally binding upon
+        Kept for 72 hours from issue.
       </p>
     </div>
   );
@@ -607,10 +607,10 @@ export default function AgentsPage() {
               &middot; ICO registered
             </p>
             <p className="mt-4 text-[11px] text-stone-500 leading-relaxed">
-              Kept is a UK cash property buyer, not an
-              FCA-authorised firm. We do not provide financial or legal advice.
-              Seek independent legal advice before accepting any offer. All
-              offers are subject to satisfactory survey and title searches.
+              Kept is a UK cash property buyer, not an FCA-authorised firm. We
+              do not provide financial or legal advice. Seek independent legal
+              advice before accepting any offer. All offers are subject to
+              satisfactory survey and title searches.
             </p>
             <p className="mt-4 text-[11px] text-stone-400">
               © {new Date().getFullYear()} Kept.

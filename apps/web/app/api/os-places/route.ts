@@ -6,8 +6,8 @@
 // Wraps the existing @repo/property-data helpers so the env-key handling
 // stays in one place.
 
-import { NextResponse } from 'next/server';
 import { lookupByPostcode, resolveAddress } from '@repo/property-data';
+import { NextResponse } from 'next/server';
 
 export const runtime = 'nodejs';
 // Postcode lookups are stable; "find" is more dynamic. Cache headers
@@ -25,7 +25,7 @@ export async function GET(request: Request) {
   if (mode !== 'postcode' && mode !== 'find') {
     return NextResponse.json(
       { error: 'mode must be "postcode" or "find"' },
-      { status: 400 },
+      { status: 400 }
     );
   }
 

@@ -1,3 +1,4 @@
+import { Eyebrow, LogoLockup } from '@/components/brand';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 
@@ -8,18 +9,9 @@ export const metadata: Metadata = {
 export default function TeamPage() {
   return (
     <>
-      <header className="border-stone-200/60 border-b">
+      <header className="border-hair border-b">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
-          <Link
-            href="/instant-offer"
-            className="font-semibold font-serif text-xl tracking-tight"
-          >
-            BELLWOODS
-            <span className="mx-2 inline-block h-px w-8 bg-wax align-middle" />
-            <span className="font-normal text-sm text-stone-500 tracking-widest">
-              LANE
-            </span>
-          </Link>
+          <LogoLockup href="/instant-offer" />
           <Link
             href="/instant-offer#chat"
             className="rounded-md bg-leaf px-5 py-2 text-sm text-white transition hover:bg-leaf-dark"
@@ -30,9 +22,7 @@ export default function TeamPage() {
       </header>
 
       <section className="mx-auto max-w-5xl px-6 py-20">
-        <p className="mb-3 text-leaf text-xs uppercase tracking-widest">
-          The team
-        </p>
+        <Eyebrow className="mb-3">The team</Eyebrow>
         <h1 className="font-semibold font-serif text-5xl leading-tight">
           Real people. Named. Accountable.
         </h1>
@@ -52,9 +42,13 @@ export default function TeamPage() {
           ].map((p) => (
             <div
               key={p.name}
-              className="rounded-3xl border border-stone-200 bg-white p-8 shadow-sm"
+              className="rounded-lg border border-hair bg-white p-8 shadow-sm"
             >
-              <div className="aspect-square w-full rounded-2xl bg-gradient-to-br from-stone-100 to-soft" />
+              <div className="flex aspect-square w-full items-center justify-center rounded-[2px] border border-hair bg-soft">
+                <p className="text-stone-500 text-xs [font-family:var(--font-courier)]">
+                  photograph to follow
+                </p>
+              </div>
               <h3 className="mt-6 font-semibold font-serif text-2xl">
                 {p.name}
               </h3>

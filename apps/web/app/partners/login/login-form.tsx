@@ -1,5 +1,6 @@
 'use client';
 
+import { Eyebrow } from '@/components/brand';
 import { useState } from 'react';
 
 export function LoginForm() {
@@ -30,16 +31,30 @@ export function LoginForm() {
   if (status.state === 'success') {
     return (
       <div className="text-center">
-        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-md bg-leaf/20 text-leaf text-xl">
-          ✓
+        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full border border-leaf/30 bg-leaf/10 text-leaf">
+          <svg
+            width="20"
+            height="20"
+            viewBox="0 0 20 20"
+            fill="none"
+            aria-hidden
+          >
+            <path
+              d="M4 10.5l4 4 8-9"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
         </div>
         <p className="mt-5 font-serif text-xl">Check your inbox.</p>
-        <p className="mt-2 text-sm text-stone-600">
+        <p className="mt-2 text-body text-sm">
           If your email is registered, we&apos;ve sent a sign-in link.
         </p>
         {status.devMagicLink && (
-          <div className="mt-6 rounded-lg border border-amber-300 bg-amber-50 p-4 text-left text-xs">
-            <p className="font-semibold">Dev mode — magic link</p>
+          <div className="mt-6 rounded-md border border-hair bg-soft p-4 text-left text-xs">
+            <p className="font-semibold">Dev mode: magic link</p>
             <a
               href={status.devMagicLink}
               className="mt-2 block break-all text-leaf underline"
@@ -55,19 +70,17 @@ export function LoginForm() {
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <label className="block">
-        <span className="text-stone-500 text-xs uppercase tracking-widest">
-          Work email
-        </span>
+        <Eyebrow tone="muted">Work email</Eyebrow>
         <input
           name="email"
           type="email"
           required
           autoFocus
-          className="mt-1 w-full rounded-xl border border-stone-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-leaf"
+          className="mt-1.5 w-full rounded-[2px] border border-hair bg-white px-4 py-3 text-sm outline-none transition focus:border-leaf"
         />
       </label>
       {status.state === 'error' && (
-        <p className="rounded-lg bg-red-50 p-3 text-red-700 text-sm">
+        <p className="rounded-[2px] border border-hair bg-soft p-3 text-sm text-wax">
           {status.message}
         </p>
       )}

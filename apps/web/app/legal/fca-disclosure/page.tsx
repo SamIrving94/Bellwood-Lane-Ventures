@@ -1,8 +1,9 @@
+import { brand } from '@repo/brand';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 
 export const metadata: Metadata = {
-  title: 'Regulatory status — Kept',
+  title: 'Regulatory status · Kept',
   description:
     'How Kept is regulated, what that means for you, and the legal footing of our cash offers.',
 };
@@ -20,10 +21,10 @@ const SECTIONS: Array<{
     body: (
       <>
         <p>
-          Kept is a UK private company (registered in England
-          &amp; Wales) that buys residential property for its own account, using
-          its own capital. We are not an estate agent, not a broker, not a
-          mortgage lender, and not a member of any property portal.
+          Kept is a UK private company (registered in England &amp; Wales) that
+          buys residential property for its own account, using its own capital.
+          We are not an estate agent, not a broker, not a mortgage lender, and
+          not a member of any property portal.
         </p>
         <p>
           When we quote you a price, that price is an offer from us to buy — not
@@ -93,9 +94,9 @@ const SECTIONS: Array<{
       <>
         <p>
           Property buyers are regulated businesses under the Money Laundering
-          Regulations 2017. Kept is registered with HMRC for AML
-          supervision. Every transaction includes Customer Due Diligence on the
-          seller — identity verification, source of funds, risk assessment.
+          Regulations 2017. Kept is registered with HMRC for AML supervision.
+          Every transaction includes Customer Due Diligence on the seller —
+          identity verification, source of funds, risk assessment.
         </p>
         <p>
           When we work with an estate agent on a referral, we issue a written
@@ -175,10 +176,9 @@ const SECTIONS: Array<{
           your estate agent can too.
         </p>
         <p>
-          We will not pressure you to sign. If anyone from Kept ever
-          does, email{' '}
-          <a href="mailto:anthony@bellwoodslane.co.uk" className="underline">
-            anthony@bellwoodslane.co.uk
+          We will not pressure you to sign. If anyone from Kept ever does, email{' '}
+          <a href={`mailto:anthony@${brand.domain}`} className="underline">
+            anthony@{brand.domain}
           </a>{' '}
           and we will respond within two working days.
         </p>
@@ -268,11 +268,8 @@ export default function FCADisclosurePage() {
               Compliance contact
             </dt>
             <dd>
-              <a
-                className="underline"
-                href="mailto:anthony@bellwoodslane.co.uk"
-              >
-                anthony@bellwoodslane.co.uk
+              <a className="underline" href={`mailto:anthony@${brand.domain}`}>
+                anthony@{brand.domain}
               </a>
             </dd>
           </dl>

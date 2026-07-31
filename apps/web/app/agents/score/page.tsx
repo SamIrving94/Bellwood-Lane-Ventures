@@ -1,3 +1,4 @@
+import { Eyebrow } from '@/components/brand';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { BellwoodScoreForm } from './bellwood-score-form';
@@ -22,9 +23,9 @@ export default function BellwoodScorePage() {
           <span aria-hidden>←</span> Back to agents
         </Link>
 
-        <p className="mt-10 font-serif text-[13px] text-leaf italic">
-          Kept Score · For partner agents
-        </p>
+        <div className="mt-10">
+          <Eyebrow>Kept Score · for partner agents</Eyebrow>
+        </div>
         <h1
           className="mt-3 font-semibold font-serif text-forest leading-[1.02] tracking-[-0.025em]"
           style={{ fontSize: 'clamp(32px, 5vw, 52px)' }}
@@ -47,11 +48,11 @@ export default function BellwoodScorePage() {
           .
         </p>
 
-        <div className="mt-10 rounded-2xl border border-stone-200 bg-white p-6 md:p-8">
+        <div className="mt-10 rounded-[2px] border border-hair bg-white p-6 md:p-8">
           <BellwoodScoreForm />
         </div>
 
-        <div className="mt-10 rounded-2xl border border-stone-300 border-dashed bg-stone-50/50 p-5 text-sm text-stone-600">
+        <div className="mt-10 rounded-[2px] border border-hair border-dashed bg-soft/60 p-5 text-sm text-stone-600">
           <p className="font-medium text-stone-800">
             What this is, and what it isn&rsquo;t
           </p>
@@ -61,8 +62,8 @@ export default function BellwoodScorePage() {
               data. Real PropertyData calls. Real Land Registry comparables.
             </li>
             <li>
-              · <strong>Not a guarantee.</strong> Kept&rsquo;s confirmed
-              offer is issued after a physical viewing and may differ.
+              · <strong>Not a guarantee.</strong> Kept&rsquo;s confirmed offer
+              is issued after a physical viewing and may differ.
             </li>
             <li>
               · <strong>Not a regulated valuation.</strong> Not RICS Red Book.
@@ -76,8 +77,8 @@ export default function BellwoodScorePage() {
         </div>
 
         <p className="mt-12 font-serif text-[13px] text-stone-400 italic">
-          Kept · Property Redress Scheme (PRS) · HMRC AML
-          supervised · ICO registered
+          Kept · Property Redress Scheme (PRS) · HMRC AML supervised · ICO
+          registered
         </p>
       </div>
     </main>

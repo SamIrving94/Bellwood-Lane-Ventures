@@ -1,5 +1,6 @@
 'use client';
 
+import { Eyebrow } from '@/components/brand';
 import { useState } from 'react';
 
 type Status =
@@ -66,17 +67,14 @@ export function ProofOfFundsButton() {
           onClick={close}
         >
           <div
-            className="w-full max-w-lg rounded-3xl bg-white p-8 shadow-xl"
+            className="w-full max-w-lg rounded-lg bg-white p-8 shadow-xl"
             onClick={(e) => e.stopPropagation()}
           >
             {status.kind === 'success' ? (
               <div className="text-center">
-                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-leaf/15 text-2xl text-leaf-dark">
-                  ✓
-                </div>
                 <h3
                   id="pof-title"
-                  className="mt-5 font-semibold font-serif text-2xl"
+                  className="font-semibold font-serif text-2xl"
                 >
                   Request received.
                 </h3>
@@ -94,9 +92,7 @@ export function ProofOfFundsButton() {
               </div>
             ) : (
               <>
-                <p className="font-serif text-[13px] text-leaf italic">
-                  Proof of funds
-                </p>
+                <Eyebrow>Proof of funds</Eyebrow>
                 <h3
                   id="pof-title"
                   className="mt-2 font-semibold font-serif text-2xl"
@@ -104,8 +100,8 @@ export function ProofOfFundsButton() {
                   Signed bank letter, direct to your inbox.
                 </h3>
                 <p className="mt-3 text-sm text-stone-600">
-                  Tell us where to send it. No automated chasers — one human
-                  will email you a single PDF.
+                  Tell us where to send it. No automated chasers. One human will
+                  email you a single PDF.
                 </p>
 
                 <form onSubmit={submit} className="mt-6 space-y-3">
@@ -117,9 +113,9 @@ export function ProofOfFundsButton() {
                     required
                   />
                   <label className="block">
-                    <span className="text-stone-500 text-xs uppercase tracking-widest">
+                    <Eyebrow tone="muted" className="text-[10px]">
                       Context (optional)
-                    </span>
+                    </Eyebrow>
                     <textarea
                       name="context"
                       rows={3}
@@ -129,9 +125,7 @@ export function ProofOfFundsButton() {
                   </label>
 
                   {status.kind === 'error' && (
-                    <p className="rounded-lg bg-red-50 p-3 text-red-700 text-sm">
-                      {status.message}
-                    </p>
+                    <p className="text-sm text-wax">{status.message}</p>
                   )}
 
                   <div className="flex items-center justify-end gap-3 pt-2">
@@ -175,9 +169,9 @@ function Input({
 }) {
   return (
     <label className="block">
-      <span className="text-stone-500 text-xs uppercase tracking-widest">
+      <Eyebrow tone="muted" className="text-[10px]">
         {label}
-      </span>
+      </Eyebrow>
       <input
         name={name}
         type={type}

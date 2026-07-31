@@ -155,7 +155,7 @@ export function BellwoodScoreForm() {
       </form>
 
       {result && result.ok && (
-        <div className="mt-8 rounded-2xl border-2 border-leaf/40 bg-soft p-6 md:p-8">
+        <div className="mt-8 rounded-[2px] border border-hair bg-soft p-6 md:p-8">
           <p className="font-serif text-[13px] text-leaf italic">
             Indicative range
           </p>
@@ -169,29 +169,29 @@ export function BellwoodScoreForm() {
             Confidence {Math.round(result.confidenceScore * 100)}%
           </p>
 
-          <dl className="mt-6 grid grid-cols-2 gap-3 text-[12px] md:grid-cols-4">
-            <div>
+          <dl className="mt-6 divide-y divide-hair border-hair border-y text-[12px]">
+            <div className="flex items-baseline justify-between gap-6 py-2">
               <dt className="text-stone-500">AVM low</dt>
               <dd className="font-mono font-semibold text-[13px] text-forest">
                 {formatGBP(result.avmMinPence)}
               </dd>
             </div>
-            <div>
+            <div className="flex items-baseline justify-between gap-6 py-2">
               <dt className="text-stone-500">AVM high</dt>
               <dd className="font-mono font-semibold text-[13px] text-forest">
                 {formatGBP(result.avmMaxPence)}
               </dd>
             </div>
-            <div>
+            <div className="flex items-baseline justify-between gap-6 py-2">
               <dt className="text-stone-500">EPC</dt>
               <dd className="font-mono font-semibold text-[13px] text-forest">
-                {result.epcRating ?? '—'}
+                {result.epcRating ?? '–'}
               </dd>
             </div>
-            <div>
+            <div className="flex items-baseline justify-between gap-6 py-2">
               <dt className="text-stone-500">Market</dt>
               <dd className="font-mono font-semibold text-[13px] text-forest capitalize">
-                {result.marketBand ?? '—'}
+                {result.marketBand ?? '–'}
               </dd>
             </div>
           </dl>
@@ -218,10 +218,10 @@ export function BellwoodScoreForm() {
             </details>
           )}
 
-          <div className="mt-6 border-amber-200 border-t pt-4 text-[12px] text-stone-600 leading-relaxed">
+          <div className="mt-6 border-hair border-t pt-4 text-[12px] text-stone-600 leading-relaxed">
             <p>
               <strong>This is an indicative range</strong> based on publicly
-              available data. Bellwood&rsquo;s confirmed offer is issued after a
+              available data. Kept&rsquo;s confirmed offer is issued after a
               physical viewing and may differ. The price we confirm in writing
               is the price we complete at.
             </p>
@@ -245,7 +245,7 @@ export function BellwoodScoreForm() {
       )}
 
       {result && !result.ok && (
-        <div className="mt-6 rounded-xl border border-rose-200 bg-rose-50 p-4 text-rose-800 text-sm">
+        <div className="mt-6 rounded-[2px] border border-hair bg-cream p-4 text-sm text-wax">
           <strong>Couldn&rsquo;t calculate:</strong> {result.error}
         </div>
       )}

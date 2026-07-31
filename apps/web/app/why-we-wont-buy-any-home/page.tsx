@@ -1,19 +1,7 @@
+import { Eyebrow, LogoLockup, Wordmark } from '@/components/brand';
+import { brand } from '@repo/brand';
 import type { Metadata } from 'next';
-import { Fraunces, Inter } from 'next/font/google';
 import Link from 'next/link';
-
-const fraunces = Fraunces({
-  subsets: ['latin'],
-  variable: '--font-serif',
-  display: 'swap',
-  weight: ['400', '500', '600', '700'],
-});
-
-const inter = Inter({
-  subsets: ['latin'],
-  variable: '--font-sans',
-  display: 'swap',
-});
 
 export const metadata: Metadata = {
   title: "Why we won't buy any home · Kept",
@@ -88,8 +76,7 @@ const SITUATIONS_WE_WONT_BUY: Array<{
   {
     k: 'A property we have no expertise to underwrite',
     b: 'Commercial properties, equestrian, agricultural, unusual heritage assets, properties under £80k or over £2m. Our model is sized for residential UK property in the £150k–£800k range.',
-    recommend:
-      'A specialist auction house or a buyer focused on your property type will outperform us. We can recommend names if you email hello@bellwoodslane.co.uk with a one-line description.',
+    recommend: `A specialist auction house or a buyer focused on your property type will outperform us. We can recommend names if you email ${brand.email} with a one-line description.`,
   },
 ];
 
@@ -116,7 +103,7 @@ const SITUATIONS_WE_BUY_FROM: Array<{
   {
     situation: 'Problem property',
     route: 'Email us with the issue (knotweed, lease length, structural)',
-    href: 'mailto:hello@bellwoodslane.co.uk?subject=Problem%20property%20enquiry',
+    href: `mailto:${brand.email}?subject=Problem%20property%20enquiry`,
   },
   {
     situation: 'Distressed sale (financial, divorce, repossession risk)',
@@ -127,22 +114,11 @@ const SITUATIONS_WE_BUY_FROM: Array<{
 
 export default function WhyWeWontBuyAnyHomePage() {
   return (
-    <div
-      className={`${fraunces.variable} ${inter.variable} min-h-screen bg-cream font-sans text-forest antialiased`}
-    >
+    <div className="min-h-screen bg-cream font-sans text-forest antialiased">
       {/* ————— HEADER ————— */}
-      <header className="border-stone-200/60 border-b bg-white">
+      <header className="border-hair border-b bg-white">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4 md:px-10">
-          <Link
-            href="/"
-            className="font-semibold font-serif text-xl tracking-tight"
-          >
-            BELLWOODS
-            <span className="mx-2 inline-block h-px w-8 bg-wax align-middle" />
-            <span className="font-normal text-sm text-stone-500 tracking-[0.22em]">
-              LANE
-            </span>
-          </Link>
+          <LogoLockup href="/" />
           <nav className="hidden items-center gap-6 text-[13px] text-stone-600 md:flex">
             <Link href="/agents" className="hover:text-leaf">
               For agents
@@ -160,7 +136,7 @@ export default function WhyWeWontBuyAnyHomePage() {
       {/* ————— HERO ————— */}
       <section className="px-6 pt-16 pb-12 md:px-12 md:pt-24 md:pb-16">
         <div className="mx-auto max-w-4xl">
-          <p className="font-serif text-[13px] text-leaf italic">Our line</p>
+          <Eyebrow>our line</Eyebrow>
           <h1
             className="mt-4 font-semibold font-serif text-forest leading-[0.98] tracking-[-0.025em]"
             style={{ fontSize: 'clamp(40px, 6.5vw, 76px)' }}
@@ -180,9 +156,9 @@ export default function WhyWeWontBuyAnyHomePage() {
       </section>
 
       {/* ————— WHAT WE BUY ————— */}
-      <section className="border-stone-200/60 border-y bg-white px-6 py-20 md:px-12 md:py-24">
+      <section className="border-hair border-y bg-white px-6 py-20 md:px-12 md:py-24">
         <div className="mx-auto max-w-6xl">
-          <p className="font-serif text-[13px] text-leaf italic">What we buy</p>
+          <Eyebrow>what we buy</Eyebrow>
           <h2 className="mt-3 font-semibold font-serif text-3xl leading-[1.05] tracking-[-0.02em] md:text-5xl">
             Six situations. That&rsquo;s the list.
           </h2>
@@ -196,7 +172,7 @@ export default function WhyWeWontBuyAnyHomePage() {
             {SITUATIONS_WE_BUY.map((s) => (
               <div
                 key={s.k}
-                className="rounded-2xl border border-stone-200 bg-white p-7"
+                className="rounded-md border border-hair bg-white p-7"
               >
                 <p className="font-semibold font-serif text-xl">{s.k}</p>
                 <p className="mt-3 text-[14px] text-stone-600 leading-relaxed">
@@ -209,11 +185,9 @@ export default function WhyWeWontBuyAnyHomePage() {
       </section>
 
       {/* ————— WHAT WE WON'T BUY ————— */}
-      <section className="border-stone-200/60 border-b bg-soft px-6 py-20 md:px-12 md:py-28">
+      <section className="border-hair border-b bg-soft px-6 py-20 md:px-12 md:py-28">
         <div className="mx-auto max-w-4xl">
-          <p className="font-serif text-[13px] text-leaf italic">
-            What we won&rsquo;t buy
-          </p>
+          <Eyebrow>what we won&rsquo;t buy</Eyebrow>
           <h2 className="mt-3 font-semibold font-serif text-3xl leading-[1.05] tracking-[-0.02em] md:text-5xl">
             And here&rsquo;s when we&rsquo;ll tell you to talk to someone else.
           </h2>
@@ -223,7 +197,7 @@ export default function WhyWeWontBuyAnyHomePage() {
             too low to be useful, or we won&rsquo;t make one at all.
             That&rsquo;s not a sales technique &mdash; it&rsquo;s the maths.
           </p>
-          <dl className="mt-12 divide-y divide-stone-200 border-stone-200 border-y">
+          <dl className="mt-12 divide-y divide-hair border-hair border-y">
             {SITUATIONS_WE_WONT_BUY.map((s) => (
               <div key={s.k} className="py-7">
                 <dt className="font-semibold font-serif text-forest text-xl">
@@ -232,10 +206,8 @@ export default function WhyWeWontBuyAnyHomePage() {
                 <dd className="mt-3 text-[15px] text-stone-700 leading-relaxed">
                   {s.b}
                 </dd>
-                <dd className="mt-4 rounded-xl border-wax border-l-2 bg-white px-5 py-4 text-[14px] text-stone-700 leading-relaxed">
-                  <span className="font-serif text-[13px] text-wax italic">
-                    What we recommend instead
-                  </span>
+                <dd className="mt-4 rounded-[2px] border-wax border-l-2 bg-white px-5 py-4 text-[14px] text-stone-700 leading-relaxed">
+                  <Eyebrow tone="wax">what we recommend instead</Eyebrow>
                   <p className="mt-2">{s.recommend}</p>
                 </dd>
               </div>
@@ -245,11 +217,9 @@ export default function WhyWeWontBuyAnyHomePage() {
       </section>
 
       {/* ————— WHY SELECTIVITY HELPS YOU ————— */}
-      <section className="border-stone-200/60 border-b px-6 py-20 md:px-12 md:py-24">
+      <section className="border-hair border-b px-6 py-20 md:px-12 md:py-24">
         <div className="mx-auto max-w-3xl">
-          <p className="font-serif text-[13px] text-leaf italic">
-            Why this matters to you
-          </p>
+          <Eyebrow tone="wax">why this matters to you</Eyebrow>
           <h2 className="mt-3 font-semibold font-serif text-3xl leading-[1.1] tracking-[-0.02em] md:text-4xl">
             Selectivity is in your interest, not ours.
           </h2>
@@ -269,9 +239,9 @@ export default function WhyWeWontBuyAnyHomePage() {
             </p>
             <p>
               The trade-off is honest:{' '}
-              <strong>our offer is below open-market.</strong> The price
-              reflects the speed and certainty of the transaction: a fixed date,
-              a fixed number, and zero fall-through risk. If your situation
+              <strong>our offer is below open-market.</strong> That gap is the
+              cost of a fixed figure and completion in weeks not months, and we
+              name it up front rather than claw it back later. If your situation
               doesn&rsquo;t need those things, you don&rsquo;t need us.
             </p>
           </div>
@@ -279,11 +249,9 @@ export default function WhyWeWontBuyAnyHomePage() {
       </section>
 
       {/* ————— ROUTING ————— */}
-      <section className="border-stone-200/60 border-b bg-forest px-6 py-20 text-white md:px-12 md:py-24">
+      <section className="border-hair border-b bg-forest px-6 py-20 text-white md:px-12 md:py-24">
         <div className="mx-auto max-w-4xl">
-          <p className="font-serif text-[13px] text-leaf italic">
-            Where to go from here
-          </p>
+          <Eyebrow tone="light">where to go from here</Eyebrow>
           <h2 className="mt-3 font-semibold font-serif text-3xl leading-[1.05] tracking-[-0.02em] md:text-4xl">
             Find your situation. Take the right route.
           </h2>
@@ -328,12 +296,10 @@ export default function WhyWeWontBuyAnyHomePage() {
       </section>
 
       {/* ————— ESTATE AGENTS ————— */}
-      <section className="border-stone-200/60 border-b bg-stone-50 px-6 py-12 md:px-12">
+      <section className="border-hair border-b bg-soft px-6 py-12 md:px-12">
         <div className="mx-auto flex max-w-5xl flex-col items-center justify-between gap-4 text-center md:flex-row md:text-left">
           <div>
-            <p className="font-serif text-[13px] text-stone-500 italic">
-              Estate agent reading this?
-            </p>
+            <Eyebrow tone="muted">estate agent reading this?</Eyebrow>
             <p className="mt-1 font-serif text-xl">
               The same selectivity applies on your side.
             </p>
@@ -352,13 +318,7 @@ export default function WhyWeWontBuyAnyHomePage() {
         <div className="mx-auto max-w-6xl">
           <div className="flex flex-col items-start justify-between gap-8 md:flex-row md:items-center">
             <div>
-              <p className="font-semibold font-serif text-xl tracking-tight">
-                BELLWOODS
-                <span className="mx-2 inline-block h-px w-8 bg-wax align-middle" />
-                <span className="font-normal text-sm text-stone-500 tracking-[0.22em]">
-                  LANE
-                </span>
-              </p>
+              <Wordmark ventures className="text-base" />
               <p className="mt-2 text-sm text-stone-500">
                 Direct-to-vendor property buyers · UK
               </p>
@@ -372,10 +332,10 @@ export default function WhyWeWontBuyAnyHomePage() {
             </nav>
           </div>
           <p className="mt-10 font-mono text-[11px] text-stone-500 leading-relaxed">
-            Kept is a UK cash property buyer, not an
-            FCA-authorised firm. We do not provide financial or legal advice.
-            Seek independent legal and debt advice before accepting any offer.
-            All offers are subject to satisfactory survey and title searches.
+            Kept is a UK cash property buyer, not an FCA-authorised firm. We do
+            not provide financial or legal advice. Seek independent legal and
+            debt advice before accepting any offer. All offers are subject to
+            satisfactory survey and title searches.
           </p>
           <p className="mt-4 font-mono text-[11px] text-stone-400">
             © {new Date().getFullYear()} Kept.

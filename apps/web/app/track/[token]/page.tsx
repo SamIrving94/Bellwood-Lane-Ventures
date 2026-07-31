@@ -1,6 +1,7 @@
 // Public deal-timeline page. No login. Anyone with the link sees every
 // update in real time. This is the transparency moat made literal.
 
+import { brand } from '@repo/brand';
 import { database } from '@repo/database';
 import type { Metadata } from 'next';
 import Link from 'next/link';
@@ -115,7 +116,7 @@ export default async function TrackPage({
           href="/instant-offer"
           className="inline-flex items-center gap-2 font-serif text-[13px] text-stone-500 italic transition hover:text-leaf"
         >
-          <span aria-hidden>←</span> bellwoodslane.co.uk
+          <span aria-hidden>←</span> {brand.domain}
         </Link>
 
         <p className="mt-12 font-serif text-[13px] text-leaf italic">
@@ -135,7 +136,7 @@ export default async function TrackPage({
 
         {/* Headline offer card */}
         {offer && (
-          <div className="mt-10 rounded-2xl border-2 border-leaf/40 bg-soft p-7">
+          <div className="mt-10 rounded-[2px] border-2 border-leaf/40 bg-soft p-7">
             <p className="font-serif text-[13px] text-stone-500 italic">
               Cash offer
             </p>
@@ -229,10 +230,10 @@ export default async function TrackPage({
           <p className="mt-4 text-[15px] text-stone-700 leading-relaxed">
             If anything looks wrong, reply to any of our emails or contact{' '}
             <a
-              href="mailto:anthony@bellwoodslane.co.uk"
+              href={`mailto:anthony@${brand.domain}`}
               className="text-leaf underline"
             >
-              anthony@bellwoodslane.co.uk
+              anthony@{brand.domain}
             </a>{' '}
             — or use the form below.
           </p>
@@ -241,8 +242,8 @@ export default async function TrackPage({
         </section>
 
         <p className="mt-12 font-serif text-[13px] text-stone-400 italic">
-          Kept · Property Redress Scheme (PRS) · HMRC AML
-          supervised · ICO registered
+          Kept · Property Redress Scheme (PRS) · HMRC AML supervised · ICO
+          registered
         </p>
       </div>
     </main>

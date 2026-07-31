@@ -1,5 +1,6 @@
 'use client';
 
+import { Eyebrow } from '@/components/brand';
 import { useState } from 'react';
 
 type Status =
@@ -29,7 +30,7 @@ export function EmailSampleButton() {
         body: JSON.stringify({
           name: fd.get('name'),
           email: fd.get('email'),
-          context: 'Sample offer pack request — sent from final CTA',
+          context: 'Sample offer pack request: sent from final CTA',
         }),
       });
       setStatus({ kind: res.ok ? 'success' : 'error' });
@@ -56,15 +57,12 @@ export function EmailSampleButton() {
           onClick={close}
         >
           <div
-            className="w-full max-w-md rounded-3xl bg-white p-8 shadow-xl"
+            className="w-full max-w-md rounded-lg bg-white p-8 shadow-xl"
             onClick={(e) => e.stopPropagation()}
           >
             {status.kind === 'success' ? (
               <div className="text-center">
-                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-md bg-leaf/15 text-2xl text-leaf-dark">
-                  ✓
-                </div>
-                <p className="mt-5 font-serif text-xl">On its way.</p>
+                <p className="font-serif text-xl">On its way.</p>
                 <p className="mt-2 text-sm text-stone-600">
                   Check your inbox in the next few minutes.
                 </p>
@@ -78,9 +76,7 @@ export function EmailSampleButton() {
               </div>
             ) : (
               <>
-                <p className="font-serif text-[13px] text-leaf italic">
-                  Sample offer pack
-                </p>
+                <Eyebrow>Sample offer pack</Eyebrow>
                 <h3 className="mt-2 font-semibold font-serif text-2xl">
                   Reviewed before you commit?
                 </h3>
@@ -104,7 +100,7 @@ export function EmailSampleButton() {
                     className="w-full rounded-xl border border-stone-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-leaf"
                   />
                   {status.kind === 'error' && (
-                    <p className="rounded-lg bg-red-50 p-3 text-red-700 text-sm">
+                    <p className="text-sm text-wax">
                       Something went wrong. Try again.
                     </p>
                   )}

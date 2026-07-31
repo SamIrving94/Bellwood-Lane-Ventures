@@ -1,5 +1,6 @@
 'use client';
 
+import { brand } from '@repo/brand';
 import { useState } from 'react';
 
 /**
@@ -58,7 +59,7 @@ type AgentQuickFormProperties = {
 };
 
 function formatGBP(pence?: number) {
-  if (!pence) return '—';
+  if (!pence) return '–';
   return `£${Math.round(pence / 100).toLocaleString('en-GB')}`;
 }
 
@@ -136,7 +137,7 @@ export function AgentQuickForm({
           kind: 'error',
           message:
             data?.error ||
-            'Something went wrong. Please email hello@bellwoodslane.co.uk and we will pick it up.',
+            `Something went wrong. Please email ${brand.email} and we will pick it up.`,
         });
         return;
       }
@@ -148,8 +149,7 @@ export function AgentQuickForm({
     } catch (error) {
       setState({
         kind: 'error',
-        message:
-          'Could not reach our offer engine. Please email hello@bellwoodslane.co.uk and we will pick it up.',
+        message: `Could not reach our offer engine. Please email ${brand.email} and we will pick it up.`,
       });
     }
   };
@@ -161,7 +161,7 @@ export function AgentQuickForm({
   return (
     <form
       onSubmit={handleSubmit}
-      className="rounded-3xl border border-stone-200 bg-white p-6 shadow-sm md:p-8"
+      className="rounded-[2px] border border-hair bg-white p-6 shadow-sm md:p-8"
     >
       <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
         <label className="block md:col-span-2">
@@ -215,7 +215,7 @@ export function AgentQuickForm({
               className={`rounded-full border px-4 py-2 text-sm transition ${
                 trigger.ui === t.ui
                   ? 'border-leaf bg-soft text-forest'
-                  : 'border-stone-300 bg-white text-stone-600 hover:border-stone-400'
+                  : 'border-hair bg-white text-body hover:border-leaf'
               }`}
             >
               {t.ui}
@@ -265,7 +265,7 @@ export function AgentQuickForm({
       </div>
 
       {state.kind === 'error' && (
-        <p className="mt-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-red-700 text-sm">
+        <p className="mt-5 rounded-[2px] border border-hair bg-cream px-4 py-3 text-sm text-wax">
           {state.message}
         </p>
       )}
@@ -305,7 +305,7 @@ function SuccessView({
 
   if (offer.requiresReview) {
     return (
-      <div className="rounded-3xl border border-leaf/40 bg-white p-10 shadow-sm">
+      <div className="rounded-[2px] border border-hair bg-white p-10 shadow-sm">
         <p className="font-serif text-[13px] text-leaf italic">Manual review</p>
         <h3 className="mt-3 font-semibold font-serif text-3xl text-forest">
           This one needs a human look.
@@ -321,7 +321,7 @@ function SuccessView({
 
   return (
     <div className="space-y-5">
-      <div className="rounded-3xl border-2 border-leaf/50 bg-white p-7 shadow-md md:p-9">
+      <div className="rounded-[2px] border border-hair bg-white p-7 shadow-md md:p-9">
         <div className="flex items-baseline justify-between">
           <p className="font-serif text-[13px] text-leaf italic">
             Indicative offer
@@ -336,32 +336,32 @@ function SuccessView({
         >
           {formatGBP(offer.offerPence)}
         </p>
-        <div className="mt-6 grid grid-cols-2 gap-6 text-sm md:grid-cols-3">
-          <div>
-            <p className="font-serif text-[13px] text-stone-400 italic">
+        <dl className="mt-6 divide-y divide-hair border-hair border-t text-sm">
+          <div className="flex items-baseline justify-between gap-6 py-2.5">
+            <dt className="font-serif text-[13px] text-stone-400 italic">
               AVM range
-            </p>
-            <p className="mt-1 text-stone-700">
-              {formatGBP(offer.estimatedMarketValueMinPence)} —{' '}
+            </dt>
+            <dd className="text-right text-stone-700">
+              {formatGBP(offer.estimatedMarketValueMinPence)} –{' '}
               {formatGBP(offer.estimatedMarketValueMaxPence)}
-            </p>
+            </dd>
           </div>
-          <div>
-            <p className="font-serif text-[13px] text-stone-400 italic">
+          <div className="flex items-baseline justify-between gap-6 py-2.5">
+            <dt className="font-serif text-[13px] text-stone-400 italic">
               Completion
-            </p>
-            <p className="mt-1 text-stone-700">
+            </dt>
+            <dd className="text-right text-stone-700">
               {offer.completionDays ?? 21} days
-            </p>
+            </dd>
           </div>
-          <div>
-            <p className="font-serif text-[13px] text-stone-400 italic">
+          <div className="flex items-baseline justify-between gap-6 py-2.5">
+            <dt className="font-serif text-[13px] text-stone-400 italic">
               Locked
-            </p>
-            <p className="mt-1 text-stone-700">72 hours from now</p>
+            </dt>
+            <dd className="text-right text-stone-700">72 hours from now</dd>
           </div>
-        </div>
-        <p className="mt-6 rounded-xl bg-soft px-5 py-4 text-[13px] text-stone-700 leading-relaxed">
+        </dl>
+        <p className="mt-6 rounded-[2px] bg-soft px-5 py-4 text-[13px] text-stone-700 leading-relaxed">
           This is the indicative figure from our AVM (HM Land Registry comps,
           last 24 months, adjusted for HPI). We'll be in touch to arrange a
           viewing, and we aim to send the confirmed price in writing to{' '}
@@ -421,11 +421,11 @@ function VendorShareCard({
     ].join('\n')
   );
   const whatsAppBody = encodeURIComponent(
-    `Hi — I have a cash offer of ${figure} for the property. ${completionDays}-day completion, no fees, no chain. Full details + methodology here: ${trackUrl}`
+    `Hi – I have a cash offer of ${figure} for the property. ${completionDays}-day completion, no fees, no chain. Full details + methodology here: ${trackUrl}`
   );
 
   return (
-    <div className="rounded-2xl border border-stone-200 bg-white p-6">
+    <div className="rounded-md border border-hair bg-white p-6">
       <p className="font-serif text-[13px] text-leaf italic">
         Share with your vendor
       </p>
@@ -433,24 +433,24 @@ function VendorShareCard({
         One link, no login. Your vendor sees the offer and our methodology. Most
         agents send via WhatsApp.
       </p>
-      <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
+      <div className="mt-5 space-y-3">
         <a
           href={`https://api.whatsapp.com/send?text=${whatsAppBody}`}
           target="_blank"
           rel="noopener noreferrer"
-          className="flex items-center justify-center gap-2 rounded-xl border-2 border-leaf bg-soft px-4 py-3 font-medium text-forest text-sm transition hover:bg-leaf/10"
+          className="flex items-center justify-center gap-2 rounded-md bg-leaf px-4 py-3 font-medium text-sm text-white transition hover:bg-leaf-dark"
         >
-          <span aria-hidden>📱</span>
-          WhatsApp vendor
+          WhatsApp the vendor
         </a>
-        <a
-          href={`mailto:?subject=${emailSubject}&body=${emailBody}`}
-          className="flex items-center justify-center gap-2 rounded-xl border border-stone-200 bg-white px-4 py-3 font-medium text-forest text-sm transition hover:border-leaf hover:bg-soft"
-        >
-          <span aria-hidden>✉</span>
-          Email vendor
-        </a>
-        <CopyButton value={trackUrl} label="Copy link" copiedLabel="Copied ✓" />
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <a
+            href={`mailto:?subject=${emailSubject}&body=${emailBody}`}
+            className="flex items-center justify-center gap-2 rounded-md border border-hair bg-white px-4 py-3 font-medium text-forest text-sm transition hover:border-leaf hover:bg-soft"
+          >
+            Email the vendor
+          </a>
+          <CopyButton value={trackUrl} label="Copy link" copiedLabel="Copied" />
+        </div>
       </div>
       <details className="mt-4 text-stone-500 text-xs">
         <summary className="cursor-pointer">Show the raw link</summary>
@@ -465,7 +465,7 @@ function VendorShareCard({
 function CopyButton({
   value,
   label = 'Copy link',
-  copiedLabel = 'Copied \u2713',
+  copiedLabel = 'Copied',
 }: {
   value: string;
   label?: string;
@@ -485,9 +485,8 @@ function CopyButton({
     <button
       type="button"
       onClick={handleCopy}
-      className="flex items-center justify-center gap-2 rounded-xl border border-stone-200 bg-white px-4 py-3 font-medium text-forest text-sm transition hover:border-leaf hover:bg-soft"
+      className="flex items-center justify-center gap-2 rounded-md border border-hair bg-white px-4 py-3 font-medium text-forest text-sm transition hover:border-leaf hover:bg-soft"
     >
-      <span aria-hidden>🔗</span>
       {copied ? copiedLabel : label}
     </button>
   );

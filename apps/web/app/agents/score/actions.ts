@@ -56,7 +56,10 @@ export async function calculateBellwoodScore(input: {
 > {
   const postcode = input.postcode.trim().toUpperCase();
   if (!FULL_POSTCODE_RE.test(postcode.replace(/\s+/g, ''))) {
-    return { ok: false, error: 'Please enter a full UK postcode (e.g. M14 5LL).' };
+    return {
+      ok: false,
+      error: 'Please enter a full UK postcode (e.g. M14 5LL).',
+    };
   }
 
   const propertyType = coercePropertyType(input.propertyType);
@@ -82,7 +85,7 @@ export async function calculateBellwoodScore(input: {
         situation,
       }),
       runPreflightChecks({ postcode, address: input.address }).catch(
-        () => null,
+        () => null
       ),
     ]);
 
@@ -90,7 +93,7 @@ export async function calculateBellwoodScore(input: {
     // Kept Score matches what a real submission would see.
     const adjPct = Math.max(
       -0.05,
-      Math.min(0.05, preflight?.offerAdjustment ?? 0),
+      Math.min(0.05, preflight?.offerAdjustment ?? 0)
     );
     const indicativeMidPence = Math.round(offer.offerPence * (1 + adjPct));
 

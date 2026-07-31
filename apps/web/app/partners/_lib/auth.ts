@@ -1,7 +1,7 @@
 import 'server-only';
 import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
-import { cookies } from 'next/headers';
 import { database } from '@repo/database';
+import { cookies } from 'next/headers';
 
 const COOKIE_NAME = 'bellwood-partner-session';
 const MAGIC_LINK_TTL_MIN = 15;
@@ -44,7 +44,9 @@ function decodeToken(token: string): TokenPayload | null {
   if (!json || !sig) return null;
   if (!verify(json, sig)) return null;
   try {
-    const data = JSON.parse(Buffer.from(json, 'base64url').toString()) as TokenPayload;
+    const data = JSON.parse(
+      Buffer.from(json, 'base64url').toString()
+    ) as TokenPayload;
     if (!data.exp || data.exp < Date.now()) return null;
     return data;
   } catch {
@@ -75,7 +77,9 @@ export function verifyMagicLinkToken(token: string): string | null {
 // Session cookie
 // --------------------------------------------------------------------------
 
-export async function createSessionCookie(agentAccountId: string): Promise<void> {
+export async function createSessionCookie(
+  agentAccountId: string
+): Promise<void> {
   const token = encodeToken({
     sub: agentAccountId,
     kind: 'session',
@@ -96,19 +100,16 @@ export async function clearSessionCookie(): Promise<void> {
   cookieStore.delete(COOKIE_NAME);
 }
 
-export async function getCurrentAgent(): Promise<
-  | {
-      id: string;
-      email: string;
-      contactName: string;
-      firmName: string;
-      referralCode: string;
-      tier: string;
-      totalReferrals: number;
-      totalDeals: number;
-    }
-  | null
-> {
+export async function getCurrentAgent(): Promise<{
+  id: string;
+  email: string;
+  contactName: string;
+  firmName: string;
+  referralCode: string;
+  tier: string;
+  totalReferrals: number;
+  totalDeals: number;
+} | null> {
   try {
     const cookieStore = await cookies();
     const token = cookieStore.get(COOKIE_NAME)?.value;

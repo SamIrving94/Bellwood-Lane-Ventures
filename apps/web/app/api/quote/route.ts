@@ -1,16 +1,16 @@
-import { NextResponse } from 'next/server';
-import { z } from 'zod';
-import { callClaudeForJson, CLAUDE_HAIKU } from '@repo/ai/claude';
-import { database } from '@repo/database';
-import {
-  generateInstantOffer,
-  type InstantOfferSituation,
-} from '@repo/instant-offer';
-import type { PropertyType } from '@repo/valuation';
 import { generateReferralCode } from '@/app/partners/_lib/auth';
+import { CLAUDE_HAIKU, callClaudeForJson } from '@repo/ai/claude';
+import { database } from '@repo/database';
 import { recordDealUpdate } from '@repo/deal-updates';
 import { sendEmail } from '@repo/email';
+import {
+  type InstantOfferSituation,
+  generateInstantOffer,
+} from '@repo/instant-offer';
 import { runPreflightChecks } from '@repo/property-data/src/propertydata';
+import type { PropertyType } from '@repo/valuation';
+import { NextResponse } from 'next/server';
+import { z } from 'zod';
 
 // Simple in-memory rate limit: 10 requests per IP per hour
 const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
@@ -117,12 +117,16 @@ async function triageSubmission(input: {
     `Situation: ${input.situation}`,
     `Submitter role: ${input.role}${input.firmName ? ` at ${input.firmName}` : ''}`,
   ];
-  if (input.triggerLabel) lines.push(`Trigger chip clicked: ${input.triggerLabel}`);
+  if (input.triggerLabel)
+    lines.push(`Trigger chip clicked: ${input.triggerLabel}`);
   if (typeof input.urgencyDays === 'number')
     lines.push(`Requested completion in: ${input.urgencyDays} days`);
   if (typeof input.askingPricePence === 'number')
-    lines.push(`Asking price: £${Math.round(input.askingPricePence / 100).toLocaleString('en-GB')}`);
-  if (input.notes) lines.push(`Free-text notes from submitter:\n"""\n${input.notes}\n"""`);
+    lines.push(
+      `Asking price: £${Math.round(input.askingPricePence / 100).toLocaleString('en-GB')}`
+    );
+  if (input.notes)
+    lines.push(`Free-text notes from submitter:\n"""\n${input.notes}\n"""`);
 
   return callClaudeForJson<TriageResult>({
     system: TRIAGE_SYSTEM_PROMPT,
@@ -135,7 +139,7 @@ async function triageSubmission(input: {
 }
 
 function mapPropertyType(
-  pt: z.infer<typeof InputSchema>['propertyType'],
+  pt: z.infer<typeof InputSchema>['propertyType']
 ): PropertyType {
   switch (pt) {
     case 'terraced_house':
@@ -161,7 +165,7 @@ export async function POST(request: Request) {
   if (!rateLimit(ip)) {
     return NextResponse.json(
       { error: 'Too many requests. Please try again later.' },
-      { status: 429 },
+      { status: 429 }
     );
   }
 
@@ -176,7 +180,7 @@ export async function POST(request: Request) {
   if (!parsed.success) {
     return NextResponse.json(
       { error: 'Validation failed', details: parsed.error.flatten() },
-      { status: 400 },
+      { status: 400 }
     );
   }
 
@@ -184,13 +188,18 @@ export async function POST(request: Request) {
 
   // Create QuoteRequest with processing status
   let quoteRequest;
-  let autoCreatedAgent: { referralCode: string; contactName: string; firmName: string } | null = null;
+  let autoCreatedAgent: {
+    referralCode: string;
+    contactName: string;
+    firmName: string;
+  } | null = null;
   try {
     // Compose a notes string preserving the trigger chip + submission source.
     // Sam reads this in the dashboard intake view to triage faster.
     const notesLines: string[] = [];
     if (input.triggerLabel) notesLines.push(`Trigger: ${input.triggerLabel}`);
-    if (input.submissionSource) notesLines.push(`Source: ${input.submissionSource}`);
+    if (input.submissionSource)
+      notesLines.push(`Source: ${input.submissionSource}`);
     const notes = notesLines.length ? notesLines.join('\n') : undefined;
 
     // Source taxonomy for the dashboard:
@@ -207,7 +216,9 @@ export async function POST(request: Request) {
     quoteRequest = await database.quoteRequest.create({
       data: {
         source,
-        referralCode: input.referralCode ? input.referralCode.toUpperCase() : undefined,
+        referralCode: input.referralCode
+          ? input.referralCode.toUpperCase()
+          : undefined,
         contactName: input.contactName,
         contactEmail: input.contactEmail,
         contactPhone: input.contactPhone,
@@ -296,7 +307,7 @@ export async function POST(request: Request) {
     console.error('[quote] DB create failed', err);
     return NextResponse.json(
       { error: 'Could not save your request. Please try again.' },
-      { status: 500 },
+      { status: 500 }
     );
   }
 
@@ -326,7 +337,10 @@ export async function POST(request: Request) {
 
     // Apply preflight adjustment to the offer. Bounded to ±5% total
     // adjustment to prevent compounding edge cases.
-    const adjPct = Math.max(-0.05, Math.min(0.05, preflight?.offerAdjustment ?? 0));
+    const adjPct = Math.max(
+      -0.05,
+      Math.min(0.05, preflight?.offerAdjustment ?? 0)
+    );
     const adjustedOfferPence =
       adjPct === 0
         ? offerBase.offerPence
@@ -349,7 +363,7 @@ export async function POST(request: Request) {
         ...(preflight?.reasoning ?? []),
         ...(preflight?.tenure.isShortLease
           ? [
-              `⚠ SHORT LEASE: ${preflight.tenure.remainingLeaseYears ?? '?'} years remaining — Appraiser must confirm before binding offer.`,
+              `SHORT LEASE: ${preflight.tenure.remainingLeaseYears ?? '?'} years remaining. Appraiser must confirm before binding offer.`,
             ]
           : []),
       ],
@@ -400,7 +414,7 @@ export async function POST(request: Request) {
               avmMid: Math.round(
                 (offer.estimatedMarketValueMinPence +
                   offer.estimatedMarketValueMaxPence) /
-                  2,
+                  2
               ),
               link: `/quotes/${quoteRequest.id}`,
             },
@@ -437,7 +451,9 @@ export async function POST(request: Request) {
       });
 
       try {
-        const offerGbp = Math.round(offer.offerPence / 100).toLocaleString('en-GB');
+        const offerGbp = Math.round(offer.offerPence / 100).toLocaleString(
+          'en-GB'
+        );
         const slaDeadline = new Date(Date.now() + 24 * 60 * 60 * 1000);
 
         // Shared metadata for the trio of actions this creates
@@ -460,7 +476,9 @@ export async function POST(request: Request) {
         const slaDescription = triage
           ? [
               `**${triage.summary}** — urgency: ${triage.urgencySignal}.`,
-              triage.watchOuts.length > 0 ? `Watch-outs: ${triage.watchOuts.join('; ')}.` : null,
+              triage.watchOuts.length > 0
+                ? `Watch-outs: ${triage.watchOuts.join('; ')}.`
+                : null,
               `Next step: ${triage.recommendedNextStep}`,
               '',
               baseDescription,
@@ -494,7 +512,11 @@ export async function POST(request: Request) {
             title: `Draft signed offer PDF: ${input.address}`,
             description: `Enrich + draft a signed binding offer for ${input.address}, ${input.postcode}. Indicative figure: £${offerGbp}. Use docs/templates/binding-offer-letter.md. The quote-ops cron picks this up automatically (enrichment, dedup, signed PDF); review the draft it produces before anything is sent.`,
             expiresAt: new Date(Date.now() + 4 * 60 * 60 * 1000),
-            metadata: { ...commonMeta, assignedToAgent: 'appraiser', workflow: 'draft_signed_pdf' },
+            metadata: {
+              ...commonMeta,
+              assignedToAgent: 'appraiser',
+              workflow: 'draft_signed_pdf',
+            },
           },
         });
 
@@ -507,7 +529,9 @@ export async function POST(request: Request) {
       // Confirmation email to the agent. The signed PDF will arrive
       // separately within 24 hours - this is just acknowledgement.
       try {
-        const offerGbp = Math.round(offer.offerPence / 100).toLocaleString('en-GB');
+        const offerGbp = Math.round(offer.offerPence / 100).toLocaleString(
+          'en-GB'
+        );
         const followUpLine = input.contactPhone
           ? "We'll also drop you a WhatsApp on the number you gave us when the signed offer is ready."
           : 'If you share a work mobile on reply, we can WhatsApp you the moment the signed offer is ready.';
@@ -599,7 +623,7 @@ export async function POST(request: Request) {
         error:
           'Offer engine is temporarily unavailable. A member of our team will email you shortly.',
       },
-      { status: 500 },
+      { status: 500 }
     );
   }
 }

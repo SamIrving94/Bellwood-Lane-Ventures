@@ -1,8 +1,11 @@
+import {
+  createMagicLinkToken,
+  generateReferralCode,
+} from '@/app/partners/_lib/auth';
+import { database } from '@repo/database';
+import { sendEmail } from '@repo/email';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { database } from '@repo/database';
-import { createMagicLinkToken, generateReferralCode } from '@/app/partners/_lib/auth';
-import { sendEmail } from '@repo/email';
 
 const InputSchema = z.object({
   email: z.string().email(),
@@ -24,7 +27,7 @@ export async function POST(request: Request) {
   if (!parsed.success) {
     return NextResponse.json(
       { error: 'Validation failed', details: parsed.error.flatten() },
-      { status: 400 },
+      { status: 400 }
     );
   }
 
@@ -36,7 +39,9 @@ export async function POST(request: Request) {
     let referralCode = generateReferralCode(firmName);
     // collision avoidance
     for (let i = 0; i < 5; i++) {
-      const exists = await database.agentAccount.findUnique({ where: { referralCode } });
+      const exists = await database.agentAccount.findUnique({
+        where: { referralCode },
+      });
       if (!exists) break;
       referralCode = generateReferralCode(firmName);
     }

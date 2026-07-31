@@ -5,6 +5,8 @@
 // We deliberately avoid the @react-pdf/renderer dependency (~100MB).
 // HTML print gives us identical fidelity for a fraction of the runtime cost.
 
+import { Wordmark } from '@/components/brand';
+import { brand } from '@repo/brand';
 import { database } from '@repo/database';
 import { notFound } from 'next/navigation';
 
@@ -83,14 +85,8 @@ export default async function OfferCertificatePage({
         </a>
       </div>
 
-      <header className="border-leaf border-b-2 pb-6">
-        <p className="font-semibold font-serif text-xl tracking-tight">
-          BELLWOODS
-          <span className="mx-2 inline-block h-px w-8 bg-wax align-middle" />
-          <span className="font-normal text-sm text-stone-500 tracking-widest">
-            LANE
-          </span>
-        </p>
+      <header className="border-hair border-b pb-6">
+        <Wordmark className="text-2xl" />
         <div className="mt-6 flex items-end justify-between">
           <div>
             <p className="font-serif text-[13px] text-wax italic">
@@ -100,7 +96,7 @@ export default async function OfferCertificatePage({
               Certificate of offer
             </h1>
           </div>
-          <div className="text-right font-mono text-[11px] text-stone-500">
+          <div className="text-right text-[11px] text-stone-500 [font-family:var(--font-courier)]">
             <p>
               Reference <span className="text-forest">{ref}</span>
             </p>
@@ -117,7 +113,7 @@ export default async function OfferCertificatePage({
           <p className="mt-2 font-serif text-lg leading-snug">
             {quote.address}
           </p>
-          <p className="font-mono text-[12px] text-stone-500">
+          <p className="text-[12px] text-stone-500 [font-family:var(--font-courier)]">
             {quote.postcode}
             {quote.bedrooms ? ` · ${quote.bedrooms} bed` : ''}
             {quote.propertyType
@@ -135,7 +131,7 @@ export default async function OfferCertificatePage({
         </div>
       </section>
 
-      <section className="mt-10 rounded-2xl border-2 border-wax bg-soft p-8">
+      <section className="mt-10 rounded-[2px] border border-wax bg-soft p-8">
         <p className="font-serif text-[13px] text-stone-500 italic">
           Our cash offer
         </p>
@@ -145,10 +141,10 @@ export default async function OfferCertificatePage({
         >
           {formatGBP(o.offerPence)}
         </p>
-        <div className="mt-3 flex flex-wrap items-center gap-x-4 font-mono text-[12px]">
+        <div className="mt-3 flex flex-wrap items-center gap-x-4 text-[12px] [font-family:var(--font-courier)]">
           <span className="text-stone-500">AVM mid {formatGBP(avmMid)}</span>
           <span className="text-stone-300">·</span>
-          <span className="text-leaf-dark">
+          <span className="text-forest">
             confidence {Math.round(o.confidenceScore * 100)}%
           </span>
         </div>
@@ -158,10 +154,7 @@ export default async function OfferCertificatePage({
         <p className="font-serif text-[13px] text-stone-500 italic">Terms</p>
         <dl className="mt-3 divide-y divide-stone-200 border-stone-200 border-y">
           {[
-            [
-              'Validity',
-              `Legally binding upon Kept until ${lockedUntil}`,
-            ],
+            ['Validity', `Legally binding upon Kept until ${lockedUntil}`],
             ['Completion target', `${o.completionDays} days from acceptance`],
             [
               'AVM range',
@@ -208,7 +201,7 @@ export default async function OfferCertificatePage({
           <p className="font-serif text-[13px] text-stone-500 italic">
             For the seller
           </p>
-          <div className="mt-2 h-16 border-stone-400 border-b-2" />
+          <div className="mt-2 h-16 border-stone-400 border-b" />
           <p className="mt-2 text-stone-500 text-xs">
             Signature · {quote.contactName}
           </p>
@@ -217,19 +210,19 @@ export default async function OfferCertificatePage({
           <p className="font-serif text-[13px] text-stone-500 italic">
             For Kept
           </p>
-          <div className="mt-2 h-16 border-stone-400 border-b-2" />
+          <div className="mt-2 h-16 border-stone-400 border-b" />
           <p className="mt-2 text-stone-500 text-xs">Authorised signatory</p>
         </div>
       </section>
 
-      <footer className="mt-12 border-stone-200 border-t pt-6 font-mono text-[10px] text-stone-500 leading-relaxed">
+      <footer className="mt-12 border-stone-200 border-t pt-6 text-[10px] text-stone-500 leading-relaxed [font-family:var(--font-courier)]">
         <p>
-          Kept · Registered in England &amp; Wales · Property
-          Redress Scheme (PRS) · HMRC AML supervised · ICO registered. Kept is
-          a cash property buyer, not an FCA-authorised firm. This offer
-          does not constitute financial or legal advice. The seller is
-          encouraged to seek independent legal advice. Full regulatory
-          disclosure: bellwoodslane.co.uk/legal/fca-disclosure
+          Kept · Registered in England &amp; Wales · Property Redress Scheme
+          (PRS) · HMRC AML supervised · ICO registered. Kept is a cash property
+          buyer, not an FCA-authorised firm. This offer does not constitute
+          financial or legal advice. The seller is encouraged to seek
+          independent legal advice. Full regulatory disclosure: {brand.domain}
+          /legal/fca-disclosure
         </p>
         <p className="mt-3">
           Reference {ref} · Generated {issuedAt}

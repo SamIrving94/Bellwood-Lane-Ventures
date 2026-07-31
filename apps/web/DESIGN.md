@@ -1,15 +1,18 @@
-# Bellwoods Lane public site: design standard
+# Kept public site: design standard
 
 This is the standard we hold the public website (`apps/web`) to. It exists
 because the site has to do one hard thing: earn the trust of grieving, rushed,
 or anxious sellers, and of investors. A site that reads as "AI made this in a
 weekend" actively destroys that trust.
 
-First impressions form in about 50 milliseconds, on visual factors alone, before
-a word is read ([The Financial Brand](https://thefinancialbrand.com/news/digital-marketing-banking/clickable-to-credible-how-design-drives-financial-loyalty-191899)).
-Templated, personality-free design "erodes emotional trust" and signals that a
-firm is "small, unsophisticated, or outdated" (same source). For us that is not
-a style preference. It is a conversion and credibility problem.
+**The brand book is `docs/brand/KEPT.md` — read it first.** Where this file
+and KEPT.md disagree, KEPT.md wins (founder decision, 31 July 2026). This
+file is the anti-genericness rulebook that sits underneath it.
+
+First impressions form in about 50 milliseconds, on visual factors alone,
+before a word is read. Templated, personality-free design erodes emotional
+trust and signals that a firm is small, unsophisticated, or outdated. For us
+that is not a style preference. It is a conversion and credibility problem.
 
 ## The one rule
 
@@ -19,166 +22,128 @@ a style preference. It is a conversion and credibility problem.
 
 If a section is just arranged words on a flat colour field, it is not finished.
 
-## Type system
-
-The public site does **not** use Inter or a trendy default serif. "Inter for
-everything" is a named, repeated signature of AI generated design
-([techbytes](https://techbytes.app/posts/escape-ai-slop-frontend-design-guide/),
-[dev.to](https://dev.to/alanwest/how-to-fix-the-ai-generated-look-in-your-frontend-1ahh)).
+## Type system (per KEPT.md)
 
 | Role | Face | Why |
 |---|---|---|
-| Display / headings | **Libre Caslon Text** | English, legal, established. Reads as an old firm, not a startup. |
-| Body / UI | **Roboto** | The brand kit's working sans (matches the logo lockup). |
-| Documents / numerals | **Courier Prime** | A real typed letter. Used for the offer document, refs, figures. |
+| Headlines / promise lines | **Libre Caslon Text** | The English document face. Old firm, not startup. |
+| Body / UI | **Roboto** | Working sans; candidate for a later swap, revisit after launch. |
+| Documents / numerals | **Courier Prime** | The typed offer letter. Labels like PROPERTY, refs, figures. |
 
-How it is wired (do not undo this):
+- All three load once in `packages/design-system/lib/fonts.ts`; the public
+  root repoints `--font-fraunces`/`--font-inter`. The typewriter is used
+  directly: `[font-family:var(--font-courier)]`.
+- **Never** re-import `next/font` inside a page or sub-layout.
 
-- All three are loaded once in `packages/design-system/lib/fonts.ts`.
-- The public root (`apps/web/app/layout.tsx`) repoints `--font-fraunces` to
-  Libre Caslon and `--font-inter` to Roboto, so every existing `font-serif` and
-  `font-sans` class switches without touching the authenticated dashboard.
-- The typewriter is used directly: `[font-family:var(--font-courier)]`.
-- **Never** re-import `next/font` inside a page or sub-layout. It double loads
-  fonts and fights the root. Inherit the root.
+## Palette (per KEPT.md — tokens in `app/[locale]/styles.css`)
 
-## Palette
+`bg-cream` ground · white cards · `text-forest` ink · `text-body` copy ·
+`leaf`/`leaf-dark` **interactive only** · `wax` **promise moments only** ·
+`border-hair` hairlines · `bg-soft` tinted grounds.
 
-Warm, custom, never the stock Tailwind defaults. AI sites converge on
-indigo/blue/emerald defaults ([Medium](https://medium.com/@chiragthummar16/your-ai-built-websites-look-identical-to-everyone-elses-these-10-skills-fix-that-046ddf58e4d5)).
+**The two-accent rule:** wax red only ever marks the promise (the dot, seals,
+"the honest version" labels). Leaf green is only ever action. Breaking this
+rule is how the brand dies. Pragmatic exception, pending founder ruling:
+small **error text** may be `text-wax` (never wax fills or wax borders on
+error boxes).
 
-- Brick: `#7E3F3F` / `#874646` (primary)
-- Terracotta: `#DB5C5C` / `#C0492F` (accent)
-- Porcelain: `#FBF7F3` / `#FCFAF8` (ground)
-- Warm ink: `#241C1A` / `#2B2220` (text)
-- Sand / taupe rules: `#EAE0D9` / `#EBE1DB`
+Never stock Tailwind `emerald`/`blue`/`amber`/`rose`/`red` classes, and no
+leftover Bellwoods brick/terracotta hexes.
 
-Status colours come from the brick/terracotta/sand family (for example
-`bg-[#F6ECE7] text-[#874646]`). **Never** `emerald`, `blue`, `amber`, or `rose`
-pills. The one allowed off-warm colour is the earth green `#1F6B3A` for a live
-state on `/track`.
-
-## The ten tells we never ship
+## The tells we never ship
 
 Each is a verified marker of AI or template generation. If a PR adds one, it
 does not merge.
 
-1. **Inter (or a default system font) for everything.** Use the type system above.
+1. **Inter (or a default system font) for everything.** Use the type system.
 2. **Em dashes in UI copy** (labels, chips, greetings, empty states). Use
    periods, commas, or an en dash. Long editorial prose may keep them.
-3. **Uniform radius and padding on everything** ("the same 16px radius and 24px
-   padding on every element" is a named tell,
-   [925studios](https://www.925studios.co/blog/ai-slop-web-design-guide)). Vary
-   it with intent. Paper is near square (`rounded-[2px]`), buttons are their own
-   radius. No `rounded-2xl`/`rounded-3xl` cards.
-4. **Four card / even grids** as the default layout
-   ([Medium](https://medium.com/@chiragthummar16/your-ai-built-websites-look-identical-to-everyone-elses-these-10-skills-fix-that-046ddf58e4d5)).
-   Prefer asymmetry and editorial rhythm.
-5. **Emerald/blue/amber status pills.** Use the warm status scale.
+3. **Uniform radius and padding on everything.** Paper is near square
+   (`rounded-[2px]`), cards are `md`/`lg` at most. No `rounded-2xl`/`3xl`.
+4. **Four card / even grids** as the default layout. Prefer asymmetry,
+   hairline-ruled ledgers, and editorial rhythm.
+5. **Cool-tone status pills.** Status comes from the Kept tokens: leaf for
+   live/positive, soft/hair for neutral, wax text for errors.
 6. **Emoji as icons.** Use inline SVG or a Courier text mark.
-7. **Gradient placeholders instead of photography.** "Specificity signals
-   authenticity, and authenticity is what AI cannot generate"
-   ([925studios](https://www.925studios.co/blog/ai-slop-web-design-guide)).
-   Use a real photo, a real document, or a brand artifact. Never a gradient
-   where an image belongs.
-8. **The system-font hero**: big text, subtext, button, on a flat field
-   ([aiagentskills](https://www.aiagentskills.ai/blog/ai-websites-all-look-the-same)).
-   Lead with a real artifact instead.
-9. **The faint giant monogram watermark.** Retired.
-10. **Uppercase `tracking-widest` mono eyebrows.** Use the brand `<Eyebrow>`
-    (Caslon italic kicker plus a short terracotta rule).
+7. **Gradient placeholders instead of photography.** Use a real photo, a real
+   document, or a brand artefact; until photography exists, a flat `bg-soft`
+   panel with a Courier "photograph to follow" caption.
+8. **The system-font hero**: big text, subtext, button, on a flat field.
+   Lead with a real artefact (the offer letter, the promise card).
+9. **Hand-rolled eyebrow spans.** Eyebrows are the brand `<Eyebrow>`
+   component only (KEPT.md spec: ~11px, uppercase, wide-tracked, leaf; `wax`
+   tone reserved for promise sections). Scattered ad-hoc
+   `uppercase tracking-widest` spans are how drift starts. Exception: inside
+   printed documents, uppercase Courier labels (PROPERTY, OUR CASH OFFER)
+   are the typed-document texture and are correct.
+10. **Repeated template phrases.** Any standard sentence ("a price that
+    reflects the speed and certainty of the transaction") may appear **once**
+    site-wide; everywhere else, say the same true thing in page-specific words.
+11. **Gradient anything as decoration** — washes, orbs, gradient buttons or
+    text. Buttons are solid leaf.
+12. **The icon-in-circle 3-column feature grid.** The single most
+    recognisable AI tell. Present features as narrative or document-styled
+    sections.
+13. **Centered everything.** Baseline is left-aligned editorial; centre only
+    as a deliberate exception (a seal, a letterhead).
+14. **The Notion-callout card** (`border-left` accent stripe on a flat box).
+    Hairline full border or a rule instead.
+15. **Monotonous section rhythm.** Vary density with intent: tight for dense
+    content, generous for the letter moments.
+16. **Flat grey borders and pure-black shadows.** Borders are `border-hair`;
+    shadows are tone-matched to forest ink, layered, never `shadow-black`.
+17. **Nested radius that ignores padding.** Inner radius = outer minus gap.
 
-## The human moves we always make
+## What reads as handcrafted (the positive rubric)
 
-- A real artifact in the hero (document, photo, named person, live figures).
-- Intentional asymmetry. Hairline rules instead of boxes where possible.
-- Real, specific copy with a human voice (the existing `/agents` and `/sell`
-  prose is the bar).
-- Subtle grain or texture over flat fills where it adds warmth.
-- The brand components: `Eyebrow`, `SectionNumber`, `StatusNote`, `Button`,
-  `Seal`, `LogoLockup`. Propagate them, do not reinvent them.
+| Dimension | Signal |
+|---|---|
+| Typography | Distinctive faces, clear display-vs-body hierarchy, 3–4 sizes per page max. |
+| Colour | One action accent (leaf) + warm neutrals; wax only at promise moments; at most two non-neutral hues per viewport. |
+| Layout | Grid-disciplined with 1–2 deliberate surprise moments per page (the tilted letter, a grid-breaking element). |
+| Spacing | Varies per section with intent, never uniform padding everywhere. |
+| Borders/shadows | Hairlines (`border-hair`), tone-matched layered shadows, nesting maths respected. |
+| Copy | So specific it could only belong to Kept. If a sentence fits any cash buyer's site, rewrite it. |
+| Motion | Physical and continuous (the dot lands; sections rise). Functional, not decorative. |
+| Detail | Empty states, loaders, and error states get the same craft as the hero. |
 
 ## Definition of done (PR checklist)
 
-- [ ] No `next/font` import inside the page or sub-layout.
-- [ ] No `emerald`/`blue`/`amber`/`rose` colour classes.
+- [ ] No `next/font` import inside a page or sub-layout.
+- [ ] No `emerald`/`blue`/`amber`/`rose`/`red` colour classes; no Bellwoods
+      brick hexes.
 - [ ] No emoji in JSX.
 - [ ] No em dashes in labels, buttons, chips, or empty states.
-- [ ] No `rounded-2xl`/`rounded-3xl`; radius is intentional, not uniform.
-- [ ] Eyebrows use `<Eyebrow>`, not `uppercase tracking-widest`.
-- [ ] No gradient standing in for an image.
+- [ ] No `rounded-2xl`/`rounded-3xl`; radius intentional, not uniform.
+- [ ] Eyebrows use `<Eyebrow>`, never hand-rolled tracked spans.
+- [ ] No gradient standing in for an image, none as decoration.
+- [ ] No template sentence that already appears on another page.
+- [ ] Leaf = action only; wax = promise only (two-accent rule).
 - [ ] The page leads with something real and specific.
 
-## Page status
+## Status (31 July 2026 sweep)
 
-Reviewed every public route against the standard.
+The governed backlog was executed against the Kept codebase in one pass
+(branch `design/kept-anti-slop-sweep`), verified by grep audit, build, and
+in-browser checks:
 
-### Reference standard (keep, this is the bar)
+- Hand-rolled tracked eyebrows → brand `<Eyebrow>`/`<Wordmark>`: 0 remaining
+- `rounded-2xl/3xl`: 0 · emoji: 0 · gradients: 0 · local `next/font`: 0
+- Cool-tone and leftover-brick colour classes: 0
+- "speed and certainty" template phrase: 0 verbatim repeats
+- The `/sell` offer widget is a document-styled form (chat bubbles, fake
+  thinking delay, and the emoji condition scale are gone), and a silent P0 is
+  fixed: a `useSearchParams` Suspense boundary was permanently swallowing the
+  form on the static page (users saw an empty gap). Referral codes now read
+  from `window.location` at submit.
 
-- `/sell` (now leads with the signed `OfferLetter` hero)
-- `/agents` (the `SampleOfferDocument` letter, honest FAQ)
-- `/track/[token]` (the transparency timeline)
-- `/instant-offer/offer/[id]` (print styled offer certificate)
-- `/legal/fca-disclosure`
-- `components/brand/*` and `live-pill.tsx` (the counter system itself)
+### Still open
 
-### Needs fixing (adopt the brand system)
-
-`agent-quick-form`, `agents/score` (+ form), `instant-offer/methodology`,
-`instant-offer/partner-brief`, `instant-offer/seller-disclosure`,
-`save-the-sale`, `why-we-wont-buy-any-home`, `partners/login` (+ form),
-`partners/signup` (+ form), `portal/layout`, `ledger-ticker`.
-
-### Replace (worst offenders)
-
-- **`instant-offer/components/chat-flow.tsx`**: the emoji condition scale
-  (`chat-flow.tsx:88-97`, `💀` through `🏆`), chat bubbles, and fake "thinking"
-  delay. Replace with a calm document/ledger styled form. This sits inside
-  `/sell` and `/agents`, so it drags the flagships down.
-- **`portal/page.tsx`**: emerald/blue status pills (`:16-17`), a four card grid
-  (`:82`), em dash greeting (`:51`).
-
-## Shared offenders (fix once, applies everywhere)
-
-1. **Local `next/font` re-imports** (still present): `instant-offer/layout.tsx:2`,
-   `partners/layout.tsx:2`, `portal/layout.tsx:3`, `save-the-sale/page.tsx:3`,
-   `why-we-wont-buy-any-home/page.tsx:3`. Delete them; inherit the root.
-   (`sell/layout.tsx` and `agents/layout.tsx` are already done.)
-2. **Old `uppercase tracking-widest` eyebrow** on ~14 files: `methodology:21,35`,
-   `team:19,33`, `partner-brief:37,41,68,174`,
-   `seller-disclosure:36,40,66,85,94,103,112,135,144,209,231`,
-   `chat-flow:649,680,820`, `login/page:31`, `login-form:58`,
-   `signup/page:14,18`, `signup-form:61,127`, `portal/layout:47`,
-   `portal/page:47,57,72,93,115,174`, `ledger-ticker:32`,
-   `investors/[token]:116,124`. Replace with `<Eyebrow>`.
-3. **Emoji icons**: `chat-flow:88-97,592,718,806,834`,
-   `agent-quick-form:420,427,430,467,445`,
-   `bellwood-score-form:420,427,467`, `login-form:33`, `signup-form:51`.
-4. **Status pills**: `portal/page:16,17`, `investors/[token]:108`.
-5. **Gradient fake photo**: `team/page.tsx:58` (plus placeholder bio at `:50`).
-   Needs a real headshot.
-6. **Four card grids**: `portal/page:82`, `bellwood-score-form:172`,
-   `agent-quick-form:316,413`.
-7. **Soft/oversized radius and doubled borders**: `agent-quick-form:144,283,301,405`,
-   `score/page:52,56,158`, `why-we-wont-buy:176`.
-8. **Em dashes in UI strings**: `portal/page:9,51`, `investors/[token]:18`,
-   `bellwood-score-form:188,194`, `agent-quick-form:61`.
-9. **Off palette one offs**: `signup-form:100` (`hover:bg-[#b08f52]`),
-   `investors/[token]:116,124` (`neutral-` not brand `stone-`).
-
-## Photography
-
-The site is currently 100 percent CSS drawn. There is no real photography
-anywhere. This is the single biggest gap. Commission: property exteriors and
-doorways, the founder, and a real signed document. Until then, lean on the
-document and seal artifacts, never on gradients.
-
-## Status / changelog
-
-- Type system swapped to Libre Caslon + Hanken Grotesk + Courier Prime; wired at
-  the public root.
-- `/sell` hero rebuilt around the signed `OfferLetter` artifact. The faint
-  monogram and the type on a flat field hero are gone.
-- `sell/layout.tsx` and `agents/layout.tsx` local font imports removed.
-- Everything under "needs fixing", "replace", and "shared offenders" is the
-  governed backlog. Work through it page by page against this checklist.
+- **Photography** — the site is still 100% CSS-drawn. Commission: property
+  exteriors and doorways, the founders, a real signed document. The single
+  biggest gap.
+- **Wordmark trial** (KEPT.md: Caslon lowercase vs characterful grotesk).
+- **Body-font swap candidate** (Roboto is a named default; revisit after
+  launch per KEPT.md).
+- **Error-colour ruling** — confirm the wax-text-for-errors exception with
+  both founders.

@@ -1,38 +1,14 @@
 'use client';
 
-import { useSearchParams } from 'next/navigation';
-import { useEffect, useRef, useState } from 'react';
+import { Eyebrow } from '@/components/brand';
+import { useState } from 'react';
 
-type Step =
-  | 'address'
-  | 'property_type'
-  | 'bedrooms'
-  | 'role'
-  | 'firm'
-  | 'situation'
-  | 'condition'
-  | 'urgency'
-  | 'asking_price'
-  | 'contact'
-  | 'thinking'
-  | 'result'
-  | 'error';
-
-type ChatState = {
-  address: string;
-  postcode: string;
-  propertyType?: string;
-  bedrooms?: number;
-  role?: string;
-  firmName?: string;
-  situation?: string;
-  condition?: number;
-  urgencyDays?: number;
-  askingPricePence?: number;
-  contactName: string;
-  contactEmail: string;
-  contactPhone: string;
-};
+// The public offer-request instrument. Styled as a typed form from an old
+// firm — paper surface, Courier field labels, hairline ledger rules — per
+// docs/brand/KEPT.md (the offer letter is the brand's signature artefact)
+// and apps/web/DESIGN.md (no chat theatre). The component keeps the
+// historical `ChatFlow` export name; /sell renders it with
+// defaultRole="seller".
 
 type OfferResult = {
   quoteId: string;
@@ -79,87 +55,97 @@ const SITUATIONS = [
 ];
 
 const URGENCIES = [
-  { label: 'ASAP — chain at risk', value: 10 },
+  { label: 'ASAP, chain at risk', value: 10 },
   { label: 'A few weeks', value: 21 },
   { label: 'Flexible', value: 45 },
 ];
 
+const BEDROOMS = [1, 2, 3, 4, 5].map((n) => ({
+  label: n === 5 ? '5+' : String(n),
+  value: n,
+}));
+
 const CONDITION_LABELS: Record<number, string> = {
-  1: '💀 Needs gutting',
-  2: '🧱 Major works',
-  3: '🛠 Significant refurb',
-  4: '🔧 Dated',
-  5: '🙂 Tired',
-  6: '🏠 Liveable',
-  7: '✨ Good condition',
-  8: '💎 Very good',
-  9: '🌟 Excellent',
-  10: '🏆 Mint',
+  1: 'Needs gutting',
+  2: 'Major works',
+  3: 'Significant refurb',
+  4: 'Dated',
+  5: 'Tired',
+  6: 'Liveable',
+  7: 'Good condition',
+  8: 'Very good',
+  9: 'Excellent',
+  10: 'Mint',
 };
-
-const THINKING_LINES = [
-  'Verifying address via Ordnance Survey...',
-  'Pulling HMLR Price Paid comps (last 24 months)...',
-  'Checking EPC register...',
-  'Running environmental risk model...',
-  'Calculating offer...',
-];
-
-function Bubble({
-  from,
-  children,
-}: {
-  from: 'bot' | 'user';
-  children: React.ReactNode;
-}) {
-  const isBot = from === 'bot';
-  return (
-    <div
-      className={`flex items-start gap-3 ${isBot ? '' : 'flex-row-reverse'}`}
-    >
-      <div
-        className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full font-semibold font-serif text-sm ${
-          isBot ? 'bg-leaf text-forest' : 'bg-forest text-white'
-        }`}
-      >
-        {isBot ? 'B' : 'You'.charAt(0)}
-      </div>
-      <div
-        className={`max-w-[85%] rounded-2xl px-5 py-3 text-sm md:text-base ${
-          isBot ? 'bg-white text-forest shadow-sm' : 'bg-forest text-white'
-        }`}
-      >
-        {children}
-      </div>
-    </div>
-  );
-}
-
-function Chips({
-  options,
-  onSelect,
-}: {
-  options: { label: string; value: string | number }[];
-  onSelect: (v: string | number, label: string) => void;
-}) {
-  return (
-    <div className="flex flex-wrap gap-2 pl-11">
-      {options.map((o) => (
-        <button
-          key={String(o.value)}
-          type="button"
-          onClick={() => onSelect(o.value, o.label)}
-          className="rounded-md border border-stone-300 bg-white px-4 py-2 text-sm transition hover:border-leaf hover:bg-soft"
-        >
-          {o.label}
-        </button>
-      ))}
-    </div>
-  );
-}
 
 function formatGBP(pence: number) {
   return `£${Math.round(pence / 100).toLocaleString('en-GB')}`;
+}
+
+const inputClass =
+  'w-full rounded-[2px] border border-hair bg-white px-4 py-3 text-sm text-forest outline-none transition focus:border-leaf';
+const courier = '[font-family:var(--font-courier)]';
+
+/** One ledger row of the form: Courier label left, control right. */
+function Row({
+  label,
+  hint,
+  error,
+  children,
+}: {
+  label: string;
+  hint?: string;
+  error?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="grid gap-2 py-5 md:grid-cols-[190px_1fr] md:gap-8">
+      <div>
+        <span className={`${courier} text-[12px] text-body`}>{label}</span>
+        {hint && <p className="mt-1 text-[11px] text-stone-400">{hint}</p>}
+      </div>
+      <div>
+        {children}
+        {error && <p className="mt-2 text-wax text-xs">{error}</p>}
+      </div>
+    </div>
+  );
+}
+
+/** Squared toggle group. Selected = leaf (interactive), unselected = paper. */
+function Choice({
+  options,
+  value,
+  onChange,
+  disabled,
+}: {
+  options: { label: string; value: string | number }[];
+  value: string | number | undefined;
+  onChange: (v: string | number) => void;
+  disabled?: boolean;
+}) {
+  return (
+    <div className="flex flex-wrap gap-2">
+      {options.map((o) => {
+        const selected = value === o.value;
+        return (
+          <button
+            key={String(o.value)}
+            type="button"
+            disabled={disabled}
+            onClick={() => onChange(o.value)}
+            className={`rounded-[2px] border px-4 py-2 text-sm transition disabled:opacity-60 ${
+              selected
+                ? 'border-leaf bg-leaf text-white'
+                : 'border-hair bg-white text-forest hover:bg-soft'
+            }`}
+          >
+            {o.label}
+          </button>
+        );
+      })}
+    </div>
+  );
 }
 
 type ChatFlowProps = {
@@ -168,469 +154,310 @@ type ChatFlowProps = {
 };
 
 export function ChatFlow({ defaultRole }: ChatFlowProps = {}) {
-  const searchParams = useSearchParams();
-  const referralCode = searchParams?.get('ref') || undefined;
-  const [step, setStep] = useState<Step>('address');
-  const [state, setState] = useState<ChatState>({
-    address: '',
-    postcode: '',
-    role: defaultRole,
-    contactName: '',
-    contactEmail: '',
-    contactPhone: '',
-  });
-  const greeting =
-    defaultRole === 'agent'
-      ? "Let's start with the property — what's the address?"
-      : defaultRole === 'seller'
-        ? "Welcome — what's the property address?"
-        : "Hi — what's the property address?";
-  const [history, setHistory] = useState<
-    { from: 'bot' | 'user'; text: string }[]
-  >([{ from: 'bot', text: greeting }]);
-  const [addressInput, setAddressInput] = useState('');
-  const [postcodeInput, setPostcodeInput] = useState('');
-  const [askingInput, setAskingInput] = useState('');
-  const [thinkingProgress, setThinkingProgress] = useState(0);
+  const [status, setStatus] = useState<
+    'idle' | 'submitting' | 'result' | 'error'
+  >('idle');
   const [offer, setOffer] = useState<OfferResult | null>(null);
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const bottomRef = useRef<HTMLDivElement>(null);
+  const [serverError, setServerError] = useState<string | null>(null);
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
-  useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
-  }, [history, step]);
+  const [address, setAddress] = useState('');
+  const [postcode, setPostcode] = useState('');
+  const [propertyType, setPropertyType] = useState<string>();
+  const [bedrooms, setBedrooms] = useState<number>();
+  const [role, setRole] = useState<string | undefined>(defaultRole);
+  const [firmName, setFirmName] = useState('');
+  const [situation, setSituation] = useState<string>();
+  const [condition, setCondition] = useState<number>();
+  const [urgencyDays, setUrgencyDays] = useState<number>();
+  const [asking, setAsking] = useState('');
+  const [contactName, setContactName] = useState('');
+  const [contactEmail, setContactEmail] = useState('');
+  const [contactPhone, setContactPhone] = useState('');
 
-  const pushBot = (text: string) =>
-    setHistory((h) => [...h, { from: 'bot', text }]);
-  const pushUser = (text: string) =>
-    setHistory((h) => [...h, { from: 'user', text }]);
+  const isAgent = (role ?? defaultRole) === 'agent';
+  const submitting = status === 'submitting';
 
-  const advance = (next: Step, botPrompt: string) => {
-    setStep(next);
-    setTimeout(() => pushBot(botPrompt), 400);
+  const validate = () => {
+    const e: Record<string, string> = {};
+    if (!address.trim()) e.address = 'The property address is required.';
+    if (!/^[A-Z]{1,2}\d[A-Z\d]?\s*\d[A-Z]{2}$/i.test(postcode.trim())) {
+      e.postcode = 'Please enter a valid UK postcode (e.g. M1 5AB).';
+    }
+    if (!propertyType) e.propertyType = 'Select the property type.';
+    if (!bedrooms) e.bedrooms = 'Select the number of bedrooms.';
+    if (!defaultRole && !role) e.role = 'Tell us who you are.';
+    if (isAgent && !firmName.trim()) e.firmName = 'Your firm name is required.';
+    if (!situation) e.situation = 'Select the situation.';
+    if (!condition) e.condition = 'Rate the condition.';
+    if (!urgencyDays) e.urgencyDays = 'Select a timeline.';
+    if (!contactName.trim()) e.contactName = 'Your name is required.';
+    if (!/^\S+@\S+\.\S+$/.test(contactEmail.trim())) {
+      e.contactEmail = 'A valid email is required to send the offer.';
+    }
+    setErrors(e);
+    return Object.keys(e).length === 0;
   };
 
-  const handleAddressSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const addr = addressInput.trim();
-    const pc = postcodeInput.trim().toUpperCase();
-    if (!addr || !pc) return;
-    // simple UK postcode regex
-    if (!/^[A-Z]{1,2}\d[A-Z\d]?\s*\d[A-Z]{2}$/i.test(pc)) {
-      setErrorMsg('Please enter a valid UK postcode (e.g. M1 5AB)');
-      return;
-    }
-    setErrorMsg(null);
-    setState((s) => ({ ...s, address: addr, postcode: pc }));
-    pushUser(`${addr}, ${pc}`);
-    advance('property_type', 'Got it. What type of property?');
-  };
+    if (!validate()) return;
+    setStatus('submitting');
+    setServerError(null);
 
-  const handlePropertyType = (v: string | number, label: string) => {
-    setState((s) => ({ ...s, propertyType: String(v) }));
-    pushUser(label);
-    advance('bedrooms', 'How many bedrooms?');
-  };
-
-  const handleBedrooms = (v: string | number, label: string) => {
-    setState((s) => ({ ...s, bedrooms: Number(v) }));
-    pushUser(label);
-    // If the audience is pre-set (came from /agents or /sell), skip the
-    // role question.
-    if (defaultRole === 'agent') {
-      advance('firm', 'Which firm are you with?');
-    } else if (defaultRole === 'seller') {
-      advance('situation', "What's the seller's situation?");
-    } else {
-      advance('role', 'Are you the agent, the seller, or someone else?');
-    }
-  };
-
-  const handleRole = (v: string | number, label: string) => {
-    setState((s) => ({ ...s, role: String(v) }));
-    pushUser(label);
-    if (String(v) === 'agent') {
-      advance('firm', 'Which firm are you with?');
-    } else {
-      advance('situation', 'What is the seller’s situation?');
-    }
-  };
-
-  const handleFirmSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    const firm = (e.target as HTMLFormElement).firm.value.trim();
-    if (!firm) return;
-    setState((s) => ({ ...s, firmName: firm }));
-    pushUser(firm);
-    advance('situation', 'What is the seller’s situation?');
-  };
-
-  const handleSituation = (v: string | number, label: string) => {
-    setState((s) => ({ ...s, situation: String(v) }));
-    pushUser(label);
-    advance(
-      'condition',
-      'How would you rate the condition? (1 = needs gutting, 10 = mint)'
-    );
-  };
-
-  const handleCondition = (condition: number) => {
-    setState((s) => ({ ...s, condition }));
-    pushUser(`${condition}/10 — ${CONDITION_LABELS[condition]}`);
-    advance('urgency', 'Timeline?');
-  };
-
-  const handleUrgency = (v: string | number, label: string) => {
-    setState((s) => ({ ...s, urgencyDays: Number(v) }));
-    pushUser(label);
-    advance(
-      'asking_price',
-      'Any asking price in mind? (optional — press skip)'
-    );
-  };
-
-  const handleAskingPrice = (skip: boolean) => {
-    if (skip) {
-      pushUser('Skip');
-    } else {
-      const val = askingInput.replace(/[^0-9]/g, '');
-      if (!val) return;
-      const pence = Number(val) * 100;
-      setState((s) => ({ ...s, askingPricePence: pence }));
-      pushUser(`£${Number(val).toLocaleString('en-GB')}`);
-    }
-    advance(
-      'contact',
-      'Last step — your contact details. (We only use these to send you the offer.)'
-    );
-  };
-
-  const handleContactSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const form = e.target as HTMLFormElement;
-    const name = (form.contactName as HTMLInputElement).value.trim();
-    const email = (form.contactEmail as HTMLInputElement).value.trim();
-    const phone = (form.contactPhone as HTMLInputElement).value.trim();
-    if (!name || !email) return;
-
-    setState((s) => ({
-      ...s,
-      contactName: name,
-      contactEmail: email,
-      contactPhone: phone,
-    }));
-    pushUser(`${name} · ${email}`);
-    setStep('thinking');
-
-    // Start thinking animation
-    const start = Date.now();
-    let idx = 0;
-    const thinkingInterval = setInterval(() => {
-      idx++;
-      setThinkingProgress(Math.min(idx, THINKING_LINES.length));
-      if (idx >= THINKING_LINES.length) clearInterval(thinkingInterval);
-    }, 800);
-
+    // Read the agent referral code lazily so the component never suspends
+    // on the router (a useSearchParams Suspense boundary was silently
+    // swallowing the whole form on the static /sell page).
+    const referralCode =
+      new URLSearchParams(window.location.search).get('ref') || undefined;
+    const askingDigits = asking.replace(/[^0-9]/g, '');
     try {
       const res = await fetch('/api/quote', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          ...state,
-          contactName: name,
-          contactEmail: email,
-          contactPhone: phone,
+          address: address.trim(),
+          postcode: postcode.trim().toUpperCase(),
+          propertyType,
+          bedrooms,
+          role: role ?? defaultRole,
+          firmName: isAgent ? firmName.trim() : undefined,
+          situation,
+          condition,
+          urgencyDays,
+          askingPricePence: askingDigits
+            ? Number(askingDigits) * 100
+            : undefined,
+          contactName: contactName.trim(),
+          contactEmail: contactEmail.trim(),
+          contactPhone: contactPhone.trim(),
           referralCode,
         }),
       });
       const data = await res.json();
-      // ensure at least 4s of thinking
-      const elapsed = Date.now() - start;
-      if (elapsed < 4000) {
-        await new Promise((r) => setTimeout(r, 4000 - elapsed));
-      }
-      clearInterval(thinkingInterval);
-      setThinkingProgress(THINKING_LINES.length);
       if (!res.ok) {
-        setErrorMsg(data.error || 'Something went wrong');
-        setStep('error');
+        setServerError(data.error || 'Something went wrong');
+        setStatus('error');
         return;
       }
       setOffer(data);
-      setStep('result');
-    } catch (err) {
-      clearInterval(thinkingInterval);
-      setErrorMsg('Could not reach the offer engine. Please try again.');
-      setStep('error');
+      setStatus('result');
+    } catch {
+      setServerError('Could not reach the offer engine. Please try again.');
+      setStatus('error');
     }
   };
 
-  const stepNumber = (() => {
-    const order: Step[] = [
-      'address',
-      'property_type',
-      'bedrooms',
-      'role',
-      'firm',
-      'situation',
-      'condition',
-      'urgency',
-      'asking_price',
-      'contact',
-    ];
-    const idx = order.indexOf(step);
-    return idx >= 0 ? idx + 1 : 10;
-  })();
+  if (status === 'result' && offer) {
+    return <OfferCard offer={offer} />;
+  }
 
   return (
-    <div className="rounded-3xl border border-stone-200 bg-cream p-4 shadow-sm md:p-6">
-      {/* Progress */}
-      {step !== 'thinking' && step !== 'result' && step !== 'error' && (
-        <div className="mb-6 flex items-center gap-1.5 px-2">
-          {Array.from({ length: 10 }).map((_, i) => (
-            <div
-              key={i}
-              className={`h-1 flex-1 rounded-full transition ${
-                i < stepNumber ? 'bg-leaf' : 'bg-stone-200'
-              }`}
-            />
-          ))}
-          <span className="ml-3 text-stone-500 text-xs">
-            {stepNumber} of 10
-          </span>
-        </div>
-      )}
-
-      {/* Chat transcript */}
-      <div className="flex flex-col gap-4">
-        {history.map((m, i) => (
-          <Bubble key={i} from={m.from}>
-            {m.text}
-          </Bubble>
-        ))}
-
-        {/* Active input area */}
-        {step === 'address' && (
-          <form onSubmit={handleAddressSubmit} className="space-y-2 pl-11">
-            <input
-              type="text"
-              placeholder="Street address"
-              value={addressInput}
-              onChange={(e) => setAddressInput(e.target.value)}
-              className="w-full rounded-xl border border-stone-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-leaf"
-            />
-            <div className="flex gap-2">
-              <input
-                type="text"
-                placeholder="Postcode (e.g. M1 5AB)"
-                value={postcodeInput}
-                onChange={(e) => setPostcodeInput(e.target.value)}
-                className="flex-1 rounded-xl border border-stone-300 bg-white px-4 py-3 text-sm uppercase outline-none transition focus:border-leaf"
-              />
-              <button
-                type="submit"
-                className="rounded-xl bg-leaf px-6 py-3 font-medium text-sm text-white transition hover:bg-leaf-dark"
-              >
-                Continue
-              </button>
-            </div>
-            {errorMsg && <p className="text-red-600 text-xs">{errorMsg}</p>}
-          </form>
-        )}
-
-        {step === 'property_type' && (
-          <Chips options={PROPERTY_TYPES} onSelect={handlePropertyType} />
-        )}
-
-        {step === 'bedrooms' && (
-          <Chips
-            options={[1, 2, 3, 4, 5].map((n) => ({
-              label: n === 5 ? '5+' : String(n),
-              value: n,
-            }))}
-            onSelect={handleBedrooms}
-          />
-        )}
-
-        {step === 'role' && <Chips options={ROLES} onSelect={handleRole} />}
-
-        {step === 'firm' && (
-          <form onSubmit={handleFirmSubmit} className="pl-11">
-            <div className="flex gap-2">
-              <input
-                autoFocus
-                name="firm"
-                type="text"
-                placeholder="Firm name"
-                className="flex-1 rounded-xl border border-stone-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-leaf"
-              />
-              <button
-                type="submit"
-                className="rounded-xl bg-leaf px-6 py-3 font-medium text-sm text-white transition hover:bg-leaf-dark"
-              >
-                Continue
-              </button>
-            </div>
-          </form>
-        )}
-
-        {step === 'situation' && (
-          <Chips options={SITUATIONS} onSelect={handleSituation} />
-        )}
-
-        {step === 'condition' && (
-          <div className="pl-11">
-            <div className="flex items-center gap-2 rounded-2xl border border-stone-200 bg-white p-4">
-              <input
-                type="range"
-                min={1}
-                max={10}
-                step={1}
-                defaultValue={5}
-                onChange={(e) => {
-                  const v = Number(e.target.value);
-                  const label = e.target.nextElementSibling as HTMLElement;
-                  if (label)
-                    label.textContent = `${v}/10 — ${CONDITION_LABELS[v]}`;
-                }}
-                className="w-full accent-leaf"
-              />
-              <span className="min-w-[140px] text-right text-stone-600 text-xs">
-                5/10 — {CONDITION_LABELS[5]}
-              </span>
-            </div>
-            <div className="mt-3 flex gap-2">
-              {[1, 3, 5, 7, 10].map((v) => (
-                <button
-                  key={v}
-                  type="button"
-                  onClick={() => handleCondition(v)}
-                  className="flex-1 rounded-xl border border-stone-300 bg-white px-3 py-2 text-xs transition hover:border-leaf"
-                >
-                  {v}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {step === 'urgency' && (
-          <Chips options={URGENCIES} onSelect={handleUrgency} />
-        )}
-
-        {step === 'asking_price' && (
-          <div className="space-y-2 pl-11">
-            <div className="flex gap-2">
-              <div className="relative flex-1">
-                <span className="-translate-y-1/2 absolute top-1/2 left-4 text-stone-400">
-                  £
-                </span>
-                <input
-                  type="text"
-                  placeholder="Asking price (optional)"
-                  value={askingInput}
-                  onChange={(e) => setAskingInput(e.target.value)}
-                  className="w-full rounded-xl border border-stone-300 bg-white py-3 pr-4 pl-8 text-sm outline-none transition focus:border-leaf"
-                />
-              </div>
-              <button
-                type="button"
-                onClick={() => handleAskingPrice(false)}
-                className="rounded-xl bg-leaf px-6 py-3 font-medium text-sm text-white transition hover:bg-leaf-dark"
-              >
-                Continue
-              </button>
-              <button
-                type="button"
-                onClick={() => handleAskingPrice(true)}
-                className="rounded-xl border border-stone-300 px-6 py-3 text-sm text-stone-600 transition hover:border-stone-400"
-              >
-                Skip
-              </button>
-            </div>
-          </div>
-        )}
-
-        {step === 'contact' && (
-          <form onSubmit={handleContactSubmit} className="space-y-2 pl-11">
-            <input
-              autoFocus
-              name="contactName"
-              type="text"
-              required
-              placeholder="Your name"
-              className="w-full rounded-xl border border-stone-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-leaf"
-            />
-            <input
-              name="contactEmail"
-              type="email"
-              required
-              placeholder="Email"
-              className="w-full rounded-xl border border-stone-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-leaf"
-            />
-            <input
-              name="contactPhone"
-              type="tel"
-              placeholder="Phone (optional)"
-              className="w-full rounded-xl border border-stone-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-leaf"
-            />
-            <button
-              type="submit"
-              className="w-full rounded-xl bg-leaf px-6 py-3 font-medium text-forest text-sm transition hover:bg-leaf-dark"
-            >
-              Generate offer →
-            </button>
-          </form>
-        )}
-
-        {/* Thinking sequence */}
-        {step === 'thinking' && (
-          <div className="rounded-2xl border border-stone-200 bg-white p-8 shadow-sm">
-            <p className="mb-6 text-center font-serif text-forest text-xl">
-              Crunching the numbers...
-            </p>
-            <ul className="space-y-3">
-              {THINKING_LINES.map((line, i) => (
-                <li
-                  key={line}
-                  className={`flex items-center gap-3 text-sm transition ${
-                    i < thinkingProgress ? 'text-forest' : 'text-stone-300'
-                  }`}
-                >
-                  <span className="flex h-5 w-5 shrink-0 items-center justify-center">
-                    {i < thinkingProgress ? (
-                      <span className="text-leaf-dark">✓</span>
-                    ) : i === thinkingProgress ? (
-                      <span className="h-4 w-4 animate-spin rounded-full border-2 border-leaf border-t-transparent" />
-                    ) : (
-                      <span className="h-2 w-2 rounded-full bg-stone-300" />
-                    )}
-                  </span>
-                  {line}
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
-
-        {/* Result */}
-        {step === 'result' && offer && <OfferCard offer={offer} />}
-
-        {/* Error */}
-        {step === 'error' && (
-          <div className="rounded-2xl border border-red-200 bg-red-50 p-8 text-center">
-            <p className="font-serif text-red-800 text-xl">
-              Couldn’t generate an offer right now.
-            </p>
-            <p className="mt-3 text-red-700 text-sm">
-              {errorMsg ||
-                'A member of our team will email you a manual offer shortly.'}
-            </p>
-          </div>
-        )}
+    <div className="rounded-[2px] border border-hair bg-white p-6 shadow-[0_24px_48px_-32px_rgba(31,51,43,0.35)] md:p-10">
+      {/* Letterhead */}
+      <div className="flex flex-wrap items-baseline justify-between gap-2 border-hair border-b pb-5">
+        <Eyebrow>request an indicative offer</Eyebrow>
+        <span className={`${courier} text-[11px] text-stone-400`}>
+          Form OR-1 · about a minute · no obligation
+        </span>
       </div>
 
-      <div ref={bottomRef} />
+      <form onSubmit={handleSubmit} className="divide-y divide-hair">
+        <Row label="Property address" error={errors.address}>
+          <input
+            type="text"
+            value={address}
+            onChange={(e) => setAddress(e.target.value)}
+            placeholder="14 Acacia Avenue"
+            disabled={submitting}
+            className={`${inputClass} ${courier}`}
+          />
+        </Row>
+
+        <Row label="Postcode" error={errors.postcode}>
+          <input
+            type="text"
+            value={postcode}
+            onChange={(e) => setPostcode(e.target.value)}
+            placeholder="SK4 3HQ"
+            disabled={submitting}
+            className={`${inputClass} ${courier} max-w-[220px] uppercase`}
+          />
+        </Row>
+
+        <Row label="Property type" error={errors.propertyType}>
+          <Choice
+            options={PROPERTY_TYPES}
+            value={propertyType}
+            onChange={(v) => setPropertyType(String(v))}
+            disabled={submitting}
+          />
+        </Row>
+
+        <Row label="Bedrooms" error={errors.bedrooms}>
+          <Choice
+            options={BEDROOMS}
+            value={bedrooms}
+            onChange={(v) => setBedrooms(Number(v))}
+            disabled={submitting}
+          />
+        </Row>
+
+        {!defaultRole && (
+          <Row label="You are" error={errors.role}>
+            <Choice
+              options={ROLES}
+              value={role}
+              onChange={(v) => setRole(String(v))}
+              disabled={submitting}
+            />
+          </Row>
+        )}
+
+        {isAgent && (
+          <Row label="Your firm" error={errors.firmName}>
+            <input
+              type="text"
+              value={firmName}
+              onChange={(e) => setFirmName(e.target.value)}
+              placeholder="Firm name"
+              disabled={submitting}
+              className={inputClass}
+            />
+          </Row>
+        )}
+
+        <Row
+          label={defaultRole === 'agent' ? "Seller's situation" : 'Situation'}
+          error={errors.situation}
+        >
+          <Choice
+            options={SITUATIONS}
+            value={situation}
+            onChange={(v) => setSituation(String(v))}
+            disabled={submitting}
+          />
+        </Row>
+
+        <Row
+          label="Condition"
+          hint="1 = needs gutting, 10 = mint"
+          error={errors.condition}
+        >
+          <div className="flex flex-wrap items-center gap-1.5">
+            {Array.from({ length: 10 }, (_, i) => i + 1).map((v) => (
+              <button
+                key={v}
+                type="button"
+                disabled={submitting}
+                onClick={() => setCondition(v)}
+                className={`h-10 w-10 rounded-[2px] border text-sm tabular-nums transition ${
+                  condition === v
+                    ? 'border-leaf bg-leaf text-white'
+                    : 'border-hair bg-white text-forest hover:bg-soft'
+                }`}
+              >
+                {v}
+              </button>
+            ))}
+            {condition && (
+              <span className={`${courier} ml-2 text-[12px] text-body`}>
+                {CONDITION_LABELS[condition]}
+              </span>
+            )}
+          </div>
+        </Row>
+
+        <Row label="Timeline" error={errors.urgencyDays}>
+          <Choice
+            options={URGENCIES}
+            value={urgencyDays}
+            onChange={(v) => setUrgencyDays(Number(v))}
+            disabled={submitting}
+          />
+        </Row>
+
+        <Row label="Asking price" hint="Optional">
+          <div className="relative max-w-[260px]">
+            <span className="-translate-y-1/2 absolute top-1/2 left-4 text-stone-400">
+              £
+            </span>
+            <input
+              type="text"
+              inputMode="numeric"
+              value={asking}
+              onChange={(e) => setAsking(e.target.value)}
+              placeholder="If one is in mind"
+              disabled={submitting}
+              className={`${inputClass} ${courier} pl-8`}
+            />
+          </div>
+        </Row>
+
+        <Row
+          label="Your details"
+          hint="Only used to send you the offer"
+          error={errors.contactName || errors.contactEmail}
+        >
+          <div className="grid gap-2 sm:grid-cols-2">
+            <input
+              type="text"
+              value={contactName}
+              onChange={(e) => setContactName(e.target.value)}
+              placeholder="Full name"
+              disabled={submitting}
+              className={inputClass}
+            />
+            <input
+              type="email"
+              value={contactEmail}
+              onChange={(e) => setContactEmail(e.target.value)}
+              placeholder="Email"
+              disabled={submitting}
+              className={inputClass}
+            />
+            <input
+              type="tel"
+              value={contactPhone}
+              onChange={(e) => setContactPhone(e.target.value)}
+              placeholder="Phone (optional)"
+              disabled={submitting}
+              className={`${inputClass} sm:col-span-2`}
+            />
+          </div>
+        </Row>
+
+        {/* Signature line */}
+        <div className="pt-6">
+          {status === 'error' && (
+            <div className="mb-4 rounded-[2px] border border-hair bg-soft p-4">
+              <p className="font-serif text-forest">
+                Couldn’t generate an offer right now.
+              </p>
+              <p className="mt-1 text-sm text-wax">
+                {serverError ||
+                  'A member of our team will email you a manual offer shortly.'}
+              </p>
+            </div>
+          )}
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <button
+              type="submit"
+              disabled={submitting}
+              className="rounded-md bg-leaf px-8 py-4 font-medium text-sm text-white transition hover:bg-leaf-dark disabled:opacity-60"
+            >
+              {submitting ? 'Preparing your offer…' : 'Prepare my offer'}
+            </button>
+            <p
+              className={`${courier} max-w-sm text-[11px] text-stone-400 leading-relaxed`}
+            >
+              {submitting
+                ? 'Checking HM Land Registry sales, the EPC register and local risk data. Usually under a minute.'
+                : 'Priced from HM Land Registry comparables, the EPC register and local risk data. The methodology is published.'}
+            </p>
+          </div>
+        </div>
+      </form>
     </div>
   );
 }
@@ -653,14 +480,12 @@ function OfferCard({ offer }: { offer: OfferResult }) {
 
   if (offer.requiresReview) {
     return (
-      <div className="rounded-3xl border border-leaf/40 bg-white p-8 shadow-sm">
-        <p className="text-leaf text-xs uppercase tracking-widest">
-          Manual review
-        </p>
-        <h3 className="mt-2 font-semibold font-serif text-3xl">
+      <div className="rounded-[2px] border border-hair bg-white p-8 shadow-sm">
+        <Eyebrow>manual review</Eyebrow>
+        <h3 className="mt-2 font-semibold font-serif text-3xl text-forest">
           Your property needs a human look.
         </h3>
-        <p className="mt-4 text-stone-600">
+        <p className="mt-4 text-body">
           Based on the details you shared, we want our senior appraiser to
           personally verify before we commit. Expect a firm written offer by
           email, no obligation.
@@ -671,11 +496,11 @@ function OfferCard({ offer }: { offer: OfferResult }) {
 
   if (accepted) {
     return (
-      <div className="rounded-3xl border border-leaf-dark/30 bg-leaf/10 p-8 text-center">
-        <p className="font-serif text-2xl text-leaf-dark">
+      <div className="rounded-[2px] border border-leaf/30 bg-white p-8 text-center">
+        <p className="font-serif text-2xl text-forest">
           Offer reserved. Welcome to Kept.
         </p>
-        <p className="mt-3 text-sm text-stone-700">
+        <p className="mt-3 text-body text-sm">
           We’ve emailed you the signed offer. Our team will be in touch to start
           the process.
         </p>
@@ -684,35 +509,33 @@ function OfferCard({ offer }: { offer: OfferResult }) {
   }
 
   return (
-    <div className="rounded-3xl border border-stone-200 bg-white p-8 shadow-md">
-      <p className="text-leaf text-xs uppercase tracking-widest">
-        Your offer is ready
-      </p>
+    <div className="rounded-[2px] border border-hair bg-white p-8 shadow-md">
+      <Eyebrow>your offer is ready</Eyebrow>
       <div className="mt-6 grid grid-cols-1 gap-8 md:grid-cols-2">
         <div>
-          <p className="text-sm text-stone-500">Market value range</p>
-          <p className="mt-1 font-serif text-stone-700 text-xl">
-            {formatGBP(offer.estimatedMarketValueMinPence)} —{' '}
+          <p className="text-body text-sm">Market value range</p>
+          <p className="mt-1 font-serif text-forest text-xl">
+            {formatGBP(offer.estimatedMarketValueMinPence)} –{' '}
             {formatGBP(offer.estimatedMarketValueMaxPence)}
           </p>
-          <p className="mt-8 text-sm text-stone-500">Our cash offer</p>
-          <p className="mt-1 font-semibold font-serif text-6xl text-forest">
+          <p className="mt-8 text-body text-sm">Our cash offer</p>
+          <p className="mt-1 font-bold font-serif text-6xl text-forest">
             {formatGBP(offer.offerPence)}
           </p>
           <p className="mt-2 text-stone-500 text-xs">
-            A price that reflects the speed and certainty of the transaction
+            Priced for a cash completion in weeks, with no fees to pay
           </p>
         </div>
         <div className="space-y-6">
           <div>
-            <p className="text-sm text-stone-500">Completion</p>
-            <p className="mt-1 font-serif text-2xl">
+            <p className="text-body text-sm">Completion</p>
+            <p className="mt-1 font-serif text-2xl text-forest">
               {offer.completionDays} days
             </p>
           </div>
           <div>
-            <p className="text-sm text-stone-500">Confidence</p>
-            <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-stone-100">
+            <p className="text-body text-sm">Confidence</p>
+            <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-soft">
               <div
                 className="h-full bg-leaf transition-all"
                 style={{ width: `${offer.confidenceScore * 100}%` }}
@@ -722,8 +545,8 @@ function OfferCard({ offer }: { offer: OfferResult }) {
               {Math.round(offer.confidenceScore * 100)}%
             </p>
           </div>
-          <div className="rounded-xl bg-soft px-4 py-3 text-stone-700 text-xs">
-            🔒 Legally binding if accepted. Locked until{' '}
+          <div className="rounded-[2px] border border-hair bg-soft px-4 py-3 text-body text-xs">
+            Legally binding if accepted. Locked until{' '}
             {new Date(offer.lockedUntil).toLocaleString('en-GB', {
               dateStyle: 'medium',
               timeStyle: 'short',
@@ -732,11 +555,11 @@ function OfferCard({ offer }: { offer: OfferResult }) {
         </div>
       </div>
 
-      <details className="mt-8 rounded-xl border border-stone-200 bg-stone-50 p-4">
-        <summary className="cursor-pointer font-medium text-sm">
+      <details className="mt-8 rounded-[2px] border border-hair bg-cream p-4">
+        <summary className="cursor-pointer font-medium text-forest text-sm">
           See the reasoning
         </summary>
-        <ul className="mt-3 space-y-2 text-sm text-stone-600">
+        <ul className="mt-3 space-y-2 text-body text-sm">
           {offer.reasoning.map((line, i) => (
             <li key={i}>· {line}</li>
           ))}
@@ -747,7 +570,7 @@ function OfferCard({ offer }: { offer: OfferResult }) {
         <button
           onClick={handleReserve}
           disabled={accepting}
-          className="flex-1 rounded-md bg-leaf px-6 py-4 font-medium text-forest text-sm transition hover:bg-leaf-dark disabled:opacity-50"
+          className="flex-1 rounded-md bg-leaf px-6 py-4 font-medium text-sm text-white transition hover:bg-leaf-dark disabled:opacity-50"
         >
           {accepting ? 'Reserving...' : 'Reserve this offer →'}
         </button>
@@ -755,19 +578,17 @@ function OfferCard({ offer }: { offer: OfferResult }) {
           href={`/instant-offer/offer/${offer.quoteId}`}
           target="_blank"
           rel="noopener noreferrer"
-          className="rounded-md border border-stone-300 px-6 py-4 text-center text-sm text-stone-700 transition hover:border-stone-400"
+          className="rounded-md border border-hair px-6 py-4 text-center text-forest text-sm transition hover:bg-soft"
         >
           View certificate
         </a>
       </div>
 
       {offer.trackUrl && (
-        <div className="mt-5 rounded-xl border border-stone-200 bg-cream p-4">
-          <p className="font-serif text-[13px] text-leaf italic">
-            Live timeline
-          </p>
-          <p className="mt-2 text-sm text-stone-700">
-            Bookmark this URL — every party in the chain sees the same updates
+        <div className="mt-5 rounded-[2px] border border-hair bg-cream p-4">
+          <Eyebrow tone="muted">live timeline</Eyebrow>
+          <p className="mt-2 text-body text-sm">
+            Bookmark this URL. Every party in the chain sees the same updates
             here, no login required.
           </p>
           <a
@@ -806,35 +627,28 @@ function AgentReferralCard({
   };
 
   return (
-    <div className="mt-6 rounded-2xl border-2 border-leaf/40 bg-soft p-6">
-      <div className="flex items-start gap-3">
-        <div className="mt-0.5 text-2xl">🎁</div>
-        <div className="flex-1">
-          <p className="font-semibold font-serif text-forest text-lg">
-            Your referral is logged.
-          </p>
-          <p className="mt-1 text-sm text-stone-700">
-            Every seller you send to the link below is credited to{' '}
-            <strong>{account.firmName}</strong> automatically. Partner fee
-            agreed in writing per deal. No signup. Just bookmark and share.
-          </p>
-        </div>
-      </div>
+    <div className="mt-6 rounded-[2px] border border-hair bg-soft p-6">
+      <p className="font-semibold font-serif text-forest text-lg">
+        Your referral is logged.
+      </p>
+      <p className="mt-1 text-body text-sm">
+        Every seller you send to the link below is credited to{' '}
+        <strong>{account.firmName}</strong> automatically. Partner fee agreed in
+        writing per deal. No signup. Just bookmark and share.
+      </p>
 
-      <div className="mt-5 rounded-xl bg-white p-4 ring-1 ring-stone-200">
-        <p className="text-stone-500 text-xs uppercase tracking-widest">
-          Your personal referral link
-        </p>
+      <div className="mt-5 rounded-[2px] border border-hair bg-white p-4">
+        <Eyebrow tone="muted">your personal referral link</Eyebrow>
         <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-center">
           <input
             readOnly
             value={link}
-            className="flex-1 rounded-lg border border-stone-200 bg-stone-50 px-3 py-2 font-mono text-forest text-xs"
+            className="flex-1 rounded-[2px] border border-hair bg-cream px-3 py-2 font-mono text-forest text-xs"
           />
           <button
             type="button"
             onClick={handleCopy}
-            className="rounded-lg bg-leaf px-4 py-2 font-medium text-white text-xs transition hover:bg-leaf-dark"
+            className="rounded-md bg-leaf px-4 py-2 font-medium text-white text-xs transition hover:bg-leaf-dark"
           >
             {copied ? 'Copied ✓' : 'Copy link'}
           </button>
@@ -849,7 +663,7 @@ function AgentReferralCard({
 
       <a
         href="/partners/login"
-        className="mt-4 inline-block text-stone-600 text-xs underline underline-offset-4 hover:text-leaf"
+        className="mt-4 inline-block text-body text-xs underline underline-offset-4 hover:text-leaf"
       >
         Want a full dashboard of your referrals, deal stages, and partner-fee
         status? Claim your account →

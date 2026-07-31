@@ -1,5 +1,5 @@
-import { redirect } from 'next/navigation';
 import { database } from '@repo/database';
+import { redirect } from 'next/navigation';
 
 export const dynamic = 'force-dynamic';
 

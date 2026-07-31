@@ -46,13 +46,13 @@ export function VendorReplyForm({ token }: { token: string }) {
 
   if (status === 'sent') {
     return (
-      <div className="mt-6 rounded-2xl border border-leaf-dark/30 bg-leaf/10 p-6">
+      <div className="mt-6 rounded-[2px] border border-leaf-dark/30 bg-leaf/10 p-6">
         <p className="font-serif text-[13px] text-leaf-dark italic">
           Message received
         </p>
         <p className="mt-3 text-[15px] text-stone-700 leading-relaxed">
           Thank you. Anthony or someone on the team will reply within one
-          working day. Anything urgent — phone 0203 488 5612.
+          working day. Anything urgent, phone 0203 488 5612.
         </p>
       </div>
     );
@@ -71,7 +71,7 @@ export function VendorReplyForm({ token }: { token: string }) {
           rows={4}
           maxLength={2000}
           className="mt-2 w-full rounded-xl border border-stone-300 bg-white px-4 py-3 text-[15px] text-stone-900 focus:border-leaf focus:outline-none"
-          placeholder="What would you like us to know? Question, concern, status request — anything."
+          placeholder="What would you like us to know? Question, concern, status request, anything."
         />
       </label>
 
@@ -112,18 +112,18 @@ export function VendorReplyForm({ token }: { token: string }) {
         className="-left-[10000px] absolute h-0 w-0 overflow-hidden opacity-0"
       />
 
-      {error && <p className="font-mono text-[12px] text-red-600">{error}</p>}
+      {error && <p className="font-mono text-[12px] text-wax">{error}</p>}
 
       <button
         type="submit"
         disabled={status === 'submitting' || !message.trim()}
-        className="inline-flex items-center gap-2 rounded-md bg-leaf px-6 py-3 font-serif text-[13px] text-white italic transition hover:bg-forest disabled:cursor-not-allowed disabled:opacity-50"
+        className="inline-flex items-center gap-2 rounded-md bg-leaf px-6 py-3 font-serif text-[13px] text-white italic transition hover:bg-leaf-dark disabled:cursor-not-allowed disabled:opacity-50"
       >
         {status === 'submitting' ? 'Sending…' : 'Send message'}
       </button>
 
       <p className="font-mono text-[11px] text-stone-500">
-        Goes straight to Anthony. We read every message and reply by hand —
+        Goes straight to Anthony. We read every message and reply by hand,
         usually within a working day.
       </p>
     </form>

@@ -2,8 +2,7 @@ import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
 
 export const metadata: Metadata = {
-  title:
-    'For estate agents · Save the deal. Keep the commission. · Kept',
+  title: 'For estate agents · Save the deal. Keep the commission. · Kept',
   description:
     'When a chain breaks, probate stalls, or a buyer walks — Kept is the cash buyer who steps in and keeps your commission intact. Partner fee agreed in writing per deal.',
   openGraph: {

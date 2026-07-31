@@ -8,7 +8,6 @@ import {
   Wordmark,
 } from '@/components/brand';
 import Link from 'next/link';
-import { Suspense } from 'react';
 import { ChatFlow } from '../instant-offer/components/chat-flow';
 
 export const revalidate = 300;
@@ -39,7 +38,7 @@ const REASONS: Array<{ k: string; t: string; b: string }> = [
 const FAQ: Array<{ q: string; a: string }> = [
   {
     q: 'Why is the offer below open-market?',
-    a: "Because we buy for cash, complete in weeks rather than months, charge no fee, and take the risk of fall-through. The price reflects the speed and certainty of the transaction. You're paying us a speed premium for certainty.",
+    a: "Because we buy for cash, complete in weeks rather than months, charge no fee, and take the risk of fall-through. That certainty is what the discount pays for. You're trading some of the price for a completion you can plan around.",
   },
   {
     q: 'Can I change my mind after I accept?',
@@ -318,9 +317,7 @@ export default function SellPage() {
               offer in writing after we view the property.
             </p>
           </div>
-          <Suspense fallback={<div className="h-96" />}>
-            <ChatFlow defaultRole="seller" />
-          </Suspense>
+          <ChatFlow defaultRole="seller" />
         </div>
       </section>
 
@@ -344,10 +341,7 @@ export default function SellPage() {
               The single biggest complaint about cash buyers is the last-minute
               price drop. We put the price in writing and stand behind it.
             </p>
-            <Seal
-              label="Kept"
-              className="mt-10 hidden lg:inline-flex"
-            />
+            <Seal label="Kept" className="mt-10 hidden lg:inline-flex" />
           </div>
           <dl className="divide-y divide-white/10 border-white/10 border-t">
             {[
@@ -406,7 +400,7 @@ export default function SellPage() {
         </div>
       </section>
 
-      {/* ————— WHEN NOT TO USE BELLWOODS ————— */}
+      {/* ————— WHEN NOT TO USE KEPT ————— */}
       <section className="border-hair/70 border-b bg-soft px-6 py-20 md:px-12 md:py-24">
         <div className="mx-auto max-w-4xl">
           <Eyebrow>the honest version</Eyebrow>
@@ -416,10 +410,10 @@ export default function SellPage() {
             answer
           </h2>
           <p className="mt-5 max-w-2xl text-[15px] text-stone-700 leading-relaxed">
-            We buy below open market value, at a price that reflects the speed
-            and certainty of the transaction. That trade is right for some
-            sellers and wrong for others. We&rsquo;d rather tell you so up front
-            than waste your time.
+            We buy below open market value. The discount is the cost of a
+            guaranteed cash completion on your timescale. That trade is right
+            for some sellers and wrong for others. We&rsquo;d rather tell you so
+            up front than waste your time.
           </p>
           <ul className="mt-8 space-y-px overflow-hidden rounded-sm border border-hair bg-hair">
             {[
@@ -540,10 +534,10 @@ export default function SellPage() {
           </div>
           <div className="mt-10 border-hair border-t pt-6">
             <p className="text-[11px] text-stone-500 leading-relaxed">
-              Kept is a UK cash property buyer, not an
-              FCA-authorised firm. We do not provide financial or legal advice.
-              Seek independent legal advice before accepting any offer. All
-              offers are subject to satisfactory survey and title searches.
+              Kept is a UK cash property buyer, not an FCA-authorised firm. We
+              do not provide financial or legal advice. Seek independent legal
+              advice before accepting any offer. All offers are subject to
+              satisfactory survey and title searches.
             </p>
             <p className="mt-4 text-[11px] text-stone-400">
               © {new Date().getFullYear()} Kept.

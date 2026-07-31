@@ -32,7 +32,7 @@ export function LedgerTicker() {
         {ITEMS.map((item, i) => (
           <div
             key={`${item.text}-${i}`}
-            className="flex items-center gap-3 font-mono text-[11px] uppercase tracking-[0.2em]"
+            className="flex items-center gap-3 text-xs [font-family:var(--font-courier)]"
           >
             <span
               className="inline-block h-1 w-1 rounded-full"

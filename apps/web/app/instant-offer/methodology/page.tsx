@@ -1,3 +1,4 @@
+import { Eyebrow, LogoLockup } from '@/components/brand';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 
@@ -10,18 +11,9 @@ export const metadata: Metadata = {
 export default function MethodologyPage() {
   return (
     <>
-      <header className="border-stone-200/60 border-b">
+      <header className="border-hair border-b">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
-          <Link
-            href="/instant-offer"
-            className="font-semibold font-serif text-xl tracking-tight"
-          >
-            BELLWOODS
-            <span className="mx-2 inline-block h-px w-8 bg-wax align-middle" />
-            <span className="font-normal text-sm text-stone-500 tracking-widest">
-              LANE
-            </span>
-          </Link>
+          <LogoLockup href="/instant-offer" />
           <Link
             href="/instant-offer#chat"
             className="rounded-md bg-leaf px-5 py-2 text-sm text-white transition hover:bg-leaf-dark"
@@ -32,9 +24,7 @@ export default function MethodologyPage() {
       </header>
 
       <article className="mx-auto max-w-3xl px-6 py-20">
-        <p className="mb-3 text-leaf text-xs uppercase tracking-widest">
-          Methodology
-        </p>
+        <Eyebrow className="mb-3">Methodology</Eyebrow>
         <h1 className="font-semibold font-serif text-5xl leading-tight">
           How we price your property.
         </h1>
@@ -91,8 +81,8 @@ export default function MethodologyPage() {
             title="Seller-situation margin"
             body={
               <>
-                Our base acquisition margin reflects the speed and certainty
-                you&apos;re buying:
+                Our base acquisition margin is the price of a quick, certain
+                cash purchase. It varies by seller situation:
                 <table className="mt-4 w-full text-sm">
                   <tbody>
                     {[
@@ -132,7 +122,7 @@ export default function MethodologyPage() {
             n="06"
             title="Worked example"
             body={
-              <div className="rounded-2xl border border-stone-200 bg-soft p-6">
+              <div className="rounded-md border border-hair bg-soft p-6">
                 <p className="text-sm text-stone-600">
                   Manchester M40, 3-bed terrace, probate, EPC D, flood zone 1.
                 </p>
@@ -153,22 +143,22 @@ export default function MethodologyPage() {
                     </div>
                   ))}
                 </dl>
-                <div className="mt-4 flex items-baseline justify-between border-leaf border-t-2 pt-4">
+                <div className="mt-4 flex items-baseline justify-between border-forest border-t pt-4">
                   <span className="text-sm text-stone-600">Cash offer</span>
                   <span className="font-semibold font-serif text-3xl">
                     £150,700
                   </span>
                 </div>
                 <p className="mt-3 text-stone-500 text-xs">
-                  (a price that reflects the speed and certainty of the
-                  transaction, completion in weeks not months)
+                  (below open market by design: the discount is what buys a
+                  certain cash sale, completion in weeks not months)
                 </p>
               </div>
             }
           />
         </div>
 
-        <div className="mt-20 rounded-3xl bg-forest p-10 text-center text-white">
+        <div className="mt-20 rounded-lg bg-forest p-10 text-center text-white">
           <h2 className="font-semibold font-serif text-3xl">
             See your number.
           </h2>
