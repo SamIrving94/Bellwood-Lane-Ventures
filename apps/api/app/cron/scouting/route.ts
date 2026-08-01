@@ -1,4 +1,5 @@
 import { env } from '@/env';
+import { selfOrigin } from '../_lib/self-origin';
 import { database, Prisma } from '@repo/database';
 import {
   dedupeDealbreakerRules,
@@ -847,8 +848,9 @@ export const POST = async (request: Request) => {
   // it never delays or fails the scout run that already completed above.
   after(async () => {
     try {
-      const origin = new URL(request.url).origin;
-      await fetch(`${origin}/cron/lead-appraise`, {
+      // Server-controlled origin: this request carries CRON_SECRET, and
+      // request.url is derived from the Host header.
+      await fetch(`${selfOrigin()}/cron/lead-appraise`, {
         headers: { Authorization: `Bearer ${env.CRON_SECRET}` },
       });
     } catch (err) {
