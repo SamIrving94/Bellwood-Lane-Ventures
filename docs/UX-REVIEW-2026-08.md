@@ -1,5 +1,12 @@
 # UX / IA review — public sites, August 2026
 
+> **Status (2026-08-01):** implemented on founder go-ahead, except two items
+> deliberately left open for founder decisions: the methodology page's
+> published margin table (P2 #12) and merging the two agent calculators into
+> one tool (P1 #5 got the query-param handoff as the minimum fix). `/` now
+> lands on /sell; /legal/privacy exists; the shared SiteHeader, sitemap
+> sync, dead-link and placeholder fixes are all live on the branch.
+
 **Goal:** check that the information architecture makes sense to a person
 navigating it, and that every path serves both the user's goal (am I safe,
 what happens next?) and the business goal (a qualified enquiry, held for

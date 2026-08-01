@@ -57,6 +57,14 @@ export const WHATS_NEW: WhatsNewEntry[] = [
         emoji: '🚫',
         text: 'The old **£1,000 walk-away cover is retired everywhere** — offer PDF, emails, docs — matching the July terms review.',
       },
+      {
+        emoji: '🚪',
+        text: 'The **front door is fixed** — typing the bare domain now lands sellers on the seller page, not the agent pitch. Full UX review in `docs/UX-REVIEW-2026-08.md`.',
+      },
+      {
+        emoji: '🔏',
+        text: 'A real **privacy notice** now lives at /legal/privacy — the ICO claim finally has the page to back it up.',
+      },
     ],
   },
   {
