@@ -1,3 +1,4 @@
+import { timingSafeEqual } from 'node:crypto';
 import { env } from '@/env';
 import { database } from '@repo/database';
 import {
@@ -58,6 +59,14 @@ const POSTCODE_REGEX = /\b[A-Z]{1,2}\d{1,2}[A-Z]?\s*\d[A-Z]{2}\b/gi;
 // Auth
 // ────────────────────────────────────────────────────────────────────────────
 
+/** Constant-time comparison: `===` leaks the matching prefix through timing. */
+function safeEqual(a: string, b: string): boolean {
+  const bufA = Buffer.from(a);
+  const bufB = Buffer.from(b);
+  if (bufA.length !== bufB.length) return false;
+  return timingSafeEqual(bufA, bufB);
+}
+
 function checkBasicAuth(request: Request): boolean {
   const expectedUser = env.POSTMARK_INBOUND_USER;
   const expectedPass = env.POSTMARK_INBOUND_PASS;
@@ -69,7 +78,11 @@ function checkBasicAuth(request: Request): boolean {
   try {
     const decoded = Buffer.from(header.slice(6), 'base64').toString('utf-8');
     const [user, pass] = decoded.split(':', 2);
-    return user === expectedUser && pass === expectedPass;
+    // Constant-time, and both halves are always compared so the result does
+    // not reveal which one was wrong.
+    const userOk = safeEqual(user ?? '', expectedUser);
+    const passOk = safeEqual(pass ?? '', expectedPass);
+    return userOk && passOk;
   } catch {
     return false;
   }

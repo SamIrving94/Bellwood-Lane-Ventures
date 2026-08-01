@@ -1,4 +1,5 @@
 import { env } from '@/env';
+import { selfOrigin } from '../_lib/self-origin';
 import {
   type AuctionLot,
   type VisualAssessment,
@@ -47,11 +48,10 @@ export const POST = async (request: Request) => {
     (l) => l.visualAssessment != null
   ).length;
 
-  // 3. Push to the auctions agent endpoint internally. We use an absolute
-  //    self-URL so the same host serves both routes (Vercel passes this).
-  const protocol = request.headers.get('x-forwarded-proto') ?? 'https';
-  const host = request.headers.get('host') ?? 'localhost:3002';
-  const agentUrl = `${protocol}://${host}/agents/auctions`;
+  // 3. Push to the auctions agent endpoint internally. The origin comes from
+  //    server-controlled env, never request headers: this call carries the
+  //    agent key.
+  const agentUrl = `${selfOrigin()}/agents/auctions`;
 
   const agentResponse = await fetch(agentUrl, {
     method: 'POST',
