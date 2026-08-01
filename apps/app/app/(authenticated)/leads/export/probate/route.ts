@@ -1,4 +1,4 @@
-import { auth } from '@repo/auth/server';
+import { isFounder } from '@repo/auth/server';
 import { database } from '@repo/database';
 import { NextResponse } from 'next/server';
 
@@ -23,8 +23,7 @@ async function isAuthorised(request: Request): Promise<boolean> {
   const authHeader = request.headers.get('authorization');
   const secret = process.env.CRON_SECRET;
   if (secret && authHeader === `Bearer ${secret}`) return true;
-  const { userId } = await auth();
-  return Boolean(userId);
+  return isFounder();
 }
 
 /** RFC-4180 CSV field escaping. */

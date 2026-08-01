@@ -1,6 +1,6 @@
 'use server';
 
-import { auth } from '@repo/auth/server';
+import { isFounder } from '@repo/auth/server';
 import { type Prisma, database } from '@repo/database';
 import { mergeValuationConfig } from '@repo/valuation';
 import { revalidatePath } from 'next/cache';
@@ -16,8 +16,7 @@ import { VALUATION_CONFIG_KEY } from './constants';
 export async function saveValuationConfig(
   partial: unknown
 ): Promise<{ ok: boolean; error?: string }> {
-  const { userId } = await auth();
-  if (!userId) return { ok: false, error: 'Unauthorized' };
+  if (!(await isFounder())) return { ok: false, error: 'Unauthorized' };
 
   const config = mergeValuationConfig(partial);
 

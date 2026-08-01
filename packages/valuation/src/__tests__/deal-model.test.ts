@@ -48,6 +48,53 @@ describe('computeSdltPence', () => {
   it('returns 0 for a non-positive price', () => {
     expect(computeSdltPence(0)).toBe(0);
   });
+
+  // The 5% additional-property surcharge only applies from £40,000 of
+  // chargeable consideration upwards (FA 2003 Sch 4ZA para 1(3)). Below that
+  // the main rates apply alone — which is nil under the £125k threshold.
+  describe('additional-property surcharge threshold (£40k)', () => {
+    it('charges NO SDLT on a £30k lot (below the £40k surcharge threshold)', () => {
+      // Main rates: 0% up to £125k. Surcharge does not apply. Total £0.
+      // The old code charged 5% × £30k = £1,500 of phantom tax.
+      expect(computeSdltPence(30_000_00)).toBe(0);
+    });
+
+    it('charges nothing at £39,999 and £2,000 at £40,000 (inclusive threshold)', () => {
+      expect(computeSdltPence(39_999_00)).toBe(0);
+      // "£40,000 or more" — at exactly £40k the surcharge bites: 5% × £40k.
+      expect(computeSdltPence(40_000_00)).toBe(2_000_00);
+    });
+
+    it('leaves prices above the threshold untouched', () => {
+      // Regression guard on the calibration anchor.
+      expect(computeSdltPence(239_000_00)).toBe(14_230_00);
+    });
+
+    it('the threshold is a config lever', () => {
+      const noThreshold = {
+        ...DEFAULT_DEAL_COSTS,
+        sdlt: { ...DEFAULT_DEAL_COSTS.sdlt, additionalPropertyThresholdPence: 0 },
+      };
+      expect(computeSdltPence(30_000_00, noThreshold)).toBe(1_500_00);
+    });
+
+    it('a cheap lot is no longer dragged down by phantom SDLT', () => {
+      // £30k-ish stock: the surcharge used to eat into the solved ceiling.
+      const deal = { gdvPence: 60_000_00, refurbPence: 10_000_00 };
+      const withThreshold = maxOfferForRoi(deal).maxOfferPence;
+      const withoutThreshold = maxOfferForRoi({
+        ...deal,
+        config: {
+          ...DEFAULT_DEAL_COSTS,
+          sdlt: {
+            ...DEFAULT_DEAL_COSTS.sdlt,
+            additionalPropertyThresholdPence: 0,
+          },
+        },
+      }).maxOfferPence;
+      expect(withThreshold).toBeGreaterThan(withoutThreshold);
+    });
+  });
 });
 
 // ---------------------------------------------------------------------------

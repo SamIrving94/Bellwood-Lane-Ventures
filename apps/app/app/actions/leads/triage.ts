@@ -1,6 +1,6 @@
 'use server';
 
-import { auth } from '@repo/auth/server';
+import { requireFounder } from '@repo/auth/server';
 import { database } from '@repo/database';
 import { revalidatePath } from 'next/cache';
 
@@ -22,8 +22,7 @@ const TRIAGE_STATUSES: TriageStatus[] = [
 ];
 
 export async function setLeadTriage(leadId: string, status: TriageStatus) {
-  const { userId } = await auth();
-  if (!userId) throw new Error('Unauthorized');
+  await requireFounder();
   if (!TRIAGE_STATUSES.includes(status)) {
     throw new Error(`Invalid triage status: ${status}`);
   }

@@ -1,6 +1,6 @@
 'use server';
 
-import { auth } from '@repo/auth/server';
+import { requireFounder } from '@repo/auth/server';
 import { database } from '@repo/database';
 import { revalidatePath } from 'next/cache';
 
@@ -23,8 +23,7 @@ function generateToken(): string {
  * for the investor; the token alone grants access and can be revoked.
  */
 export async function mintInvestorToken(label: string, email?: string) {
-  const { userId } = await auth();
-  if (!userId) throw new Error('Unauthorized');
+  const { userId } = await requireFounder();
 
   if (!label.trim()) throw new Error('Add a name for this link.');
   if (email && email.trim() && !EMAIL_RE.test(email.trim())) {
@@ -46,8 +45,7 @@ export async function mintInvestorToken(label: string, email?: string) {
 }
 
 export async function revokeInvestorToken(id: string) {
-  const { userId } = await auth();
-  if (!userId) throw new Error('Unauthorized');
+  const { userId } = await requireFounder();
 
   await database.investorAccessToken.update({
     where: { id },
@@ -59,8 +57,7 @@ export async function revokeInvestorToken(id: string) {
 }
 
 export async function restoreInvestorToken(id: string) {
-  const { userId } = await auth();
-  if (!userId) throw new Error('Unauthorized');
+  const { userId } = await requireFounder();
 
   await database.investorAccessToken.update({
     where: { id },

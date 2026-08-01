@@ -1,6 +1,6 @@
 'use server';
 
-import { auth } from '@repo/auth/server';
+import { requireFounder } from '@repo/auth/server';
 import { database } from '@repo/database';
 
 /**
@@ -11,8 +11,7 @@ import { database } from '@repo/database';
  * Used to surface a warning before marking an action as Done without rating.
  */
 export async function checkFeedbackCompletion(actionId: string): Promise<boolean> {
-  const { userId } = await auth();
-  if (!userId) throw new Error('Unauthorized');
+  await requireFounder();
 
   // The action was likely created around a batch of new leads — check if any
   // scout_lead feedback exists created after this action was created

@@ -1,4 +1,4 @@
-import { auth } from '@repo/auth/server';
+import { isFounder } from '@repo/auth/server';
 import { askGeorge, type GeorgeMessage } from '@repo/property-data';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
@@ -24,8 +24,7 @@ const BELLWOOD_CONTEXT =
   'intelligence, and underwriting decisions. Keep responses tight and useful.';
 
 export async function POST(request: Request) {
-  const { userId } = await auth();
-  if (!userId) {
+  if (!(await isFounder())) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 

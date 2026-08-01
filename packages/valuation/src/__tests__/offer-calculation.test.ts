@@ -211,6 +211,104 @@ describe('calculateOffer — lease discount curve', () => {
   });
 });
 
+describe('calculateOffer — short lease never out-bids standard', () => {
+  const bv = baseValuation();
+  const risk = scoreRisk({ postcode: 'M14', epc: mkEpc('C') });
+
+  function offerFor(sellerType: 'standard' | 'short_lease', years?: number) {
+    return calculateOffer({
+      baseValuation: bv,
+      riskScore: risk,
+      sellerType,
+      remainingLeaseYears: years,
+    }).finalOffer;
+  }
+
+  it('regression: short_lease WITHOUT a lease discount beats standard', () => {
+    // Documents the trap. short_lease carries the lowest base margin (15% vs
+    // 22%) on the explicit understanding that the lease discount is applied
+    // separately. Omit the lease years and the discount never lands, so the
+    // "worse" property gets the better offer. @repo/instant-offer defends
+    // against this with ASSUMED_SHORT_LEASE_YEARS.
+    expect(offerFor('short_lease', undefined)).toBeGreaterThan(
+      offerFor('standard'),
+    );
+  });
+
+  it('the 65-year assumption used by instant-offer restores the invariant', () => {
+    // 15% margin + 7% lease discount (60-69 band) = 22% = the standard margin.
+    expect(offerFor('short_lease', 65)).toBeLessThanOrEqual(
+      offerFor('standard'),
+    );
+  });
+
+  it('every shorter lease tier stays at or below the standard offer', () => {
+    const standard = offerFor('standard');
+    for (const years of [0, 35, 45, 55, 65]) {
+      expect(offerFor('short_lease', years)).toBeLessThanOrEqual(standard);
+    }
+  });
+});
+
+describe('deriveInvestmentGrade — environmental band is a hard downgrade', () => {
+  const bv = baseValuation();
+
+  function gradeFor(grossRentalYield: number | undefined, risk: Parameters<typeof calculateOffer>[0]['riskScore']) {
+    return calculateOffer({
+      baseValuation: bv,
+      riskScore: risk,
+      sellerType: 'standard',
+      grossRentalYield,
+    }).investmentGrade;
+  }
+
+  const redRisk = scoreRisk({
+    postcode: 'M14',
+    epc: mkEpc('C'),
+    floodZone: 'zone_3b',      // 10
+    radonCategory: 5,          // pushes total env score into red
+    noiseBand: 'above_70',     // 8
+  });
+  const greenRisk = scoreRisk({ postcode: 'M14', epc: mkEpc('C') });
+
+  it('the fixture really is a red/black band', () => {
+    expect(['red', 'black']).toContain(redRisk.environmental.envBand);
+    expect(greenRisk.environmental.envBand).toBe('green');
+  });
+
+  it("regression: a 5% yield in flood zone 3b grades 'D', not 'B'", () => {
+    // The env-band check used to sit BELOW `yield >= 0.04 → 'B'`, making 'D'
+    // unreachable for any property yielding 4%+ — i.e. we skipped the +5%
+    // risk hedge on exactly the high-risk lots it was designed for.
+    expect(gradeFor(0.05, redRisk)).toBe('D');
+  });
+
+  it("a 'D' grade widens the acquisition margin by 5 points", () => {
+    const d = calculateOffer({
+      baseValuation: bv,
+      riskScore: redRisk,
+      sellerType: 'standard',
+      grossRentalYield: 0.05,
+    });
+    expect(d.investmentGrade).toBe('D');
+    expect(d.baseAcquisitionMargin).toBeCloseTo(0.27, 5);
+  });
+
+  it('a green band still grades on yield', () => {
+    expect(gradeFor(0.09, greenRisk)).toBe('A+');
+    expect(gradeFor(0.065, greenRisk)).toBe('A');
+    expect(gradeFor(0.05, greenRisk)).toBe('B');
+    expect(gradeFor(0.02, greenRisk)).toBe('C');
+  });
+
+  it("regression: a KNOWN 0% yield grades 'C', not the 'unknown' default 'B'", () => {
+    // `!grossRentalYield` treated a literal 0 as "not supplied" — same bug
+    // that was already fixed in leaseDiscount.
+    expect(gradeFor(0, greenRisk)).toBe('C');
+    expect(gradeFor(undefined, greenRisk)).toBe('B');
+  });
+});
+
 describe('calculateOffer — investment grade nudge', () => {
   it('A+ grade reduces base margin by 3 percentage points', () => {
     const bv = baseValuation();

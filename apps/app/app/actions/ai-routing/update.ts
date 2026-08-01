@@ -1,6 +1,6 @@
 'use server';
 
-import { auth } from '@repo/auth/server';
+import { requireFounder } from '@repo/auth/server';
 import { database } from '@repo/database';
 import type { Prisma } from '@repo/database/generated/client';
 import { revalidatePath } from 'next/cache';
@@ -47,6 +47,8 @@ function normalise(input: RouteInput): Record<string, unknown> | null {
 }
 
 export async function getRoutingTable(): Promise<Record<string, RouteInput>> {
+  await requireFounder();
+
   const row = await database.setting.findUnique({
     where: { key: SETTING_KEY },
   });
@@ -54,8 +56,7 @@ export async function getRoutingTable(): Promise<Record<string, RouteInput>> {
 }
 
 export async function saveRoute(feature: string, input: RouteInput) {
-  const { userId } = await auth();
-  if (!userId) throw new Error('Unauthorized');
+  const { userId } = await requireFounder();
   const key = feature.trim();
   if (!key) throw new Error('Feature name required');
 

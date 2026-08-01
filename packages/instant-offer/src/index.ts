@@ -36,6 +36,13 @@ export interface InstantOfferInput {
   /** Target completion window in days */
   urgencyDays?: number;
   askingPricePence?: number;
+  /**
+   * Remaining lease years, when known. Forwarded to the AVM so the lease
+   * discount curve can be applied. The public chat form does not ask for it —
+   * see ASSUMED_SHORT_LEASE_YEARS for what happens when it is absent on a
+   * self-declared short-lease property.
+   */
+  remainingLeaseYears?: number;
 }
 
 export interface InstantOfferResult {
@@ -87,10 +94,60 @@ function computeCompletionDays(urgencyDays?: number): number {
   return Math.max(14, Math.min(28, Math.round(urgencyDays)));
 }
 
-function computeConfidence(
+/**
+ * Remaining lease years assumed when the seller picks "short lease" but we
+ * have not been told the actual term (the public form never asks for it).
+ *
+ * Why a default is required at all: the short_lease base acquisition margin is
+ * the LOWEST of every seller type (15% vs 22% standard) precisely because the
+ * offer-calculation module expects the lease discount to be "applied
+ * separately". This path never supplied lease years, so `leaseDiscount(
+ * undefined)` returned 0 and "Short lease" produced a BETTER offer than
+ * "Other" — ~£17.5k overpaid on a £250k flat.
+ *
+ * Why 65: it lands in the 60-69 band of the valuation lease curve, which
+ * carries a 7% discount — exactly the 7 percentage points by which the
+ * short_lease margin undercuts standard, so an unknown short lease can never
+ * out-bid a standard sale. It is also comfortably under the 80-year
+ * marriage-value threshold, below which a lease is short enough that a seller
+ * would describe it that way. It is deliberately the LEAST punitive
+ * assumption that restores the invariant — callers who know the real term
+ * should always pass `remainingLeaseYears` and get the true curve.
+ */
+export const ASSUMED_SHORT_LEASE_YEARS = 65;
+
+/**
+ * Confidence ceiling for an offer whose valuation is not backed by real
+ * evidence. Sits below the 0.5 base of `computeConfidence` so the additive
+ * score can never dress a synthetic or comp-less valuation up as a firm
+ * figure.
+ */
+const LOW_EVIDENCE_CONFIDENCE_CEILING = 0.4;
+
+/**
+ * True when the AVM behind this offer is not backed by real market evidence:
+ * a 'low' confidence level, a synthetic price-paid feed, or no comparables at
+ * all. `avmSources` is the `source` string from base-valuation — one of
+ * `hmlr_ppd...`, `propertydata_sold_distance(...)` or the literal `synthetic`
+ * — so a substring match is the correct test.
+ */
+function isLowEvidence(
+  avmConfidenceLevel: string,
+  avmSources: string,
+  comparableCount: number,
+): boolean {
+  return (
+    avmConfidenceLevel.toLowerCase() === 'low' ||
+    avmSources.toLowerCase().includes('synthetic') ||
+    comparableCount === 0
+  );
+}
+
+export function computeConfidence(
   comparableCount: number,
   hasCondition: boolean,
   avmConfidenceLevel: string,
+  avmSources: string,
 ): number {
   // Base 0.5, up to +0.25 for comps, +0.1 for condition, +0.15 for level mapping
   let score = 0.5;
@@ -104,7 +161,18 @@ function computeConfidence(
   if (level === 'high') score += 0.15;
   else if (level === 'medium') score += 0.07;
 
-  return Math.max(0, Math.min(1, Math.round(score * 100) / 100));
+  const rounded = Math.max(0, Math.min(1, Math.round(score * 100) / 100));
+
+  // The additive score above is purely a bonus tally — nothing subtracts. A
+  // wholly synthetic, comp-less valuation still scored 0.5 base + 0.1 for a
+  // self-reported condition rating and read as reasonably confident. Cap it
+  // hard when the underlying evidence isn't real, so the number the seller
+  // sees tracks the evidence rather than the number of boxes ticked.
+  if (isLowEvidence(avmConfidenceLevel, avmSources, comparableCount)) {
+    return Math.min(rounded, LOW_EVIDENCE_CONFIDENCE_CEILING);
+  }
+
+  return rounded;
 }
 
 // ---------------------------------------------------------------------------
@@ -116,12 +184,22 @@ export async function generateInstantOffer(
 ): Promise<InstantOfferResult> {
   const sellerType = mapSituationToSellerType(input.situation);
 
+  // A self-declared short lease with no stated term falls back to a
+  // conservative assumption — without it the discounted short_lease margin is
+  // never paid for by a lease discount and the offer comes out ABOVE standard.
+  const leaseYearsAssumed =
+    input.remainingLeaseYears === undefined && sellerType === 'short_lease';
+  const remainingLeaseYears = leaseYearsAssumed
+    ? ASSUMED_SHORT_LEASE_YEARS
+    : input.remainingLeaseYears;
+
   const avm = await runAVM({
     postcode: input.postcode,
     propertyType: input.propertyType,
     address: input.address,
     bedrooms: input.bedrooms,
     sellerType,
+    remainingLeaseYears,
   });
 
   const r = avm.resultJson;
@@ -133,9 +211,12 @@ export async function generateInstantOffer(
     `${r.comparableCount} comparable sales in ${r.postcode} (last 24 months) via ${r.avmSources}`,
   );
 
-  // AVM headline
+  // AVM headline. `avmPointEstimate` is already in POUNDS (the AVM works in
+  // pounds throughout — see the pounds→pence conversion in the return block
+  // below), so it must NOT be divided by 100. It used to be, which printed
+  // "AVM point estimate £3,050" beside a £305,000 offer.
   reasoning.push(
-    `AVM point estimate £${Math.round(r.avmPointEstimate / 100).toLocaleString('en-GB')} (${r.confidenceLevel} confidence)`,
+    `AVM point estimate £${Math.round(r.avmPointEstimate).toLocaleString('en-GB')} (${r.confidenceLevel} confidence)`,
   );
 
   // Base acquisition margin
@@ -151,9 +232,23 @@ export async function generateInstantOffer(
     }
   }
 
-  // EPC / construction
+  if (leaseYearsAssumed) {
+    reasoning.push(
+      `Remaining lease not supplied — ${ASSUMED_SHORT_LEASE_YEARS} years assumed for this estimate, subject to confirmation from the title`,
+    );
+  }
+
+  // EPC / construction.
+  // NOTE: the sign convention here is the OPPOSITE of the discountLines loop
+  // above. A discount line's `fraction` is positive when it takes money OFF,
+  // whereas EPC_ADJUSTMENT (risk-scoring.ts) is positive for an UPLIFT
+  // (A/B = +0.01) and negative for a penalty (F/G = -0.02). The ternary was
+  // copy-pasted from the loop, so an A-rated home displayed "(-1.0%)" and an
+  // F-rated home "(+2.0%)" — both backwards.
   if (r.epcRating) {
-    reasoning.push(`EPC rating ${r.epcRating} (${r.epcAdjustment > 0 ? '-' : '+'}${Math.abs(r.epcAdjustment * 100).toFixed(1)}%)`);
+    // `>= 0` (not `> 0`) keeps a neutral band C/D reading "+0.0%" rather than
+    // the nonsensical "-0.0%".
+    reasoning.push(`EPC rating ${r.epcRating} (${r.epcAdjustment >= 0 ? '+' : '-'}${Math.abs(r.epcAdjustment * 100).toFixed(1)}%)`);
   }
 
   // Pre-RICS flags (honest surface)
@@ -161,10 +256,25 @@ export async function generateInstantOffer(
     reasoning.push(`⚠ ${flag}`);
   }
 
-  // CEO escalation — mark for review
-  const requiresReview = r.requiresCeoEscalation || r.discountCapped;
+  // CEO escalation / thin evidence — mark for review.
+  //
+  // Low evidence must gate too. Previously an offer built entirely on
+  // synthetic comparables sailed through as a firm figure locked for 72
+  // hours with no review flag, because only the escalation and discount-cap
+  // conditions were checked.
+  const lowEvidence = isLowEvidence(
+    r.confidenceLevel,
+    r.avmSources,
+    r.comparableCount,
+  );
+  const requiresReview =
+    r.requiresCeoEscalation || r.discountCapped || lowEvidence;
+
   if (r.requiresCeoEscalation) {
     reasoning.push('Offer below 60% of AVM — founder review required before commitment');
+  }
+  if (lowEvidence) {
+    reasoning.push('Limited comparable evidence for this property — founder review required before commitment');
   }
 
   // Problem property note
@@ -182,6 +292,7 @@ export async function generateInstantOffer(
     r.comparableCount,
     typeof input.condition === 'number',
     r.confidenceLevel,
+    r.avmSources,
   );
 
   // Generate a plain-English narrative for the vendor PDF / follow-up email.

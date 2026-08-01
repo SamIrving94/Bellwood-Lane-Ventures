@@ -1,7 +1,7 @@
 'use server';
 
 import { screenPropertyCondition } from '@repo/auctions';
-import { auth } from '@repo/auth/server';
+import { isFounder } from '@repo/auth/server';
 import { database, Prisma } from '@repo/database';
 import { getPropertySnapshot } from '@repo/property-data/src/propertydata';
 import {
@@ -71,8 +71,7 @@ export async function enrichLeadById(leadId: string): Promise<{
   fetched?: boolean;
   error?: string;
 }> {
-  const { userId } = await auth();
-  if (!userId) return { ok: false, error: 'Unauthorized' };
+  if (!(await isFounder())) return { ok: false, error: 'Unauthorized' };
 
   const lead = await database.scoutLead.findUnique({ where: { id: leadId } });
   if (!lead) return { ok: false, error: 'Lead not found' };

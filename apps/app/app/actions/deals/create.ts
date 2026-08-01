@@ -1,6 +1,6 @@
 'use server';
 
-import { auth } from '@repo/auth/server';
+import { requireFounder } from '@repo/auth/server';
 import { database } from '@repo/database';
 import type { DealSource, SellerType } from '@repo/database/generated/client';
 import { revalidatePath } from 'next/cache';
@@ -20,8 +20,7 @@ type CreateDealInput = {
 };
 
 export async function createDeal(input: CreateDealInput) {
-  const { userId } = await auth();
-  if (!userId) throw new Error('Unauthorized');
+  const { userId } = await requireFounder();
 
   const deal = await database.deal.create({
     data: {

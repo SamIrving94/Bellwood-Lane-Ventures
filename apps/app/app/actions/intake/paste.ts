@@ -1,7 +1,7 @@
 'use server';
 
 import { env } from '@/env';
-import { auth } from '@repo/auth/server';
+import { requireFounder } from '@repo/auth/server';
 import { revalidatePath } from 'next/cache';
 
 type PasteInput = {
@@ -21,8 +21,7 @@ type PasteResult = {
 export async function pasteWhatsAppMessage(
   input: PasteInput
 ): Promise<PasteResult> {
-  const { userId } = await auth();
-  if (!userId) throw new Error('Unauthorized');
+  await requireFounder();
 
   const rawText = input.rawText?.trim();
   if (!rawText) throw new Error('rawText is required');

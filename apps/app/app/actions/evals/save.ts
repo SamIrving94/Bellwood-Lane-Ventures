@@ -1,6 +1,6 @@
 'use server';
 
-import { auth } from '@repo/auth/server';
+import { requireFounder } from '@repo/auth/server';
 import { database, Prisma } from '@repo/database';
 import { revalidatePath } from 'next/cache';
 
@@ -11,8 +11,7 @@ type SaveEvalInput = {
 };
 
 export async function saveEvalConfig(data: SaveEvalInput) {
-  const { userId } = await auth();
-  if (!userId) throw new Error('Unauthorized');
+  const { userId } = await requireFounder();
 
   // Get the current highest version for this eval type
   const latest = await database.evalConfig.findFirst({
@@ -37,8 +36,7 @@ export async function saveEvalConfig(data: SaveEvalInput) {
 }
 
 export async function activateEvalConfig(configId: string) {
-  const { userId } = await auth();
-  if (!userId) throw new Error('Unauthorized');
+  const { userId } = await requireFounder();
 
   const config = await database.evalConfig.findUnique({
     where: { id: configId },
@@ -68,6 +66,8 @@ export async function activateEvalConfig(configId: string) {
 
 // Helper to get the active eval config at runtime
 export async function getActiveEvalConfig(evalType: 'lead_scoring' | 'avm_confidence' | 'outreach_quality' | 'deal_quality' | 'campaign_targeting') {
+  await requireFounder();
+
   const config = await database.evalConfig.findFirst({
     where: {
       evalType,

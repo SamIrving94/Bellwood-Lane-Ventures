@@ -1,6 +1,6 @@
 'use server';
 
-import { auth } from '@repo/auth/server';
+import { getFounderSession } from '@repo/auth/server';
 import { database } from '@repo/database';
 import {
   extractProbateFromPdf,
@@ -24,7 +24,7 @@ type ProcessResult =
 export async function processUploadedPdf(
   formData: FormData,
 ): Promise<ProcessResult> {
-  const { userId } = await auth();
+  const userId = (await getFounderSession())?.userId;
   if (!userId) return { error: 'Not signed in.' };
 
   const file = formData.get('file');

@@ -1,10 +1,11 @@
 'use server';
 
-import { auth } from '@repo/auth/server';
+import { requireFounder } from '@repo/auth/server';
 import { database, Prisma } from '@repo/database';
 import { revalidatePath } from 'next/cache';
 import { after } from 'next/server';
 import { extractFeedbackInsights } from '@/lib/feedback/insights';
+import { type TriageStatus, setLeadTriage } from '@/app/actions/leads/triage';
 
 type SubmitFeedbackInput = {
   targetType: 'scout_lead' | 'avm_result' | 'outreach_template' | 'outreach_campaign' | 'legal_step' | 'deal' | 'founder_action' | 'campaign';
@@ -24,8 +25,7 @@ type SubmitFeedbackInput = {
 };
 
 export async function submitFeedback(data: SubmitFeedbackInput) {
-  const { userId } = await auth();
-  if (!userId) throw new Error('Unauthorized');
+  const { userId } = await requireFounder();
 
   if (data.rating < 1 || data.rating > 5) {
     throw new Error('Rating must be between 1 and 5');
@@ -117,14 +117,30 @@ export async function submitFeedback(data: SubmitFeedbackInput) {
   return { feedbackId: feedback.id };
 }
 
+/**
+ * `targetType` and `targetId` are client-supplied, so this function is a write
+ * primitive pointed at arbitrary rows. It re-asserts the founder guard rather
+ * than trusting its caller, and every target is looked up before it is
+ * mutated. Note: Deal, ScoutLead and AvmResult carry no owner/organisation
+ * column, so record-level ownership cannot be checked here — the founder
+ * allowlist is the tenancy boundary.
+ */
 async function applyOverrides(
   targetType: string,
   targetId: string,
   overrides: Record<string, unknown>,
   userId: string
 ) {
+  await requireFounder();
+
   switch (targetType) {
     case 'scout_lead': {
+      const lead = await database.scoutLead.findUnique({
+        where: { id: targetId },
+        select: { id: true },
+      });
+      if (!lead) throw new Error('Lead not found');
+
       const updateData: Record<string, unknown> = {};
       if ('leadScore' in overrides && typeof overrides.leadScore === 'number') {
         updateData.leadScore = overrides.leadScore;
@@ -132,14 +148,19 @@ async function applyOverrides(
       if ('verdict' in overrides && typeof overrides.verdict === 'string') {
         updateData.verdict = overrides.verdict;
       }
-      if ('status' in overrides && typeof overrides.status === 'string') {
-        updateData.status = overrides.status;
-      }
       if (Object.keys(updateData).length > 0) {
         await database.scoutLead.update({
           where: { id: targetId },
           data: updateData,
         });
+      }
+
+      // `status` is a triage decision, not a free-text field. Route it through
+      // setLeadTriage so the same status whitelist and converted-lead guard
+      // apply here as on the triage controls — writing it straight through
+      // bypassed both.
+      if ('status' in overrides && typeof overrides.status === 'string') {
+        await setLeadTriage(targetId, overrides.status as TriageStatus);
       }
       break;
     }
@@ -188,6 +209,12 @@ async function applyOverrides(
     }
 
     case 'deal': {
+      const deal = await database.deal.findUnique({
+        where: { id: targetId },
+        select: { id: true },
+      });
+      if (!deal) throw new Error('Deal not found');
+
       const dealUpdate: Record<string, unknown> = {};
       if ('ourOfferPence' in overrides && typeof overrides.ourOfferPence === 'number') {
         dealUpdate.ourOfferPence = overrides.ourOfferPence;

@@ -1,6 +1,6 @@
 'use server';
 
-import { auth } from '@repo/auth/server';
+import { requireFounder } from '@repo/auth/server';
 import { database } from '@repo/database';
 import {
   applySuggestionChange,
@@ -44,8 +44,7 @@ export async function applyScorerSuggestion(input: {
   value: number;
   title: string;
 }) {
-  const { userId } = await auth();
-  if (!userId) throw new Error('Unauthorized');
+  await requireFounder();
   if (!isValidChange(input.change)) throw new Error('Invalid suggestion');
   if (!Number.isFinite(input.value) || input.value < 0 || input.value > 100) {
     throw new Error('Value out of range');
