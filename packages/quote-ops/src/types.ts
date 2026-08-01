@@ -16,7 +16,16 @@ export interface PdfInput {
   postcode: string;
   agentFirmName?: string | null;
   agentContactName?: string | null;
-  /** Re-run deep-appraisal output. The PDF reads ARV + bidCap + recommendation. */
+  /**
+   * The cash offer to print, in pence. REQUIRED and never derived here.
+   *
+   * This document is contractually binding, so the renderer must not infer a
+   * price. It previously fell back to the appraisal's ARV when `bidCap` was
+   * null — which is every non-auction lead — and so printed 100% of market
+   * value as the offer. The caller owns the number; the PDF just renders it.
+   */
+  offerPence: number;
+  /** Re-run deep-appraisal output. The PDF reads ARV + recommendation. */
   appraisal: DeepAppraisal;
   /** Best-effort PreflightChecks payload. Shape is wide on purpose. */
   enrichment?: unknown;

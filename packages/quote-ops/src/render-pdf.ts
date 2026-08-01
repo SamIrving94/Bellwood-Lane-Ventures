@@ -141,8 +141,14 @@ function BindingOfferDocument(
   const issuedAt = new Date();
   const lockedUntil = new Date(issuedAt.getTime() + 14 * 24 * 3600_000);
 
-  const offerPence =
-    appraisal.bidCap?.hardCapPence ?? appraisal.arv.pointEstimatePence;
+  // Supplied by the caller. Never fall back to ARV: this document is binding,
+  // and ARV is market value, not an offer.
+  const { offerPence } = props;
+  if (!Number.isFinite(offerPence) || offerPence <= 0) {
+    throw new Error(
+      'renderSignedOfferPdf: offerPence is required and must be positive — refusing to render a binding offer without an explicit price'
+    );
+  }
   const arvLow = appraisal.arv.ci80LowPence;
   const arvHigh = appraisal.arv.ci80HighPence;
   const confidencePercent = Math.max(
@@ -255,7 +261,7 @@ function BindingOfferDocument(
         React.createElement(
           Text,
           { style: { fontSize: 9, marginTop: 4 } },
-          `Walk-away cover £1,000. Completion target 14–28 days from acceptance.`
+          'Completion target 14–28 days from acceptance.'
         )
       ),
 
@@ -268,16 +274,6 @@ function BindingOfferDocument(
         Text,
         { style: styles.paragraph },
         `This offer is binding on ${brand.legalName} subject only to the carve-outs below. There is no chain. There is no mortgage finance condition. Funds are confirmed prior to instruction.`
-      ),
-      React.createElement(
-        Text,
-        { style: { ...styles.paragraph, ...styles.label } },
-        'Walk-away cover'
-      ),
-      React.createElement(
-        Text,
-        { style: styles.paragraph },
-        'If we withdraw from this transaction for any reason not explicitly carved out below, we will pay £1,000 to the seller within 5 working days as compensation for fees and time.'
       ),
       React.createElement(
         Text,
