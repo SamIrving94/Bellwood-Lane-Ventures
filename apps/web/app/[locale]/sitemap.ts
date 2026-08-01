@@ -12,16 +12,20 @@ const sitemap = async (): Promise<MetadataRoute.Sitemap> => [
   { url: new URL('/sell', base).href, lastModified: new Date() },
   { url: new URL('/probate', base).href, lastModified: new Date() },
   { url: new URL('/agents', base).href, lastModified: new Date() },
-  { url: new URL('/instant-offer', base).href, lastModified: new Date() },
+  { url: new URL('/save-the-sale', base).href, lastModified: new Date() },
+  {
+    url: new URL('/why-we-wont-buy-any-home', base).href,
+    lastModified: new Date(),
+  },
   {
     url: new URL('/instant-offer/methodology', base).href,
     lastModified: new Date(),
   },
-  { url: new URL('/instant-offer/team', base).href, lastModified: new Date() },
   {
     url: new URL('/legal/fca-disclosure', base).href,
     lastModified: new Date(),
   },
+  { url: new URL('/legal/privacy', base).href, lastModified: new Date() },
 ];
 
 export default sitemap;

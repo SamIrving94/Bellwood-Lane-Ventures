@@ -257,8 +257,9 @@ export default function SellerDisclosurePage() {
 
       <footer className="mt-12 border-stone-200 border-t pt-6 text-stone-500 text-xs">
         Kept · Property Redress Scheme (PRS) · HMRC AML supervised
-        · ICO registered · Disclosure compliant with CPR 2008, DMCC Act 2025,
-        NTSELAT referral-fee guidance.
+        · ICO registered · Disclosure compliant with CPR 2008, the Digital
+        Markets, Competition and Consumers Act 2024, and NTSELAT referral-fee
+        guidance.
       </footer>
     </div>
   );
