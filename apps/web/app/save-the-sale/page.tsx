@@ -1,0 +1,142 @@
+import { LogoLockup } from '@/components/brand';
+import type { Metadata } from 'next';
+import { Fraunces, Inter } from 'next/font/google';
+import Link from 'next/link';
+import { AgentQuickForm } from '../agents/components/agent-quick-form';
+
+const fraunces = Fraunces({
+  subsets: ['latin'],
+  variable: '--font-serif',
+  display: 'swap',
+  weight: ['400', '500', '600', '700'],
+});
+
+const inter = Inter({
+  subsets: ['latin'],
+  variable: '--font-sans',
+  display: 'swap',
+});
+
+export const metadata: Metadata = {
+  title: 'Sale fallen through? · Kept',
+  description:
+    'Buyer pulled out, mortgage refused, survey down-valued or chain broken? An indicative cash figure on screen, fast. We aim to make a signed offer within 24–48 hours of viewing. For UK estate agents.',
+  openGraph: {
+    title: 'Sale fallen through? · Kept',
+    description:
+      'A cash figure on screen fast, and we aim to make a signed offer within 24–48 hours of viewing. For UK estate agents whose sale just collapsed.',
+    type: 'website',
+  },
+};
+
+export default function SaveTheSalePage() {
+  return (
+    <div
+      className={`${fraunces.variable} ${inter.variable} min-h-screen bg-cream font-sans text-forest antialiased`}
+    >
+      {/* ————— MINIMAL HEADER ————— */}
+      <header className="border-stone-200/60 border-b bg-white">
+        <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-4 md:px-10">
+          <LogoLockup href="/agents" wordmarkClassName="text-lg md:text-xl" />
+          <Link
+            href="/agents"
+            className="text-[13px] text-stone-500 underline-offset-4 hover:text-leaf hover:underline"
+          >
+            Full partner programme →
+          </Link>
+        </div>
+      </header>
+
+      {/* ————— HERO + FORM ————— */}
+      <section className="px-6 pt-12 pb-20 md:px-12 md:pt-16 md:pb-24">
+        <div className="mx-auto grid max-w-6xl grid-cols-1 gap-12 lg:grid-cols-[1fr_1.2fr] lg:gap-16">
+          <div>
+            <p className="font-serif text-[13px] text-leaf italic">
+              For UK estate agents
+            </p>
+            <h1
+              className="mt-4 font-semibold font-serif text-forest leading-[0.98] tracking-[-0.025em]"
+              style={{ fontSize: 'clamp(40px, 6vw, 68px)' }}
+            >
+              Sale fallen through?
+              <br />
+              <span className="text-leaf italic">
+                Save it before you re-list.
+              </span>
+            </h1>
+            <p className="mt-7 max-w-md text-lg text-stone-600 leading-relaxed">
+              Buyer pulled out, mortgage refused, survey down-valued, chain
+              broken. Whatever&rsquo;s collapsed, we step in with an indicative
+              figure on screen, fast (drawn from HM Land Registry comps), and we
+              aim to make a signed offer within 24&ndash;48 hours of viewing the
+              property.
+            </p>
+            <ul className="mt-8 space-y-3 text-[14px] text-stone-700">
+              <li className="flex items-start gap-3">
+                <span className="mt-1 inline-block h-1.5 w-1.5 shrink-0 rounded-md bg-leaf" />
+                <span>
+                  <strong className="text-forest">No price cuts.</strong> The
+                  price we confirm in writing is the price we complete at, and
+                  your client can walk away at no cost any time before exchange.
+                </span>
+              </li>
+              <li className="flex items-start gap-3">
+                <span className="mt-1 inline-block h-1.5 w-1.5 shrink-0 rounded-md bg-leaf" />
+                <span>
+                  <strong className="text-forest">
+                    You keep your commission.
+                  </strong>{' '}
+                  You keep your commission on the sale, and when we resell
+                  through the market we instruct you.
+                </span>
+              </li>
+              <li className="flex items-start gap-3">
+                <span className="mt-1 inline-block h-1.5 w-1.5 shrink-0 rounded-md bg-leaf" />
+                <span>
+                  <strong className="text-forest">
+                    WhatsApp-able vendor link.
+                  </strong>{' '}
+                  After you submit, you get a link you can WhatsApp the vendor
+                  in two taps. No PDF download, no login on their end.
+                </span>
+              </li>
+            </ul>
+            <p className="mt-8 text-[12px] text-stone-500">
+              Prefer email?{' '}
+              <a
+                href="mailto:hello@bellwoodslane.co.uk?subject=Sale%20fallen%20through%20%E2%80%94%20urgent"
+                className="text-leaf underline underline-offset-4"
+              >
+                hello@bellwoodslane.co.uk
+              </a>{' '}
+              &ndash; it reaches the same team.
+            </p>
+          </div>
+          <div>
+            <AgentQuickForm defaultTriggerLabel="Buyer pulled out" />
+          </div>
+        </div>
+      </section>
+
+      {/* ————— TRUST FOOTER ————— */}
+      <footer className="border-stone-200/60 border-t bg-white px-6 py-10 md:px-12">
+        <div className="mx-auto flex max-w-5xl flex-col items-start justify-between gap-4 md:flex-row md:items-center">
+          <p className="font-serif text-[13px] text-stone-500 italic">
+            Property Redress Scheme (PRS) &middot; HMRC AML supervised &middot;
+            ICO registered
+          </p>
+          <nav className="flex flex-wrap items-center gap-6 text-[13px] text-stone-600">
+            <Link href="/agents">Partner programme</Link>
+            <Link href="/instant-offer/methodology">Methodology</Link>
+            <Link href="/legal/fca-disclosure">Regulatory</Link>
+          </nav>
+        </div>
+        <p className="mx-auto mt-8 max-w-5xl font-mono text-[10px] text-stone-400 leading-relaxed">
+          Kept is a UK cash property buyer, not an FCA-authorised
+          firm. We do not provide financial or legal advice. All offers are
+          subject to satisfactory survey and title searches.
+        </p>
+      </footer>
+    </div>
+  );
+}
