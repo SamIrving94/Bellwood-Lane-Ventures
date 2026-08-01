@@ -1,4 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk';
+import { z } from 'zod';
 import { keys } from './keys';
 
 const env = keys();
@@ -28,6 +29,40 @@ export type ParsedLead = {
   rawNotes?: string;
   confidence: number; // 0-1
 };
+
+/**
+ * Runtime shape check for the model's reply. Strips unknown keys so injected
+ * fields cannot reach the ScoutLead row, and caps free text so a hostile
+ * message cannot stuff the founder's queue.
+ */
+const ParsedLeadSchema = z.object({
+  propertyAddress: z.string().max(300).optional(),
+  postcode: z.string().max(12).optional(),
+  askingPricePence: z.number().int().nonnegative().optional(),
+  propertyType: z.string().max(60).optional(),
+  sellerSituation: z
+    .enum([
+      'probate',
+      'chain_break',
+      'repossession',
+      'relocation',
+      'short_lease',
+      'distressed',
+      'unknown',
+    ])
+    .optional(),
+  bedrooms: z.number().int().min(0).max(20).optional(),
+  contactInfo: z
+    .object({
+      name: z.string().max(120).optional(),
+      phone: z.string().max(40).optional(),
+      email: z.string().max(200).optional(),
+    })
+    .optional(),
+  urgency: z.enum(['high', 'medium', 'low']).optional(),
+  rawNotes: z.string().max(4000).optional(),
+  confidence: z.number().optional(),
+});
 
 const MODEL = 'claude-sonnet-4-5';
 
@@ -101,14 +136,24 @@ export async function parseWhatsAppMessage(
       return { confidence: 0, rawNotes: rawText };
     }
 
+    // The message body is attacker-controllable and the `---` fence around it
+    // is trivially escaped, so the reply is untrusted input. Validate the shape
+    // instead of casting: the intake route auto-creates a ScoutLead from these
+    // fields, and unknown keys were previously stored verbatim in rawPayload.
+    const validated = ParsedLeadSchema.safeParse(parsed);
+    if (!validated.success) {
+      console.warn('[@repo/whatsapp-parser] reply failed validation');
+      return { confidence: 0, rawNotes: rawText };
+    }
+
     // Defensive: clamp confidence to [0, 1], default 0 if missing
     const confidence =
-      typeof parsed.confidence === 'number'
-        ? Math.max(0, Math.min(1, parsed.confidence))
+      typeof validated.data.confidence === 'number'
+        ? Math.max(0, Math.min(1, validated.data.confidence))
         : 0;
 
     return {
-      ...parsed,
+      ...validated.data,
       confidence,
     } as ParsedLead;
   } catch (err) {

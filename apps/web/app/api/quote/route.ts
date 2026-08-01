@@ -12,12 +12,21 @@ import { recordDealUpdate } from '@repo/deal-updates';
 import { sendEmail } from '@repo/email';
 import {
   type InstantOfferSituation,
+  applyPreflightAdjustment,
   generateInstantOffer,
 } from '@repo/instant-offer';
 import { runPreflightChecks } from '@repo/property-data/src/propertydata';
 import type { PropertyType } from '@repo/valuation';
+import { DEFAULT_OFFER_CONFIG } from '@repo/valuation/src/offer-config';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
+
+/**
+ * Offer floor as a fraction of AVM. Read from the offer config the AVM itself
+ * uses — never re-typed as a literal here, so founder-facing copy can never
+ * quote a threshold the calculator has moved off.
+ */
+const OFFER_FLOOR_FRACTION = DEFAULT_OFFER_CONFIG.floorFraction;
 
 const InputSchema = z.object({
   address: z.string().min(3),
@@ -357,31 +366,20 @@ export async function POST(request: Request) {
       }),
     ]);
 
-    // Apply preflight adjustment to the offer. Bounded to ±5% total
-    // adjustment to prevent compounding edge cases.
-    const adjPct = Math.max(
-      -0.05,
-      Math.min(0.05, preflight?.offerAdjustment ?? 0)
+    // Apply the preflight adjustment to the offer. `applyPreflightAdjustment`
+    // owns the ±5% clamp AND re-tests the 60%-of-AVM floor against the final
+    // figure — the adjustment lands after generateInstantOffer computed
+    // requiresReview, so without that re-test a negative adjustment could take
+    // an offer under the floor with no escalation card raised.
+    const adjusted = applyPreflightAdjustment(
+      offerBase,
+      preflight?.offerAdjustment ?? 0
     );
-    const adjustedOfferPence =
-      adjPct === 0
-        ? offerBase.offerPence
-        : Math.round(offerBase.offerPence * (1 + adjPct));
-    const avmMidPence =
-      (offerBase.estimatedMarketValueMinPence +
-        offerBase.estimatedMarketValueMaxPence) /
-      2;
-    const adjustedOfferPercentOfAvm =
-      avmMidPence > 0
-        ? Math.round((adjustedOfferPence / avmMidPence) * 1000) / 1000
-        : offerBase.offerPercentOfAvm;
 
     const offer = {
-      ...offerBase,
-      offerPence: adjustedOfferPence,
-      offerPercentOfAvm: adjustedOfferPercentOfAvm,
+      ...adjusted,
       reasoning: [
-        ...offerBase.reasoning,
+        ...adjusted.reasoning,
         ...(preflight?.reasoning ?? []),
         ...(preflight?.tenure.isShortLease
           ? [
@@ -392,7 +390,7 @@ export async function POST(request: Request) {
       // Force review if preflight surfaced a short-lease leasehold — we
       // don't auto-commit to those without founder eyeballs.
       requiresReview:
-        offerBase.requiresReview || !!preflight?.tenure.isShortLease,
+        adjusted.requiresReview || !!preflight?.tenure.isShortLease,
     };
 
     // Persist offer
@@ -428,11 +426,15 @@ export async function POST(request: Request) {
             status: 'pending',
             agent: 'appraiser',
             title: `Review offer: ${input.address}, ${input.postcode}`,
-            description: `Auto-generated offer of £${Math.round(offer.offerPence / 100).toLocaleString('en-GB')} (${Math.round(offer.offerPercentOfAvm * 100)}% of AVM). Below the 60% floor — needs your sign-off before the seller is committed to.`,
+            // The old copy asserted "Below the 60% floor" on EVERY review,
+            // including the short-lease and thin-evidence ones that are
+            // nowhere near the floor. State the actual position instead.
+            description: `Auto-generated offer of £${Math.round(offer.offerPence / 100).toLocaleString('en-GB')} (${Math.round(offer.offerPercentOfAvm * 100)}% of AVM)${offer.belowAvmFloor ? ` — BELOW the ${Math.round(OFFER_FLOOR_FRACTION * 100)}% floor` : ''}. Needs your sign-off before the seller is committed to. Reasons are in the offer reasoning trail.`,
             metadata: {
               quoteRequestId: quoteRequest.id,
               offerPence: offer.offerPence,
               offerPercentOfAvm: offer.offerPercentOfAvm,
+              belowAvmFloor: offer.belowAvmFloor,
               avmMid: Math.round(
                 (offer.estimatedMarketValueMinPence +
                   offer.estimatedMarketValueMaxPence) /

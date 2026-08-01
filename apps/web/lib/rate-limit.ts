@@ -165,4 +165,19 @@ export const LIMITS = {
     limit: 30,
     windowMs: 60 * 60 * 1000,
   },
+  /**
+   * Accepting an offer is the gate on turning a quote into a real Deal at a
+   * recorded price, so the per-quote cap is really a brute-force cap on the
+   * track token. The IP cap catches a caller walking many quote ids.
+   */
+  quoteAcceptByQuote: {
+    bucket: 'quote-accept:quote',
+    limit: 10,
+    windowMs: 60 * 60 * 1000,
+  },
+  quoteAcceptByIp: {
+    bucket: 'quote-accept:ip',
+    limit: 20,
+    windowMs: 60 * 60 * 1000,
+  },
 } as const satisfies Record<string, RateLimitRule>;

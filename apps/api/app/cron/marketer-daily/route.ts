@@ -1,7 +1,8 @@
 import { env } from '@/env';
-import { callClaudeForJson, CLAUDE_HAIKU } from '@repo/ai/claude';
+import { callClaudeForObject, CLAUDE_HAIKU } from '@repo/ai/claude';
 import { database } from '@repo/database';
 import { NextResponse } from 'next/server';
+import { z } from 'zod';
 
 /**
  * Daily marketer cron (07:45 UTC).
@@ -57,17 +58,22 @@ You will be given a structured profile of one deal. Return ONLY JSON (no markdow
   "complianceFlags": string[]              // list any concerns you saw (CPR / ASA / ICO / anonymisation). Empty array if clean.
 }`;
 
-interface IgDraft {
-  caption: string;
-  hashtags: string[];
-  altText: string;
-  anonymisationCheck: {
-    postcodeAreaOnly: boolean;
-    noStreetNumbers: boolean;
-    noVendorName: boolean;
-  };
-  complianceFlags: string[];
-}
+// Zod schema → the provider CONSTRAINS generation to this shape
+// (callClaudeForObject). Previously this was a bare TypeScript interface over
+// a tolerant JSON parse, so a reply missing `anonymisationCheck` compiled
+// fine and then threw at runtime, killing the whole cron run.
+const IgDraftSchema = z.object({
+  caption: z.string(),
+  hashtags: z.array(z.string()),
+  altText: z.string(),
+  anonymisationCheck: z.object({
+    postcodeAreaOnly: z.boolean(),
+    noStreetNumbers: z.boolean(),
+    noVendorName: z.boolean(),
+  }),
+  complianceFlags: z.array(z.string()),
+});
+type IgDraft = z.infer<typeof IgDraftSchema>;
 
 /** Extract postcode area (e.g. "M14" from "M14 5AB"). */
 function postcodeArea(full: string): string {
@@ -138,14 +144,14 @@ export const POST = async (request: Request) => {
 
   // ── Offers → 1× approve_ig_post each ─────────────────────────────────
   for (const deal of offers) {
-    const draft = await callClaudeForJson<IgDraft>({
+    const draft = await callClaudeForObject({
       system: SYSTEM_PROMPT,
       user: buildUserPrompt(deal, 'offer_made'),
+      schema: IgDraftSchema,
       maxTokens: 700,
       temperature: 0.5,
       model: CLAUDE_HAIKU,
       feature: 'ig_post_draft',
-      cacheSystemPrompt: true,
     }).catch((err) => {
       console.warn('[marketer-daily] LLM draft failed for offer', deal.id, err);
       return null;
@@ -168,14 +174,14 @@ export const POST = async (request: Request) => {
 
   // ── Completions → 1× approve_ig_post + 1× approve_case_study ─────────
   for (const deal of completions) {
-    const draft = await callClaudeForJson<IgDraft>({
+    const draft = await callClaudeForObject({
       system: SYSTEM_PROMPT,
       user: buildUserPrompt(deal, 'completed'),
+      schema: IgDraftSchema,
       maxTokens: 700,
       temperature: 0.5,
       model: CLAUDE_HAIKU,
       feature: 'ig_post_draft',
-      cacheSystemPrompt: true,
     }).catch((err) => {
       console.warn('[marketer-daily] LLM draft failed for completion', deal.id, err);
       return null;

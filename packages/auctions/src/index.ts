@@ -54,8 +54,27 @@ export async function getUpcomingAuctions(
 
   const settled = await Promise.allSettled(jobs);
   const all: AuctionLot[] = [];
-  for (const r of settled) {
-    if (r.status === 'fulfilled') all.push(...r.value);
+  const failures: string[] = [];
+  for (const [i, r] of settled.entries()) {
+    if (r.status === 'fulfilled') {
+      all.push(...r.value);
+    } else {
+      // A silently dropped rejection is indistinguishable from a quiet market,
+      // and two of the three sources are stubs that legitimately return
+      // nothing — so "zero lots" is the steady state and a total failure of
+      // the only live source would never surface.
+      failures.push(sources[i] ?? `source_${i}`);
+      console.error(
+        `[auctions] source ${sources[i] ?? i} failed:`,
+        r.reason instanceof Error ? r.reason.message : r.reason
+      );
+    }
+  }
+
+  if (failures.length === settled.length && settled.length > 0) {
+    throw new Error(
+      `all auction sources failed: ${failures.join(', ')} — refusing to report zero lots as a normal result`
+    );
   }
 
   return applyFilters(all, filters);

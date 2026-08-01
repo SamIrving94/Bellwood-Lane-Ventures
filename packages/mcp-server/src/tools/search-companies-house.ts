@@ -3,6 +3,7 @@ import {
   searchCompany,
   searchDissolvedPropertyCompanies,
   filterCompaniesByDistrict,
+  isSyntheticCompaniesHouse,
 } from '@repo/property-data';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 
@@ -37,8 +38,58 @@ export function registerSearchCompaniesHouse(server: McpServer): void {
     searchInputSchema,
     async ({ name }) => {
       const result = await searchCompany(name);
+
+      if (!result) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify(
+                {
+                  query: name,
+                  verified: false,
+                  found: false,
+                  note: 'No Companies House record matched this name (or the lookup was unavailable). This is NOT evidence the company does not exist — report it as "not found", never as "dissolved" or "unverified vendor".',
+                },
+                null,
+                2,
+              ),
+            },
+          ],
+        };
+      }
+
+      if (isSyntheticCompaniesHouse(result)) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify(
+                {
+                  query: name,
+                  verified: false,
+                  found: false,
+                  note: 'COMPANIES_HOUSE_API_KEY is not configured, so no real lookup happened. Do NOT report any company number, status, or address for this name.',
+                },
+                null,
+                2,
+              ),
+            },
+          ],
+        };
+      }
+
       return {
-        content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify(
+              { query: name, verified: true, found: true, company: result },
+              null,
+              2,
+            ),
+          },
+        ],
       };
     },
   );

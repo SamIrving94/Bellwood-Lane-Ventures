@@ -53,9 +53,23 @@ export function createBridge() {
       if (!chat.isGroup) return;
 
       const groupName = chat.name;
-      if (!config.allowedGroups.includes(groupName)) {
+      // Prefer the immutable group id. A display name is neither unique nor
+      // stable — any group admin can rename a group into the allowlist, or
+      // create a new one with the allowlisted name and add our number, and
+      // every message in it would be forwarded to the intake endpoint with a
+      // valid bearer token. Name matching stays as a fallback so existing
+      // ALLOWED_GROUPS values keep working until they are migrated to ids.
+      const groupId = chat.id?._serialized ?? '';
+      const allowedById = groupId && config.allowedGroups.includes(groupId);
+      const allowedByName = config.allowedGroups.includes(groupName);
+      if (!(allowedById || allowedByName)) {
         log.debug(`skipping message from non-allowed group "${groupName}"`);
         return;
+      }
+      if (!allowedById && allowedByName) {
+        log.warn(
+          `group "${groupName}" matched by NAME, not id. Names are mutable — put ${groupId} in ALLOWED_GROUPS instead.`
+        );
       }
 
       const contact = await message.getContact();

@@ -19,6 +19,7 @@ import {
   getEpcData,
   getPropertyDataValuation,
   getPropertyFloorArea,
+  realTransactions,
   type PpdTransaction,
   type Epc,
   type Hpi,
@@ -286,7 +287,15 @@ export async function getBaseValuation(
     }),
   ]);
 
-  const hmlrComps = filterComps(pricePaid.transactions, propertyType, floorAreaSqm);
+  // Real Land Registry sales only — a hash-derived placeholder must never be
+  // presented as a comparable. When the feed was synthetic this empties the
+  // comp set, which drops us onto the `fallback` path below (already tagged
+  // source 'synthetic' + low confidence).
+  const hmlrComps = filterComps(
+    realTransactions(pricePaid.transactions),
+    propertyType,
+    floorAreaSqm,
+  );
 
   // Floor-area resolution — real data or nothing. Priority:
   //   1. Caller-supplied size (a human typed it).

@@ -651,8 +651,11 @@ const DEFAULT_LIST = SOURCED_LIST_TYPES.slice(0, 6).join(',');
 /**
  * Per-list-type probe — call /sourced-properties once per list type,
  * record what works, return a breakdown. Resilient to any single type
- * being invalid for the account. ~3 credits per list type per call,
- * but cached.
+ * being invalid for the account.
+ *
+ * NOT cached: it goes through getSourcedPropertiesRaw, which deliberately
+ * bypasses the cache so the founder sees PropertyData's live answer. Every
+ * run costs ~3 credits per list type.
  */
 export type ListTypeBreakdown = Record<
   SourcedListType,
@@ -689,8 +692,11 @@ export async function probeSourcedByType(
         return;
       }
 
-      const body = raw.body as { result?: { properties?: unknown[] } } | null;
-      const properties = body?.result?.properties;
+      // Properties live at body.properties, NOT body.result.properties —
+      // same path getSourcedProperties() reads. Reading `result.properties`
+      // made every successful probe report 0 on the diagnostic page.
+      const body = raw.body as { properties?: unknown[] } | null;
+      const properties = body?.properties;
       out[t] = {
         count: Array.isArray(properties) ? properties.length : 0,
         error: null,
@@ -735,14 +741,43 @@ export async function getSourcedPropertiesRaw(
   if (opts?.standardisedType) {
     url.searchParams.set('standardised_type', opts.standardisedType);
   }
+  // This raw helper bypasses fetchPropertyData (it must surface the real
+  // status + body, which the wrapper discards), so it has to reproduce the
+  // wrapper's safety rails itself: rate slot, abort timeout, 429 retry.
+  // Without the timeout, probeSourcedByType's 12-way fan-out could wedge the
+  // diagnostic page on a single stalled connection.
+  const controller = new AbortController();
+  let timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
   try {
-    // This raw helper bypasses fetchPropertyData, so gate it on the same limiter.
     await acquireRateSlot();
-    const res = await fetch(url.toString(), { headers: { Accept: 'application/json' } });
+    let res = await fetch(url.toString(), {
+      signal: controller.signal,
+      headers: { Accept: 'application/json' },
+    });
+    if (res.status === 429) {
+      // Same one-shot retry as fetchPropertyData: another instance sharing
+      // the key can collectively blow the 4/10s limit. Fresh timeout budget.
+      await new Promise((r) => setTimeout(r, 2500));
+      await acquireRateSlot();
+      clearTimeout(timer);
+      timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+      res = await fetch(url.toString(), {
+        signal: controller.signal,
+        headers: { Accept: 'application/json' },
+      });
+    }
     const body = await res.json().catch(() => null);
     return { ok: res.ok, status: res.status, body };
   } catch (err) {
+    if ((err as { name?: string })?.name === 'AbortError') {
+      return {
+        ok: false,
+        error: `timed out after ${REQUEST_TIMEOUT_MS}ms`,
+      };
+    }
     return { ok: false, error: (err as Error).message };
+  } finally {
+    clearTimeout(timer);
   }
 }
 

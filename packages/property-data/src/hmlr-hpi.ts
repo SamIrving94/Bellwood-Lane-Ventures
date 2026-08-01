@@ -154,7 +154,29 @@ async function fetchHpiLive(postcode: string): Promise<Hpi> {
     []
   ) as Record<string, unknown>[];
 
-  const latest = (items[0] ?? {}) as Record<string, unknown>;
+  // An empty or reshaped response must not become a confident 0% reading.
+  // `unavailableHpi()` exists to distinguish no-data from real data, but only
+  // the throwing path reached it, so a 200 whose shape had drifted returned
+  // annualChange 0 / trend "stable" still stamped source 'hmlr_hpi' — which
+  // base-valuation then advertises in the seller-visible source string.
+  const latest = items[0] as Record<string, unknown> | undefined;
+  if (!latest) {
+    return unavailableHpi();
+  }
+
+  const hasAnyKnownField =
+    latest.annualChange !== undefined ||
+    latest.percentageChange12m !== undefined ||
+    latest.monthlyChange !== undefined ||
+    latest.percentageChange1m !== undefined ||
+    latest.averagePrice !== undefined ||
+    latest.housePrice !== undefined;
+  if (!hasAnyKnownField) {
+    console.warn(
+      '[property-data/hmlr-hpi] response shape unrecognised — reporting unavailable rather than 0%'
+    );
+    return unavailableHpi();
+  }
 
   const annualChange =
     parseFloat(

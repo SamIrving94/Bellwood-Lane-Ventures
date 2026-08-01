@@ -24,6 +24,7 @@
 
 import type { Hpi } from '@repo/property-data/src/hmlr-hpi';
 import type { PricePaid } from '@repo/property-data/src/hmlr';
+import { isSyntheticPricePaid } from '@repo/property-data/src/hmlr';
 import type { EnrichedLead } from './enrichment';
 import {
   DEFAULT_SCORER_CONFIG,
@@ -288,9 +289,21 @@ function scoreEquityProxy(
 ): { points: number; ceiling: number } {
   if (!lead.estateValuePence) return { points: 0, ceiling: 0 };
   const cap = config.dimensionCaps.roi;
-  const avgAreaPence = pricePaid?.avgPrice ? pricePaid.avgPrice * 100 : null;
+  // Synthetic price-paid records carry a hash-derived avgPrice. Scoring a
+  // lead's equity against an invented area average is worse than scoring it
+  // against nothing, so treat synthetic exactly as "no comparable".
+  const avgAreaPence =
+    pricePaid?.avgPrice && !isSyntheticPricePaid(pricePaid)
+      ? pricePaid.avgPrice * 100
+      : null;
   if (!avgAreaPence) {
-    add(factors, 'Value present, no area comp (ROI pending appraisal)', config.equityNoComparable, 'roi', 'neutral', true);
+    // The label states WHICH of the two happened — "no comparable came back"
+    // and "the comparable that came back was fabricated" are different facts
+    // about this lead, and the founder reads this list as evidence.
+    const label = isSyntheticPricePaid(pricePaid)
+      ? 'Value present, area comp was fallback data — not scored (ROI pending appraisal)'
+      : 'Value present, no area comp (ROI pending appraisal)';
+    add(factors, label, config.equityNoComparable, 'roi', 'neutral', true);
     return {
       points: config.equityNoComparable,
       ceiling: Math.min(cap, config.equityNoComparable),

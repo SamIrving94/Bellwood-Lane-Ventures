@@ -1,9 +1,5 @@
 import { env } from '@/env';
-import {
-  callClaudeForJson,
-  callClaudeForObject,
-  CLAUDE_HAIKU,
-} from '@repo/ai/claude';
+import { callClaudeForObject, CLAUDE_HAIKU } from '@repo/ai/claude';
 import { database } from '@repo/database';
 import { NextResponse } from 'next/server';
 import { z as zod } from 'zod';
@@ -102,17 +98,20 @@ Return ONLY JSON (no markdown fences):
   "complianceFlags": string[]
 }`;
 
-interface IgDraft {
-  caption: string;
-  hashtags: string[];
-  altText: string;
-  anonymisationCheck: {
-    postcodeAreaOnly: boolean;
-    noStreetNumbers: boolean;
-    noVendorName: boolean;
-  };
-  complianceFlags: string[];
-}
+// Schema-constrained like VendorTriageSchema above — `anonymisationCheck` is
+// dereferenced below to build the founder-facing verdict, and a tolerant JSON
+// parse could hand back a draft without it and crash the whole poll.
+const IgDraftSchema = zod.object({
+  caption: zod.string(),
+  hashtags: zod.array(zod.string()),
+  altText: zod.string(),
+  anonymisationCheck: zod.object({
+    postcodeAreaOnly: zod.boolean(),
+    noStreetNumbers: zod.boolean(),
+    noVendorName: zod.boolean(),
+  }),
+  complianceFlags: zod.array(zod.string()),
+});
 
 function postcodeArea(full: string): string {
   const trimmed = full.trim().toUpperCase();
@@ -358,14 +357,14 @@ async function pollFreshOffers(windowStart: Date): Promise<{
       .filter(Boolean)
       .join('\n');
 
-    const draft = await callClaudeForJson<IgDraft>({
+    const draft = await callClaudeForObject({
       system: IG_SYSTEM_PROMPT,
       user: userPrompt,
+      schema: IgDraftSchema,
       maxTokens: 700,
       temperature: 0.5,
       model: CLAUDE_HAIKU,
       feature: 'ig_post_draft_catchup',
-      cacheSystemPrompt: true,
     }).catch((err) => {
       console.warn(`[event-poller] LLM IG catch-up failed for ${deal.id}`, err);
       return null;

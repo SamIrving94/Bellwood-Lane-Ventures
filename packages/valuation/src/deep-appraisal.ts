@@ -32,6 +32,7 @@ import {
   getHousepriceIndex,
   getPricePaid,
   getPropertyDataValuation,
+  realTransactions,
 } from '@repo/property-data';
 import { keys } from '@repo/ai/keys';
 
@@ -170,7 +171,7 @@ Style:
 - Honest about uncertainty. If you don't have the data, say so + put it in unverified[].
 
 Content rules:
-- comparables.selected: 5-8 best comparables from the HMLR price paid history provided. Mark ONE as cleanestMatch=true (the single best benchmark for the subject). Mark outliers excluded=true with a 1-line reason. Time-adjust prices at +0.4%/month for HPI drift when reasoning.
+- comparables.selected: 5-8 best comparables from the HMLR price paid history provided. If the price-paid section says no data is available, return an EMPTY selected[] and never invent sales to fill it. Mark ONE as cleanestMatch=true (the single best benchmark for the subject). Mark outliers excluded=true with a 1-line reason. Time-adjust prices at +0.4%/month for HPI drift when reasoning.
 - arv.pointEstimate: triangulate from the cleanest match + HMLR avg + (if present) PropertyData valuation cross-check. 50% CI tighter (~±5-7%), 80% CI wider (~±12-15%).
 - environment[]: ALWAYS produce exactly 6 entries (coal_mining, radon, flood, knotweed, noise, construction). For UK postcodes you don't have ground-truth on, reason from postcode + known geological knowledge (e.g. North Staffordshire = coalfield, Cornwall = radon). Mark material=true ONLY when the risk would block the bid until verified.
 - bidCap (auction lots only): build a discount stack from ARV. Typical lines: auction risk premium (-5 to -8%), material env risks (-2 to -4% each), refurb-depth contingency (-2 to -4%), profit margin + costs (-10 to -15% combined). Hard cap = ARV × (1 - totalDeduction). Soft target ~3-5% below hard cap.
@@ -202,9 +203,14 @@ async function gatherData(input: DeepAppraisalInput): Promise<AssembledData> {
     }).catch(() => null),
   ]);
 
-  const pricePaidSummary = pricePaid?.transactions?.length
+  // Real Land Registry sales ONLY. getPricePaid falls back to hash-derived
+  // placeholder rows when HMLR is down; those are invented and must never
+  // reach the appraisal prompt under a header that reads like real data.
+  const realSales = realTransactions(pricePaid?.transactions ?? []);
+
+  const pricePaidSummary = realSales.length
     ? `Recent HMLR Price Paid transactions in ${input.postcode} (last 24 months):\n` +
-      pricePaid.transactions
+      realSales
         .slice(0, 25)
         .map(
           (t) =>
@@ -212,11 +218,11 @@ async function gatherData(input: DeepAppraisalInput): Promise<AssembledData> {
         )
         .join('\n') +
       `\n\nPostcode area average price (last 12 months): ${
-        pricePaid.avgPrice
+        pricePaid?.avgPrice
           ? `£${pricePaid.avgPrice.toLocaleString('en-GB')}`
           : 'not computed'
       }`
-    : 'No HMLR Price Paid data returned for this postcode.';
+    : 'No HMLR Price Paid data available for this postcode. You have NO comparables — say so, leave comparables.selected empty, and put the ARV in unverified[].';
 
   const epcSummary = epc?.epcRating
     ? `EPC Register: rating ${epc.epcRating}, floor area ${epc.floorAreaSqm ?? '?'} m², bedrooms ${epc.totalBedrooms ?? '?'}, build era ${epc.constructionAgeBand ?? '?'}.`

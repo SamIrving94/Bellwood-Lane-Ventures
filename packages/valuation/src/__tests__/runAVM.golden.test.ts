@@ -27,6 +27,10 @@ vi.mock('@repo/property-data', () => ({
   getEpcData: vi.fn(),
   getPropertyDataValuation: vi.fn(),
   getPropertyFloorArea: vi.fn(),
+  // Pure provenance filter — keep the REAL implementation. Stubbing it out
+  // would let fabricated comps through the very guard we're locking in.
+  realTransactions: (txs: Array<{ provenance?: string }>) =>
+    txs.filter((t) => t.provenance === 'hmlr_ppd'),
   // Distance-weighted path dependencies. These golden tests lock the
   // Land-Registry fallback math, so we disable the distance path by making
   // the subject ungeocodable (geocodePostcode → null). getSoldPrices is also

@@ -11,6 +11,14 @@ import 'server-only';
 
 import { callClaude } from '@repo/ai/claude';
 import { runAVM, type PropertyType, type SellerType } from '@repo/valuation';
+// Imported from the leaf module rather than the package barrel: offer-config
+// is a pure module (no `server-only`, no AVM pull-through), and keeping it off
+// the barrel specifier means a caller that mocks '@repo/valuation' still gets
+// the real guard-rail constants.
+import {
+  DEFAULT_OFFER_CONFIG,
+  type OfferConfig,
+} from '@repo/valuation/src/offer-config';
 
 // ---------------------------------------------------------------------------
 // Public input/output types
@@ -329,6 +337,87 @@ export async function generateInstantOffer(
     narrative,
     lockedUntil: new Date(Date.now() + 72 * 60 * 60 * 1000),
     requiresReview,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Post-generation adjustment
+// ---------------------------------------------------------------------------
+
+/** Hard bound on the ± preflight adjustment, to stop edge cases compounding. */
+export const MAX_PREFLIGHT_ADJUSTMENT = 0.05;
+
+export interface AdjustedInstantOffer extends InstantOfferResult {
+  /** The adjustment actually applied, after clamping. */
+  appliedAdjustment: number;
+  /** True when the ADJUSTED offer sits below the AVM floor. */
+  belowAvmFloor: boolean;
+}
+
+/**
+ * Apply a PropertyData preflight adjustment to a generated offer and RE-TEST
+ * the AVM floor against the final figure.
+ *
+ * `generateInstantOffer` computes `requiresReview` from the pre-adjustment
+ * offer, which the offer calculator has already clamped to the floor — so on
+ * its own it can never come back under it. Multiplying that figure afterwards
+ * could, and did: a -5% adjustment took a 62%-of-AVM offer to 58.9% with no
+ * escalation card, shipped to the seller as a firm price locked for 72 hours.
+ * The floor is one of the load-bearing safety rails, so it is re-checked here
+ * against the number the seller is actually shown.
+ *
+ * The floor comes from the offer config (the same `floorFraction` the AVM
+ * used), never a literal, so the rail cannot drift from the calculator.
+ */
+export function applyPreflightAdjustment(
+  offer: InstantOfferResult,
+  rawAdjustment: number,
+  config: OfferConfig = DEFAULT_OFFER_CONFIG
+): AdjustedInstantOffer {
+  const appliedAdjustment = Number.isFinite(rawAdjustment)
+    ? Math.max(
+        -MAX_PREFLIGHT_ADJUSTMENT,
+        Math.min(MAX_PREFLIGHT_ADJUSTMENT, rawAdjustment)
+      )
+    : 0;
+
+  const offerPence =
+    appliedAdjustment === 0
+      ? offer.offerPence
+      : Math.round(offer.offerPence * (1 + appliedAdjustment));
+
+  // avmLow/avmHigh are symmetric around the AVM point estimate, so the mid
+  // point IS the point estimate `offerPercentOfAvm` was measured against.
+  const avmMidPence =
+    (offer.estimatedMarketValueMinPence + offer.estimatedMarketValueMaxPence) /
+    2;
+
+  const offerPercentOfAvm =
+    avmMidPence > 0
+      ? Math.round((offerPence / avmMidPence) * 1000) / 1000
+      : offer.offerPercentOfAvm;
+
+  const belowAvmFloor =
+    avmMidPence > 0 && offerPence < avmMidPence * config.floorFraction;
+
+  // Only add the line when the adjustment is what pushed it under — the base
+  // generator already pushed its own line when the AVM escalated.
+  const newlyBelowFloor =
+    belowAvmFloor && offer.offerPercentOfAvm >= config.floorFraction;
+
+  return {
+    ...offer,
+    offerPence,
+    offerPercentOfAvm,
+    appliedAdjustment,
+    belowAvmFloor,
+    reasoning: newlyBelowFloor
+      ? [
+          ...offer.reasoning,
+          `Preflight adjustment puts the offer at ${Math.round(offerPercentOfAvm * 100)}% of AVM — below the ${Math.round(config.floorFraction * 100)}% floor. Founder review required before commitment.`,
+        ]
+      : offer.reasoning,
+    requiresReview: offer.requiresReview || belowAvmFloor,
   };
 }
 

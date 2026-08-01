@@ -640,13 +640,21 @@ function overlayApiCitations(
   extract: ProbateExtract,
   apiCitations: Citation[],
 ): void {
+  // Substring matching in either direction let a short or generic model
+  // excerpt claim the page number of almost any genuinely cited span, so a
+  // field the document never granted could be shown with a real-looking
+  // citation. Require the model's excerpt to be long enough to be evidence,
+  // and to actually appear inside the API-cited text — never the reverse.
+  const MIN_EXCERPT_CHARS = 24;
+
   const refine = (c: Citation): Citation => {
-    const match = apiCitations.find(
-      (api) =>
-        api.excerpt.includes(c.excerpt) || c.excerpt.includes(api.excerpt),
-    );
+    const excerpt = (c.excerpt ?? '').trim();
+    if (excerpt.length < MIN_EXCERPT_CHARS) return c;
+
+    const match = apiCitations.find((api) => api.excerpt.includes(excerpt));
     if (!match) return c;
-    return { pageIndex: match.pageIndex, excerpt: c.excerpt || match.excerpt };
+    // Keep the API's excerpt: it is the text the provider actually cited.
+    return { pageIndex: match.pageIndex, excerpt: match.excerpt };
   };
 
   const refineCitedValue = <T>(v: CitedValue<T> | null): CitedValue<T> | null =>
