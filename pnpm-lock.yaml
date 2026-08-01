@@ -749,6 +749,9 @@ importers:
 
   packages/deal-updates:
     dependencies:
+      '@repo/brand':
+        specifier: workspace:*
+        version: link:../brand
       '@repo/database':
         specifier: workspace:*
         version: link:../database

@@ -8,6 +8,7 @@
 
 import 'server-only';
 
+import { brand } from '@repo/brand';
 import type { DealUpdateKind } from '@repo/database';
 
 export type UpdateEmailContext = {
@@ -34,7 +35,7 @@ const KIND_COPY: Record<
   },
   offer_accepted: {
     eyebrow: 'Offer accepted',
-    subjectPrefix: 'Welcome to Bellwoods Lane',
+    subjectPrefix: `Welcome to ${brand.name}`,
   },
   offer_declined: {
     eyebrow: 'Offer declined',
@@ -137,7 +138,7 @@ export function renderUpdateEmail(ctx: UpdateEmailContext): {
   const html = `
     <div style="font-family:Inter,Arial,sans-serif;max-width:560px;margin:0 auto;padding:32px;background:#FAFAF7;color:#0A1020">
       <p style="font-family:Georgia,serif;font-size:22px;font-weight:600;color:#0A2540;letter-spacing:-0.02em;margin:0">
-        BELLWOODS LANE
+        ${escapeHtml(brand.mark)}
       </p>
       <p style="margin:24px 0 0;font-family:'Courier New',monospace;font-size:11px;letter-spacing:0.18em;text-transform:uppercase;color:#C6A664">
         ${escapeHtml(copy.eyebrow)}
@@ -167,13 +168,13 @@ export function renderUpdateEmail(ctx: UpdateEmailContext): {
         email or call us directly.
       </p>
       <p style="margin:32px 0 0;font-family:'Courier New',monospace;font-size:11px;color:#94A3B8;border-top:1px solid #E5E7EB;padding-top:16px">
-        Bellwoods Lane Ltd · NAPB · TPO · HMRC AML supervised
+        ${escapeHtml(brand.legalName)} · NAPB · TPO · HMRC AML supervised
       </p>
     </div>
   `;
 
   const text = [
-    `BELLWOODS LANE`,
+    brand.mark,
     `${copy.eyebrow.toUpperCase()}`,
     ``,
     ctx.title,

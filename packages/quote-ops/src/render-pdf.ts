@@ -169,7 +169,7 @@ function BindingOfferDocument(
       React.createElement(
         Text,
         { style: styles.company },
-        `${brand.legalName} · registered in England & Wales`
+        `${brand.legalName} · registered in England & Wales · Company No. ${brand.companyNumber}`
       ),
       React.createElement(View, { style: styles.rule }),
       React.createElement(
@@ -336,7 +336,7 @@ function BindingOfferDocument(
       React.createElement(
         Text,
         { style: styles.footer },
-        `${brand.legalName}. Registered in England & Wales. This is a binding offer issued pursuant to the Consumer Protection from Unfair Trading Regulations 2008 and is subject to the carve-outs above.`
+        `${brand.legalName} (trading as ${brand.name}). Registered in England & Wales, Company No. ${brand.companyNumber}. This is a binding offer issued pursuant to the Consumer Protection from Unfair Trading Regulations 2008 and is subject to the carve-outs above.`
       )
     )
   );

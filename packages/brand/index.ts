@@ -34,6 +34,8 @@ export type BrandIdentity = {
   mark: string;
   /** Registered/trading entity for legal copy and documents. */
   legalName: string;
+  /** Companies House registration number of the entity behind the brand. */
+  companyNumber: string;
   domain: string;
   url: string;
   email: string;
@@ -43,14 +45,19 @@ export type BrandIdentity = {
 
 /**
  * Kept. — the target identity.
- * Legal/trading entity is TBC (trademark class 36 search pending); until it is
- * incorporated, `legalName` intentionally mirrors the trading name.
+ * "Kept" is a trading name, not a registered company: the entity behind it is
+ * BELLWOODS LANE VENTURES LTD (Companies House 16454416, incorporated
+ * 2025-05-15, registered office 20 Wenlock Road, London N1 7GU — verified
+ * against the register 2026-07-31). Legal copy and binding documents must name
+ * the registered entity, so `legalName` carries it until/unless a Kept entity
+ * is incorporated.
  */
 export const KEPT: BrandIdentity = {
   name: 'Kept',
   shortName: 'Kept',
   mark: 'kept.',
-  legalName: 'Kept',
+  legalName: 'Bellwoods Lane Ventures Ltd',
+  companyNumber: '16454416',
   domain: 'wearekept.co.uk',
   url: 'https://wearekept.co.uk',
   email: 'hello@wearekept.co.uk',
@@ -62,7 +69,10 @@ export const KEPT: BrandIdentity = {
  * production today (including the two pre-existing inconsistencies, so that
  * `'legacy'` output is unchanged):
  *   • public site says "Bellwood**s** Lane" (with the s)
- *   • the legal entity + offer PDF say "Bellwood Lane Ventures Ltd" (no s)
+ *   • the legal entity + offer PDF say "Bellwood Lane Ventures Ltd" (no s) —
+ *     which does not match the register: the company is BELLWOODS LANE
+ *     VENTURES LTD (16454416). Kept as-is here because this object records
+ *     what legacy production actually printed.
  *   • the PDF's deals address is @bellwoodlane.co.uk (no s)
  * The rebrand resolves all of this to the single clean Kept. identity above.
  */
@@ -71,6 +81,7 @@ export const BELLWOODS: BrandIdentity = {
   shortName: 'Bellwood',
   mark: 'Bellwoods Lane',
   legalName: 'Bellwood Lane Ventures Ltd',
+  companyNumber: '16454416',
   domain: 'bellwoodslane.co.uk',
   url: 'https://bellwoodslane.co.uk',
   email: 'hello@bellwoodslane.co.uk',
