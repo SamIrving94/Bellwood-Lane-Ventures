@@ -255,7 +255,7 @@ function BindingOfferDocument(
         React.createElement(
           Text,
           { style: { fontSize: 9, marginTop: 4 } },
-          `Walk-away cover £1,000. Completion target 14–28 days from acceptance.`
+          `Completion target 14–28 days from acceptance.`
         )
       ),
 
@@ -268,16 +268,6 @@ function BindingOfferDocument(
         Text,
         { style: styles.paragraph },
         `This offer is binding on ${brand.legalName} subject only to the carve-outs below. There is no chain. There is no mortgage finance condition. Funds are confirmed prior to instruction.`
-      ),
-      React.createElement(
-        Text,
-        { style: { ...styles.paragraph, ...styles.label } },
-        'Walk-away cover'
-      ),
-      React.createElement(
-        Text,
-        { style: styles.paragraph },
-        'If we withdraw from this transaction for any reason not explicitly carved out below, we will pay £1,000 to the seller within 5 working days as compensation for fees and time.'
       ),
       React.createElement(
         Text,

@@ -118,7 +118,9 @@ like:
   entity + company number + VAT in plain text). Kept's footer now carries
   the real entity line — pair it with clickable PRS/ICO verification the
   same way. Also "No Move, No Legal Fee" — a risk-reversal promise in five
-  words; Kept's £1,000 walk-away cover deserves that prominence.
+  words. (Kept's former £1,000 walk-away cover was retired in the July
+  2026 terms review, so the risk-reversal to promote is the no-fee,
+  walk-away-free-before-exchange promise instead.)
 
 **Skip:** branded tier names, exclamation marks, stock lifestyle photos,
 "we aim to" hedges next to headline claims.
@@ -172,8 +174,9 @@ chain's health at a glance for a busy negotiator.
 4. Proof band: one claim + one third-party proof per card; PRS/ICO links
    clickable (Monzo, Muve's footer).
 5. Phone-line block with faces and hours (Farewill).
-6. Risk-reversal (£1,000 walk-away cover) promoted to five plain words
-   near the CTA (the one good Muve idea).
+6. Risk-reversal promoted to five plain words near the CTA (the one good
+   Muve idea): no fee, walk away free before exchange. (The £1,000
+   walk-away cover is retired — do not use it.)
 
 **Agent portal (/agents, /agents/score):**
 - B2B register stays documentary: the agent's job is protecting a deal at
