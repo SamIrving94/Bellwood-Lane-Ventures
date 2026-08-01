@@ -236,8 +236,9 @@ WhatsApp/email-ready vendor link. They now expect a **signed PDF in
 3. **Draft the signed offer PDF.** Template:
    `docs/templates/binding-offer-letter.md` (write it if not yet present —
    CTO agent's job to scaffold). Include: address, agent firm, indicative
-   figure, enriched figure, completion timeline, walk-away cover (£1,000
-   + costs), RICS-defect carve-out, methodology reference, signature line.
+   figure, enriched figure, completion timeline, RICS-defect carve-out,
+   methodology reference, signature line. (Walk-away cover was retired in
+   the July 2026 terms review — never include it.)
    Stash the PDF in Vercel Blob, attach via `notesAppend` URL.
 
 **Within 2 working hours:**

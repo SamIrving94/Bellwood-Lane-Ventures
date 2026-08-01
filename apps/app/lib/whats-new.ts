@@ -26,6 +26,48 @@ export type WhatsNewEntry = {
 /** Newest first. The popup shows index 0. */
 export const WHATS_NEW: WhatsNewEntry[] = [
   {
+    id: '2026-08-01-sell-page-shows-its-maths',
+    date: '2026-08-01',
+    emoji: '🧮',
+    title: 'The seller page now shows its maths',
+    intro:
+      'Design-review round one shipped: the honest breakdown, real proof, a real face.',
+    bullets: [
+      {
+        emoji: '🧮',
+        text: 'New **"The maths"** section on /sell — market estimate → **our margin, named** → the figure we sign. The agent route is shown beside it and **wins the price line on purpose**.',
+      },
+      {
+        emoji: '🧾',
+        text: 'A **proof band** on /sell and /agents — one claim, one clickable third-party proof (PRS, TPO, HMRC AML, ICO). No more take-our-word-for-it.',
+      },
+      {
+        emoji: '🙋',
+        text: '**Anthony’s face is on the page** — "Software does the maths. A person makes the promise."',
+      },
+      {
+        emoji: '📖',
+        text: 'New **/probate guide** for executors — six plain-English steps, the two deadlines that bite, and where we honestly fit (and don’t).',
+      },
+      {
+        emoji: '📍',
+        text: 'Agents get the **live-timeline story** — one link, seller, agent and solicitor all see the same page.',
+      },
+      {
+        emoji: '🚫',
+        text: 'The old **£1,000 walk-away cover is retired everywhere** — offer PDF, emails, docs — matching the July terms review.',
+      },
+      {
+        emoji: '🚪',
+        text: 'The **front door is fixed** — typing the bare domain now lands sellers on the seller page, not the agent pitch. Full UX review in `docs/UX-REVIEW-2026-08.md`.',
+      },
+      {
+        emoji: '🔏',
+        text: 'A real **privacy notice** now lives at /legal/privacy — the ICO claim finally has the page to back it up.',
+      },
+    ],
+  },
+  {
     id: '2026-07-30-dashboard-wears-kept',
     date: '2026-07-30',
     emoji: '🌿',

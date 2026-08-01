@@ -1,7 +1,9 @@
-import { redirect } from 'next/navigation';
+import { permanentRedirect } from 'next/navigation';
 
-// /instant-offer is the historic URL — site is now split by audience.
-// Default to the agent-first surface; sellers go via /sell.
+// /instant-offer is the historic product URL (it appears in old collateral
+// and emails). The site is split by audience now; the seller surface is the
+// canonical successor. Permanent (308) so search equity follows. Sub-routes
+// (methodology, offer/[id], the print docs) remain real pages.
 export default function InstantOfferRedirect() {
-  redirect('/agents');
+  permanentRedirect('/sell');
 }

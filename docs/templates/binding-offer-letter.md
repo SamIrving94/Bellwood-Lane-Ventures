@@ -41,10 +41,6 @@ Following our review of the property at **{{address}}, {{postcode}}** introduced
 
 This offer is binding on Bellwood Lane Ventures Ltd subject only to the carve-outs below. There is no chain. There is no mortgage finance condition. Funds are confirmed prior to instruction.
 
-### Walk-away cover
-
-If we withdraw from this transaction for any reason **not** explicitly carved out below, we will pay **{{walkAwayCoverFormatted}}** to the seller within 5 working days of withdrawal as compensation for fees and time. This walk-away cover is paid into the seller's solicitor's client account.
-
 ### RICS-defect carve-out
 
 This offer is conditional on no major undisclosed defect being identified by an independent RICS Level 2 (HomeBuyer) or Level 3 (Building) survey instructed by Bellwood within 7 days of acceptance. A "major undisclosed defect" means any defect that:
@@ -52,7 +48,11 @@ This offer is conditional on no major undisclosed defect being identified by an 
 1. Was not disclosed in the property information form, the agent listing, or the seller's pre-contract questionnaire; **and**
 2. Has an estimated remediation cost of **5% or more of the offer value** as confirmed by the surveyor.
 
-Where a major undisclosed defect is identified, Bellwood may either (a) renegotiate the offer in proportion to the remediation cost, or (b) withdraw without triggering the walk-away cover above.
+Where a major undisclosed defect is identified, Bellwood may either (a) renegotiate the offer in proportion to the remediation cost, or (b) withdraw.
+
+> **Note (2026-08):** the former "walk-away cover" (£1,000 compensation on
+> uncarved withdrawal) was retired in the July 2026 terms review. It must not
+> appear in offers, emails, or marketing copy.
 
 ### Title and legal carve-outs
 

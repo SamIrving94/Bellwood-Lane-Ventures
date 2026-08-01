@@ -81,7 +81,7 @@ export async function sendSignedOffer(
       '',
       `Attached is our signed binding offer for ${quote.address} at ${offerFormatted}.`,
       '',
-      'Walk-away cover of £1,000 applies if anything changes our side after acceptance. Subject only to the carve-outs in the letter, this is firm cash, no chain, no finance condition.',
+      'Subject only to the carve-outs in the letter, this is firm cash, no chain, no finance condition.',
       '',
       'Reply if anything needs adjusting and we will respond before the next working day.',
       '',
