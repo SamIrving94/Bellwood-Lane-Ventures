@@ -139,9 +139,20 @@ export const POST = async (request: Request) => {
               to: contact.email,
               skipped: result.reason,
             });
-            // Still advance recipient — the skip is intentional (no token in
-            // dev/staging). In production this branch shouldn't hit.
-          } else {
+            // Nothing was delivered, so put the recipient back to pending and
+            // move on. Advancing to 'sent' here burned the whole list: the
+            // recipient query only ever selects 'pending', so a skipped send
+            // was never retried, while the run reported it as auto-sent. The
+            // old comment assumed this branch could not fire in production —
+            // it fires whenever RESEND_TOKEN or RESEND_FROM is unset, which is
+            // a config state, not a dev-only one.
+            await database.outreachRecipient.update({
+              where: { id: recipient.id },
+              data: { status: 'pending' },
+            });
+            continue;
+          }
+          {
             sendResults.push({
               recipientId: recipient.id,
               campaignId: campaign.id,

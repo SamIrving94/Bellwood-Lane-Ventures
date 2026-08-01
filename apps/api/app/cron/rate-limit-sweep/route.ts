@@ -29,3 +29,6 @@ export const POST = async (request: Request) => {
 
   return NextResponse.json({ ok: true, deleted: count, cutoff });
 };
+
+// Vercel cron sends GET by default.
+export const GET = POST;
