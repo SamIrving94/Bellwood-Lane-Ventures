@@ -386,11 +386,27 @@ export async function POST(request: Request) {
               `⚠ SHORT LEASE: ${preflight.tenure.remainingLeaseYears ?? '?'} years remaining — Appraiser must confirm before binding offer.`,
             ]
           : []),
+        ...(preflight?.degraded
+          ? [
+              `⚠ PREFLIGHT DEGRADED: ${preflight.failedSources.join(', ')} could not be checked — the offer omits those factors rather than assuming they are clear.`,
+            ]
+          : []),
+        ...(preflight === null
+          ? [
+              '⚠ PREFLIGHT UNAVAILABLE: EPC, tenure and market checks did not run.',
+            ]
+          : []),
       ],
       // Force review if preflight surfaced a short-lease leasehold — we
-      // don't auto-commit to those without founder eyeballs.
+      // don't auto-commit to those without founder eyeballs. Same for a
+      // DEGRADED preflight: a lookup that failed is not a lookup that came
+      // back clear, and the untested factors (short lease, low EPC) are the
+      // ones that would have pushed the offer DOWN.
       requiresReview:
-        adjusted.requiresReview || !!preflight?.tenure.isShortLease,
+        adjusted.requiresReview ||
+        !!preflight?.tenure.isShortLease ||
+        !!preflight?.degraded ||
+        preflight === null,
     };
 
     // Persist offer

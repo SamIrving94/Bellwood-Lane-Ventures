@@ -1099,13 +1099,37 @@ export async function runScoutingPipeline(
       remainingLeaseYears: number | null;
     }
   >();
+  // Enrichment failures are additive-only, but they must still be COUNTED.
+  // These lookups now throw on a failed call instead of returning empty, so a
+  // postcode whose EPC/tenure lookups all 429'd used to enter scoring as
+  // "EPC unknown, tenure unknown" — indistinguishable from a postcode we
+  // genuinely have no records for.
+  let enrichmentFailures = 0;
+  let firstEnrichmentError: string | null = null;
+  const noteEnrichmentFailure = (err: unknown) => {
+    enrichmentFailures++;
+    firstEnrichmentError ??= (err as Error)?.message?.slice(0, 150) ?? 'failed';
+  };
+
   for (const pc of uniquePostcodes) {
     try {
       const [demo, flood, epcs, tenures] = await Promise.all([
-        getDemographics(pc).catch(() => null),
-        getFloodRisk(pc).catch(() => null),
-        getEpcByPostcode(pc).catch(() => []),
-        getTenureByPostcode(pc).catch(() => []),
+        getDemographics(pc).catch((e) => {
+          noteEnrichmentFailure(e);
+          return null;
+        }),
+        getFloodRisk(pc).catch((e) => {
+          noteEnrichmentFailure(e);
+          return null;
+        }),
+        getEpcByPostcode(pc).catch((e) => {
+          noteEnrichmentFailure(e);
+          return [];
+        }),
+        getTenureByPostcode(pc).catch((e) => {
+          noteEnrichmentFailure(e);
+          return [];
+        }),
       ]);
 
       const floodResult = (flood as { result?: Record<string, string> } | null)
@@ -1149,9 +1173,15 @@ export async function runScoutingPipeline(
         tenure,
         remainingLeaseYears: minLeaseYears,
       });
-    } catch {
-      // Silent — risk enrichment is additive, not required
+    } catch (err) {
+      // Risk enrichment is additive, not required — but no longer silent.
+      noteEnrichmentFailure(err);
     }
+  }
+
+  if (enrichmentFailures > 0) {
+    sourceErrors.enrichment = `${enrichmentFailures} enrichment lookup(s) failed across ${uniquePostcodes.length} postcode(s): ${firstEnrichmentError}`;
+    console.warn(`[scouting] ${sourceErrors.enrichment}`);
   }
 
   // Step 4 — Score leads (fan-out postcode lookups)

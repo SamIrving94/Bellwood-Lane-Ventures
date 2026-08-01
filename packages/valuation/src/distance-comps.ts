@@ -103,11 +103,19 @@ export async function getDistanceWeightedValuation(
   if (!subject) return null;
 
   // 2. Pull a wide net of recent same-type, same-bedroom sold comps.
+  // A failed lookup throws; we fall back to the HMLR exact-postcode path (the
+  // same route as "no comps"), but log it so the two aren't confused in triage.
   const sold = await getSoldPrices(input.postcode, {
     maxAgeMonths,
     type: input.propertyType,
     bedrooms: input.bedrooms,
     points: 100,
+  }).catch((err) => {
+    console.warn(
+      `[distance-comps] sold-prices unavailable for ${input.postcode} — falling back to HMLR comps`,
+      err,
+    );
+    return null;
   });
   if (!sold || sold.transactions.length === 0) return null;
 
