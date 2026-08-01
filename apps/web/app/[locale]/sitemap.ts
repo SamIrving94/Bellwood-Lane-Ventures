@@ -9,6 +9,9 @@ const base = new URL(
 );
 
 const sitemap = async (): Promise<MetadataRoute.Sitemap> => [
+  { url: new URL('/sell', base).href, lastModified: new Date() },
+  { url: new URL('/probate', base).href, lastModified: new Date() },
+  { url: new URL('/agents', base).href, lastModified: new Date() },
   { url: new URL('/instant-offer', base).href, lastModified: new Date() },
   {
     url: new URL('/instant-offer/methodology', base).href,
