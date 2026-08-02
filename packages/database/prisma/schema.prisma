@@ -592,7 +592,9 @@ enum QuoteRole {
 
 model QuoteRequest {
   id               String       @id @default(cuid())
-  source           String // "public_web", "agent_portal", "api"
+  // "public_web" | "agent_portal" | "agent_quick_form" | "api"
+  // Paid-ads sources: "meta_lead_ad" | "messenger" | "google_search"
+  source           String
   referralCode     String?
   contactName      String
   contactEmail     String
@@ -614,12 +616,45 @@ model QuoteRequest {
   offer            QuoteOffer?  @relation(fields: [offerId], references: [id])
   dealUpdates      DealUpdate[]
   trackToken       TrackToken?
-  createdAt        DateTime     @default(now())
-  updatedAt        DateTime     @updatedAt
 
+  // ─── Paid-ads attribution ──────────────────────────────────────────
+  // Filled from the ad-click UTMs (web form) or from the ad platform's
+  // lead webhook (/agents/ads-intake). These have to be written at
+  // creation time: a lead that lands untagged can never be attributed
+  // retrospectively, and every budget-reallocation decision — which
+  // channel, which persona, which creative to keep funding — reads from
+  // these columns.
+  adPlatform    String? // "meta" | "google" | "bing" | "nextdoor"
+  adExternalId  String? // the platform's own lead/form id — used to dedupe webhook replays
+  adCampaignRef String? // platform campaign id
+  adSetRef      String? // platform ad set / ad group id
+  adCreativeRef String? // platform ad / creative id
+  utmSource     String?
+  utmMedium     String?
+  utmCampaign   String?
+  utmContent    String?
+  utmTerm       String?
+  landingPath   String? // path the click landed on, for message-match analysis
+
+  // ─── Qualification ─────────────────────────────────────────────────
+  // "Qualified" means the founder has actually spoken to this person.
+  // The headline paid-ads metric is cost-per-QUALIFIED-lead, not
+  // cost-per-lead — a cheap lead that never reaches a conversation is
+  // worth nothing, and optimising on raw lead volume buys more of them.
+  qualified   Boolean   @default(false)
+  qualifiedAt DateTime?
+  qualifiedBy String? // Clerk userId of whoever marked it
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([adPlatform, adExternalId])
   @@index([status])
   @@index([postcode])
   @@index([referralCode])
+  @@index([adPlatform, createdAt])
+  @@index([utmCampaign])
+  @@index([qualified, createdAt])
 }
 
 model QuoteOffer {
