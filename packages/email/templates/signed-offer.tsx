@@ -46,9 +46,8 @@ export const SignedOfferEmail = ({
             </Text>
 
             <Text className="text-[#4c5a50]">
-              Walk-away cover of £1,000 applies if anything changes our side
-              after acceptance. Subject only to the carve-outs in the letter,
-              this is firm cash, no chain, no finance condition.
+              Subject only to the carve-outs in the letter, this is firm cash,
+              no chain, no finance condition.
             </Text>
 
             <Text className="text-[#4c5a50]">

@@ -7,6 +7,9 @@ import {
   SectionNumber,
   Wordmark,
 } from '@/components/brand';
+import { OfferBreakdown } from '@/components/offer-breakdown';
+import { ProofBand } from '@/components/proof-band';
+import Image from 'next/image';
 import Link from 'next/link';
 import { Suspense } from 'react';
 import { ChatFlow } from '../instant-offer/components/chat-flow';
@@ -69,6 +72,7 @@ const FAQ: Array<{ q: string; a: string }> = [
 
 const NAV = [
   { href: '#how', label: 'How it works' },
+  { href: '#maths', label: 'The maths' },
   { href: '#faq', label: 'FAQ' },
   { href: '/instant-offer/methodology', label: 'Methodology' },
   { href: '/agents', label: 'For agents' },
@@ -221,6 +225,15 @@ export default function SellPage() {
               </div>
             ))}
           </div>
+          <p className="mt-8 text-[14px] text-stone-600">
+            Dealing with probate and not sure what happens next?{' '}
+            <Link
+              href="/probate"
+              className="text-leaf underline decoration-leaf/50 underline-offset-4 hover:decoration-leaf"
+            >
+              Read our plain-English guide for executors →
+            </Link>
+          </p>
         </div>
       </section>
 
@@ -302,6 +315,33 @@ export default function SellPage() {
         </div>
       </section>
 
+      {/* ————— THE MATHS (OFFER BREAKDOWN) ————— */}
+      <section
+        id="maths"
+        className="border-hair/70 border-b bg-soft px-6 py-24 md:px-12 md:py-28"
+      >
+        <div className="mx-auto max-w-6xl">
+          <div className="mb-12 max-w-3xl">
+            <SectionNumber>02</SectionNumber>
+            <Eyebrow tone="wax" className="mt-5">
+              the honest version
+            </Eyebrow>
+            <h2 className="mt-4 font-semibold font-serif text-4xl leading-[1.05] tracking-[-0.02em] md:text-5xl">
+              Where the number{' '}
+              <span className="font-normal text-brand italic">
+                actually comes from.
+              </span>
+            </h2>
+            <p className="mt-6 max-w-2xl text-[15px] text-stone-700 leading-relaxed">
+              We buy below open-market value. On purpose, and we say so. Here
+              is the whole trade, side by side — including the route that
+              beats us on price.
+            </p>
+          </div>
+          <OfferBreakdown />
+        </div>
+      </section>
+
       {/* ————— THE OFFER (CHAT) ————— */}
       <section
         id="offer"
@@ -321,6 +361,47 @@ export default function SellPage() {
           <Suspense fallback={<div className="h-96" />}>
             <ChatFlow defaultRole="seller" />
           </Suspense>
+        </div>
+      </section>
+
+      {/* ————— A PERSON, NOT A PIPELINE ————— */}
+      <section className="border-hair/70 border-b bg-white px-6 py-20 md:px-12 md:py-24">
+        <div className="mx-auto grid max-w-5xl grid-cols-1 items-center gap-10 md:grid-cols-[260px_1fr] md:gap-14">
+          <figure className="mx-auto w-[220px] md:w-full">
+            <div className="overflow-hidden rounded-[2px] border border-hair shadow-[0_24px_48px_-28px_rgba(36,28,26,0.45)]">
+              <Image
+                src="/team/anthony-taylor.jpg"
+                alt="Anthony Taylor of Kept"
+                width={900}
+                height={1349}
+                className="h-auto w-full"
+              />
+            </div>
+            <figcaption className="mt-3 text-center font-serif text-[13px] text-stone-500 italic md:text-left">
+              Anthony Taylor &middot; Kept
+            </figcaption>
+          </figure>
+          <div>
+            <Eyebrow tone="muted">a person, not a pipeline</Eyebrow>
+            <h2 className="mt-4 font-semibold font-serif text-3xl leading-tight tracking-[-0.02em] md:text-5xl">
+              Software does the maths.{' '}
+              <span className="font-normal text-brand italic">
+                A person makes the promise.
+              </span>
+            </h2>
+            <p className="mt-6 max-w-xl text-[15px] text-stone-600 leading-relaxed">
+              Comparable sales, title records, market trend — the desk research
+              is automated, which is why it&rsquo;s fast. The judgment
+              isn&rsquo;t. Nothing is sent to you until a person has read it
+              and put their name to it, and when you write to us, it&rsquo;s
+              Anthony who reads it. Same-day response, Monday to Friday.
+            </p>
+            <div className="mt-8">
+              <Button href="#offer" variant="secondary">
+                Start with the address
+              </Button>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -379,6 +460,9 @@ export default function SellPage() {
           </dl>
         </div>
       </section>
+
+      {/* ————— PROOF BAND ————— */}
+      <ProofBand />
 
       {/* ————— FAQ ————— */}
       <section
@@ -526,6 +610,9 @@ export default function SellPage() {
                 className="hover:text-brand-deep"
               >
                 What we won&rsquo;t buy
+              </Link>
+              <Link href="/probate" className="hover:text-brand-deep">
+                Probate guide
               </Link>
               <Link href="/agents" className="hover:text-brand-deep">
                 For agents

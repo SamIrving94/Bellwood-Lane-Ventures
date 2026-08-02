@@ -29,7 +29,18 @@ export const metadata: Metadata = {
   },
 };
 
-export default function SaveTheSalePage() {
+export default async function SaveTheSalePage({
+  searchParams,
+}: {
+  searchParams: Promise<{
+    address?: string;
+    postcode?: string;
+    situation?: string;
+  }>;
+}) {
+  // The Kept Score form hands its fields over via query params so the agent
+  // never re-types what they just entered.
+  const { address, postcode, situation } = await searchParams;
   return (
     <div
       className={`${fraunces.variable} ${inter.variable} min-h-screen bg-cream font-sans text-forest antialiased`}
@@ -113,7 +124,12 @@ export default function SaveTheSalePage() {
             </p>
           </div>
           <div>
-            <AgentQuickForm defaultTriggerLabel="Buyer pulled out" />
+            <AgentQuickForm
+              defaultTriggerLabel={situation ? undefined : 'Buyer pulled out'}
+              defaultTriggerApi={situation}
+              defaultAddress={address}
+              defaultPostcode={postcode}
+            />
           </div>
         </div>
       </section>

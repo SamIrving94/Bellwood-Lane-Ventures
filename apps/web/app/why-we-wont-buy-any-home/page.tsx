@@ -1,4 +1,5 @@
-import { LogoLockup, Wordmark } from '@/components/brand';
+import { Wordmark } from '@/components/brand';
+import { SiteHeader } from '@/components/site-header';
 import type { Metadata } from 'next';
 import { Fraunces, Inter } from 'next/font/google';
 import Link from 'next/link';
@@ -101,18 +102,18 @@ const SITUATIONS_WE_BUY_FROM: Array<{
 }> = [
   {
     situation: 'Chain break / buyer pulled out',
-    route: 'Use the form on /save-the-sale',
+    route: 'Use the save-the-sale form',
     href: '/save-the-sale',
   },
   {
     situation: 'Mortgage refused / survey down-valued',
-    route: 'Use the form on /save-the-sale',
+    route: 'Use the save-the-sale form',
     href: '/save-the-sale',
   },
   {
     situation: 'Probate',
-    route: 'Send us the address and the grant status',
-    href: '/sell',
+    route: 'Start with the executors’ guide',
+    href: '/probate',
   },
   {
     situation: 'Problem property',
@@ -121,7 +122,7 @@ const SITUATIONS_WE_BUY_FROM: Array<{
   },
   {
     situation: 'Distressed sale (financial, divorce, repossession risk)',
-    route: 'Read our distress page first, then email',
+    route: 'Read who we’re wrong for below, then get an offer',
     href: '/sell',
   },
 ];
@@ -132,22 +133,9 @@ export default function WhyWeWontBuyAnyHomePage() {
       className={`${fraunces.variable} ${inter.variable} min-h-screen bg-cream font-sans text-forest antialiased`}
     >
       {/* ————— HEADER ————— */}
-      <header className="border-stone-200/60 border-b bg-white">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4 md:px-10">
-          <LogoLockup href="/" wordmarkClassName="text-lg md:text-xl" />
-          <nav className="hidden items-center gap-6 text-[13px] text-stone-600 md:flex">
-            <Link href="/agents" className="hover:text-leaf">
-              For agents
-            </Link>
-            <Link href="/sell" className="hover:text-leaf">
-              For sellers
-            </Link>
-            <Link href="/save-the-sale" className="hover:text-leaf">
-              Save a sale
-            </Link>
-          </nav>
-        </div>
-      </header>
+      {/* Shared site header — LogoLockup plus the one canonical nav, which
+          already carries the three links this page used to hand-roll. */}
+      <SiteHeader />
 
       {/* ————— HERO ————— */}
       <section className="px-6 pt-16 pb-12 md:px-12 md:pt-24 md:pb-16">
@@ -358,10 +346,10 @@ export default function WhyWeWontBuyAnyHomePage() {
             </nav>
           </div>
           <p className="mt-10 font-mono text-[11px] text-stone-500 leading-relaxed">
-            Kept is a UK cash property buyer, not an
-            FCA-authorised firm. We do not provide financial or legal advice.
-            Seek independent legal and debt advice before accepting any offer.
-            All offers are subject to satisfactory survey and title searches.
+            Kept is a UK cash property buyer, not an FCA-authorised firm. We do
+            not provide financial or legal advice. Seek independent legal and
+            debt advice before accepting any offer. All offers are subject to
+            satisfactory survey and title searches.
           </p>
           <p className="mt-4 font-mono text-[11px] text-stone-400">
             © {new Date().getFullYear()} Kept.

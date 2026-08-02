@@ -1,28 +1,21 @@
-import { LogoLockup } from '@/components/brand';
+import { SiteHeader } from '@/components/site-header';
 import type { Metadata } from 'next';
+import Image from 'next/image';
 import Link from 'next/link';
 
 export const metadata: Metadata = {
   title: 'The team · Kept',
+  // One card is honest but thin — unlisted until the page grows into the
+  // "named and accountable" promise properly.
+  robots: { index: false },
 };
 
 export default function TeamPage() {
   return (
     <>
-      <header className="border-stone-200/60 border-b">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
-          <LogoLockup
-            href="/instant-offer"
-            wordmarkClassName="text-lg md:text-xl"
-          />
-          <Link
-            href="/instant-offer#chat"
-            className="rounded-md bg-leaf px-5 py-2 text-sm text-white transition hover:bg-leaf-dark"
-          >
-            Get an offer
-          </Link>
-        </div>
-      </header>
+      {/* Shared site header — it already renders the LogoLockup this page
+          used to build inline, plus the one canonical nav. */}
+      <SiteHeader />
 
       <section className="mx-auto max-w-5xl px-6 py-20">
         <p className="mb-3 text-leaf text-xs uppercase tracking-widest">
@@ -32,38 +25,44 @@ export default function TeamPage() {
           Real people. Named. Accountable.
         </h1>
         <p className="mt-6 max-w-2xl text-lg text-stone-600">
-          You can pick up the phone and speak to the person who made your offer.
-          Every deal has a named owner from first contact to completion.
+          Every deal has a named owner from first contact to completion, and
+          nothing is sent to a seller until a person has read it and put their
+          name to it.
         </p>
 
-        <div className="mt-16 grid grid-cols-1 gap-8">
-          {[
-            {
-              name: 'Anthony',
-              role: 'Founder',
-              bio: 'Runs the Kept deal engine end-to-end — sourcing, appraisals, offers, completions, and capital. Former [role] with experience across [sector].',
-              linkedin: '#',
-            },
-          ].map((p) => (
-            <div
-              key={p.name}
-              className="rounded-3xl border border-stone-200 bg-white p-8 shadow-sm"
-            >
-              <div className="aspect-square w-full rounded-2xl bg-gradient-to-br from-stone-100 to-soft" />
-              <h3 className="mt-6 font-semibold font-serif text-2xl">
-                {p.name}
-              </h3>
-              <p className="text-leaf text-sm">{p.role}</p>
-              <p className="mt-4 text-stone-600">{p.bio}</p>
-              <a
-                href={p.linkedin}
-                className="mt-4 inline-block font-medium text-leaf text-sm underline underline-offset-4 hover:text-leaf-dark"
-              >
-                LinkedIn →
-              </a>
+        <div className="mt-16 grid grid-cols-1 gap-8 sm:grid-cols-2">
+          <div className="rounded-3xl border border-stone-200 bg-white p-8 shadow-sm">
+            <div className="overflow-hidden rounded-2xl">
+              <Image
+                src="/team/anthony-taylor.jpg"
+                alt="Anthony Taylor of Kept"
+                width={900}
+                height={1349}
+                className="h-auto w-full"
+              />
             </div>
-          ))}
+            <h3 className="mt-6 font-semibold font-serif text-2xl">
+              Anthony Taylor
+            </h3>
+            <p className="text-leaf text-sm">Founder</p>
+            <p className="mt-4 text-stone-600">
+              Runs the Kept deal engine end-to-end — sourcing, appraisals,
+              offers, completions, and capital. Reads every enquiry that comes
+              in.
+            </p>
+          </div>
         </div>
+
+        <p className="mt-12 text-[15px] text-stone-600">
+          Want to talk before you share anything?{' '}
+          <Link
+            href="/sell#offer"
+            className="text-leaf underline decoration-leaf/50 underline-offset-4 hover:decoration-leaf"
+          >
+            Start with the address
+          </Link>{' '}
+          and Anthony will come back to you the same day, Monday to Friday.
+        </p>
       </section>
     </>
   );

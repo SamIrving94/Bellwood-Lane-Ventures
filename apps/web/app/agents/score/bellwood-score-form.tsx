@@ -1,5 +1,6 @@
 'use client';
 
+import { SITUATIONS } from '@/lib/situations';
 import { useState, useTransition } from 'react';
 import { calculateBellwoodScore } from './actions';
 
@@ -10,16 +11,6 @@ const PROPERTY_TYPES = [
   { value: 'semi_detached', label: 'Semi-detached' },
   { value: 'detached', label: 'Detached' },
   { value: 'flat', label: 'Flat / apartment' },
-];
-
-const SITUATIONS = [
-  { value: 'chain_break', label: 'Chain break' },
-  { value: 'probate', label: 'Probate' },
-  { value: 'relocation', label: 'Relocation' },
-  { value: 'short_lease', label: 'Short lease' },
-  { value: 'problem_property', label: 'Problem property' },
-  { value: 'repossession', label: 'Repossession / LPA' },
-  { value: 'other', label: 'Other / standard' },
 ];
 
 function formatGBP(pence: number) {
@@ -220,15 +211,21 @@ export function BellwoodScoreForm() {
           <div className="mt-6 border-amber-200 border-t pt-4 text-[12px] text-stone-600 leading-relaxed">
             <p>
               <strong>This is an indicative range</strong> based on publicly
-              available data. Bellwood&rsquo;s confirmed offer is issued after a
+              available data. Kept&rsquo;s confirmed offer is issued after a
               physical viewing and may differ. The price we confirm in writing
               is the price we complete at.
             </p>
           </div>
 
           <div className="mt-5 flex flex-col gap-3 sm:flex-row">
+            {/* Carry what the agent already typed into the quick form —
+                re-typing an address is where a tired negotiator gives up. */}
             <a
-              href="/save-the-sale"
+              href={`/save-the-sale?${new URLSearchParams({
+                address,
+                postcode,
+                situation,
+              }).toString()}`}
               className="inline-flex items-center justify-center gap-2 rounded-md bg-leaf px-6 py-3 font-medium text-sm text-white transition hover:bg-leaf-dark"
             >
               Send this property to us →

@@ -166,19 +166,21 @@ export default function PartnerBriefPage() {
         <p className="mt-3 font-semibold font-serif text-2xl">Anthony</p>
         <p className="text-sm text-white/70">Founder · Kept</p>
         <div className="mt-4 grid grid-cols-1 gap-1 text-sm md:grid-cols-2">
-          <p>Email: anthony@bellwoodslane.co.uk</p>
-          <p>Web: bellwoodslane.co.uk/instant-offer</p>
+          <p>Email: anthony@{brand.domain}</p>
+          <p>Web: {brand.domain}/agents</p>
         </div>
       </section>
 
       <footer className="mt-10 border-stone-200 border-t pt-6 text-stone-500 text-xs">
         <p>
-          Kept is a UK cash property buyer. Member of the Property Redress
-          Scheme (PRS), HMRC-registered for AML supervision under the Money
-          Laundering Regulations 2017, and ICO-registered as a data controller.
-          Fees disclosed to sellers in writing per NTSELAT / National Trading
-          Standards guidance and the DMCC Act 2025. This document is intended
-          for professional recipients only.
+          {brand.name} is a UK cash property buyer, a trading name of{' '}
+          {brand.legalName} (registered in England &amp; Wales, company no.{' '}
+          {brand.companyNumber}). Member of the Property Redress Scheme (PRS),
+          HMRC-registered for AML supervision under the Money Laundering
+          Regulations 2017, and ICO-registered as a data controller. Fees
+          disclosed to sellers in writing per NTSELAT / National Trading
+          Standards guidance and the Digital Markets, Competition and Consumers
+          Act 2024. This document is intended for professional recipients only.
         </p>
       </footer>
     </div>

@@ -1,4 +1,4 @@
-import { LogoLockup } from '@/components/brand';
+import { SiteHeader } from '@/components/site-header';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 
@@ -11,20 +11,9 @@ export const metadata: Metadata = {
 export default function MethodologyPage() {
   return (
     <>
-      <header className="border-stone-200/60 border-b">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
-          <LogoLockup
-            href="/instant-offer"
-            wordmarkClassName="text-lg md:text-xl"
-          />
-          <Link
-            href="/instant-offer#chat"
-            className="rounded-md bg-leaf px-5 py-2 text-sm text-white transition hover:bg-leaf-dark"
-          >
-            Get an offer
-          </Link>
-        </div>
-      </header>
+      {/* Shared site header — it already renders the LogoLockup this page
+          used to build inline, plus the one canonical nav. */}
+      <SiteHeader />
 
       <article className="mx-auto max-w-3xl px-6 py-20">
         <p className="mb-3 text-leaf text-xs uppercase tracking-widest">
@@ -168,8 +157,8 @@ export default function MethodologyPage() {
             See your number.
           </h2>
           <Link
-            href="/instant-offer#chat"
-            className="mt-6 inline-flex items-center gap-2 rounded-md bg-leaf px-8 py-3 font-medium text-forest text-sm transition hover:bg-leaf-dark"
+            href="/sell#offer"
+            className="mt-6 inline-flex items-center gap-2 rounded-md bg-leaf px-8 py-3 font-medium text-sm text-white transition hover:bg-leaf-dark"
           >
             Get an indicative offer →
           </Link>

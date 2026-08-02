@@ -1,4 +1,5 @@
 import { getCurrentAgent } from '@/app/partners/_lib/auth';
+import { brand } from '@repo/brand';
 import { database } from '@repo/database';
 import Link from 'next/link';
 import { CopyButton } from './copy-button';
@@ -38,7 +39,9 @@ export default async function PortalPage() {
     completed: quotes.filter((q) => q.status === 'converted_to_deal').length,
   };
 
-  const referralLink = `${process.env.NEXT_PUBLIC_WEB_URL || 'http://localhost:3001'}/partners/${agent.referralCode}`;
+  // Fall back to the brand's canonical URL, never localhost — an unset env
+  // var must not hand agents an unshareable link.
+  const referralLink = `${process.env.NEXT_PUBLIC_WEB_URL || brand.url}/partners/${agent.referralCode}`;
 
   return (
     <main className="mx-auto max-w-6xl px-6 py-12">
@@ -118,7 +121,12 @@ export default async function PortalPage() {
                   <th className="px-5 py-3 text-left">Status</th>
                   <th className="px-5 py-3 text-right">AVM mid</th>
                   <th className="px-5 py-3 text-right">Our offer</th>
-                  <th className="px-5 py-3 text-right">Your est. earnings</th>
+                  <th className="px-5 py-3 text-right">
+                    Est. earnings
+                    <span className="block font-normal normal-case tracking-normal">
+                      illustrative at 1% — your written terms apply
+                    </span>
+                  </th>
                   <th className="px-5 py-3 text-left">Date</th>
                 </tr>
               </thead>
@@ -184,8 +192,32 @@ export default async function PortalPage() {
         </section>
       )}
 
-      {/* Resources */}
+      {/* Tools — the two things an agent actually uses day-to-day */}
       <section className="mt-10 grid grid-cols-1 gap-4 md:grid-cols-2">
+        <Link
+          href="/save-the-sale"
+          className="rounded-2xl border-2 border-leaf/40 bg-white p-6 transition hover:border-leaf"
+        >
+          <p className="font-semibold font-serif text-lg">Save a sale →</p>
+          <p className="mt-2 text-sm text-stone-600">
+            Sale collapsed? Send the address — an indicative figure on screen,
+            credited to your referral code.
+          </p>
+        </Link>
+        <Link
+          href="/agents/score"
+          className="rounded-2xl border-2 border-leaf/40 bg-white p-6 transition hover:border-leaf"
+        >
+          <p className="font-semibold font-serif text-lg">Kept Score →</p>
+          <p className="mt-2 text-sm text-stone-600">
+            An indicative range to show a seller before you leave their living
+            room.
+          </p>
+        </Link>
+      </section>
+
+      {/* Resources */}
+      <section className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
         <Link
           href="/instant-offer/partner-brief"
           className="rounded-2xl border border-stone-200 bg-white p-6 transition hover:border-leaf"

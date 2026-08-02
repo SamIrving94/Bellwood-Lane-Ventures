@@ -1,22 +1,17 @@
 'use client';
 
+import type { SituationValue } from '@/lib/situations';
 import { useState } from 'react';
 
 /**
  * The list of triggers we surface to agents. UI labels match the language
- * agents actually use; api values map onto the existing /api/quote enum so
- * the backend doesn't need a schema change.
+ * agents actually use (they describe events, not categories); api values are
+ * typed against the canonical taxonomy in @/lib/situations, which mirrors
+ * the /api/quote enum.
  */
 type Trigger = {
   ui: string;
-  api:
-    | 'chain_break'
-    | 'probate'
-    | 'repossession'
-    | 'problem_property'
-    | 'relocation'
-    | 'short_lease'
-    | 'other';
+  api: SituationValue;
 };
 
 const TRIGGERS: Array<Trigger> = [
@@ -55,6 +50,11 @@ type SubmitState =
 type AgentQuickFormProperties = {
   /** UI label of the trigger to pre-select. Falls back to 'Buyer pulled out'. */
   defaultTriggerLabel?: string;
+  /** API value of the trigger to pre-select — used by the score-form handoff. */
+  defaultTriggerApi?: string;
+  /** Prefills from the score-form handoff so agents never re-type. */
+  defaultAddress?: string;
+  defaultPostcode?: string;
 };
 
 function formatGBP(pence?: number) {
@@ -62,20 +62,24 @@ function formatGBP(pence?: number) {
   return `£${Math.round(pence / 100).toLocaleString('en-GB')}`;
 }
 
-function findTrigger(label?: string): Trigger {
+function findTrigger(label?: string, api?: string): Trigger {
   return (
     TRIGGERS.find((t) => t.ui.toLowerCase() === (label ?? '').toLowerCase()) ??
+    TRIGGERS.find((t) => t.api === api) ??
     TRIGGERS[0]
   );
 }
 
 export function AgentQuickForm({
   defaultTriggerLabel,
+  defaultTriggerApi,
+  defaultAddress,
+  defaultPostcode,
 }: AgentQuickFormProperties = {}) {
-  const [address, setAddress] = useState('');
-  const [postcode, setPostcode] = useState('');
+  const [address, setAddress] = useState(defaultAddress ?? '');
+  const [postcode, setPostcode] = useState(defaultPostcode ?? '');
   const [trigger, setTrigger] = useState<Trigger>(
-    findTrigger(defaultTriggerLabel)
+    findTrigger(defaultTriggerLabel, defaultTriggerApi)
   );
   const [firmName, setFirmName] = useState('');
   const [contactName, setContactName] = useState('');

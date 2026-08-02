@@ -20,8 +20,9 @@ const SECTIONS: Array<{
     body: (
       <>
         <p>
-          Kept is a UK private company (registered in England
-          &amp; Wales) that buys residential property for its own account, using
+          Kept is the trading name of Bellwoods Lane Ventures Ltd, a UK
+          private company registered in England &amp; Wales (Company No.
+          16454416) that buys residential property for its own account, using
           its own capital. We are not an estate agent, not a broker, not a
           mortgage lender, and not a member of any property portal.
         </p>
@@ -251,7 +252,7 @@ export default function FCADisclosurePage() {
             <dt className="font-serif text-[13px] text-stone-500 italic">
               Legal name
             </dt>
-            <dd>Kept</dd>
+            <dd>Bellwoods Lane Ventures Ltd (trading as Kept)</dd>
             <dt className="font-serif text-[13px] text-stone-500 italic">
               Registered in
             </dt>
@@ -259,11 +260,11 @@ export default function FCADisclosurePage() {
             <dt className="font-serif text-[13px] text-stone-500 italic">
               Company number
             </dt>
-            <dd className="text-stone-400">[pending]</dd>
+            <dd>16454416</dd>
             <dt className="font-serif text-[13px] text-stone-500 italic">
               Registered office
             </dt>
-            <dd>London, United Kingdom</dd>
+            <dd>20 Wenlock Road, London N1 7GU</dd>
             <dt className="font-serif text-[13px] text-stone-500 italic">
               Compliance contact
             </dt>

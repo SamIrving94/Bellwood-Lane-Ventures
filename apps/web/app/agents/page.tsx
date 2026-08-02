@@ -8,6 +8,8 @@ import {
   StatusNote,
   Wordmark,
 } from '@/components/brand';
+import { ProofBand } from '@/components/proof-band';
+import { TimelineMock } from '@/components/timeline-mock';
 import Link from 'next/link';
 import { AgentQuickForm } from './components/agent-quick-form';
 
@@ -488,9 +490,46 @@ export default function AgentsPage() {
               The price we confirm is the price we complete at. No ambiguity. No
               verbal commitments to remember.
             </p>
+            <p className="mt-4 max-w-md text-[15px] text-white/70 leading-relaxed">
+              And the maths behind the figure — market estimate, our margin,
+              the number we sign — is shown to your client exactly as it is
+              shown to you. Nothing reaches them that you haven&rsquo;t seen.
+            </p>
           </div>
           <div className="lg:pl-6">
             <SampleOfferDocument />
+          </div>
+        </div>
+      </section>
+
+      {/* ————— ONE TIMELINE, EVERYONE ————— */}
+      <section
+        id="timeline"
+        className="border-hair/70 border-b bg-soft px-6 py-24 md:px-12 md:py-28"
+      >
+        <div className="mx-auto grid max-w-6xl grid-cols-1 items-center gap-14 lg:grid-cols-2">
+          <div>
+            <Eyebrow>while the deal runs</Eyebrow>
+            <h2 className="mt-4 font-semibold font-serif text-4xl leading-[1.05] tracking-[-0.02em] md:text-5xl">
+              One timeline.{' '}
+              <span className="font-normal text-brand italic">
+                Everyone sees the same thing.
+              </span>
+            </h2>
+            <p className="mt-6 max-w-lg text-[15px] text-stone-600 leading-relaxed">
+              Every deal gets a live timeline page — no portal, no login, one
+              link. Seller, agent and solicitor all see the same update at the
+              same moment: solicitors instructed, searches ordered, survey
+              booked, exchange targeted. When your client calls asking
+              what&rsquo;s happening, the answer is already in their hand.
+            </p>
+            <p className="mt-4 max-w-lg text-[15px] text-stone-600 leading-relaxed">
+              No chasing our side for updates. If a step slips, the timeline
+              says so — we&rsquo;d rather show you a delay than hide one.
+            </p>
+          </div>
+          <div className="flex justify-center lg:justify-end">
+            <TimelineMock />
           </div>
         </div>
       </section>
@@ -542,6 +581,9 @@ export default function AgentsPage() {
           </div>
         </div>
       </section>
+
+      {/* ————— PROOF BAND ————— */}
+      <ProofBand />
 
       {/* ————— SELLERS LINK ————— */}
       <section className="border-hair/70 border-b bg-soft px-6 py-14 md:px-12">
