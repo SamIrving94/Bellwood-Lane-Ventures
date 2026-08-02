@@ -1,6 +1,6 @@
 'use server';
 
-import { auth } from '@repo/auth/server';
+import { getFounderSession } from '@repo/auth/server';
 import { database } from '@repo/database';
 import { revalidatePath } from 'next/cache';
 import {
@@ -37,7 +37,7 @@ export type SaveResult =
 
 /** Save edits. Both founders share one live copy (last write wins). */
 export async function saveStrategyDoc(markdown: string): Promise<SaveResult> {
-  const { userId } = await auth();
+  const userId = (await getFounderSession())?.userId;
   if (!userId) return { ok: false, error: 'Unauthorized' };
   if (typeof markdown !== 'string' || markdown.trim().length === 0) {
     return { ok: false, error: 'Document cannot be empty.' };

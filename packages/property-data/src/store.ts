@@ -30,6 +30,15 @@ export type PersistentCacheStore = {
   get(key: string): Promise<PersistentCacheEntry | null>;
   /** Upsert `value` under `key` with an absolute epoch-ms `expiresAt`. */
   set(key: string, value: unknown, expiresAt: number): Promise<void>;
+  /**
+   * Drop `key`. Without this there was no way to evict a row the client has
+   * decided is poison — an upstream field rename validated against our
+   * all-optional schemas, got written with a 90-day TTL, and every instance
+   * served the empty answer until it expired. Optional so host wiring that
+   * predates it still satisfies the contract; the client degrades to letting
+   * the bad row age out.
+   */
+  delete?(key: string): Promise<void>;
 };
 
 // The singleton MUST live on globalThis, not in module scope. Next.js bundles

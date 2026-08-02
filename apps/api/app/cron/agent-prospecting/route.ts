@@ -108,8 +108,21 @@ export const POST = async (request: Request) => {
   const postcodes = await targetPostcodes();
   const surfaced: ProspectAgent[] = [];
 
+  const failedPostcodes: string[] = [];
+
   for (const postcode of postcodes) {
-    const data = await getAgentsByPostcode(postcode);
+    // A failed /agents lookup now throws instead of returning null. Keep the
+    // cron alive across a single bad postcode, but count it — a run that
+    // surfaced nothing because every call 429'd used to look like a run where
+    // no agent has listings.
+    const data = await getAgentsByPostcode(postcode).catch((err) => {
+      failedPostcodes.push(postcode);
+      console.warn(
+        `[cron/agent-prospecting] /agents unavailable for ${postcode}`,
+        err,
+      );
+      return null;
+    });
     const agents = (data as { result?: { agents?: unknown[] } } | null)?.result
       ?.agents;
     if (!Array.isArray(agents)) continue;
@@ -210,7 +223,10 @@ export const POST = async (request: Request) => {
   const summary = `Prospecting run scanned ${postcodes.length} postcodes, ` +
     `surfaced ${surfaced.length} agent records ` +
     `(${newCount} new, ${updatedCount} refreshed)` +
-    (draftsCreated > 0 ? `, drafted ${draftsCreated} personalised outreach pairs.` : '.');
+    (draftsCreated > 0 ? `, drafted ${draftsCreated} personalised outreach pairs.` : '.') +
+    (failedPostcodes.length > 0
+      ? ` ⚠ ${failedPostcodes.length} of ${postcodes.length} postcodes could not be looked up (${failedPostcodes.slice(0, 5).join(', ')}) — those are unchecked, not empty.`
+      : '');
 
   // FounderAction so Sam sees the run in /actions
   try {

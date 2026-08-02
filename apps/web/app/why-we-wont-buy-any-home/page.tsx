@@ -1,3 +1,4 @@
+import { Wordmark } from '@/components/brand';
 import { SiteHeader } from '@/components/site-header';
 import type { Metadata } from 'next';
 import { Fraunces, Inter } from 'next/font/google';
@@ -132,6 +133,8 @@ export default function WhyWeWontBuyAnyHomePage() {
       className={`${fraunces.variable} ${inter.variable} min-h-screen bg-cream font-sans text-forest antialiased`}
     >
       {/* ————— HEADER ————— */}
+      {/* Shared site header — LogoLockup plus the one canonical nav, which
+          already carries the three links this page used to hand-roll. */}
       <SiteHeader />
 
       {/* ————— HERO ————— */}
@@ -329,13 +332,7 @@ export default function WhyWeWontBuyAnyHomePage() {
         <div className="mx-auto max-w-6xl">
           <div className="flex flex-col items-start justify-between gap-8 md:flex-row md:items-center">
             <div>
-              <p className="font-semibold font-serif text-xl tracking-tight">
-                BELLWOODS
-                <span className="mx-2 inline-block h-px w-8 bg-wax align-middle" />
-                <span className="font-normal text-sm text-stone-500 tracking-[0.22em]">
-                  LANE
-                </span>
-              </p>
+              <Wordmark className="text-xl" />
               <p className="mt-2 text-sm text-stone-500">
                 Direct-to-vendor property buyers · UK
               </p>
@@ -349,10 +346,10 @@ export default function WhyWeWontBuyAnyHomePage() {
             </nav>
           </div>
           <p className="mt-10 font-mono text-[11px] text-stone-500 leading-relaxed">
-            Kept is a UK cash property buyer, not an
-            FCA-authorised firm. We do not provide financial or legal advice.
-            Seek independent legal and debt advice before accepting any offer.
-            All offers are subject to satisfactory survey and title searches.
+            Kept is a UK cash property buyer, not an FCA-authorised firm. We do
+            not provide financial or legal advice. Seek independent legal and
+            debt advice before accepting any offer. All offers are subject to
+            satisfactory survey and title searches.
           </p>
           <p className="mt-4 font-mono text-[11px] text-stone-400">
             © {new Date().getFullYear()} Kept.

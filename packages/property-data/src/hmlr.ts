@@ -20,12 +20,28 @@ const REQUEST_TIMEOUT_MS = 8_000;
 // Zod schemas
 // ---------------------------------------------------------------------------
 
+/**
+ * Where a single sale came from. This rides on EVERY transaction row, not
+ * just the PricePaid wrapper, so a fabricated comp stays identifiable after
+ * it is separated from its wrapper (spread into a comps array, formatted
+ * into an LLM prompt, persisted). A future caller cannot forget to check the
+ * wrapper's `source` because the marker is on the row itself.
+ */
+export const PPD_PROVENANCE = ['hmlr_ppd', 'synthetic'] as const;
+export type PpdProvenance = (typeof PPD_PROVENANCE)[number];
+
 const PpdTransactionSchema = z.object({
   price: z.number(),
   date: z.string(),
   propertyType: z.string(),
   newBuild: z.boolean(),
   tenure: z.string(),
+  /**
+   * 'hmlr_ppd' = a real Land Registry sale.
+   * 'synthetic' = an invented placeholder. NEVER a comparable, never shown
+   * to a vendor, never fed to a valuation model as evidence.
+   */
+  provenance: z.enum(PPD_PROVENANCE),
 });
 
 export const PricePaidSchema = z.object({
@@ -88,6 +104,7 @@ function syntheticPricePaid(postcode: string): PricePaid {
     propertyType: types[(hash + i) % 4] ?? 'S',
     newBuild: false,
     tenure: 'F',
+    provenance: 'synthetic',
   }));
 
   const avgPrice = calcAvgPrice(transactions);
@@ -207,6 +224,7 @@ async function fetchPricePaidLive(
       extractLinkedDataValue(t.estateType) ??
       extractLinkedDataValue(t.tenure) ??
       'unknown',
+    provenance: 'hmlr_ppd',
   }));
 
   const avgPrice = calcAvgPrice(transactions);
@@ -229,8 +247,42 @@ async function fetchPricePaidLive(
 // ---------------------------------------------------------------------------
 
 /**
+ * True when this record is fabricated placeholder data rather than HMLR data.
+ *
+ * Checks BOTH the wrapper's `source` and the per-row provenance, so a record
+ * assembled from mixed rows is still caught.
+ */
+export function isSyntheticPricePaid(
+  pricePaid: Pick<PricePaid, 'source' | 'transactions'> | null | undefined
+): boolean {
+  if (!pricePaid) return false;
+  if (pricePaid.source === 'synthetic') return true;
+  // Defensive: partial records reach this from test stubs and cached payloads
+  // written before `provenance` existed.
+  if (!Array.isArray(pricePaid.transactions)) return false;
+  return pricePaid.transactions.some((t) => t?.provenance === 'synthetic');
+}
+
+/**
+ * Drop every fabricated row, keeping only real Land Registry sales.
+ *
+ * Use this at the point where transactions become comparables, a prompt, or
+ * anything a human reads as evidence.
+ */
+export function realTransactions(
+  transactions: PpdTransaction[]
+): PpdTransaction[] {
+  return transactions.filter((t) => t.provenance === 'hmlr_ppd');
+}
+
+/**
  * Fetch historical sold prices for a postcode from HMLR Price Paid Data.
- * Falls back to synthetic data if the live call fails.
+ *
+ * Falls back to synthetic data if the live call fails. The fallback is
+ * flagged BOTH on the wrapper (`source: 'synthetic'`) and on every
+ * transaction row (`provenance: 'synthetic'`). Callers that present these
+ * rows as evidence MUST filter with {@link realTransactions} or reject the
+ * whole record with {@link isSyntheticPricePaid}.
  */
 export async function getPricePaid(
   postcode: string,

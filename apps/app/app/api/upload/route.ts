@@ -1,11 +1,11 @@
-import { auth } from '@repo/auth/server';
+import { getFounderSession } from '@repo/auth/server';
 import { put } from '@repo/storage';
 import { NextResponse } from 'next/server';
 
 export async function POST(request: Request) {
-  const { userId } = await auth();
+  const session = await getFounderSession();
 
-  if (!userId) {
+  if (!session) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
@@ -34,7 +34,7 @@ export async function POST(request: Request) {
   }
 
   const ext = file.type.split('/')[1] ?? 'jpg';
-  const filename = `uploads/${userId}/${Date.now()}.${ext}`;
+  const filename = `uploads/${session.userId}/${Date.now()}.${ext}`;
 
   const blob = await put(filename, file, {
     access: 'public',

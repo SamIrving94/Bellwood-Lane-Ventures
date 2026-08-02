@@ -1,4 +1,4 @@
-import { auth } from '@repo/auth/server';
+import { getFounderSession } from '@repo/auth/server';
 import { database } from '@repo/database';
 import { NextResponse } from 'next/server';
 import * as XLSX from 'xlsx';
@@ -24,14 +24,17 @@ export async function GET(
   _request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const { userId } = await auth();
-  if (!userId) {
+  const session = await getFounderSession();
+  if (!session) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
   const { id } = await params;
-  const batch = await database.propertyBatch.findUnique({
-    where: { id },
+  // Scoped to the uploader: the id alone is a guessable handle on someone
+  // else's spreadsheet, so ownership is checked in the query rather than
+  // after the fact.
+  const batch = await database.propertyBatch.findFirst({
+    where: { id, uploadedBy: session.userId },
     select: { id: true, label: true, originalFile: true, originalMime: true },
   });
   if (!batch) {

@@ -28,7 +28,22 @@ const USER_AGENT =
   'BellwoodAuctionScraper/1.0 (+https://bellwoodslane.co.uk; respect robots.txt)';
 const FETCH_TIMEOUT_MS = 15_000;
 const POSTCODE_REGEX = /\b([A-Z]{1,2}\d{1,2}[A-Z]?)\s*(\d[A-Z]{2})\b/i;
-const GUIDE_REGEX = /£\s*([\d,]+(?:\.\d+)?)\s*(?:k|K)?(?:\s*[-–to]+\s*£?\s*([\d,]+(?:\.\d+)?))?/;
+// Guide prices are written every which way: "Guide £150,000", "Guide £150k+",
+// "Guide Price £95k - £110k", "£1.25m". The k/m suffix MUST be captured (it
+// used to sit in a non-capturing group outside group 1, so "£150k" parsed as
+// £150 — 1000x under, and every such lot then read as a sub-£100k "strong
+// match" downstream). Both sides of a range carry their own suffix group.
+//
+// The `(?![a-z])` guard stops a following word borrowing its first letter as a
+// multiplier — without it "£150,000 modernisation" would parse as £150bn.
+const GUIDE_REGEX =
+  /£\s*([\d,]+(?:\.\d+)?)\s*([kKmM])?(?![a-zA-Z])(?:\s*(?:to|[-–—]+)\s*£?\s*([\d,]+(?:\.\d+)?)\s*([kKmM])?(?![a-zA-Z]))?/;
+
+/** Multiplier for a captured "k"/"m" guide-price suffix. */
+const SUFFIX_MULTIPLIER: Record<string, number> = {
+  k: 1_000,
+  m: 1_000_000,
+};
 
 // ───────────────────────────────────────────────────────────────────────────
 // Public API
@@ -329,26 +344,46 @@ function extractGuidePrice(item: Record<string, unknown>): {
   return parseGuideText(text);
 }
 
-function parseGuideText(text: string): {
+/**
+ * Exported for tests — the guide-price grammar is the single most fragile
+ * thing in this adapter and the only thing standing between a "£150k" listing
+ * and a £150 lot in the pipeline.
+ */
+export function parseGuideText(text: string): {
   minPence: number | null;
   maxPence: number | null;
 } {
   const m = text.match(GUIDE_REGEX);
   if (!m) return { minPence: null, maxPence: null };
-  const low = numericGuide(m[1]);
-  const high = numericGuide(m[2]) ?? low;
+  const low = numericGuide(m[1], m[2]);
+  // A range often carries the suffix on one side only ("£150 - £180k", or
+  // "£150k - £180"). Fall back to the low side's suffix so the top of the
+  // range can never land 1000x under the bottom of it.
+  const high = numericGuide(m[3], m[4] ?? m[2]) ?? low;
   if (low === null) return { minPence: null, maxPence: null };
   return { minPence: low * 100, maxPence: (high ?? low) * 100 };
 }
 
-function numericGuide(raw: unknown): number | null {
-  if (typeof raw === 'number' && Number.isFinite(raw)) return Math.round(raw);
+/**
+ * Parse a guide figure to whole POUNDS. `suffix` is the k/m captured beside
+ * the number by GUIDE_REGEX; a suffix carried inside `raw` itself (the
+ * JSON-LD path, where a price can arrive as the string "150k") wins over it.
+ */
+function numericGuide(raw: unknown, suffix?: string | null): number | null {
+  if (typeof raw === 'number' && Number.isFinite(raw)) {
+    return Math.round(raw * multiplierFor(suffix));
+  }
   if (typeof raw !== 'string') return null;
   const cleaned = raw.replace(/[£,\s]/g, '');
-  const isK = /k$/i.test(cleaned);
-  const num = parseFloat(cleaned.replace(/k$/i, ''));
+  const inline = cleaned.match(/([km])$/i);
+  const num = parseFloat(inline ? cleaned.slice(0, -1) : cleaned);
   if (!Number.isFinite(num)) return null;
-  return Math.round(isK ? num * 1000 : num);
+  return Math.round(num * multiplierFor(inline?.[1] ?? suffix));
+}
+
+function multiplierFor(suffix: string | null | undefined): number {
+  if (!suffix) return 1;
+  return SUFFIX_MULTIPLIER[suffix.toLowerCase()] ?? 1;
 }
 
 function extractAuctionDate(item: Record<string, unknown>): Date | null {

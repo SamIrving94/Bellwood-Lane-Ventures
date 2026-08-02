@@ -13,6 +13,8 @@ export const metadata: Metadata = {
 export default function TeamPage() {
   return (
     <>
+      {/* Shared site header — it already renders the LogoLockup this page
+          used to build inline, plus the one canonical nav. */}
       <SiteHeader />
 
       <section className="mx-auto max-w-5xl px-6 py-20">
@@ -24,8 +26,8 @@ export default function TeamPage() {
         </h1>
         <p className="mt-6 max-w-2xl text-lg text-stone-600">
           Every deal has a named owner from first contact to completion, and
-          nothing is sent to a seller until a person has read it and put
-          their name to it.
+          nothing is sent to a seller until a person has read it and put their
+          name to it.
         </p>
 
         <div className="mt-16 grid grid-cols-1 gap-8 sm:grid-cols-2">
@@ -45,8 +47,8 @@ export default function TeamPage() {
             <p className="text-leaf text-sm">Founder</p>
             <p className="mt-4 text-stone-600">
               Runs the Kept deal engine end-to-end — sourcing, appraisals,
-              offers, completions, and capital. Reads every enquiry that
-              comes in.
+              offers, completions, and capital. Reads every enquiry that comes
+              in.
             </p>
           </div>
         </div>

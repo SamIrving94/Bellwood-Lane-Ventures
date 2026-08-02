@@ -85,5 +85,12 @@ export async function register() {
         update: data,
       });
     },
+    async delete(key: string) {
+      // The client calls this when a durable row fails re-validation — a value
+      // written by an older deploy, or upstream drift that got cached before we
+      // checked for it. Without eviction the poison sat here for the full TTL
+      // (up to 90 days) and every instance read it.
+      await db.propertyDataCache.deleteMany({ where: { key } });
+    },
   };
 }

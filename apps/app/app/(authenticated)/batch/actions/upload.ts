@@ -1,6 +1,6 @@
 'use server';
 
-import { auth } from '@repo/auth/server';
+import { getFounderSession } from '@repo/auth/server';
 import { database } from '@repo/database';
 import { revalidatePath } from 'next/cache';
 import { mapPropertyType } from '../../../../lib/batch/property-type';
@@ -19,7 +19,7 @@ export type UploadResult =
  * so the export can hand back the founder's exact spreadsheet plus our columns.
  */
 export async function uploadBatch(formData: FormData): Promise<UploadResult> {
-  const { userId } = await auth();
+  const userId = (await getFounderSession())?.userId;
   if (!userId) return { ok: false, error: 'Unauthorized' };
 
   const file = formData.get('file');

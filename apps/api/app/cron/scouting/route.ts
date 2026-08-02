@@ -1,4 +1,5 @@
 import { env } from '@/env';
+import { selfOrigin } from '../_lib/self-origin';
 import { database, Prisma } from '@repo/database';
 import {
   dedupeDealbreakerRules,
@@ -770,6 +771,7 @@ export const POST = async (request: Request) => {
     Awaited<ReturnType<typeof getPropertySnapshot>>
   >();
   let enrichedCount = 0;
+  let degradedSnapshots = 0;
   for (const lead of topToEnrich) {
     try {
       // createMany doesn't return ids — look the persisted row up by its
@@ -819,6 +821,15 @@ export const POST = async (request: Request) => {
           bedrooms,
         });
         snapshotsByPostcode.set(lead.postcode, snap);
+        // A snapshot is persisted even when its sources failed, and the 7-day
+        // freshness guard then treats it as valid — so a snapshot full of nulls
+        // from a 429 storm would go unre-fetched for a week. Surface it.
+        if (snap.degraded) {
+          degradedSnapshots++;
+          console.warn(
+            `[cron/scouting] snapshot for ${lead.postcode} is degraded — ${Object.keys(snap.errors).join(', ')} unavailable`,
+          );
+        }
       }
 
       await database.scoutLead.update({
@@ -847,8 +858,9 @@ export const POST = async (request: Request) => {
   // it never delays or fails the scout run that already completed above.
   after(async () => {
     try {
-      const origin = new URL(request.url).origin;
-      await fetch(`${origin}/cron/lead-appraise`, {
+      // Server-controlled origin: this request carries CRON_SECRET, and
+      // request.url is derived from the Host header.
+      await fetch(`${selfOrigin()}/cron/lead-appraise`, {
         headers: { Authorization: `Bearer ${env.CRON_SECRET}` },
       });
     } catch (err) {
@@ -866,6 +878,7 @@ export const POST = async (request: Request) => {
     duplicatesSkipped,
     dealbreakersParked: dealbreakerFlags.size,
     snapshotsEnriched: enrichedCount,
+    snapshotsDegraded: degradedSnapshots,
     evalConfigVersion,
     highScoreLeads: highScoreLeads.length,
     strongLeads: strongLeads.length,

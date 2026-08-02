@@ -1,6 +1,6 @@
 'use server';
 
-import { auth } from '@repo/auth/server';
+import { getFounderSession } from '@repo/auth/server';
 import { database } from '@repo/database';
 import {
   getSourcedPropertiesRaw,
@@ -52,7 +52,7 @@ export async function setTargetPostcodes(postcodesRaw: string[]): Promise<{
   error?: string;
   rejected?: string[];
 }> {
-  const { userId } = await auth();
+  const userId = (await getFounderSession())?.userId;
   if (!userId) return { success: false, error: 'Unauthorized' };
 
   // Normalise + de-dupe + validate
@@ -102,7 +102,7 @@ export async function diagnoseSourcedProperties(
   error?: string;
   summary?: string;
 }> {
-  const { userId } = await auth();
+  const userId = (await getFounderSession())?.userId;
   if (!userId) return { ok: false, postcode, error: 'Unauthorized' };
 
   const result = await getSourcedPropertiesRaw(postcode, opts);
@@ -171,7 +171,7 @@ export async function setScanSeeds(seeds: ScanSeed[]): Promise<{
   rejected?: Array<{ postcode: string; reason: string }>;
   error?: string;
 }> {
-  const { userId } = await auth();
+  const userId = (await getFounderSession())?.userId;
   if (!userId) return { success: false, error: 'Unauthorized' };
 
   const seen = new Set<string>();
@@ -215,7 +215,7 @@ export async function triggerScoutingCron(): Promise<{
   result?: Record<string, unknown>;
   error?: string;
 }> {
-  const { userId } = await auth();
+  const userId = (await getFounderSession())?.userId;
   if (!userId) return { success: false, error: 'Unauthorized' };
 
   const cronSecret = process.env.CRON_SECRET;

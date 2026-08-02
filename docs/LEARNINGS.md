@@ -82,6 +82,17 @@ These predate the incident above and explain why the pipeline degraded even on
   - `/hmlr-hpi` returns `404` — we fall back to **synthetic** HPI, which then
     feeds the AVM. Silent use of synthetic data in a real valuation is a Bet-2
     ("never silently guessed") violation.
+- **`/valuation-sale`'s `internal_area` unit is UNCONFIRMED.** Nothing in this
+  repo establishes whether PropertyData wants m² or sqft, and the two available
+  conventions disagree: `/floor-areas` returns `total_floor_area` in m² (it is
+  the EPC register), while the price endpoints are sqft-denominated
+  (`/prices-per-sqf`, the `sqf` field on `/sourced-properties`). The gap is
+  10.76×, and this AVM carries 15-20% of `pointEstimate`. Both callers now pass
+  **m²** and the parameter is named `internalAreaSqm` — previously
+  `base-valuation` sent m² and `getPropertySnapshot` declared sqft into the same
+  field, so one was definitionally wrong. Founder/ops action: confirm the unit
+  against PropertyData's /valuation-sale docs and convert in
+  `getPropertyDataValuation` if it wants sqft. Do not change it on a hunch.
 - **`ANTHROPIC_API_KEY` is not set in the `bellwood-api` production env** — the
   photo-condition vision screen is skipped entirely, so condition inference is
   off. Founder/ops action: set the key in Vercel.

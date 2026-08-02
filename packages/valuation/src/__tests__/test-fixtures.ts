@@ -21,6 +21,7 @@ export function mkPpdTx(price: number, date: string, type = 'T'): PpdTransaction
     price,
     date,
     propertyType: type,
+    provenance: 'hmlr_ppd',
     paon: '1',
     saon: null,
     street: 'Test Street',

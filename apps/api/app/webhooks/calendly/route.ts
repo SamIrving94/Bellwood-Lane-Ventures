@@ -30,9 +30,11 @@ export const POST = async (request: Request): Promise<Response> => {
   const signature = headerList.get('calendly-webhook-signature');
   const signingKey = env.CALENDLY_WEBHOOK_SIGNING_KEY;
 
-  // Only enforce signature verification when a signing key is configured.
-  // Without a key we accept the payload but log a warning — this keeps
-  // local dev / pre-provisioned environments usable.
+  // In production an unsigned payload is refused outright. Skipping the check
+  // when no key is configured meant anyone could POST a forged invitee.created
+  // event and write DealActivity, move Deal.calendlyEventAt and raise
+  // FounderActions with attacker-supplied text. Outside production the check
+  // is still skipped so local dev and pre-provisioned environments work.
   if (signingKey) {
     if (!verifyWebhookSignature(raw, signature, signingKey)) {
       log.warn('Calendly webhook: bad signature', {
@@ -40,9 +42,14 @@ export const POST = async (request: Request): Promise<Response> => {
       });
       return new Response('Invalid signature', { status: 401 });
     }
+  } else if (process.env.NODE_ENV === 'production') {
+    log.error(
+      'Calendly webhook: CALENDLY_WEBHOOK_SIGNING_KEY not set in production, refusing payload',
+    );
+    return new Response('Webhook signing key not configured', { status: 503 });
   } else {
     log.warn(
-      'Calendly webhook: CALENDLY_WEBHOOK_SIGNING_KEY not set, skipping signature check',
+      'Calendly webhook: CALENDLY_WEBHOOK_SIGNING_KEY not set, skipping signature check (non-production)',
     );
   }
 

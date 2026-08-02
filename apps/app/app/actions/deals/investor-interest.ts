@@ -1,6 +1,6 @@
 'use server';
 
-import { auth } from '@repo/auth/server';
+import { requireFounder } from '@repo/auth/server';
 import { database } from '@repo/database';
 import { recordDealUpdate } from '@repo/deal-updates';
 import { revalidatePath } from 'next/cache';
@@ -20,8 +20,7 @@ export async function registerInvestorInterest(
   note?: string,
   notify = true,
 ) {
-  const { userId } = await auth();
-  if (!userId) throw new Error('Unauthorized');
+  const { userId } = await requireFounder();
 
   if (!investorName.trim()) throw new Error('Investor name is required.');
   if (!EMAIL_RE.test(investorEmail.trim())) {
@@ -66,8 +65,7 @@ export async function registerInvestorInterest(
 }
 
 export async function removeInvestorInterest(interestId: string) {
-  const { userId } = await auth();
-  if (!userId) throw new Error('Unauthorized');
+  const { userId } = await requireFounder();
 
   const interest = await database.investorInterest.findUnique({
     where: { id: interestId },
@@ -95,8 +93,7 @@ export async function postInvestorUpdate(
   title: string,
   detail?: string,
 ) {
-  const { userId } = await auth();
-  if (!userId) throw new Error('Unauthorized');
+  const { userId } = await requireFounder();
 
   if (!title.trim()) throw new Error('Add a short headline for the update.');
 

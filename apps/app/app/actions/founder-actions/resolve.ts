@@ -1,6 +1,6 @@
 'use server';
 
-import { auth } from '@repo/auth/server';
+import { requireFounder } from '@repo/auth/server';
 import { database } from '@repo/database';
 import { revalidatePath } from 'next/cache';
 
@@ -9,8 +9,7 @@ export async function resolveAction(
   resolution: 'completed' | 'dismissed',
   notes?: string
 ) {
-  const { userId } = await auth();
-  if (!userId) throw new Error('Unauthorized');
+  const { userId } = await requireFounder();
 
   await database.founderAction.update({
     where: { id: actionId },
@@ -32,8 +31,7 @@ export async function bulkResolveActions(
   actionIds: string[],
   resolution: 'completed' | 'dismissed'
 ) {
-  const { userId } = await auth();
-  if (!userId) throw new Error('Unauthorized');
+  const { userId } = await requireFounder();
 
   await database.founderAction.updateMany({
     where: { id: { in: actionIds } },

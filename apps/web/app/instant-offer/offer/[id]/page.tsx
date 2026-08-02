@@ -5,6 +5,7 @@
 // We deliberately avoid the @react-pdf/renderer dependency (~100MB).
 // HTML print gives us identical fidelity for a fraction of the runtime cost.
 
+import { Wordmark } from '@/components/brand';
 import { database } from '@repo/database';
 import { notFound } from 'next/navigation';
 
@@ -83,14 +84,8 @@ export default async function OfferCertificatePage({
         </a>
       </div>
 
-      <header className="border-leaf border-b-2 pb-6">
-        <p className="font-semibold font-serif text-xl tracking-tight">
-          BELLWOODS
-          <span className="mx-2 inline-block h-px w-8 bg-wax align-middle" />
-          <span className="font-normal text-sm text-stone-500 tracking-widest">
-            LANE
-          </span>
-        </p>
+      <header className="border-hair border-b pb-6">
+        <Wordmark className="text-xl" />
         <div className="mt-6 flex items-end justify-between">
           <div>
             <p className="font-serif text-[13px] text-wax italic">

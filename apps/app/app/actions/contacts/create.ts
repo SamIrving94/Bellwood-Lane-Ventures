@@ -1,6 +1,6 @@
 'use server';
 
-import { auth } from '@repo/auth/server';
+import { requireFounder } from '@repo/auth/server';
 import { database } from '@repo/database';
 import { revalidatePath } from 'next/cache';
 
@@ -16,8 +16,7 @@ type CreateContactInput = {
 };
 
 export async function createContact(input: CreateContactInput) {
-  const { userId } = await auth();
-  if (!userId) throw new Error('Unauthorized');
+  await requireFounder();
 
   const contact = await database.contact.create({
     data: {

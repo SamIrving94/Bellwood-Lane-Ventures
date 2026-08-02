@@ -67,6 +67,15 @@ export interface DealCostConfig {
      * (5% in England from 31 Oct 2024). Added on top of the marginal bands.
      */
     additionalPropertySurcharge: number;
+    /**
+     * Minimum chargeable consideration at which the additional-property
+     * surcharge bites. The Higher Rates for Additional Dwellings only apply
+     * where the chargeable consideration is £40,000 OR MORE (FA 2003
+     * Sch 4ZA para 1(3)); below that the main rates apply alone, which means
+     * nil on anything under the £125k starting threshold. Kept as a config
+     * lever so a statutory change is a one-number edit.
+     */
+    additionalPropertyThresholdPence: number;
   };
   /**
    * Purchase conveyancing fee, banded by purchase price (co-founder's rate
@@ -119,6 +128,7 @@ export const DEFAULT_DEAL_COSTS: DealCostConfig = {
       { thresholdPence: 1_500_000_00, rate: 0.12 },
     ],
     additionalPropertySurcharge: 0.05,
+    additionalPropertyThresholdPence: 40_000_00,
   },
   // Purchase conveyancing rate card (co-founder supplied, ex VAT).
   purchaseLegals: {
@@ -244,6 +254,12 @@ export interface DealAppraisal {
 /**
  * Stamp Duty Land Tax for an additional/investment property. Sums the marginal
  * band charges then adds the whole-price surcharge. Returns 0 when `exempt`.
+ *
+ * The surcharge is NOT charged below `additionalPropertyThresholdPence` — the
+ * higher rates only apply from £40,000 of chargeable consideration upwards.
+ * Charging it on cheap lots invented ~£1.5k of tax on a £30k probate flat and
+ * dragged `maxOfferForRoi` down enough for the model to walk away from viable
+ * stock.
  */
 export function computeSdltPence(
   pricePence: number,
@@ -254,7 +270,11 @@ export function computeSdltPence(
     return 0;
   }
 
-  const { bands, additionalPropertySurcharge } = config.sdlt;
+  const {
+    bands,
+    additionalPropertySurcharge,
+    additionalPropertyThresholdPence,
+  } = config.sdlt;
   let tax = 0;
 
   for (let i = 0; i < bands.length; i++) {
@@ -270,7 +290,11 @@ export function computeSdltPence(
     tax += slice * bands[i].rate;
   }
 
-  tax += pricePence * additionalPropertySurcharge;
+  // "£40,000 or more" — the threshold is inclusive.
+  if (pricePence >= additionalPropertyThresholdPence) {
+    tax += pricePence * additionalPropertySurcharge;
+  }
+
   return Math.round(tax);
 }
 

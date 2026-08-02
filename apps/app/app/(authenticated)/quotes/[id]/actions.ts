@@ -1,6 +1,6 @@
 'use server';
 
-import { auth } from '@repo/auth/server';
+import { getFounderSession } from '@repo/auth/server';
 import { database } from '@repo/database';
 import { sendSignedOffer } from '@repo/quote-ops';
 import { revalidatePath } from 'next/cache';
@@ -18,7 +18,7 @@ export async function approveAndSendOffer(
   quoteId: string,
   founderActionId: string,
 ): Promise<{ sent: boolean; emailSkipped: boolean; reason?: string }> {
-  const { userId } = await auth();
+  const userId = (await getFounderSession())?.userId;
   if (!userId) throw new Error('Unauthorized');
 
   const action = await database.founderAction.findUnique({

@@ -19,6 +19,7 @@ import {
   getEpcData,
   getPropertyDataValuation,
   getPropertyFloorArea,
+  realTransactions,
   type PpdTransaction,
   type Epc,
   type Hpi,
@@ -256,15 +257,26 @@ export async function getBaseValuation(
     getPricePaid(postcode, 20),
     getHousepriceIndex(postcode),
     getEpcData(postcode, address),
-    // PropertyData's £/sqft-driven AVM. Returns null silently if no key
-    // is configured or the call fails — the rest of the engine carries on.
-    // Cached 7 days per postcode+type+bedrooms so we burn ~3 credits per
-    // unique property per week.
+    // PropertyData's £/sqft-driven AVM. Cached 7 days per postcode+type+
+    // bedrooms so we burn ~3 credits per unique property per week.
+    //
+    // A FAILED lookup now throws rather than returning null. We catch it here so
+    // one dark cross-check can't take down a valuation that has HMLR comps — but
+    // we log it, because "no AVM" and "AVM unreachable" are different facts and
+    // only one of them is a reason to distrust the estimate.
     getPropertyDataValuation({
       postcode,
       propertyType,
       bedrooms: bedrooms ?? undefined,
-      internalArea: floorAreaSqm ?? undefined,
+      // m², matching this package's units. See the unit caveat on
+      // getPropertyDataValuation — /valuation-sale's expected unit is unconfirmed.
+      internalAreaSqm: floorAreaSqm ?? undefined,
+    }).catch((err) => {
+      console.warn(
+        `[base-valuation] external AVM cross-check unavailable for ${postcode}`,
+        err,
+      );
+      return null;
     }),
     // Distance-weighted sold comps (last 12mo, 0.25mi=60% / 0.5mi=40%).
     // Returns null when the subject can't be geolocated or there are no
@@ -278,15 +290,31 @@ export async function getBaseValuation(
     // Real, EPC-derived floor area for THIS property (house-number matched).
     // Returns null when we can't pin an unambiguous record — we then show no
     // size rather than a guess. NOT the postcode average.
+    // Same treatment: a failed /floor-areas lookup must not masquerade as
+    // "no unambiguous record for this address".
     getPropertyFloorArea({
       postcode,
       address,
       propertyType,
       bedrooms: bedrooms ?? undefined,
+    }).catch((err) => {
+      console.warn(
+        `[base-valuation] PropertyData floor-area lookup unavailable for ${postcode}`,
+        err,
+      );
+      return null;
     }),
   ]);
 
-  const hmlrComps = filterComps(pricePaid.transactions, propertyType, floorAreaSqm);
+  // Real Land Registry sales only — a hash-derived placeholder must never be
+  // presented as a comparable. When the feed was synthetic this empties the
+  // comp set, which drops us onto the `fallback` path below (already tagged
+  // source 'synthetic' + low confidence).
+  const hmlrComps = filterComps(
+    realTransactions(pricePaid.transactions),
+    propertyType,
+    floorAreaSqm,
+  );
 
   // Floor-area resolution — real data or nothing. Priority:
   //   1. Caller-supplied size (a human typed it).

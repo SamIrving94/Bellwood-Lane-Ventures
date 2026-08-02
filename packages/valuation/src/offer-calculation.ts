@@ -98,14 +98,25 @@ function deriveInvestmentGrade(
   grossRentalYield: number | undefined,
   riskScore: RiskScore
 ): InvestmentGrade {
-  if (!grossRentalYield) return 'B';
-
   const envBand = riskScore.environmental.envBand;
+
+  // Environmental band is a HARD downgrade and is therefore checked FIRST.
+  // It used to sit below `grossRentalYield >= 0.04 → 'B'`, which made 'D'
+  // unreachable for any property yielding 4%+: a 5% yield in flood zone 3b
+  // graded 'B' (margin adjustment 0) instead of 'D' (+5%), skipping the risk
+  // hedge on exactly the lots it exists for. A+/A already require a
+  // green/amber band, so no higher grade is lost by the reorder.
+  if (envBand === 'red' || envBand === 'black') return 'D';
+
+  // Unknown yield (not supplied) → neutral 'B'. Compare against `undefined`
+  // explicitly: a literal 0 is a KNOWN, terrible yield, not "unknown". The
+  // old `!grossRentalYield` guard conflated the two — same bug that was
+  // already fixed in `leaseDiscount` below.
+  if (grossRentalYield === undefined) return 'B';
 
   if (grossRentalYield >= 0.08 && envBand === 'green') return 'A+';
   if (grossRentalYield >= 0.06 && (envBand === 'green' || envBand === 'amber')) return 'A';
   if (grossRentalYield >= 0.04) return 'B';
-  if (envBand === 'red' || envBand === 'black') return 'D';
   return 'C';
 }
 

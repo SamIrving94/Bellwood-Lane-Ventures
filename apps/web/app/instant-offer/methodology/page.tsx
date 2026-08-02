@@ -11,6 +11,8 @@ export const metadata: Metadata = {
 export default function MethodologyPage() {
   return (
     <>
+      {/* Shared site header — it already renders the LogoLockup this page
+          used to build inline, plus the one canonical nav. */}
       <SiteHeader />
 
       <article className="mx-auto max-w-3xl px-6 py-20">

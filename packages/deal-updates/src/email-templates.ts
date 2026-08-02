@@ -2,8 +2,13 @@
  * Email templates for deal-timeline updates.
  *
  * One render function with a kind-aware switch for headline copy.
- * Visual style mirrors the public site (navy/gold/cream, Georgia for
- * headlines, Inter/Arial for body).
+ * Visual style mirrors the Kept public site (cream ground, forest ink, leaf
+ * for links, Courier for document labels). Georgia stands in for Libre Caslon:
+ * webfonts do not load reliably in email clients, and Georgia is the documented
+ * fallback in docs/brand/KEPT.md.
+ *
+ * Name, legal entity and domain come from @repo/brand so the whole ecosystem
+ * turns over with NEXT_PUBLIC_BRAND_PHASE.
  */
 
 import 'server-only';
@@ -124,51 +129,51 @@ export function renderUpdateEmail(ctx: UpdateEmailContext): {
 
   const trackBlock = ctx.trackUrl
     ? `
-        <div style="margin:24px 0;padding:16px;background:#FAF6EA;border-radius:12px">
-          <p style="margin:0;font-size:13px;color:#0A1020">
+        <div style="margin:24px 0;padding:16px;background:#EDE7D8;border:1px solid #E2DCCB;border-radius:2px">
+          <p style="margin:0;font-size:13px;color:#1F332B">
             <strong>Live timeline:</strong>
-            <a href="${ctx.trackUrl}" style="color:#0A2540">${ctx.trackUrl}</a>
+            <a href="${ctx.trackUrl}" style="color:#2E7D5B">${ctx.trackUrl}</a>
           </p>
-          <p style="margin:6px 0 0;font-size:12px;color:#6B7280">
+          <p style="margin:6px 0 0;font-size:12px;color:#4C5A50">
             Open this link any time to see every step. No login.
           </p>
         </div>`
     : '';
 
   const html = `
-    <div style="font-family:Inter,Arial,sans-serif;max-width:560px;margin:0 auto;padding:32px;background:#FAFAF7;color:#0A1020">
-      <p style="font-family:Georgia,serif;font-size:22px;font-weight:600;color:#0A2540;letter-spacing:-0.02em;margin:0">
+    <div style="font-family:Arial,Helvetica,sans-serif;max-width:560px;margin:0 auto;padding:32px;background:#F7F3EA;color:#1F332B">
+      <p style="font-family:Georgia,serif;font-size:22px;font-weight:700;color:#1F332B;letter-spacing:-0.03em;margin:0">
         ${escapeHtml(brand.mark)}
       </p>
-      <p style="margin:24px 0 0;font-family:'Courier New',monospace;font-size:11px;letter-spacing:0.18em;text-transform:uppercase;color:#C6A664">
+      <p style="margin:24px 0 0;font-family:'Courier New',monospace;font-size:11px;letter-spacing:0.18em;text-transform:uppercase;color:#2E7D5B">
         ${escapeHtml(copy.eyebrow)}
       </p>
-      <h1 style="font-family:Georgia,serif;font-size:28px;font-weight:600;line-height:1.2;margin:8px 0 0;color:#0A1020">
+      <h1 style="font-family:Georgia,serif;font-size:28px;font-weight:600;line-height:1.2;margin:8px 0 0;color:#1F332B">
         ${escapeHtml(ctx.title)}
       </h1>
       ${
         propertyLabel
-          ? `<p style="margin:6px 0 0;font-size:14px;color:#6B7280">${escapeHtml(propertyLabel)}</p>`
+          ? `<p style="margin:6px 0 0;font-size:14px;color:#4C5A50">${escapeHtml(propertyLabel)}</p>`
           : ''
       }
       ${
         ctx.detail
-          ? `<p style="margin:24px 0 0;font-size:15px;line-height:1.6;color:#0A1020">${escapeHtml(ctx.detail).replace(/\n/g, '<br/>')}</p>`
+          ? `<p style="margin:24px 0 0;font-size:15px;line-height:1.6;color:#1F332B">${escapeHtml(ctx.detail).replace(/\n/g, '<br/>')}</p>`
           : ''
       }
       ${
         offerLine
-          ? `<p style="margin:18px 0 0;font-size:14px;color:#0A1020"><strong>${escapeHtml(offerLine)}</strong></p>`
+          ? `<p style="margin:18px 0 0;font-size:14px;color:#1F332B"><strong>${escapeHtml(offerLine)}</strong></p>`
           : ''
       }
       ${trackBlock}
-      <p style="margin:32px 0 0;font-size:13px;color:#6B7280;line-height:1.6">
+      <p style="margin:32px 0 0;font-size:13px;color:#4C5A50;line-height:1.6">
         Anyone in the chain — seller, agent, solicitor — gets the same
         update at the same moment. If anything looks wrong, reply to this
-        email or call us directly.
+        email and a person will pick it up.
       </p>
-      <p style="margin:32px 0 0;font-family:'Courier New',monospace;font-size:11px;color:#94A3B8;border-top:1px solid #E5E7EB;padding-top:16px">
-        ${escapeHtml(brand.legalName)} · NAPB · TPO · HMRC AML supervised
+      <p style="margin:32px 0 0;font-family:'Courier New',monospace;font-size:11px;color:#4C5A50;border-top:1px solid #E2DCCB;padding-top:16px">
+        ${escapeHtml(brand.legalName)} · Property Redress Scheme (PRS) · HMRC AML supervised · ICO registered
       </p>
     </div>
   `;

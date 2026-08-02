@@ -1,6 +1,6 @@
 'use server';
 
-import { auth } from '@repo/auth/server';
+import { requireFounder } from '@repo/auth/server';
 import { database } from '@repo/database';
 import { mergeScorerConfig } from '@repo/scouting/src/scorer-config';
 import { revalidatePath } from 'next/cache';
@@ -22,8 +22,7 @@ export async function saveAndActivateConfig(
   partial: unknown,
   description: string,
 ) {
-  const { userId } = await auth();
-  if (!userId) throw new Error('Unauthorized');
+  const { userId } = await requireFounder();
 
   const config = mergeScorerConfig(partial);
 
@@ -57,8 +56,7 @@ export async function saveAndActivateConfig(
  * version. Keeps the append-only model intact (no in-place reactivation).
  */
 export async function restoreVersion(sourceVersion: number) {
-  const { userId } = await auth();
-  if (!userId) throw new Error('Unauthorized');
+  const { userId } = await requireFounder();
 
   const source = await database.evalConfig.findFirst({
     where: { evalType: 'lead_scoring', version: sourceVersion },

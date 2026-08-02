@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kept — launch checklist</title>
+<style>
+  :root {
+    --cream: #F7F3EA;
+    --forest: #1F332B;
+    --body: #4C5A50;
+    --leaf: #2E7D5B;
+    --wax: #C33F35;
+    --hair: #E2DCCB;
+    --soft: #EDE7D8;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 40px 24px 120px;
+    background: var(--cream);
+    color: var(--forest);
+    font-family: Georgia, 'Iowan Old Style', Palatino, serif;
+    font-size: 19px;
+    line-height: 1.6;
+  }
+  .wrap { max-width: 720px; margin: 0 auto; }
+
+  .mark {
+    font-size: 30px; font-weight: 700; letter-spacing: -0.03em; margin: 0;
+  }
+  .mark span { color: var(--wax); }
+  .sub {
+    font-family: 'Courier New', monospace;
+    font-size: 12px; text-transform: uppercase; letter-spacing: .18em;
+    color: var(--leaf); margin: 6px 0 0;
+  }
+  h1 { font-size: 34px; line-height: 1.15; margin: 28px 0 8px; }
+  .lede { font-size: 20px; color: var(--body); margin: 0 0 8px; }
+
+  h2 {
+    font-size: 24px; margin: 48px 0 4px; padding-top: 20px;
+    border-top: 1px solid var(--hair);
+  }
+  .why { color: var(--body); font-size: 17px; margin: 0 0 20px; }
+
+  ol { padding-left: 0; list-style: none; margin: 0; counter-reset: step; }
+  li.task {
+    counter-increment: step;
+    background: #fff; border: 1px solid var(--hair);
+    border-radius: 2px; padding: 18px 20px 18px 58px;
+    margin: 0 0 14px; position: relative;
+  }
+  li.task::before {
+    content: counter(step);
+    position: absolute; left: 18px; top: 17px;
+    width: 26px; height: 26px; border-radius: 50%;
+    background: var(--soft); color: var(--forest);
+    font-family: 'Courier New', monospace; font-size: 13px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  li.task.stop { border-left: 4px solid var(--wax); }
+  .task h3 { margin: 0 0 6px; font-size: 20px; }
+  .task p { margin: 6px 0 0; color: var(--body); font-size: 17px; }
+  .task .breaks {
+    display: inline-block; margin-top: 10px;
+    font-family: 'Courier New', monospace; font-size: 12px;
+    text-transform: uppercase; letter-spacing: .1em; color: var(--wax);
+  }
+  .where {
+    display: block; margin-top: 10px;
+    font-family: 'Courier New', monospace; font-size: 13px;
+    color: var(--leaf);
+  }
+  code {
+    font-family: 'Courier New', monospace; font-size: 15px;
+    background: var(--soft); padding: 2px 6px; border-radius: 2px;
+  }
+  pre {
+    background: var(--forest); color: #fff; padding: 12px 16px;
+    border-radius: 2px; overflow-x: auto; margin: 10px 0 0;
+    font-family: 'Courier New', monospace; font-size: 14px; line-height: 1.5;
+  }
+  .decide {
+    background: var(--soft); border: 1px solid var(--hair);
+    border-radius: 2px; padding: 16px 20px; margin: 0 0 14px;
+  }
+  .decide h3 { margin: 0 0 4px; font-size: 19px; }
+  .decide p { margin: 4px 0 0; color: var(--body); font-size: 17px; }
+  footer {
+    margin-top: 56px; padding-top: 20px; border-top: 1px solid var(--hair);
+    color: var(--body); font-size: 16px;
+  }
+  @media (max-width: 560px) {
+    body { font-size: 18px; padding: 28px 16px 80px; }
+    h1 { font-size: 28px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <p class="mark">kept<span>.</span></p>
+  <p class="sub">Launch checklist</p>
+
+  <h1>Four things break launch day.<br>Do those first.</h1>
+  <p class="lede">Everything else on this page can be fixed after you go live. These four cannot.</p>
+
+  <h2>Stop — do before any ad runs</h2>
+  <p class="why">Each of these fails <strong>silently</strong>. Nothing on screen tells you it is broken.</p>
+
+  <ol>
+    <li class="task stop">
+      <h3>Turn off public sign-up in Clerk</h3>
+      <p>Right now <strong>anyone can create an account</strong> and reach the founder dashboard — seller data, deals, and the probate export with deceased people's names.</p>
+      <p>Set the instance to <strong>invitation only</strong>. Also move off the development instance (<code>clerk.accounts.dev</code>) to production.</p>
+      <span class="where">Clerk dashboard → your app → Restrictions</span>
+      <span class="breaks">Breaks: everything</span>
+    </li>
+
+    <li class="task stop">
+      <h3>Set <code>FOUNDER_USER_IDS</code></h3>
+      <p>The dashboard now checks <em>who</em> you are, not just that you are logged in. Without this variable it falls back to requiring a Clerk organisation — and organisations are off by default, so <strong>you would lock yourself out</strong>.</p>
+      <p>Copy your Clerk user id (starts <code>user_</code>) for both founders, comma separated.</p>
+      <span class="where">Clerk → Users → click your user → copy id. Then Vercel → bellwood-app → Settings → Environment Variables</span>
+      <span class="breaks">Breaks: your own access</span>
+    </li>
+
+    <li class="task stop">
+      <h3>Set <code>RESEND_TOKEN</code> and <code>RESEND_FROM</code></h3>
+      <p><strong>No email sends today.</strong> A seller fills in the form and hears nothing. An agent asks for a login link and never gets one — while the screen says "check your inbox".</p>
+      <p>Then verify <strong>wearekept.co.uk</strong> in Resend (SPF and DKIM) so the mail actually lands.</p>
+      <span class="where">Vercel → all three projects → Environment Variables. Then resend.com → Domains</span>
+      <span class="breaks">Breaks: every lead</span>
+    </li>
+
+    <li class="task stop">
+      <h3>Run the database migration</h3>
+      <p>The rate limiter that stops bots draining your API budget does <strong>nothing</strong> until its table exists.</p>
+      <pre>pnpm migrate</pre>
+      <span class="where">Run from the repo root, once</span>
+      <span class="breaks">Breaks: cost control</span>
+    </li>
+  </ol>
+
+  <h2>Then merge the work</h2>
+  <p class="why">Two pull requests hold this week's fixes. Merging deploys automatically.</p>
+
+  <ol>
+    <li class="task">
+      <h3>Merge PR #46 — the hardening</h3>
+      <p>Compliance fixes to emails and the offer PDF, the authorisation guard, rate limiting, and the pricing bugs.</p>
+      <p><strong>Set <code>FOUNDER_USER_IDS</code> before this one merges</strong> (task 2 above).</p>
+    </li>
+    <li class="task">
+      <h3>Merge PR #45 — the design sweep</h3>
+      <p>Lower risk. Removes the generic look and the leftover Bellwoods branding.</p>
+    </li>
+    <li class="task">
+      <h3>Check the site loads</h3>
+      <p>Visit <code>/sell</code> and <code>/agents</code>. Submit one test offer request and confirm the email arrives.</p>
+    </li>
+  </ol>
+
+  <h2>Before you spend money on ads</h2>
+
+  <ol>
+    <li class="task">
+      <h3>Point ads at the right pages</h3>
+      <p>The root <code>/</code> sends everyone to the agents page. Send sellers to <code>/sell</code> and agents to <code>/agents</code> directly.</p>
+    </li>
+    <li class="task">
+      <h3>Add analytics</h3>
+      <p>There is <strong>none</strong>. Right now you cannot tell which ads produce leads. Vercel Web Analytics plus one conversion event on the offer form is enough to start.</p>
+    </li>
+    <li class="task">
+      <h3>Add error alerting</h3>
+      <p>Sentry is switched off. If the offer engine breaks mid-campaign, nothing tells you.</p>
+    </li>
+    <li class="task">
+      <h3>Fill in the legal gaps</h3>
+      <p>The privacy page needs your <strong>company number</strong> and <strong>ICO registration number</strong>. The regulatory page still shows "[pending]".</p>
+    </li>
+  </ol>
+
+  <h2>Your call — nobody else can decide these</h2>
+
+  <div class="decide">
+    <h3>Trademark search</h3>
+    <p>KEPT.md says the class 36 search must happen <strong>before public use</strong>. Paid advertising is public use.</p>
+  </div>
+
+  <div class="decide">
+    <h3>Are PRS, ICO and AML valid under "Kept"?</h3>
+    <p>The site claims all three as Kept. Confirm they hold under the entity actually trading, and pick <strong>one</strong> membership list — the site says PRS, older emails said NAPB and TPO.</p>
+  </div>
+
+  <div class="decide">
+    <h3>The methodology page percentages</h3>
+    <p>A review flagged the margin table as forbidden. I left it — it is general policy with a made-up example, not a real seller's price, and your position is that the discount is never hidden. <strong>Confirm you are happy with it.</strong></p>
+  </div>
+
+  <div class="decide">
+    <h3>Roboto as the body font</h3>
+    <p>It is in the brand kit but it is the Android default, and it flattens every page. Decide with Ant whether to keep it.</p>
+  </div>
+
+  <div class="decide">
+    <h3>Photography</h3>
+    <p>The site is still 100% drawn in code. No real photos anywhere. This is the biggest remaining gap in feeling premium — a founder headshot, a doorway, a real signed letter.</p>
+  </div>
+
+  <footer>
+    <p><strong>If you only do four things:</strong> Clerk sign-up off · <code>FOUNDER_USER_IDS</code> · <code>RESEND_TOKEN</code> · <code>pnpm migrate</code>.</p>
+    <p>Everything else is recoverable after launch.</p>
+  </footer>
+
+</div>
+</body>
+</html>

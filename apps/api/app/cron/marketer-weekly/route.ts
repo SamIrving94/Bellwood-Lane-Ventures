@@ -1,4 +1,5 @@
 import { env } from '@/env';
+import { selfOrigin } from '../_lib/self-origin';
 import { callClaudeForJson, CLAUDE_HAIKU } from '@repo/ai/claude';
 import { database } from '@repo/database';
 import { NextResponse } from 'next/server';
@@ -266,9 +267,8 @@ async function draftSegmentBlogs(request: Request): Promise<{
     return { blogsRequested: 0, segments: orderedSegments, fallback: true };
   }
 
-  const protocol = request.headers.get('x-forwarded-proto') ?? 'https';
-  const host = request.headers.get('host') ?? 'localhost:3002';
-  const url = `${protocol}://${host}/agents/marketer/draft-blog`;
+  // Server-controlled origin: this request carries the agent key.
+  const url = `${selfOrigin()}/agents/marketer/draft-blog`;
   const bearer = env.BELLWOOD_API_KEY ?? env.PAPERCLIP_API_KEY ?? '';
 
   let blogsRequested = 0;

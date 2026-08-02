@@ -20,9 +20,16 @@ export const env = createEnv({
   ],
   server: {
     PAPERCLIP_API_KEY: z.string().optional(),
+    // Comma-separated allowlists read by `requireFounder()` (@repo/auth).
+    // When both are unset the guard falls back to requiring Clerk org
+    // membership — see packages/auth/require-founder.ts.
+    FOUNDER_USER_IDS: z.string().optional(),
+    FOUNDER_EMAIL_ALLOWLIST: z.string().optional(),
   },
   client: {},
   runtimeEnv: {
     PAPERCLIP_API_KEY: process.env.PAPERCLIP_API_KEY,
+    FOUNDER_USER_IDS: process.env.FOUNDER_USER_IDS,
+    FOUNDER_EMAIL_ALLOWLIST: process.env.FOUNDER_EMAIL_ALLOWLIST,
   },
 });

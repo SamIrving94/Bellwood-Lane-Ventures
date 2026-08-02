@@ -191,6 +191,7 @@ export function ChatFlow({ defaultRole }: ChatFlowProps = {}) {
   const [addressInput, setAddressInput] = useState('');
   const [postcodeInput, setPostcodeInput] = useState('');
   const [askingInput, setAskingInput] = useState('');
+  const [conditionInput, setConditionInput] = useState(5);
   const [thinkingProgress, setThinkingProgress] = useState(0);
   const [offer, setOffer] = useState<OfferResult | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -486,31 +487,37 @@ export function ChatFlow({ defaultRole }: ChatFlowProps = {}) {
                 min={1}
                 max={10}
                 step={1}
-                defaultValue={5}
-                onChange={(e) => {
-                  const v = Number(e.target.value);
-                  const label = e.target.nextElementSibling as HTMLElement;
-                  if (label)
-                    label.textContent = `${v}/10 — ${CONDITION_LABELS[v]}`;
-                }}
+                value={conditionInput}
+                onChange={(e) => setConditionInput(Number(e.target.value))}
                 className="w-full accent-leaf"
               />
               <span className="min-w-[140px] text-right text-stone-600 text-xs">
-                5/10 — {CONDITION_LABELS[5]}
+                {conditionInput}/10 — {CONDITION_LABELS[conditionInput]}
               </span>
             </div>
             <div className="mt-3 flex gap-2">
-              {[1, 3, 5, 7, 10].map((v) => (
+              {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((v) => (
                 <button
                   key={v}
                   type="button"
-                  onClick={() => handleCondition(v)}
-                  className="flex-1 rounded-xl border border-stone-300 bg-white px-3 py-2 text-xs transition hover:border-leaf"
+                  onClick={() => setConditionInput(v)}
+                  className={`flex-1 rounded-xl border px-2 py-2 text-xs transition ${
+                    v === conditionInput
+                      ? 'border-leaf bg-leaf/10 text-forest'
+                      : 'border-stone-300 bg-white hover:border-leaf'
+                  }`}
                 >
                   {v}
                 </button>
               ))}
             </div>
+            <button
+              type="button"
+              onClick={() => handleCondition(conditionInput)}
+              className="mt-3 rounded-xl bg-leaf px-5 py-2 text-sm text-white transition hover:bg-leaf-dark"
+            >
+              Continue
+            </button>
           </div>
         )}
 
@@ -638,14 +645,36 @@ export function ChatFlow({ defaultRole }: ChatFlowProps = {}) {
 function OfferCard({ offer }: { offer: OfferResult }) {
   const [accepted, setAccepted] = useState(false);
   const [accepting, setAccepting] = useState(false);
+  const [acceptError, setAcceptError] = useState<string | null>(null);
+
+  // Accepting is gated on the private track token. We hold it here because the
+  // same response that produced this card carried the track link.
+  const trackToken = offer.trackUrl
+    ? (offer.trackUrl.split('/track/')[1]?.split(/[?#]/)[0] ?? null)
+    : null;
 
   const handleReserve = async () => {
     setAccepting(true);
+    setAcceptError(null);
     try {
       const res = await fetch(`/api/quote/${offer.quoteId}/accept`, {
         method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: trackToken ?? undefined }),
       });
-      if (res.ok) setAccepted(true);
+      if (res.ok) {
+        setAccepted(true);
+        return;
+      }
+      const data = await res.json().catch(() => null);
+      setAcceptError(
+        data?.error ??
+          'We could not reserve this offer just now. Please email us and we will confirm it by hand.'
+      );
+    } catch {
+      setAcceptError(
+        'We could not reach our servers. Please email us and we will confirm it by hand.'
+      );
     } finally {
       setAccepting(false);
     }
@@ -760,6 +789,12 @@ function OfferCard({ offer }: { offer: OfferResult }) {
           View certificate
         </a>
       </div>
+
+      {acceptError && (
+        <p className="mt-3 rounded-xl border border-rose-200 bg-rose-50 p-3 text-rose-800 text-sm">
+          {acceptError}
+        </p>
+      )}
 
       {offer.trackUrl && (
         <div className="mt-5 rounded-xl border border-stone-200 bg-cream p-4">

@@ -87,20 +87,35 @@ async function handle(request: Request) {
         continue;
       }
 
+      // The price on a binding document is the offer we actually made, never
+      // the appraisal's ARV. Non-auction leads have bidCap = null by design, so
+      // there is no offer figure in the appraisal at all: for those the deep
+      // appraisal re-checks market value and condition, it does not re-price.
+      const offerPence = appraisal.bidCap?.hardCapPence ?? q.offer?.offerPence;
+      if (!offerPence || offerPence <= 0) {
+        console.warn(
+          `[cron/quote-ops] no offer figure for quote ${q.id} — skipping rather than issuing a binding document without a price`
+        );
+        failed++;
+        continue;
+      }
+
       const pdfUrl = await renderSignedOfferPdf({
         quoteId: q.id,
         address: q.address,
         postcode: q.postcode,
         agentFirmName: q.firmName,
         agentContactName: q.contactName,
+        offerPence,
         appraisal,
         enrichment,
       });
 
-      // Numbers for the FounderAction body.
-      const newOfferPence =
-        appraisal.bidCap?.hardCapPence ?? appraisal.arv.pointEstimatePence;
-      const indicativePence = q.offer?.offerPence ?? newOfferPence;
+      // Numbers for the FounderAction body. Drift compares the re-appraised
+      // MARKET VALUE against the market value the original offer was built on
+      // — comparing an offer to an ARV would show a permanent ~20% "drift".
+      const newOfferPence = offerPence;
+      const indicativePence = q.offer?.offerPence ?? offerPence;
       const drift =
         indicativePence > 0
           ? Math.abs(newOfferPence - indicativePence) / indicativePence
@@ -117,8 +132,9 @@ async function handle(request: Request) {
           title: `Approve signed offer: ${q.address.slice(0, 60)}`,
           description: [
             `Agent: ${q.contactName ?? q.firmName ?? 'unknown'}`,
-            `Indicative offer: £${(indicativePence / 100).toLocaleString('en-GB')}`,
-            `Re-AVM offer: £${(newOfferPence / 100).toLocaleString('en-GB')} (${(drift * 100).toFixed(1)}% drift)`,
+            `Offer on the document: £${(newOfferPence / 100).toLocaleString('en-GB')}`,
+            `Indicative offer given earlier: £${(indicativePence / 100).toLocaleString('en-GB')} (${(drift * 100).toFixed(1)}% drift)`,
+            `Re-appraised market value (ARV): £${(appraisal.arv.pointEstimatePence / 100).toLocaleString('en-GB')}`,
             `Verdict: ${appraisal.recommendation.verdict.toUpperCase()}`,
             `Confidence: ${appraisal.confidence.level}`,
           ].join('\n'),

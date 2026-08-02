@@ -1,6 +1,6 @@
 'use server';
 
-import { auth } from '@repo/auth/server';
+import { requireFounder } from '@repo/auth/server';
 import { database } from '@repo/database';
 import { revalidatePath } from 'next/cache';
 
@@ -16,8 +16,7 @@ export async function releaseForResale(
   reason: string,
   resalePricePence?: number,
 ) {
-  const { userId } = await auth();
-  if (!userId) throw new Error('Unauthorized');
+  const { userId } = await requireFounder();
 
   if (!reason.trim()) throw new Error('Add a reason — why are we passing?');
 
@@ -62,8 +61,7 @@ export async function releaseForResale(
  * to reset manually since the right next stage depends on context.
  */
 export async function unreleaseForResale(dealId: string) {
-  const { userId } = await auth();
-  if (!userId) throw new Error('Unauthorized');
+  const { userId } = await requireFounder();
 
   const deal = await database.deal.findUnique({
     where: { id: dealId },

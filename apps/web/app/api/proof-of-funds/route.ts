@@ -1,9 +1,15 @@
 // Proof-of-funds capture endpoint.
 // Persists a request, optionally emails the founder, returns 200.
 
+import {
+  LIMITS,
+  checkRateLimit,
+  clientIp,
+  retryAfterSeconds,
+} from '@/lib/rate-limit';
+import { sendEmail } from '@repo/email';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { sendEmail } from '@repo/email';
 
 export const runtime = 'nodejs';
 
@@ -14,6 +20,18 @@ const Body = z.object({
 });
 
 export async function POST(request: Request) {
+  const ip = clientIp(request) ?? 'anonymous';
+  const limit = await checkRateLimit(LIMITS.proofOfFundsByIp, `ip:${ip}`);
+  if (!limit.ok) {
+    return NextResponse.json(
+      { error: 'Too many requests. Please try again later.' },
+      {
+        status: 429,
+        headers: { 'Retry-After': retryAfterSeconds(limit.resetAt) },
+      }
+    );
+  }
+
   let parsed;
   try {
     parsed = Body.safeParse(await request.json());
@@ -24,7 +42,7 @@ export async function POST(request: Request) {
   if (!parsed.success) {
     return NextResponse.json(
       { error: 'Validation failed', issues: parsed.error.issues },
-      { status: 400 },
+      { status: 400 }
     );
   }
 

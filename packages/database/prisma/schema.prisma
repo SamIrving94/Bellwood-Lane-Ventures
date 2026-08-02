@@ -693,7 +693,7 @@ enum DealUpdateVisibility {
 // deal status without logging in.
 model TrackToken {
   id             String        @id @default(cuid())
-  token          String        @unique // url-safe, 32 chars
+  token          String        @unique // url-safe base64, 24 chars (18 random bytes)
   quoteRequestId String?       @unique
   quoteRequest   QuoteRequest? @relation(fields: [quoteRequestId], references: [id])
   dealId         String?       @unique
@@ -1009,4 +1009,25 @@ model PropertyDataCache {
 
   @@index([expiresAt])
   @@index([endpoint])
+}
+
+/// Durable rate-limit counters.
+///
+/// The public endpoints previously used an in-memory Map, which does not work
+/// on serverless: every isolate gets its own empty map, so the cap was per
+/// lambda rather than per caller. This table is the shared counter. One row
+/// per (bucket, subject, window) — e.g. ('quote', 'ip:1.2.3.4', 2026-07-31T18).
+model RateLimitCounter {
+  id          String   @id @default(cuid())
+  /// Logical bucket: the endpoint or action being limited.
+  bucket      String
+  /// Who is being limited: 'ip:<addr>' or 'email:<addr>'.
+  subject     String
+  /// Start of the fixed window this counter belongs to.
+  windowStart DateTime
+  count       Int      @default(0)
+  expiresAt   DateTime
+
+  @@unique([bucket, subject, windowStart])
+  @@index([expiresAt])
 }

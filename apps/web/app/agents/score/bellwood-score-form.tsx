@@ -155,9 +155,8 @@ export function BellwoodScoreForm() {
             {formatGBP(result.indicativeMaxPence)}
           </p>
           <p className="mt-2 text-[12px] text-stone-600">
-            Mid: {formatGBP(result.indicativeMidPence)} ·{' '}
-            {Math.round(result.offerPercentOfAvm * 100)}% of AVM mid ·
-            Confidence {Math.round(result.confidenceScore * 100)}%
+            Mid: {formatGBP(result.indicativeMidPence)} · Confidence{' '}
+            {Math.round(result.confidenceScore * 100)}%
           </p>
 
           <dl className="mt-6 grid grid-cols-2 gap-3 text-[12px] md:grid-cols-4">

@@ -10,7 +10,10 @@
  * Required env var (see keys.ts):
  *   COMPANIES_HOUSE_API_KEY  — API key (used as Basic auth username; password blank)
  *
- * Falls back to synthetic data when credentials are absent or the call fails.
+ * Synthetic data is emitted ONLY when COMPANIES_HOUSE_API_KEY is absent (the
+ * local-development path), and every synthetic record carries
+ * `source: 'synthetic'`. A live search that finds no match, or that fails,
+ * returns null — this module never invents a verification result.
  */
 
 import { z } from 'zod';
@@ -205,41 +208,70 @@ async function searchOfficerLive(name: string): Promise<Officer | null> {
 // ---------------------------------------------------------------------------
 
 /**
+ * True when a Company/Officer record is fabricated development-mode data
+ * rather than a real Companies House record. Anything that presents these
+ * records as verification MUST check this first.
+ */
+export function isSyntheticCompaniesHouse(
+  record: { source: string } | null | undefined
+): boolean {
+  return record?.source === 'synthetic';
+}
+
+/**
  * Look up a company by name — useful for executor-held estates.
+ *
+ * Returns null when the live search legitimately finds no match, and null
+ * when the live search errors. It NEVER invents a company: this feeds vendor
+ * verification ("does this company exist / has it been dissolved"), and a
+ * fabricated company number with a made-up status is worse than no answer.
+ *
+ * Synthetic data is emitted ONLY on the no-API-key development path, and is
+ * marked `source: 'synthetic'` — see {@link isSyntheticCompaniesHouse}.
  */
 export async function searchCompany(name: string): Promise<Company | null> {
   if (!name) return null;
   const apiKey = process.env.COMPANIES_HOUSE_API_KEY ?? '';
-  if (apiKey) {
-    try {
-      const result = await searchCompanyLive(name);
-      if (result) return result;
-    } catch (err) {
-      console.warn(
-        `[property-data/companies-house] company search failed (${(err as Error).message}), using synthetic`
-      );
-    }
+  if (!apiKey) {
+    console.warn(
+      '[property-data/companies-house] no COMPANIES_HOUSE_API_KEY — returning SYNTHETIC company (development only)'
+    );
+    return syntheticCompany(name);
   }
-  return syntheticCompany(name);
+  try {
+    // null here means "searched, found nothing" — a real answer, not a gap.
+    return await searchCompanyLive(name);
+  } catch (err) {
+    console.warn(
+      `[property-data/companies-house] company search failed (${(err as Error).message}) — returning null (no synthetic)`
+    );
+    return null;
+  }
 }
 
 /**
  * Look up a person as a Companies House officer — useful for probate contacts.
+ *
+ * Same contract as {@link searchCompany}: no match or a failed call returns
+ * null, and synthetic officers exist only on the no-API-key dev path.
  */
 export async function searchOfficer(name: string): Promise<Officer | null> {
   if (!name) return null;
   const apiKey = process.env.COMPANIES_HOUSE_API_KEY ?? '';
-  if (apiKey) {
-    try {
-      const result = await searchOfficerLive(name);
-      if (result) return result;
-    } catch (err) {
-      console.warn(
-        `[property-data/companies-house] officer search failed (${(err as Error).message}), using synthetic`
-      );
-    }
+  if (!apiKey) {
+    console.warn(
+      '[property-data/companies-house] no COMPANIES_HOUSE_API_KEY — returning SYNTHETIC officer (development only)'
+    );
+    return syntheticOfficer(name);
   }
-  return syntheticOfficer(name);
+  try {
+    return await searchOfficerLive(name);
+  } catch (err) {
+    console.warn(
+      `[property-data/companies-house] officer search failed (${(err as Error).message}) — returning null (no synthetic)`
+    );
+    return null;
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -402,6 +434,11 @@ export async function enrichEstateCompany(lead: {
   return {
     solicitorCompany: company,
     contactOfficer: officer,
-    estateHeldByCompany: company?.companyStatus === 'active',
+    // Only a REAL active Companies House record proves the estate is
+    // company-held. A synthetic dev-mode record picks its status at random,
+    // so it must never flip this true.
+    estateHeldByCompany:
+      !isSyntheticCompaniesHouse(company) &&
+      company?.companyStatus === 'active',
   };
 }

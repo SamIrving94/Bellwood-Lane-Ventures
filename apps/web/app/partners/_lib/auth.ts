@@ -1,19 +1,30 @@
 import 'server-only';
 import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
-import { cookies } from 'next/headers';
 import { database } from '@repo/database';
+import { cookies } from 'next/headers';
 
 const COOKIE_NAME = 'bellwood-partner-session';
 const MAGIC_LINK_TTL_MIN = 15;
 const SESSION_TTL_DAYS = 30;
 
+/**
+ * HMAC key for partner magic-link + session tokens.
+ *
+ * Fails closed in production: a fallback chain here meant a missing env var
+ * silently downgraded to a secret committed to this repo, which would let
+ * anyone forge a session cookie for any agent account. Outside production we
+ * keep a dev default so local setup stays frictionless.
+ */
 function getSecret(): string {
-  return (
-    process.env.PARTNER_AUTH_SECRET ||
-    process.env.CRON_SECRET ||
-    process.env.PAPERCLIP_API_KEY ||
-    'bellwood-dev-partner-auth-secret-change-in-prod'
-  );
+  const secret = process.env.PARTNER_AUTH_SECRET;
+  if (secret && secret.length >= 32) return secret;
+
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error(
+      'PARTNER_AUTH_SECRET is missing or shorter than 32 characters. Partner auth is disabled until it is set.'
+    );
+  }
+  return 'bellwood-dev-partner-auth-secret-change-in-prod';
 }
 
 function sign(payload: string): string {
@@ -44,7 +55,9 @@ function decodeToken(token: string): TokenPayload | null {
   if (!json || !sig) return null;
   if (!verify(json, sig)) return null;
   try {
-    const data = JSON.parse(Buffer.from(json, 'base64url').toString()) as TokenPayload;
+    const data = JSON.parse(
+      Buffer.from(json, 'base64url').toString()
+    ) as TokenPayload;
     if (!data.exp || data.exp < Date.now()) return null;
     return data;
   } catch {
@@ -75,7 +88,9 @@ export function verifyMagicLinkToken(token: string): string | null {
 // Session cookie
 // --------------------------------------------------------------------------
 
-export async function createSessionCookie(agentAccountId: string): Promise<void> {
+export async function createSessionCookie(
+  agentAccountId: string
+): Promise<void> {
   const token = encodeToken({
     sub: agentAccountId,
     kind: 'session',
@@ -96,19 +111,16 @@ export async function clearSessionCookie(): Promise<void> {
   cookieStore.delete(COOKIE_NAME);
 }
 
-export async function getCurrentAgent(): Promise<
-  | {
-      id: string;
-      email: string;
-      contactName: string;
-      firmName: string;
-      referralCode: string;
-      tier: string;
-      totalReferrals: number;
-      totalDeals: number;
-    }
-  | null
-> {
+export async function getCurrentAgent(): Promise<{
+  id: string;
+  email: string;
+  contactName: string;
+  firmName: string;
+  referralCode: string;
+  tier: string;
+  totalReferrals: number;
+  totalDeals: number;
+} | null> {
   try {
     const cookieStore = await cookies();
     const token = cookieStore.get(COOKIE_NAME)?.value;

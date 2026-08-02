@@ -1,6 +1,6 @@
 'use server';
 
-import { auth } from '@repo/auth/server';
+import { requireFounder } from '@repo/auth/server';
 import { database } from '@repo/database';
 import { revalidatePath } from 'next/cache';
 
@@ -44,8 +44,7 @@ export async function recordDealEconomics(
   dealId: string,
   input: DealEconomicsInput,
 ) {
-  const { userId } = await auth();
-  if (!userId) throw new Error('Unauthorized');
+  const { userId } = await requireFounder();
 
   const deal = await database.deal.findUnique({
     where: { id: dealId },

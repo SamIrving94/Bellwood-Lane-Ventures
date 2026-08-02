@@ -21,7 +21,7 @@ export default async function ReferralLandingPage({
       // Increment totalReferrals on click (lightweight — not per submission)
       await database.agentAccount.update({
         where: { id: agent.id },
-        data: {},
+        data: { totalReferrals: { increment: 1 } },
       });
     }
   } catch {

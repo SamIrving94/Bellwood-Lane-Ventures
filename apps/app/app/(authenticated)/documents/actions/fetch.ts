@@ -1,6 +1,6 @@
 'use server';
 
-import { auth } from '@repo/auth/server';
+import { getFounderSession } from '@repo/auth/server';
 import { database } from '@repo/database';
 
 type FetchResult =
@@ -8,7 +8,7 @@ type FetchResult =
   | { error: string };
 
 export async function fetchExtract(id: string): Promise<FetchResult> {
-  const { userId } = await auth();
+  const userId = (await getFounderSession())?.userId;
   if (!userId) return { error: 'Not signed in.' };
 
   const row = await database.documentExtract.findUnique({

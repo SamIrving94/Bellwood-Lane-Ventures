@@ -1,6 +1,6 @@
 'use server';
 
-import { auth } from '@repo/auth/server';
+import { getFounderSession } from '@repo/auth/server';
 import { database } from '@repo/database';
 import { getSourcedProperties } from '@repo/property-data/src/propertydata';
 import { findPlaces } from '@repo/property-data/src/os-places';
@@ -400,7 +400,7 @@ export type Suggestion = {
 export async function searchAreaSuggestions(
   query: string,
 ): Promise<Suggestion[]> {
-  const { userId } = await auth();
+  const userId = (await getFounderSession())?.userId;
   if (!userId || !query.trim() || query.trim().length < 2) return [];
 
   const trimmed = query.trim();
@@ -470,7 +470,7 @@ export async function searchAreaSuggestions(
 }
 
 export async function getAreas(): Promise<Area[]> {
-  const { userId } = await auth();
+  const userId = (await getFounderSession())?.userId;
   if (!userId) return [];
   return migrateLegacyIfNeeded(userId);
 }
@@ -478,7 +478,7 @@ export async function getAreas(): Promise<Area[]> {
 export async function addArea(
   input: string,
 ): Promise<{ ok: true; area: Area } | { ok: false; error: string }> {
-  const { userId } = await auth();
+  const userId = (await getFounderSession())?.userId;
   if (!userId) return { ok: false, error: 'Unauthorized' };
 
   const resolved = resolveInput(input);
@@ -500,7 +500,7 @@ export async function addAreaFromSuggestion(suggestion: {
   seedPostcode: string;
   district: string;
 }): Promise<{ ok: true; area: Area } | { ok: false; error: string }> {
-  const { userId } = await auth();
+  const userId = (await getFounderSession())?.userId;
   if (!userId) return { ok: false, error: 'Unauthorized' };
 
   return addResolvedArea(userId, {
@@ -551,7 +551,7 @@ async function addResolvedArea(
 }
 
 export async function removeArea(id: string): Promise<{ ok: boolean }> {
-  const { userId } = await auth();
+  const userId = (await getFounderSession())?.userId;
   if (!userId) return { ok: false };
   const existing = await loadAreas();
   const updated = existing.filter((a) => a.id !== id);
@@ -563,7 +563,7 @@ export async function removeArea(id: string): Promise<{ ok: boolean }> {
 export async function widenArea(
   id: string,
 ): Promise<{ ok: true; area: Area } | { ok: false; error: string }> {
-  const { userId } = await auth();
+  const userId = (await getFounderSession())?.userId;
   if (!userId) return { ok: false, error: 'Unauthorized' };
   const existing = await loadAreas();
   const idx = existing.findIndex((a) => a.id === id);
@@ -594,7 +594,7 @@ export async function widenArea(
 export async function reProbeArea(
   id: string,
 ): Promise<{ ok: true; area: Area } | { ok: false; error: string }> {
-  const { userId } = await auth();
+  const userId = (await getFounderSession())?.userId;
   if (!userId) return { ok: false, error: 'Unauthorized' };
   const existing = await loadAreas();
   const idx = existing.findIndex((a) => a.id === id);
@@ -638,7 +638,7 @@ export type AreaLeadStats = {
 };
 
 export async function getAreaLeadStats(): Promise<Record<string, AreaLeadStats>> {
-  const { userId } = await auth();
+  const userId = (await getFounderSession())?.userId;
   if (!userId) return {};
   const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
   const leads = await database.scoutLead.findMany({
@@ -688,7 +688,7 @@ export async function clearAllLeads(): Promise<{
   deletedFeedback: number;
   error?: string;
 }> {
-  const { userId } = await auth();
+  const userId = (await getFounderSession())?.userId;
   if (!userId) {
     return { ok: false, deletedLeads: 0, deletedFeedback: 0, error: 'Unauthorized' };
   }
@@ -720,7 +720,7 @@ export async function triggerScoutNow(): Promise<{
   result?: Record<string, unknown>;
   error?: string;
 }> {
-  const { userId } = await auth();
+  const userId = (await getFounderSession())?.userId;
   if (!userId) return { ok: false, error: 'Unauthorized' };
   const cronSecret = process.env.CRON_SECRET;
   if (!cronSecret) return { ok: false, error: 'CRON_SECRET not configured' };

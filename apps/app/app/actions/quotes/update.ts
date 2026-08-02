@@ -1,13 +1,12 @@
 'use server';
 
-import { auth } from '@repo/auth/server';
+import { requireFounder } from '@repo/auth/server';
 import { database } from '@repo/database';
 import { recordDealUpdate } from '@repo/deal-updates';
 import { revalidatePath } from 'next/cache';
 
 async function requireUser(): Promise<string> {
-  const { userId } = await auth();
-  if (!userId) throw new Error('Unauthorized');
+  const { userId } = await requireFounder();
   return userId;
 }
 

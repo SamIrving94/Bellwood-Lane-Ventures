@@ -13,7 +13,7 @@
 
 import 'server-only';
 import { acquireRateSlot } from './rate-limiter';
-import { getPersistentStore } from './store';
+import { getPersistentStore, type PersistentCacheStore } from './store';
 import { type PropertyDataType, toPropertyDataType } from './property-type';
 
 export { toPropertyDataType };
@@ -59,6 +59,28 @@ export function __clearMemoryCache(): void {
   cache.clear();
 }
 
+/**
+ * Drop a poisoned durable row. Best-effort: `delete` is optional on the store
+ * contract (older host wiring may not implement it), and a failed invalidation
+ * must never fail the live request — the row simply expires on its own TTL.
+ */
+async function invalidatePersistent(
+  store: PersistentCacheStore,
+  key: string,
+  endpoint: string,
+): Promise<void> {
+  cache.delete(key);
+  if (!store.delete) return;
+  try {
+    await store.delete(key);
+  } catch (error) {
+    console.warn(
+      `[propertydata] persistent cache invalidate failed for ${endpoint}`,
+      error,
+    );
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Credit usage logging — single source of truth so we can watch spend
 // ---------------------------------------------------------------------------
@@ -81,6 +103,62 @@ function logCreditUsage(endpoint: string, credits: number, fromCache: boolean) {
 }
 
 // ---------------------------------------------------------------------------
+// Result model
+// ---------------------------------------------------------------------------
+
+/**
+ * WHY three states instead of `T | null`: a 429, a timeout, a 5xx, a schema
+ * mismatch and a genuinely empty postcode all collapsed to `null`, and every
+ * caller read `null` as "there is no data here". An outage therefore became a
+ * confident zero — no EPC discount, no short-lease flag, tenure 'unknown' — i.e.
+ * a HIGHER offer on exactly the distressed stock we exist to discount, with
+ * nothing recorded anywhere to show it happened.
+ *
+ * The non-ok branches deliberately carry NO `value` property, so `res.value` is
+ * a type error until the caller has narrowed on `outcome`. Treating a failure as
+ * an absence has to be a deliberate, visible act.
+ */
+export type PropertyDataResult<T> =
+  | { outcome: 'ok'; value: T }
+  | { outcome: 'not_found' }
+  | { outcome: 'failed'; error: string };
+
+/**
+ * Thrown by the legacy `T | null` helpers when the lookup FAILED (as opposed to
+ * returning nothing). Callers that already wrap PropertyData in try/catch —
+ * scouting's per-seed catch, the snapshot's `safe()` — now record a real error
+ * instead of silently booking an empty result.
+ */
+export class PropertyDataUnavailableError extends Error {
+  constructor(
+    public readonly endpoint: string,
+    public readonly detail: string,
+  ) {
+    super(`[propertydata ${endpoint}] lookup unavailable: ${detail}`);
+    this.name = 'PropertyDataUnavailableError';
+  }
+}
+
+/**
+ * Bridge from the result model to the historical `T | null` helper signatures.
+ * `not_found` keeps its old empty answer; `failed` throws so it can never be
+ * read as "no such data".
+ */
+function unwrap<T>(endpoint: string, res: PropertyDataResult<T>): T | null {
+  if (res.outcome === 'ok') return res.value;
+  if (res.outcome === 'not_found') return null;
+  throw new PropertyDataUnavailableError(endpoint, res.error);
+}
+
+/** Map a thrown error back into the result model (for Promise.all fan-outs). */
+function toFailedResult(error: unknown): PropertyDataResult<never> {
+  return {
+    outcome: 'failed',
+    error: (error as Error)?.message?.slice(0, 200) ?? String(error),
+  };
+}
+
+// ---------------------------------------------------------------------------
 // Core fetch wrapper
 // ---------------------------------------------------------------------------
 
@@ -94,39 +172,71 @@ class PropertyDataError extends Error {
   }
 }
 
+/**
+ * Postcodes are the cache key for nearly every endpoint. 'm14 5xy' and
+ * 'M14 5XY' are the same postcode and the same paid-for answer, so they must
+ * produce the same key — before this normalisation they were two separately
+ * billed entries in both cache tiers.
+ */
+function normalisePostcodeParam(value: string | number): string {
+  return String(value).replace(/\s+/g, '').toUpperCase();
+}
+
+type FetchOptions<T> = {
+  ttlMs: number;
+  estimatedCredits: number;
+  schema: z.ZodType<T>;
+  /**
+   * Does this validated body actually carry the fields the caller reads?
+   *
+   * Every response schema here is fully optional (upstream shapes vary by plan),
+   * so a renamed upstream field still PASSES validation and yields an
+   * effectively empty object — which we then cached for up to 90 days and served
+   * to every instance. A content check turns that silent drift into a loud
+   * failure that is never written to either cache tier.
+   *
+   * Check for the PRESENCE of the expected keys, not for non-emptiness: an empty
+   * `properties: []` is a real "nothing in this postcode" answer and must stay
+   * cacheable.
+   */
+  hasContent: (value: T) => boolean;
+};
+
 async function fetchPropertyData<T>(
   endpoint: string,
   params: Record<string, string | number | undefined>,
-  options: { ttlMs: number; estimatedCredits: number; schema: z.ZodType<T> },
-): Promise<T | null> {
+  options: FetchOptions<T>,
+): Promise<PropertyDataResult<T>> {
   const apiKey = env.PROPERTYDATA_API_KEY;
   if (!apiKey) {
+    // A missing key is a FAILURE, not an absence of data. Reporting it as "no
+    // data" is how an unconfigured project looked healthy for weeks.
     console.warn(
       `[propertydata] ${endpoint} skipped — no PROPERTYDATA_API_KEY configured`,
     );
-    return null;
+    return { outcome: 'failed', error: 'PROPERTYDATA_API_KEY not configured' };
+  }
+
+  const normalisedParams: Record<string, string | number> = {};
+  for (const [k, v] of Object.entries(params)) {
+    if (v === undefined || v === null || v === '') continue;
+    normalisedParams[k] = k === 'postcode' ? normalisePostcodeParam(v) : v;
   }
 
   // Build the URL. PropertyData accepts the key as a query param (`key=`).
   // We never log the URL because the key is in it.
   const url = new URL(`${API_BASE}${endpoint}`);
   url.searchParams.set('key', apiKey);
-  for (const [k, v] of Object.entries(params)) {
-    if (v !== undefined && v !== null && v !== '') {
-      url.searchParams.set(k, String(v));
-    }
+  for (const [k, v] of Object.entries(normalisedParams)) {
+    url.searchParams.set(k, String(v));
   }
 
   // Cache key excludes the API key (don't bake it into stored cache keys).
-  const cacheKey = `${endpoint}:${JSON.stringify(
-    Object.fromEntries(
-      Object.entries(params).filter(([, v]) => v !== undefined && v !== null && v !== ''),
-    ),
-  )}`;
+  const cacheKey = `${endpoint}:${JSON.stringify(normalisedParams)}`;
   const cached = cacheGet<T>(cacheKey);
   if (cached !== null) {
     logCreditUsage(endpoint, 0, true);
-    return cached;
+    return { outcome: 'ok', value: cached };
   }
 
   // Durable second tier: survives cold starts and is shared across instances, so
@@ -140,9 +250,24 @@ async function fetchPropertyData<T>(
       if (entry) {
         const remainingMs = entry.expiresAt - Date.now();
         if (remainingMs > 0) {
-          cacheSet(cacheKey, entry.value as T, remainingMs);
-          logCreditUsage(endpoint, 0, true);
-          return entry.value as T;
+          // Durable rows outlive deploys and are shared across instances, so the
+          // value under this key may have been written by an OLDER code version
+          // against an older upstream shape. Handing it back as `T` unchecked
+          // made the durable tier the one path that skipped validation entirely.
+          const revalidated = options.schema.safeParse(entry.value);
+          const usable =
+            revalidated.success && options.hasContent(revalidated.data);
+          if (usable) {
+            cacheSet(cacheKey, revalidated.data, remainingMs);
+            logCreditUsage(endpoint, 0, true);
+            return { outcome: 'ok', value: revalidated.data };
+          }
+          console.warn(
+            `[propertydata] ${endpoint} durable cache entry rejected (${
+              revalidated.success ? 'no usable content' : 'schema mismatch'
+            }) — invalidating and re-fetching`,
+          );
+          await invalidatePersistent(persistentStore, cacheKey, endpoint);
         }
       }
     } catch (error) {
@@ -179,6 +304,10 @@ async function fetchPropertyData<T>(
         headers: { Accept: 'application/json' },
       });
     }
+    if (res.status === 404) {
+      // The only status that genuinely means "we looked, there is nothing here".
+      return { outcome: 'not_found' };
+    }
     if (!res.ok) {
       throw new PropertyDataError(
         endpoint,
@@ -193,7 +322,24 @@ async function fetchPropertyData<T>(
         `[propertydata] ${endpoint} response failed schema validation`,
         parsed.error.flatten(),
       );
-      return null;
+      return {
+        outcome: 'failed',
+        error: `response failed schema validation for ${endpoint}`,
+      };
+    }
+    if (!options.hasContent(parsed.data)) {
+      // Validated but hollow — the schemas are all-optional, so an upstream
+      // rename passes validation and produces an empty object. Loud, and NOT
+      // cached: a 90-day TTL on drift poisons every instance until it expires.
+      console.error(
+        `[propertydata] ${endpoint} SCHEMA DRIFT — response validated but carries none of the expected fields. Not cached. Top-level keys: ${Object.keys(
+          (json ?? {}) as Record<string, unknown>,
+        ).join(', ')}`,
+      );
+      return {
+        outcome: 'failed',
+        error: `schema drift on ${endpoint} — response carried no usable fields`,
+      };
     }
     cacheSet(cacheKey, parsed.data, options.ttlMs);
     if (persistentStore) {
@@ -209,16 +355,27 @@ async function fetchPropertyData<T>(
         );
     }
     logCreditUsage(endpoint, options.estimatedCredits, false);
-    return parsed.data;
+    return { outcome: 'ok', value: parsed.data };
   } catch (error) {
     if (error instanceof PropertyDataError) {
       console.warn(error.message);
-    } else if ((error as { name?: string })?.name === 'AbortError') {
-      console.warn(`[propertydata] ${endpoint} timed out after ${REQUEST_TIMEOUT_MS}ms`);
-    } else {
-      console.warn(`[propertydata] ${endpoint} failed`, error);
+      return {
+        outcome: 'failed',
+        error: `HTTP ${error.status} from ${endpoint}`,
+      };
     }
-    return null;
+    if ((error as { name?: string })?.name === 'AbortError') {
+      console.warn(`[propertydata] ${endpoint} timed out after ${REQUEST_TIMEOUT_MS}ms`);
+      return {
+        outcome: 'failed',
+        error: `${endpoint} timed out after ${REQUEST_TIMEOUT_MS}ms`,
+      };
+    }
+    console.warn(`[propertydata] ${endpoint} failed`, error);
+    return {
+      outcome: 'failed',
+      error: `${endpoint} failed: ${(error as Error)?.message ?? String(error)}`,
+    };
   } finally {
     clearTimeout(timer);
   }
@@ -253,23 +410,46 @@ export type ValuationSaleResult = {
  * UK's only £/sqft-driven AVM. ~3 credits per call.
  * Used by base-valuation as the external cross-check (BELA-12 spec slot).
  * 7-day cache by postcode + property type + bedrooms.
+ *
+ * Money here is POUNDS, not pence — the rest of the monorepo is integer pence,
+ * and callers convert at the boundary (see getPropertySnapshot).
+ *
+ * ⚠ `internalAreaSqm` — UNIT UNCONFIRMED against PropertyData's own docs.
+ * Nothing in this repo pins down what unit `/valuation-sale`'s `internal_area`
+ * expects, and the two available conventions disagree: PropertyData's own
+ * `/floor-areas` hands back `total_floor_area` in SQUARE METRES (it is the EPC
+ * register, which is metric — see PropertyFloorArea.floorAreaSqm), while its
+ * price endpoints are square-FOOT denominated (`/prices-per-sqf`,
+ * `/sold-prices-per-sqf`, the `sqf` field on /sourced-properties). The two
+ * differ by 10.76×, and this AVM carries 15-20% of pointEstimate.
+ *
+ * The parameter is named for the unit it actually receives so the two callers
+ * can no longer disagree silently: `base-valuation.ts` was passing m² and
+ * `getPropertySnapshot` declared sqft. Both now pass m². CONFIRM the expected
+ * unit against PropertyData's /valuation-sale documentation and convert here if
+ * it turns out to want square feet — do NOT change it on a hunch (docs/LEARNINGS.md).
  */
 export async function getPropertyDataValuation(input: {
   postcode: string;
   propertyType: 'detached' | 'semi-detached' | 'terraced' | 'flat';
   bedrooms?: number;
-  internalArea?: number;
+  /** Internal floor area in SQUARE METRES. See the unit caveat above. */
+  internalAreaSqm?: number;
 }): Promise<ValuationSaleResult> {
-  const data = await fetchPropertyData('/valuation-sale', {
-    postcode: input.postcode.replace(/\s/g, ''),
-    property_type: toPropertyDataType(input.propertyType),
-    bedrooms: input.bedrooms,
-    internal_area: input.internalArea,
-  }, {
-    ttlMs: 7 * 24 * 60 * 60 * 1000,
-    estimatedCredits: 3,
-    schema: ValuationSaleSchema,
-  });
+  const data = unwrap(
+    '/valuation-sale',
+    await fetchPropertyData('/valuation-sale', {
+      postcode: input.postcode,
+      property_type: toPropertyDataType(input.propertyType),
+      bedrooms: input.bedrooms,
+      internal_area: input.internalAreaSqm,
+    }, {
+      ttlMs: 7 * 24 * 60 * 60 * 1000,
+      estimatedCredits: 3,
+      schema: ValuationSaleSchema,
+      hasContent: (d) => d.result !== undefined,
+    }),
+  );
   if (!data?.result) return null;
   const r = data.result;
   if (typeof r.estimate !== 'number') return null;
@@ -311,13 +491,15 @@ const FloorAreasSchema = z.object({
  * 90-day cache.
  */
 export async function getFloorAreas(postcode: string) {
-  return fetchPropertyData('/floor-areas', {
-    postcode: postcode.replace(/\s/g, ''),
-  }, {
-    ttlMs: 90 * 24 * 60 * 60 * 1000,
-    estimatedCredits: 2,
-    schema: FloorAreasSchema,
-  });
+  return unwrap(
+    '/floor-areas',
+    await fetchPropertyData('/floor-areas', { postcode }, {
+      ttlMs: 90 * 24 * 60 * 60 * 1000,
+      estimatedCredits: 2,
+      schema: FloorAreasSchema,
+      hasContent: (d) => Array.isArray(d.result?.properties),
+    }),
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -436,13 +618,17 @@ const FloodRiskSchema = z.object({
  * 90-day cache — postcode-level risk barely changes.
  */
 export async function getFloodRisk(postcode: string) {
-  return fetchPropertyData('/flood-risk', {
-    postcode: postcode.replace(/\s/g, ''),
-  }, {
-    ttlMs: 90 * 24 * 60 * 60 * 1000,
-    estimatedCredits: 2,
-    schema: FloodRiskSchema,
-  });
+  return unwrap(
+    '/flood-risk',
+    await fetchPropertyData('/flood-risk', { postcode }, {
+      ttlMs: 90 * 24 * 60 * 60 * 1000,
+      estimatedCredits: 2,
+      schema: FloodRiskSchema,
+      hasContent: (d) =>
+        d.result?.rivers_and_sea !== undefined ||
+        d.result?.surface_water !== undefined,
+    }),
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -465,14 +651,19 @@ const DemandSchema = z.object({
  * conversation: in low-demand postcodes our offer is more compelling.
  * ~2 credits, 7-day cache.
  */
-export async function getMarketDemand(postcode: string) {
-  return fetchPropertyData('/demand', {
-    postcode: postcode.replace(/\s/g, ''),
-  }, {
+export function getMarketDemandResult(postcode: string) {
+  return fetchPropertyData('/demand', { postcode }, {
     ttlMs: 7 * 24 * 60 * 60 * 1000,
     estimatedCredits: 2,
     schema: DemandSchema,
+    hasContent: (d) =>
+      d.result?.sales_demand_score !== undefined ||
+      d.result?.days_on_market_average !== undefined,
   });
+}
+
+export async function getMarketDemand(postcode: string) {
+  return unwrap('/demand', await getMarketDemandResult(postcode));
 }
 
 // ---------------------------------------------------------------------------
@@ -505,13 +696,15 @@ const AgentsSchema = z.object({
  * cron. ~3 credits, 7-day cache.
  */
 export async function getAgentsByPostcode(postcode: string) {
-  return fetchPropertyData('/agents', {
-    postcode: postcode.replace(/\s/g, ''),
-  }, {
-    ttlMs: 7 * 24 * 60 * 60 * 1000,
-    estimatedCredits: 3,
-    schema: AgentsSchema,
-  });
+  return unwrap(
+    '/agents',
+    await fetchPropertyData('/agents', { postcode }, {
+      ttlMs: 7 * 24 * 60 * 60 * 1000,
+      estimatedCredits: 3,
+      schema: AgentsSchema,
+      hasContent: (d) => Array.isArray(d.result?.agents),
+    }),
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -651,8 +844,11 @@ const DEFAULT_LIST = SOURCED_LIST_TYPES.slice(0, 6).join(',');
 /**
  * Per-list-type probe — call /sourced-properties once per list type,
  * record what works, return a breakdown. Resilient to any single type
- * being invalid for the account. ~3 credits per list type per call,
- * but cached.
+ * being invalid for the account.
+ *
+ * NOT cached: it goes through getSourcedPropertiesRaw, which deliberately
+ * bypasses the cache so the founder sees PropertyData's live answer. Every
+ * run costs ~3 credits per list type.
  */
 export type ListTypeBreakdown = Record<
   SourcedListType,
@@ -668,9 +864,10 @@ export async function probeSourcedByType(
 
   await Promise.all(
     types.map(async (t) => {
-      // Use the raw endpoint so we see PropertyData's actual response —
-      // getSourcedProperties() swallows errors and returns [], which
-      // makes a 422 indistinguishable from "no listings".
+      // Use the raw endpoint so the diagnostic page sees PropertyData's actual
+      // status and body. getSourcedProperties() now throws rather than
+      // returning [], but the thrown message loses the upstream 422 text that
+      // tells a founder WHICH list slug their plan rejects.
       const raw = await getSourcedPropertiesRaw(postcode, {
         radiusMiles: opts?.radiusMiles,
         list: t,
@@ -689,8 +886,11 @@ export async function probeSourcedByType(
         return;
       }
 
-      const body = raw.body as { result?: { properties?: unknown[] } } | null;
-      const properties = body?.result?.properties;
+      // Properties live at body.properties, NOT body.result.properties —
+      // same path getSourcedProperties() reads. Reading `result.properties`
+      // made every successful probe report 0 on the diagnostic page.
+      const body = raw.body as { properties?: unknown[] } | null;
+      const properties = body?.properties;
       out[t] = {
         count: Array.isArray(properties) ? properties.length : 0,
         error: null,
@@ -722,7 +922,7 @@ export async function getSourcedPropertiesRaw(
   if (!apiKey) return { ok: false, error: 'PROPERTYDATA_API_KEY not configured' };
   const url = new URL(`${API_BASE}/sourced-properties`);
   url.searchParams.set('key', apiKey);
-  url.searchParams.set('postcode', postcode.replace(/\s/g, ''));
+  url.searchParams.set('postcode', normalisePostcodeParam(postcode));
   url.searchParams.set('list', opts?.list ?? DEFAULT_LIST);
   if (typeof opts?.radiusMiles === 'number') {
     url.searchParams.set('radius', String(opts.radiusMiles));
@@ -735,14 +935,43 @@ export async function getSourcedPropertiesRaw(
   if (opts?.standardisedType) {
     url.searchParams.set('standardised_type', opts.standardisedType);
   }
+  // This raw helper bypasses fetchPropertyData (it must surface the real
+  // status + body, which the wrapper discards), so it has to reproduce the
+  // wrapper's safety rails itself: rate slot, abort timeout, 429 retry.
+  // Without the timeout, probeSourcedByType's 12-way fan-out could wedge the
+  // diagnostic page on a single stalled connection.
+  const controller = new AbortController();
+  let timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
   try {
-    // This raw helper bypasses fetchPropertyData, so gate it on the same limiter.
     await acquireRateSlot();
-    const res = await fetch(url.toString(), { headers: { Accept: 'application/json' } });
+    let res = await fetch(url.toString(), {
+      signal: controller.signal,
+      headers: { Accept: 'application/json' },
+    });
+    if (res.status === 429) {
+      // Same one-shot retry as fetchPropertyData: another instance sharing
+      // the key can collectively blow the 4/10s limit. Fresh timeout budget.
+      await new Promise((r) => setTimeout(r, 2500));
+      await acquireRateSlot();
+      clearTimeout(timer);
+      timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+      res = await fetch(url.toString(), {
+        signal: controller.signal,
+        headers: { Accept: 'application/json' },
+      });
+    }
     const body = await res.json().catch(() => null);
     return { ok: res.ok, status: res.status, body };
   } catch (err) {
+    if ((err as { name?: string })?.name === 'AbortError') {
+      return {
+        ok: false,
+        error: `timed out after ${REQUEST_TIMEOUT_MS}ms`,
+      };
+    }
     return { ok: false, error: (err as Error).message };
+  } finally {
+    clearTimeout(timer);
   }
 }
 
@@ -764,7 +993,7 @@ export async function getSourcedProperties(
   },
 ): Promise<SourcedProperty[]> {
   const params: Record<string, string | number> = {
-    postcode: postcode.replace(/\s/g, ''),
+    postcode,
     list: opts?.list ?? SOURCED_LIST_TYPES[0],
   };
   if (typeof opts?.radiusMiles === 'number') {
@@ -778,14 +1007,22 @@ export async function getSourcedProperties(
   if (opts?.standardisedType) {
     params.standardised_type = opts.standardisedType;
   }
-  const data = await fetchPropertyData(
+  // Throws on a FAILED lookup rather than returning []. An empty array from a
+  // 429 read as "this postcode has no distressed stock" — the diagnostic page
+  // showed "0 listings, error: null" and scouting's source health reported
+  // PropertyData ok. Callers already wrap this in try/catch.
+  const data = unwrap(
     '/sourced-properties',
-    params,
-    {
-      ttlMs: 24 * 60 * 60 * 1000,
-      estimatedCredits: 1,
-      schema: SourcedPropertiesSchema,
-    },
+    await fetchPropertyData(
+      '/sourced-properties',
+      params,
+      {
+        ttlMs: 24 * 60 * 60 * 1000,
+        estimatedCredits: 1,
+        schema: SourcedPropertiesSchema,
+        hasContent: (d) => Array.isArray(d.properties),
+      },
+    ),
   );
   // PropertyData puts properties[] at the ROOT of the body, not under `result`.
   // The `list` field at root is an object {id, name}; use id as the listing type.
@@ -899,6 +1136,7 @@ export async function getSourcedPropertiesMulti(
 ): Promise<SourcedProperty[]> {
   const lists = opts?.lists ?? SOURCED_LIST_TYPES.slice(0, 6);
   const seen = new Map<string, SourcedProperty>();
+  const failures: string[] = [];
 
   for (let i = 0; i < lists.length; i++) {
     const list = lists[i]!;
@@ -927,12 +1165,24 @@ export async function getSourcedPropertiesMulti(
         }
       }
     } catch (err) {
+      failures.push(`${list}: ${(err as Error)?.message ?? String(err)}`);
       console.warn(`[propertydata multi] ${list} failed`, err);
     }
     // Throttle except after the last
     if (i < lists.length - 1) {
       await new Promise((r) => setTimeout(r, 2700));
     }
+  }
+
+  // A partial fan-out still returns what it found — but if EVERY list failed we
+  // have no evidence at all, and returning [] would be indistinguishable from
+  // "this area has no distressed stock". That is the failure scouting's source
+  // health has to see.
+  if (failures.length === lists.length && lists.length > 0) {
+    throw new PropertyDataUnavailableError(
+      '/sourced-properties',
+      `all ${lists.length} list types failed — ${failures[0]}`,
+    );
   }
 
   return Array.from(seen.values());
@@ -983,16 +1233,28 @@ export type EpcReading = {
  * Returns every certified property in the postcode. The caller is expected
  * to match by address fuzzy-string.
  */
-export async function getEpcByPostcode(postcode: string): Promise<EpcReading[]> {
-  const data = await fetchPropertyData(
+export async function getEpcByPostcodeResult(
+  postcode: string,
+): Promise<PropertyDataResult<EpcReading[]>> {
+  const res = await fetchPropertyData(
     '/energy-efficiency',
-    { postcode: postcode.replace(/\s/g, '') },
+    { postcode },
     {
       ttlMs: 90 * 24 * 60 * 60 * 1000,
       estimatedCredits: 2,
       schema: EpcSchema,
+      hasContent: (d) => Array.isArray(d.result?.properties),
     },
   );
+  if (res.outcome !== 'ok') return res;
+  return { outcome: 'ok', value: readEpcRows(res.value) };
+}
+
+export async function getEpcByPostcode(postcode: string): Promise<EpcReading[]> {
+  return unwrap('/energy-efficiency', await getEpcByPostcodeResult(postcode)) ?? [];
+}
+
+function readEpcRows(data: unknown): EpcReading[] {
   const rows = (data as { result?: { properties?: unknown[] } } | null)?.result
     ?.properties;
   if (!Array.isArray(rows)) return [];
@@ -1063,18 +1325,30 @@ export type TenureReading = {
  * remaining lease years — critical for offer accuracy and avoiding nasty
  * post-survey surprises. ~3 credits, 30-day cache.
  */
-export async function getTenureByPostcode(
+export async function getTenureByPostcodeResult(
   postcode: string,
-): Promise<TenureReading[]> {
-  const data = await fetchPropertyData(
+): Promise<PropertyDataResult<TenureReading[]>> {
+  const res = await fetchPropertyData(
     '/freeholds',
-    { postcode: postcode.replace(/\s/g, '') },
+    { postcode },
     {
       ttlMs: 30 * 24 * 60 * 60 * 1000,
       estimatedCredits: 3,
       schema: FreeholdsSchema,
+      hasContent: (d) => Array.isArray(d.result?.properties),
     },
   );
+  if (res.outcome !== 'ok') return res;
+  return { outcome: 'ok', value: readTenureRows(res.value) };
+}
+
+export async function getTenureByPostcode(
+  postcode: string,
+): Promise<TenureReading[]> {
+  return unwrap('/freeholds', await getTenureByPostcodeResult(postcode)) ?? [];
+}
+
+function readTenureRows(data: unknown): TenureReading[] {
   const rows = (data as { result?: { properties?: unknown[] } } | null)?.result
     ?.properties;
   if (!Array.isArray(rows)) return [];
@@ -1158,19 +1432,21 @@ export async function getActiveListings(
   postcode: string,
   opts?: { radiusMiles?: number; minDaysOnMarket?: number },
 ): Promise<ActiveListing[]> {
-  const params: Record<string, string | number> = {
-    postcode: postcode.replace(/\s/g, ''),
-  };
+  const params: Record<string, string | number> = { postcode };
   if (typeof opts?.radiusMiles === 'number') params.radius = opts.radiusMiles;
 
-  const data = await fetchPropertyData(
+  const data = unwrap(
     '/listings',
-    params,
-    {
-      ttlMs: 24 * 60 * 60 * 1000,
-      estimatedCredits: 3,
-      schema: ListingsSchema,
-    },
+    await fetchPropertyData(
+      '/listings',
+      params,
+      {
+        ttlMs: 24 * 60 * 60 * 1000,
+        estimatedCredits: 3,
+        schema: ListingsSchema,
+        hasContent: (d) => Array.isArray(d.result?.properties),
+      },
+    ),
   );
   const rows = (data as { result?: { properties?: unknown[] } } | null)?.result
     ?.properties;
@@ -1233,16 +1509,31 @@ export type GrowthReading = {
  * Local price growth + forward forecast. Used by Appraiser to adjust
  * offer % of AVM based on market trajectory. ~2 credits, 30-day cache.
  */
-export async function getGrowth(postcode: string): Promise<GrowthReading | null> {
-  const data = await fetchPropertyData(
+export async function getGrowthResult(
+  postcode: string,
+): Promise<PropertyDataResult<GrowthReading | null>> {
+  const res = await fetchPropertyData(
     '/growth',
-    { postcode: postcode.replace(/\s/g, '') },
+    { postcode },
     {
       ttlMs: 30 * 24 * 60 * 60 * 1000,
       estimatedCredits: 2,
       schema: GrowthSchema,
+      hasContent: (d) =>
+        d.result?.annual_growth !== undefined ||
+        d.result?.five_year_growth !== undefined ||
+        d.result?.forecast_growth !== undefined,
     },
   );
+  if (res.outcome !== 'ok') return res;
+  return { outcome: 'ok', value: readGrowth(res.value) };
+}
+
+export async function getGrowth(postcode: string): Promise<GrowthReading | null> {
+  return unwrap('/growth', await getGrowthResult(postcode)) ?? null;
+}
+
+function readGrowth(data: unknown): GrowthReading | null {
   const r = (data as { result?: Record<string, unknown> } | null)?.result;
   if (!r) return null;
   return {
@@ -1261,6 +1552,13 @@ export async function getGrowth(postcode: string): Promise<GrowthReading | null>
 // postcode, 0 thereafter for the cache window.
 // ---------------------------------------------------------------------------
 
+/**
+ * 'ok'          — the lookup ran; whatever it says is what the register holds.
+ * 'unavailable' — the lookup FAILED. Every field beside it is a default, not a
+ *                 finding, and no adjustment derived from it can be trusted.
+ */
+export type PreflightSourceStatus = 'ok' | 'unavailable';
+
 export type PreflightChecks = {
   postcode: string;
   address?: string;
@@ -1268,12 +1566,14 @@ export type PreflightChecks = {
     rating: string | null;
     isLowEpc: boolean; // E/F/G — meaningful renovation discount
     matchedAddress: string | null;
+    status: PreflightSourceStatus;
   };
   tenure: {
     tenure: 'freehold' | 'leasehold' | 'unknown';
     remainingLeaseYears: number | null;
     isShortLease: boolean; // <80 years — surveyor-level concern
     matchedAddress: string | null;
+    status: PreflightSourceStatus;
   };
   marketTemperature: {
     demandScore: number | null; // 0-100 from /demand
@@ -1284,11 +1584,23 @@ export type PreflightChecks = {
     temperatureIndex: number | null;
     /** 'hot' | 'warm' | 'neutral' | 'cool' | 'cold' */
     band: 'hot' | 'warm' | 'neutral' | 'cool' | 'cold' | null;
+    status: PreflightSourceStatus;
   };
   /** Lines suitable to append to a reasoning array */
   reasoning: string[];
   /** Suggested offer multiplier adjustment (-0.05 to +0.03) on AVM% */
   offerAdjustment: number;
+  /**
+   * True when at least one lookup FAILED (as opposed to finding nothing). The
+   * factors it would have contributed are omitted from `offerAdjustment`, which
+   * means the number is an incomplete answer, not a neutral one — the offer must
+   * route to human review rather than be auto-committed. A 429 on /freeholds is
+   * exactly the case where we previously cleared the short-lease flag and made a
+   * HIGHER offer.
+   */
+  degraded: boolean;
+  /** Which lookups failed: 'epc' | 'tenure' | 'demand' | 'growth'. */
+  failedSources: string[];
 };
 
 function fuzzyMatchAddress<T extends { address: string }>(
@@ -1326,12 +1638,36 @@ export async function runPreflightChecks(input: {
   address?: string;
 }): Promise<PreflightChecks> {
   const { postcode, address } = input;
-  const [epcs, tenures, demand, growth] = await Promise.all([
-    getEpcByPostcode(postcode).catch(() => [] as EpcReading[]),
-    getTenureByPostcode(postcode).catch(() => [] as TenureReading[]),
-    getMarketDemand(postcode).catch(() => null),
-    getGrowth(postcode).catch(() => null),
+  // The result-returning variants so a FAILED lookup stays distinguishable from
+  // an empty register all the way down to the reasoning string. `.catch` only
+  // guards against a genuinely unexpected throw — the fetch layer itself no
+  // longer signals failure by rejecting.
+  const [epcRes, tenureRes, demandRes, growthRes] = await Promise.all([
+    getEpcByPostcodeResult(postcode).catch(toFailedResult),
+    getTenureByPostcodeResult(postcode).catch(toFailedResult),
+    getMarketDemandResult(postcode).catch(toFailedResult),
+    getGrowthResult(postcode).catch(toFailedResult),
   ]);
+
+  const failedSources: string[] = [];
+  const failureDetail: Record<string, string> = {};
+  const record = (key: string, res: PropertyDataResult<unknown>) => {
+    if (res.outcome === 'failed') {
+      failedSources.push(key);
+      failureDetail[key] = res.error;
+    }
+    return res.outcome === 'failed';
+  };
+
+  const epcFailed = record('epc', epcRes);
+  const tenureFailed = record('tenure', tenureRes);
+  const demandFailed = record('demand', demandRes);
+  const growthFailed = record('growth', growthRes);
+
+  const epcs = epcRes.outcome === 'ok' ? epcRes.value : [];
+  const tenures = tenureRes.outcome === 'ok' ? tenureRes.value : [];
+  const demand = demandRes.outcome === 'ok' ? demandRes.value : null;
+  const growth = growthRes.outcome === 'ok' ? growthRes.value : null;
 
   const matchedEpc = fuzzyMatchAddress(epcs, address);
   const matchedTenure = fuzzyMatchAddress(tenures, address);
@@ -1399,23 +1735,41 @@ export async function runPreflightChecks(input: {
     : band === 'cold' ? -0.04
     : 0;
 
+  // Either market source failing makes the temperature reading incomplete. When
+  // BOTH failed there is no band at all — and a null band silently produces the
+  // same 0 adjustment as a genuinely neutral market, which is the collapse this
+  // whole change exists to stop.
+  const marketFailed = demandFailed || growthFailed;
+
   // Low EPC: -0.01 (Appraiser already discounts in AVM but we surface it
   // again at the offer% layer for transparency).
-  const epcAdj = isLowEpc ? -0.01 : 0;
+  //
+  // A FAILED EPC lookup contributes NOTHING rather than a confident zero: we
+  // have no idea whether this property is an F. The missing factor is why the
+  // preflight reports `degraded`.
+  const epcAdj = epcFailed ? 0 : isLowEpc ? -0.01 : 0;
 
   // Short lease: surface only — actual discount handled by lease curve in
   // the offer-calc layer. We don't double-count.
   const offerAdjustment = Math.round((tempAdj + epcAdj) * 1000) / 1000;
 
   const reasoning: string[] = [];
-  if (matchedEpc) {
+  if (epcFailed) {
+    reasoning.push(
+      `EPC: lookup UNAVAILABLE (${failureDetail.epc}) — no EPC adjustment applied and no certificate was ruled out; sent for review`,
+    );
+  } else if (matchedEpc) {
     reasoning.push(
       `EPC ${epcRating ?? '?'} from register (${matchedEpc.address})${isLowEpc ? ' — meaningful renovation cost expected' : ''}`,
     );
   } else {
     reasoning.push('EPC: no certificate matched on this address');
   }
-  if (matchedTenure) {
+  if (tenureFailed) {
+    reasoning.push(
+      `Tenure: lookup UNAVAILABLE (${failureDetail.tenure}) — short-lease screen NOT performed; sent for review`,
+    );
+  } else if (matchedTenure) {
     if (tenure === 'leasehold') {
       reasoning.push(
         `Tenure: leasehold${remainingLeaseYears ? `, ${remainingLeaseYears} years remaining` : ''}${isShortLease ? ' — SHORT LEASE FLAG' : ''}`,
@@ -1426,7 +1780,17 @@ export async function runPreflightChecks(input: {
   }
   if (band) {
     reasoning.push(
-      `Market: ${band}${typeof demandScore === 'number' ? ` (demand ${demandScore}/100)` : ''}${typeof forecastGrowthPct === 'number' ? `, forecast ${forecastGrowthPct > 0 ? '+' : ''}${forecastGrowthPct.toFixed(1)}%` : ''} — offer adjusted ${tempAdj > 0 ? '+' : ''}${(tempAdj * 100).toFixed(1)}%`,
+      `Market: ${band}${typeof demandScore === 'number' ? ` (demand ${demandScore}/100)` : ''}${typeof forecastGrowthPct === 'number' ? `, forecast ${forecastGrowthPct > 0 ? '+' : ''}${forecastGrowthPct.toFixed(1)}%` : ''} — offer adjusted ${tempAdj > 0 ? '+' : ''}${(tempAdj * 100).toFixed(1)}%${marketFailed ? ' (PARTIAL — one market source unavailable)' : ''}`,
+    );
+  } else if (marketFailed) {
+    reasoning.push(
+      `Market temperature: lookup UNAVAILABLE (${failureDetail.demand ?? failureDetail.growth}) — no market adjustment applied; sent for review`,
+    );
+  }
+
+  if (failedSources.length > 0) {
+    console.warn(
+      `[propertydata] preflight ${postcode} degraded — ${failedSources.join(', ')} unavailable`,
     );
   }
 
@@ -1437,12 +1801,14 @@ export async function runPreflightChecks(input: {
       rating: epcRating,
       isLowEpc,
       matchedAddress: matchedEpc?.address ?? null,
+      status: epcFailed ? 'unavailable' : 'ok',
     },
     tenure: {
       tenure,
       remainingLeaseYears,
       isShortLease,
       matchedAddress: matchedTenure?.address ?? null,
+      status: tenureFailed ? 'unavailable' : 'ok',
     },
     marketTemperature: {
       demandScore,
@@ -1451,9 +1817,12 @@ export async function runPreflightChecks(input: {
       forecastGrowthPct,
       temperatureIndex,
       band,
+      status: marketFailed ? 'unavailable' : 'ok',
     },
     reasoning,
     offerAdjustment,
+    degraded: failedSources.length > 0,
+    failedSources,
   };
 }
 
@@ -1481,11 +1850,15 @@ const CreditsSchema = z.object({
  * without thrashing the endpoint.
  */
 export async function getAccountCredits() {
-  return fetchPropertyData('/account/credits', {}, {
-    ttlMs: 60 * 1000, // 1 minute
-    estimatedCredits: 0,
-    schema: CreditsSchema,
-  });
+  return unwrap(
+    '/account/credits',
+    await fetchPropertyData('/account/credits', {}, {
+      ttlMs: 60 * 1000, // 1 minute
+      estimatedCredits: 0,
+      schema: CreditsSchema,
+      hasContent: (d) => d.result !== undefined,
+    }),
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -1564,20 +1937,22 @@ export async function getPlanningApplications(
   postcode: string,
   opts?: { radiusMiles?: number },
 ): Promise<PlanningApplication[]> {
-  const params: Record<string, string | number> = {
-    postcode: postcode.replace(/\s/g, ''),
-  };
+  const params: Record<string, string | number> = { postcode };
   if (typeof opts?.radiusMiles === 'number') {
     params.radius = opts.radiusMiles;
   }
-  const data = await fetchPropertyData(
+  const data = unwrap(
     '/planning-applications',
-    params,
-    {
-      ttlMs: 7 * 24 * 60 * 60 * 1000,
-      estimatedCredits: 2,
-      schema: PlanningApplicationsSchema,
-    },
+    await fetchPropertyData(
+      '/planning-applications',
+      params,
+      {
+        ttlMs: 7 * 24 * 60 * 60 * 1000,
+        estimatedCredits: 2,
+        schema: PlanningApplicationsSchema,
+        hasContent: (d) => Array.isArray(d.data?.planning_applications),
+      },
+    ),
   );
   const apps =
     (data as { data?: { planning_applications?: unknown[] } } | null)?.data
@@ -1695,20 +2070,22 @@ export async function getHmoRegister(
   postcode: string,
   opts?: { radiusMiles?: number },
 ): Promise<HmoRecord[]> {
-  const params: Record<string, string | number> = {
-    postcode: postcode.replace(/\s/g, ''),
-  };
+  const params: Record<string, string | number> = { postcode };
   if (typeof opts?.radiusMiles === 'number') {
     params.radius = opts.radiusMiles;
   }
-  const data = await fetchPropertyData(
+  const data = unwrap(
     '/national-hmo-register',
-    params,
-    {
-      ttlMs: 30 * 24 * 60 * 60 * 1000,
-      estimatedCredits: 2,
-      schema: HmoRegisterSchema,
-    },
+    await fetchPropertyData(
+      '/national-hmo-register',
+      params,
+      {
+        ttlMs: 30 * 24 * 60 * 60 * 1000,
+        estimatedCredits: 2,
+        schema: HmoRegisterSchema,
+        hasContent: (d) => Array.isArray(d.data?.hmos),
+      },
+    ),
   );
   const hmos = (data as { data?: { hmos?: unknown[] } } | null)?.data?.hmos;
   if (!Array.isArray(hmos)) return [];
@@ -1782,14 +2159,23 @@ export type DemographicsReading = {
 export async function getDemographics(
   postcode: string,
 ): Promise<DemographicsReading | null> {
-  const data = await fetchPropertyData(
+  const data = unwrap(
     '/demographics',
-    { postcode: postcode.replace(/\s/g, '') },
-    {
-      ttlMs: 90 * 24 * 60 * 60 * 1000,
-      estimatedCredits: 2,
-      schema: DemographicsSchema,
-    },
+    await fetchPropertyData(
+      '/demographics',
+      { postcode },
+      {
+        ttlMs: 90 * 24 * 60 * 60 * 1000,
+        estimatedCredits: 2,
+        schema: DemographicsSchema,
+        // Deliberately loose — the response keys vary by plan, so all we can
+        // assert is that ONE of the three known containers came back.
+        hasContent: (d) =>
+          d.data !== undefined ||
+          d.result !== undefined ||
+          d.age_bands !== undefined,
+      },
+    ),
   );
   if (!data) return null;
   const raw = (data as Record<string, unknown>) ?? null;
@@ -1910,26 +2296,33 @@ export async function getSoldPrices(
       ? Math.min(5, Math.max(0, Math.round(opts.bedrooms)))
       : undefined;
 
-  const data = await fetchPropertyData(
+  const data = unwrap(
     '/sold-prices',
-    {
-      postcode: postcode.replace(/\s/g, ''),
-      max_age: maxAge,
-      // NB: /sold-prices takes `type`, NOT `property_type` (which /valuation-sale
-      // uses) — the param names genuinely differ between endpoints. The prod
-      // errors confirm it: /valuation-sale threw "Missing input: property_type"
-      // (a param-name fix), while /sold-prices threw "Invalid filter: type" (a
-      // value fix, done via toPropertyDataType). Do not "align" these to match —
-      // verify against a real captured response first (docs/LEARNINGS.md).
-      type: toPropertyDataType(opts.type),
-      bedrooms,
-      points,
-    },
-    {
-      ttlMs: 7 * 24 * 60 * 60 * 1000,
-      estimatedCredits: 2,
-      schema: SoldPricesSchema,
-    },
+    await fetchPropertyData(
+      '/sold-prices',
+      {
+        postcode,
+        max_age: maxAge,
+        // NB: /sold-prices takes `type`, NOT `property_type` (which /valuation-sale
+        // uses) — the param names genuinely differ between endpoints. The prod
+        // errors confirm it: /valuation-sale threw "Missing input: property_type"
+        // (a param-name fix), while /sold-prices threw "Invalid filter: type" (a
+        // value fix, done via toPropertyDataType). Do not "align" these to match —
+        // verify against a real captured response first (docs/LEARNINGS.md).
+        type: toPropertyDataType(opts.type),
+        bedrooms,
+        points,
+      },
+      {
+        ttlMs: 7 * 24 * 60 * 60 * 1000,
+        estimatedCredits: 2,
+        schema: SoldPricesSchema,
+        hasContent: (d) =>
+          Array.isArray(d.result?.transactions) ||
+          d.result?.average_price !== undefined ||
+          d.result?.median_price !== undefined,
+      },
+    ),
   );
   const r = (data as { result?: Record<string, unknown> } | null)?.result;
   if (!r) return null;
@@ -1989,14 +2382,20 @@ export type YieldsReading = {
 export async function getYields(
   postcode: string,
 ): Promise<YieldsReading | null> {
-  const data = await fetchPropertyData(
+  const data = unwrap(
     '/yields',
-    { postcode: postcode.replace(/\s/g, '') },
-    {
-      ttlMs: 30 * 24 * 60 * 60 * 1000,
-      estimatedCredits: 2,
-      schema: YieldsSchema,
-    },
+    await fetchPropertyData(
+      '/yields',
+      { postcode },
+      {
+        ttlMs: 30 * 24 * 60 * 60 * 1000,
+        estimatedCredits: 2,
+        schema: YieldsSchema,
+        hasContent: (d) =>
+          d.result?.yield_average !== undefined ||
+          d.result?.gross_yield !== undefined,
+      },
+    ),
   );
   const r = (data as { result?: Record<string, unknown> } | null)?.result;
   if (!r) return null;
@@ -2040,14 +2439,19 @@ export type PricesPerSqf = {
 export async function getPricesPerSqf(
   postcode: string,
 ): Promise<PricesPerSqf | null> {
-  const data = await fetchPropertyData(
+  const data = unwrap(
     '/prices-per-sqf',
-    { postcode: postcode.replace(/\s/g, '') },
-    {
-      ttlMs: 30 * 24 * 60 * 60 * 1000,
-      estimatedCredits: 2,
-      schema: PricesPerSqfSchema,
-    },
+    await fetchPropertyData(
+      '/prices-per-sqf',
+      { postcode },
+      {
+        ttlMs: 30 * 24 * 60 * 60 * 1000,
+        estimatedCredits: 2,
+        schema: PricesPerSqfSchema,
+        hasContent: (d) =>
+          d.result?.average !== undefined || d.result?.median !== undefined,
+      },
+    ),
   );
   const r = (data as { result?: Record<string, unknown> } | null)?.result;
   if (!r) return null;
@@ -2084,14 +2488,21 @@ export type CouncilTaxReading = {
 export async function getCouncilTax(
   postcode: string,
 ): Promise<CouncilTaxReading | null> {
-  const data = await fetchPropertyData(
+  const data = unwrap(
     '/council-tax',
-    { postcode: postcode.replace(/\s/g, '') },
-    {
-      ttlMs: 90 * 24 * 60 * 60 * 1000,
-      estimatedCredits: 2,
-      schema: CouncilTaxSchema,
-    },
+    await fetchPropertyData(
+      '/council-tax',
+      { postcode },
+      {
+        ttlMs: 90 * 24 * 60 * 60 * 1000,
+        estimatedCredits: 2,
+        schema: CouncilTaxSchema,
+        hasContent: (d) =>
+          d.result?.band !== undefined ||
+          d.result?.bands !== undefined ||
+          d.result?.average_annual_bill !== undefined,
+      },
+    ),
   );
   const r = (data as { result?: Record<string, unknown> } | null)?.result;
   if (!r) return null;
@@ -2169,8 +2580,16 @@ export type PropertySnapshot = {
     listings: number | null;
     url: string | null;
   }>;
-  /** Errors per source — informational, NOT thrown */
+  /**
+   * Failure per source key — informational, NOT thrown. Now actually populated:
+   * the helpers throw `PropertyDataUnavailableError` on a failed lookup instead
+   * of returning null/[], so `safe()` catches it. Previously a snapshot where
+   * every endpoint 429'd was persisted with `errors: {}` and every field null,
+   * then treated as fresh-and-valid for 7 days.
+   */
   errors: Record<string, string>;
+  /** True when at least one source failed — the snapshot is incomplete. */
+  degraded: boolean;
   fetchedAt: string;
 };
 
@@ -2184,7 +2603,13 @@ export async function getPropertySnapshot(input: {
     | 'flat'
     | 'bungalow';
   bedrooms?: number;
-  internalAreaSqft?: number;
+  /**
+   * Internal floor area in SQUARE METRES — the unit every floor area in this
+   * monorepo carries. Was declared `internalAreaSqft` while the other caller
+   * (base-valuation) passed m² into the same /valuation-sale `internal_area`
+   * field. See the unit caveat on getPropertyDataValuation.
+   */
+  internalAreaSqm?: number;
 }): Promise<PropertySnapshot> {
   const errors: Record<string, string> = {};
   const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -2205,6 +2630,9 @@ export async function getPropertySnapshot(input: {
       return await fn();
     } catch (err) {
       errors[key] = (err as Error)?.message?.slice(0, 150) ?? 'failed';
+      console.warn(
+        `[propertydata] snapshot ${input.postcode} — ${key} unavailable: ${errors[key]}`,
+      );
       return null;
     }
   };
@@ -2221,7 +2649,7 @@ export async function getPropertySnapshot(input: {
         postcode: input.postcode,
         propertyType: avmType,
         bedrooms: input.bedrooms,
-        internalArea: input.internalAreaSqft,
+        internalAreaSqm: input.internalAreaSqm,
       }
     : null;
   const avmRaw = avmInput
@@ -2359,6 +2787,7 @@ export async function getPropertySnapshot(input: {
     tenure,
     agents,
     errors,
+    degraded: Object.keys(errors).length > 0,
     fetchedAt: new Date().toISOString(),
   };
 }

@@ -141,8 +141,14 @@ function BindingOfferDocument(
   const issuedAt = new Date();
   const lockedUntil = new Date(issuedAt.getTime() + 14 * 24 * 3600_000);
 
-  const offerPence =
-    appraisal.bidCap?.hardCapPence ?? appraisal.arv.pointEstimatePence;
+  // Supplied by the caller. Never fall back to ARV: this document is binding,
+  // and ARV is market value, not an offer.
+  const { offerPence } = props;
+  if (!Number.isFinite(offerPence) || offerPence <= 0) {
+    throw new Error(
+      'renderSignedOfferPdf: offerPence is required and must be positive — refusing to render a binding offer without an explicit price'
+    );
+  }
   const arvLow = appraisal.arv.ci80LowPence;
   const arvHigh = appraisal.arv.ci80HighPence;
   const confidencePercent = Math.max(
@@ -255,7 +261,7 @@ function BindingOfferDocument(
         React.createElement(
           Text,
           { style: { fontSize: 9, marginTop: 4 } },
-          `Completion target 14–28 days from acceptance.`
+          'Completion target 14–28 days from acceptance.'
         )
       ),
 

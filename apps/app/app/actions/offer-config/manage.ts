@@ -1,6 +1,6 @@
 'use server';
 
-import { auth } from '@repo/auth/server';
+import { requireFounder } from '@repo/auth/server';
 import { database } from '@repo/database';
 import { mergeOfferConfig } from '@repo/valuation';
 import { revalidatePath } from 'next/cache';
@@ -20,8 +20,7 @@ export async function saveAndActivateOfferConfig(
   partial: unknown,
   description: string,
 ) {
-  const { userId } = await auth();
-  if (!userId) throw new Error('Unauthorized');
+  const { userId } = await requireFounder();
 
   const config = mergeOfferConfig(partial);
 
@@ -55,8 +54,7 @@ export async function saveAndActivateOfferConfig(
  * version. Keeps the append-only model intact (no in-place reactivation).
  */
 export async function restoreOfferVersion(sourceVersion: number) {
-  const { userId } = await auth();
-  if (!userId) throw new Error('Unauthorized');
+  const { userId } = await requireFounder();
 
   const source = await database.evalConfig.findFirst({
     where: { evalType: 'avm_confidence', version: sourceVersion },

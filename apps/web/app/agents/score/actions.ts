@@ -1,8 +1,10 @@
 'use server';
 
+import { LIMITS, checkRateLimit } from '@/lib/rate-limit';
 import { generateInstantOffer } from '@repo/instant-offer';
 import { runPreflightChecks } from '@repo/property-data/src/propertydata';
 import type { PropertyType } from '@repo/valuation';
+import { headers } from 'next/headers';
 
 function coercePropertyType(raw: string): PropertyType {
   switch (raw) {
@@ -56,7 +58,31 @@ export async function calculateBellwoodScore(input: {
 > {
   const postcode = input.postcode.trim().toUpperCase();
   if (!FULL_POSTCODE_RE.test(postcode.replace(/\s+/g, ''))) {
-    return { ok: false, error: 'Please enter a full UK postcode (e.g. M14 5LL).' };
+    return {
+      ok: false,
+      error: 'Please enter a full UK postcode (e.g. M14 5LL).',
+    };
+  }
+
+  // This action is reachable by anyone who can POST to the page, and each run
+  // costs a full AVM plus a Sonnet narrative call. Throttle before spending.
+  const hdrs = await headers();
+  const ip =
+    hdrs
+      .get('x-forwarded-for')
+      ?.split(',')
+      .map((p) => p.trim())
+      .filter(Boolean)
+      .pop() ||
+    hdrs.get('x-real-ip')?.trim() ||
+    'anonymous';
+  const limit = await checkRateLimit(LIMITS.scoreByIp, `ip:${ip}`);
+  if (!limit.ok) {
+    return {
+      ok: false,
+      error:
+        'Too many scores requested from this connection. Please try again shortly.',
+    };
   }
 
   const propertyType = coercePropertyType(input.propertyType);
@@ -82,7 +108,7 @@ export async function calculateBellwoodScore(input: {
         situation,
       }),
       runPreflightChecks({ postcode, address: input.address }).catch(
-        () => null,
+        () => null
       ),
     ]);
 
@@ -90,7 +116,7 @@ export async function calculateBellwoodScore(input: {
     // Kept Score matches what a real submission would see.
     const adjPct = Math.max(
       -0.05,
-      Math.min(0.05, preflight?.offerAdjustment ?? 0),
+      Math.min(0.05, preflight?.offerAdjustment ?? 0)
     );
     const indicativeMidPence = Math.round(offer.offerPence * (1 + adjPct));
 

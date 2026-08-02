@@ -1,6 +1,6 @@
 'use server';
 
-import { auth } from '@repo/auth/server';
+import { requireFounder } from '@repo/auth/server';
 import { database } from '@repo/database';
 import { mergeOfferConfig, runAVM } from '@repo/valuation';
 import { revalidatePath } from 'next/cache';
@@ -34,8 +34,7 @@ const SELLER_TYPE_MAP: Record<string, string> = {
  * override every figure afterwards via the valuation feedback panel.
  */
 export async function generateDealOffer(dealId: string) {
-  const { userId } = await auth();
-  if (!userId) throw new Error('Unauthorized');
+  const { userId } = await requireFounder();
 
   const deal = await database.deal.findUnique({
     where: { id: dealId },

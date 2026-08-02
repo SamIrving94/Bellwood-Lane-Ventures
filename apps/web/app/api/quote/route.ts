@@ -1,33 +1,32 @@
-import { NextResponse } from 'next/server';
-import { z } from 'zod';
-import { callClaudeForJson, CLAUDE_HAIKU } from '@repo/ai/claude';
-import { database } from '@repo/database';
-import {
-  generateInstantOffer,
-  type InstantOfferSituation,
-} from '@repo/instant-offer';
-import type { PropertyType } from '@repo/valuation';
 import { generateReferralCode } from '@/app/partners/_lib/auth';
+import {
+  LIMITS,
+  checkRateLimit,
+  clientIp,
+  retryAfterSeconds,
+} from '@/lib/rate-limit';
+import { CLAUDE_HAIKU, callClaudeForJson } from '@repo/ai/claude';
+import { brand } from '@repo/brand';
+import { database } from '@repo/database';
 import { recordDealUpdate } from '@repo/deal-updates';
 import { sendEmail } from '@repo/email';
+import {
+  type InstantOfferSituation,
+  applyPreflightAdjustment,
+  generateInstantOffer,
+} from '@repo/instant-offer';
 import { runPreflightChecks } from '@repo/property-data/src/propertydata';
+import type { PropertyType } from '@repo/valuation';
+import { DEFAULT_OFFER_CONFIG } from '@repo/valuation/src/offer-config';
+import { NextResponse } from 'next/server';
+import { z } from 'zod';
 
-// Simple in-memory rate limit: 10 requests per IP per hour
-const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
-const HOURS_IN_MS = 60 * 60 * 1000;
-const RATE_LIMIT = 10;
-
-function rateLimit(ip: string): boolean {
-  const now = Date.now();
-  const entry = rateLimitMap.get(ip);
-  if (!entry || entry.resetAt < now) {
-    rateLimitMap.set(ip, { count: 1, resetAt: now + HOURS_IN_MS });
-    return true;
-  }
-  if (entry.count >= RATE_LIMIT) return false;
-  entry.count++;
-  return true;
-}
+/**
+ * Offer floor as a fraction of AVM. Read from the offer config the AVM itself
+ * uses — never re-typed as a literal here, so founder-facing copy can never
+ * quote a threshold the calculator has moved off.
+ */
+const OFFER_FLOOR_FRACTION = DEFAULT_OFFER_CONFIG.floorFraction;
 
 const InputSchema = z.object({
   address: z.string().min(3),
@@ -72,12 +71,14 @@ const InputSchema = z.object({
 // without opening the full record. NEVER load-bearing — null fallback.
 // ────────────────────────────────────────────────────────────────────────────
 
-interface TriageResult {
-  summary: string;
-  urgencySignal: 'high' | 'medium' | 'low';
-  watchOuts: string[];
-  recommendedNextStep: string;
-}
+const TriageSchema = z.object({
+  summary: z.string().max(400),
+  urgencySignal: z.enum(['high', 'medium', 'low']),
+  watchOuts: z.array(z.string().max(200)).max(3).default([]),
+  recommendedNextStep: z.string().max(300),
+});
+
+type TriageResult = z.infer<typeof TriageSchema>;
 
 const TRIAGE_SYSTEM_PROMPT = `You are the head of operations at Kept, a UK property-buying company. An estate agent has just submitted a fall-through deal via /save-the-sale. Your job: produce a 30-second briefing for the founder's inbox.
 
@@ -117,14 +118,18 @@ async function triageSubmission(input: {
     `Situation: ${input.situation}`,
     `Submitter role: ${input.role}${input.firmName ? ` at ${input.firmName}` : ''}`,
   ];
-  if (input.triggerLabel) lines.push(`Trigger chip clicked: ${input.triggerLabel}`);
+  if (input.triggerLabel)
+    lines.push(`Trigger chip clicked: ${input.triggerLabel}`);
   if (typeof input.urgencyDays === 'number')
     lines.push(`Requested completion in: ${input.urgencyDays} days`);
   if (typeof input.askingPricePence === 'number')
-    lines.push(`Asking price: £${Math.round(input.askingPricePence / 100).toLocaleString('en-GB')}`);
-  if (input.notes) lines.push(`Free-text notes from submitter:\n"""\n${input.notes}\n"""`);
+    lines.push(
+      `Asking price: £${Math.round(input.askingPricePence / 100).toLocaleString('en-GB')}`
+    );
+  if (input.notes)
+    lines.push(`Free-text notes from submitter:\n"""\n${input.notes}\n"""`);
 
-  return callClaudeForJson<TriageResult>({
+  const raw = await callClaudeForJson<unknown>({
     system: TRIAGE_SYSTEM_PROMPT,
     user: lines.join('\n'),
     maxTokens: 400,
@@ -132,10 +137,20 @@ async function triageSubmission(input: {
     model: CLAUDE_HAIKU,
     feature: 'save_the_sale_triage',
   });
+
+  // The submitter's free-text notes reach this prompt, so the reply is
+  // untrusted input: shape-check and length-cap it before it can reach the
+  // founder's queue or influence action priority.
+  const validated = TriageSchema.safeParse(raw);
+  if (!validated.success) {
+    console.warn('[quote] triage output failed validation, ignoring');
+    return null;
+  }
+  return validated.data;
 }
 
 function mapPropertyType(
-  pt: z.infer<typeof InputSchema>['propertyType'],
+  pt: z.infer<typeof InputSchema>['propertyType']
 ): PropertyType {
   switch (pt) {
     case 'terraced_house':
@@ -153,15 +168,16 @@ function mapPropertyType(
 }
 
 export async function POST(request: Request) {
-  const ip =
-    request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
-    request.headers.get('x-real-ip') ||
-    'anonymous';
+  const ip = clientIp(request) ?? 'anonymous';
 
-  if (!rateLimit(ip)) {
+  const ipLimit = await checkRateLimit(LIMITS.quoteByIp, `ip:${ip}`);
+  if (!ipLimit.ok) {
     return NextResponse.json(
       { error: 'Too many requests. Please try again later.' },
-      { status: 429 },
+      {
+        status: 429,
+        headers: { 'Retry-After': retryAfterSeconds(ipLimit.resetAt) },
+      }
     );
   }
 
@@ -176,21 +192,45 @@ export async function POST(request: Request) {
   if (!parsed.success) {
     return NextResponse.json(
       { error: 'Validation failed', details: parsed.error.flatten() },
-      { status: 400 },
+      { status: 400 }
     );
   }
 
   const input = parsed.data;
 
+  // Second cap on the submitted address: an attacker rotating IPs still cannot
+  // mail-bomb one recipient, and one honest seller cannot loop the engine.
+  const emailLimit = await checkRateLimit(
+    LIMITS.quoteByEmail,
+    `email:${input.contactEmail.toLowerCase()}`
+  );
+  if (!emailLimit.ok) {
+    return NextResponse.json(
+      {
+        error:
+          'Too many requests for this email address. Please try again later.',
+      },
+      {
+        status: 429,
+        headers: { 'Retry-After': retryAfterSeconds(emailLimit.resetAt) },
+      }
+    );
+  }
+
   // Create QuoteRequest with processing status
   let quoteRequest;
-  let autoCreatedAgent: { referralCode: string; contactName: string; firmName: string } | null = null;
+  let autoCreatedAgent: {
+    referralCode: string;
+    contactName: string;
+    firmName: string;
+  } | null = null;
   try {
     // Compose a notes string preserving the trigger chip + submission source.
     // Sam reads this in the dashboard intake view to triage faster.
     const notesLines: string[] = [];
     if (input.triggerLabel) notesLines.push(`Trigger: ${input.triggerLabel}`);
-    if (input.submissionSource) notesLines.push(`Source: ${input.submissionSource}`);
+    if (input.submissionSource)
+      notesLines.push(`Source: ${input.submissionSource}`);
     const notes = notesLines.length ? notesLines.join('\n') : undefined;
 
     // Source taxonomy for the dashboard:
@@ -207,7 +247,9 @@ export async function POST(request: Request) {
     quoteRequest = await database.quoteRequest.create({
       data: {
         source,
-        referralCode: input.referralCode ? input.referralCode.toUpperCase() : undefined,
+        referralCode: input.referralCode
+          ? input.referralCode.toUpperCase()
+          : undefined,
         contactName: input.contactName,
         contactEmail: input.contactEmail,
         contactPhone: input.contactPhone,
@@ -296,7 +338,7 @@ export async function POST(request: Request) {
     console.error('[quote] DB create failed', err);
     return NextResponse.json(
       { error: 'Could not save your request. Please try again.' },
-      { status: 500 },
+      { status: 500 }
     );
   }
 
@@ -324,39 +366,47 @@ export async function POST(request: Request) {
       }),
     ]);
 
-    // Apply preflight adjustment to the offer. Bounded to ±5% total
-    // adjustment to prevent compounding edge cases.
-    const adjPct = Math.max(-0.05, Math.min(0.05, preflight?.offerAdjustment ?? 0));
-    const adjustedOfferPence =
-      adjPct === 0
-        ? offerBase.offerPence
-        : Math.round(offerBase.offerPence * (1 + adjPct));
-    const avmMidPence =
-      (offerBase.estimatedMarketValueMinPence +
-        offerBase.estimatedMarketValueMaxPence) /
-      2;
-    const adjustedOfferPercentOfAvm =
-      avmMidPence > 0
-        ? Math.round((adjustedOfferPence / avmMidPence) * 1000) / 1000
-        : offerBase.offerPercentOfAvm;
+    // Apply the preflight adjustment to the offer. `applyPreflightAdjustment`
+    // owns the ±5% clamp AND re-tests the 60%-of-AVM floor against the final
+    // figure — the adjustment lands after generateInstantOffer computed
+    // requiresReview, so without that re-test a negative adjustment could take
+    // an offer under the floor with no escalation card raised.
+    const adjusted = applyPreflightAdjustment(
+      offerBase,
+      preflight?.offerAdjustment ?? 0
+    );
 
     const offer = {
-      ...offerBase,
-      offerPence: adjustedOfferPence,
-      offerPercentOfAvm: adjustedOfferPercentOfAvm,
+      ...adjusted,
       reasoning: [
-        ...offerBase.reasoning,
+        ...adjusted.reasoning,
         ...(preflight?.reasoning ?? []),
         ...(preflight?.tenure.isShortLease
           ? [
               `⚠ SHORT LEASE: ${preflight.tenure.remainingLeaseYears ?? '?'} years remaining — Appraiser must confirm before binding offer.`,
             ]
           : []),
+        ...(preflight?.degraded
+          ? [
+              `⚠ PREFLIGHT DEGRADED: ${preflight.failedSources.join(', ')} could not be checked — the offer omits those factors rather than assuming they are clear.`,
+            ]
+          : []),
+        ...(preflight === null
+          ? [
+              '⚠ PREFLIGHT UNAVAILABLE: EPC, tenure and market checks did not run.',
+            ]
+          : []),
       ],
       // Force review if preflight surfaced a short-lease leasehold — we
-      // don't auto-commit to those without founder eyeballs.
+      // don't auto-commit to those without founder eyeballs. Same for a
+      // DEGRADED preflight: a lookup that failed is not a lookup that came
+      // back clear, and the untested factors (short lease, low EPC) are the
+      // ones that would have pushed the offer DOWN.
       requiresReview:
-        offerBase.requiresReview || !!preflight?.tenure.isShortLease,
+        adjusted.requiresReview ||
+        !!preflight?.tenure.isShortLease ||
+        !!preflight?.degraded ||
+        preflight === null,
     };
 
     // Persist offer
@@ -392,15 +442,19 @@ export async function POST(request: Request) {
             status: 'pending',
             agent: 'appraiser',
             title: `Review offer: ${input.address}, ${input.postcode}`,
-            description: `Auto-generated offer of £${Math.round(offer.offerPence / 100).toLocaleString('en-GB')} (${Math.round(offer.offerPercentOfAvm * 100)}% of AVM). Below the 60% floor — needs your sign-off before the seller is committed to.`,
+            // The old copy asserted "Below the 60% floor" on EVERY review,
+            // including the short-lease and thin-evidence ones that are
+            // nowhere near the floor. State the actual position instead.
+            description: `Auto-generated offer of £${Math.round(offer.offerPence / 100).toLocaleString('en-GB')} (${Math.round(offer.offerPercentOfAvm * 100)}% of AVM)${offer.belowAvmFloor ? ` — BELOW the ${Math.round(OFFER_FLOOR_FRACTION * 100)}% floor` : ''}. Needs your sign-off before the seller is committed to. Reasons are in the offer reasoning trail.`,
             metadata: {
               quoteRequestId: quoteRequest.id,
               offerPence: offer.offerPence,
               offerPercentOfAvm: offer.offerPercentOfAvm,
+              belowAvmFloor: offer.belowAvmFloor,
               avmMid: Math.round(
                 (offer.estimatedMarketValueMinPence +
                   offer.estimatedMarketValueMaxPence) /
-                  2,
+                  2
               ),
               link: `/quotes/${quoteRequest.id}`,
             },
@@ -437,7 +491,9 @@ export async function POST(request: Request) {
       });
 
       try {
-        const offerGbp = Math.round(offer.offerPence / 100).toLocaleString('en-GB');
+        const offerGbp = Math.round(offer.offerPence / 100).toLocaleString(
+          'en-GB'
+        );
         const slaDeadline = new Date(Date.now() + 24 * 60 * 60 * 1000);
 
         // Shared metadata for the trio of actions this creates
@@ -460,7 +516,9 @@ export async function POST(request: Request) {
         const slaDescription = triage
           ? [
               `**${triage.summary}** — urgency: ${triage.urgencySignal}.`,
-              triage.watchOuts.length > 0 ? `Watch-outs: ${triage.watchOuts.join('; ')}.` : null,
+              triage.watchOuts.length > 0
+                ? `Watch-outs: ${triage.watchOuts.join('; ')}.`
+                : null,
               `Next step: ${triage.recommendedNextStep}`,
               '',
               baseDescription,
@@ -494,7 +552,11 @@ export async function POST(request: Request) {
             title: `Draft signed offer PDF: ${input.address}`,
             description: `Enrich + draft a signed binding offer for ${input.address}, ${input.postcode}. Indicative figure: £${offerGbp}. Use docs/templates/binding-offer-letter.md. The quote-ops cron picks this up automatically (enrichment, dedup, signed PDF); review the draft it produces before anything is sent.`,
             expiresAt: new Date(Date.now() + 4 * 60 * 60 * 1000),
-            metadata: { ...commonMeta, assignedToAgent: 'appraiser', workflow: 'draft_signed_pdf' },
+            metadata: {
+              ...commonMeta,
+              assignedToAgent: 'appraiser',
+              workflow: 'draft_signed_pdf',
+            },
           },
         });
 
@@ -507,7 +569,9 @@ export async function POST(request: Request) {
       // Confirmation email to the agent. The signed PDF will arrive
       // separately within 24 hours - this is just acknowledgement.
       try {
-        const offerGbp = Math.round(offer.offerPence / 100).toLocaleString('en-GB');
+        const offerGbp = Math.round(offer.offerPence / 100).toLocaleString(
+          'en-GB'
+        );
         const followUpLine = input.contactPhone
           ? "We'll also drop you a WhatsApp on the number you gave us when the signed offer is ready."
           : 'If you share a work mobile on reply, we can WhatsApp you the moment the signed offer is ready.';
@@ -519,9 +583,9 @@ export async function POST(request: Request) {
             '',
             `Thanks for sending us ${input.address}, ${input.postcode}.`,
             '',
-            `Indicative cash offer: £${offerGbp} (${Math.round(offer.offerPercentOfAvm * 100)}% of AVM mid).`,
+            `Indicative cash offer: £${offerGbp}.`,
             '',
-            'This is our honest starting point, based on comparable sales and public records. We need to view the property before we can confirm. Once we have viewed, we will send the confirmed price in writing within 24 hours — and that is the price we complete at.',
+            'This is our honest starting point, based on comparable sales and public records. We need to view the property before we can confirm. We aim to send the confirmed price in writing within 24 to 48 hours of the viewing, and that is the price we complete at.',
             '',
             'The price can only change for three reasons, all documented in writing:',
             '  1. A structural survey reveals a material defect not visible or disclosed at viewing.',
@@ -531,9 +595,9 @@ export async function POST(request: Request) {
             'We will be in touch to arrange the viewing.',
             followUpLine,
             '',
-            'Kept',
+            brand.name,
             'Member of the Property Redress Scheme (PRS) · HMRC AML supervised · ICO registered',
-            'hello@bellwoodslane.co.uk',
+            brand.email,
           ].join('\n'),
         });
       } catch (err) {
@@ -599,7 +663,7 @@ export async function POST(request: Request) {
         error:
           'Offer engine is temporarily unavailable. A member of our team will email you shortly.',
       },
-      { status: 500 },
+      { status: 500 }
     );
   }
 }

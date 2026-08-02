@@ -2,8 +2,8 @@
 
 import {
   type OrganizationMembership,
-  auth,
   clerkClient,
+  requireFounder,
 } from '@repo/auth/server';
 import Fuse from 'fuse.js';
 
@@ -30,7 +30,7 @@ export const searchUsers = async (
     }
 > => {
   try {
-    const { orgId } = await auth();
+    const { orgId } = await requireFounder();
 
     if (!orgId) {
       throw new Error('Not logged in');

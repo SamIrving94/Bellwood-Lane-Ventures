@@ -1,14 +1,13 @@
 'use server';
 
-import { auth } from '@repo/auth/server';
+import { requireFounder } from '@repo/auth/server';
 import { database } from '@repo/database';
 import { sendEmail } from '@repo/email';
 import { log } from '@repo/observability/log';
 import { revalidatePath } from 'next/cache';
 
 export async function approveHold(holdId: string, editedBody?: string) {
-  const { userId } = await auth();
-  if (!userId) throw new Error('Unauthorized');
+  const { userId } = await requireFounder();
 
   // Stage 1: mark approved + persist any founder edits before sending.
   const hold = await database.outreachHold.update({
@@ -111,8 +110,7 @@ export async function approveHold(holdId: string, editedBody?: string) {
 }
 
 export async function rejectHold(holdId: string) {
-  const { userId } = await auth();
-  if (!userId) throw new Error('Unauthorized');
+  const { userId } = await requireFounder();
 
   await database.outreachHold.update({
     where: { id: holdId },

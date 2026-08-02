@@ -140,6 +140,74 @@ export async function extractProbateFromPdf(
 // PDF resolution
 // ---------------------------------------------------------------------------
 
+/** 25MB. Probate documents are a few hundred KB; this is a generous ceiling. */
+const MAX_PDF_BYTES = 25 * 1024 * 1024;
+
+/**
+ * Reject URLs that should never be fetched server-side.
+ *
+ * `pdfUrl` arrives in an API payload, so without this the endpoint is an SSRF
+ * primitive: an authenticated caller could point it at cloud metadata or an
+ * internal address and read the outcome through the returned error. Blocking
+ * literal private addresses does not stop a hostile DNS name resolving to one
+ * — the redirect ban and the host allowlist below carry that weight.
+ */
+export function assertFetchableUrl(raw: string): void {
+  let url: URL;
+  try {
+    url = new URL(raw);
+  } catch {
+    throw new Error('pdfUrl is not a valid URL');
+  }
+
+  if (url.protocol !== 'https:') {
+    throw new Error('pdfUrl must be https');
+  }
+
+  const host = url.hostname.toLowerCase();
+
+  // Cloud metadata endpoints and loopback/link-local literals.
+  const BLOCKED_HOSTS = new Set([
+    'localhost',
+    'metadata.google.internal',
+    '169.254.169.254',
+    '[::1]',
+    '::1',
+  ]);
+  if (BLOCKED_HOSTS.has(host)) {
+    throw new Error(`pdfUrl host is not permitted: ${host}`);
+  }
+
+  // RFC1918, loopback, link-local and CGNAT written as literals.
+  const PRIVATE_IPV4 =
+    /^(10\.|127\.|169\.254\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|0\.|100\.(6[4-9]|[7-9]\d|1[01]\d|12[0-7])\.)/;
+  if (PRIVATE_IPV4.test(host)) {
+    throw new Error(`pdfUrl host is not permitted: ${host}`);
+  }
+  if (host.startsWith('[fd') || host.startsWith('[fe80')) {
+    throw new Error(`pdfUrl host is not permitted: ${host}`);
+  }
+
+  // Probate PDFs come from government publication sources. Keep this narrow;
+  // widening it should be a deliberate decision. PROBATE_PDF_ALLOWED_HOSTS
+  // (comma-separated suffixes) extends it without a code change.
+  const extra = (process.env.PROBATE_PDF_ALLOWED_HOSTS ?? '')
+    .split(',')
+    .map((s) => s.trim().toLowerCase())
+    .filter(Boolean);
+  const allowedSuffixes = ['.gov.uk', '.thegazette.co.uk', ...extra];
+
+  const allowed = allowedSuffixes.some((suffix) => {
+    const bare = suffix.startsWith('.') ? suffix.slice(1) : suffix;
+    return host === bare || host.endsWith(suffix.startsWith('.') ? suffix : `.${suffix}`);
+  });
+  if (!allowed) {
+    throw new Error(
+      `pdfUrl host is not on the allowlist: ${host}. Pass pdfBytes instead, or add the host to PROBATE_PDF_ALLOWED_HOSTS.`
+    );
+  }
+}
+
 async function resolvePdfInput(
   input: ProbatePdfInput,
   signal?: AbortSignal,
@@ -152,11 +220,28 @@ async function resolvePdfInput(
     return { bytes, filename: input.filename ?? 'probate.pdf' };
   }
   if ('pdfUrl' in input && input.pdfUrl) {
-    const res = await fetch(input.pdfUrl, { signal });
+    assertFetchableUrl(input.pdfUrl);
+    const res = await fetch(input.pdfUrl, { signal, redirect: 'error' });
     if (!res.ok) {
       throw new Error(`fetch ${input.pdfUrl} -> ${res.status}`);
     }
+
+    const declared = Number(res.headers.get('content-length') ?? '0');
+    if (declared > MAX_PDF_BYTES) {
+      throw new Error(
+        `pdf too large: ${declared} bytes exceeds ${MAX_PDF_BYTES}`
+      );
+    }
+
     const buf = await res.arrayBuffer();
+    // Re-check after download: content-length is caller-controlled and may be
+    // absent or a lie.
+    if (buf.byteLength > MAX_PDF_BYTES) {
+      throw new Error(
+        `pdf too large: ${buf.byteLength} bytes exceeds ${MAX_PDF_BYTES}`
+      );
+    }
+
     return {
       bytes: new Uint8Array(buf),
       filename:
@@ -555,13 +640,21 @@ function overlayApiCitations(
   extract: ProbateExtract,
   apiCitations: Citation[],
 ): void {
+  // Substring matching in either direction let a short or generic model
+  // excerpt claim the page number of almost any genuinely cited span, so a
+  // field the document never granted could be shown with a real-looking
+  // citation. Require the model's excerpt to be long enough to be evidence,
+  // and to actually appear inside the API-cited text — never the reverse.
+  const MIN_EXCERPT_CHARS = 24;
+
   const refine = (c: Citation): Citation => {
-    const match = apiCitations.find(
-      (api) =>
-        api.excerpt.includes(c.excerpt) || c.excerpt.includes(api.excerpt),
-    );
+    const excerpt = (c.excerpt ?? '').trim();
+    if (excerpt.length < MIN_EXCERPT_CHARS) return c;
+
+    const match = apiCitations.find((api) => api.excerpt.includes(excerpt));
     if (!match) return c;
-    return { pageIndex: match.pageIndex, excerpt: c.excerpt || match.excerpt };
+    // Keep the API's excerpt: it is the text the provider actually cited.
+    return { pageIndex: match.pageIndex, excerpt: match.excerpt };
   };
 
   const refineCitedValue = <T>(v: CitedValue<T> | null): CitedValue<T> | null =>

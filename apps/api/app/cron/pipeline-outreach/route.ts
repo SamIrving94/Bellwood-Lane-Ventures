@@ -3,6 +3,7 @@ import { database } from '@repo/database';
 import { sendEmail } from '@repo/email';
 import { log } from '@repo/observability/log';
 import { NextResponse } from 'next/server';
+import { AUTO_SEND_CONTACT_TYPES, canAutoSend } from '../_lib/contact-routing';
 import { recordCronHeartbeat } from '../_lib/heartbeat';
 
 // Pipeline Stage 3: Auto-outreach (7:30am daily)
@@ -59,10 +60,11 @@ export const POST = async (request: Request) => {
     for (const recipient of campaign.recipients) {
       const contact = recipient.contact;
 
-      // Classify recipient type
-      const isIndividual = ['vendor', 'seller', 'individual'].includes(
-        contact.type.toLowerCase()
-      );
+      // Classify recipient. `Contact.type` is a free-text String, so the
+      // rail is an ALLOW-list of business counterparties: anything else —
+      // vendors, executors, homeowners, blanks, typos — is held. See
+      // _lib/contact-routing.ts.
+      const autoSendable = canAutoSend(contact.type);
 
       // Render template (basic variable substitution)
       const renderedSubject = template.subject
@@ -78,8 +80,9 @@ export const POST = async (request: Request) => {
         continue;
       }
 
-      if (isIndividual) {
-        // HOLD — vendor comms always need founder review.
+      if (!autoSendable) {
+        // HOLD — vendor comms always need founder review, and so does any
+        // contact type we do not positively recognise as a business.
         //
         // Atomically claim the recipient (pending → held) BEFORE creating the
         // hold. The conditional updateMany is the idempotency guard: if a
@@ -100,7 +103,10 @@ export const POST = async (request: Request) => {
             recipientId: recipient.id,
             campaignId: campaign.id,
             templateId: template.id,
-            recipientType: 'individual',
+            // Record the type we actually saw (display-only field) — a hold
+            // on an 'executor' contact should not read as 'individual' in
+            // the review queue.
+            recipientType: contact.type.trim().toLowerCase() || 'unknown',
             recipientName: contact.name,
             recipientEmail: contact.email,
             renderedSubject,
@@ -139,9 +145,20 @@ export const POST = async (request: Request) => {
               to: contact.email,
               skipped: result.reason,
             });
-            // Still advance recipient — the skip is intentional (no token in
-            // dev/staging). In production this branch shouldn't hit.
-          } else {
+            // Nothing was delivered, so put the recipient back to pending and
+            // move on. Advancing to 'sent' here burned the whole list: the
+            // recipient query only ever selects 'pending', so a skipped send
+            // was never retried, while the run reported it as auto-sent. The
+            // old comment assumed this branch could not fire in production —
+            // it fires whenever RESEND_TOKEN or RESEND_FROM is unset, which is
+            // a config state, not a dev-only one.
+            await database.outreachRecipient.update({
+              where: { id: recipient.id },
+              data: { status: 'pending' },
+            });
+            continue;
+          }
+          {
             sendResults.push({
               recipientId: recipient.id,
               campaignId: campaign.id,
@@ -192,7 +209,7 @@ export const POST = async (request: Request) => {
         type: 'review_campaign',
         priority: 'high',
         title: `${heldForReview} vendor email${heldForReview === 1 ? '' : 's'} awaiting your review`,
-        description: `The outreach pipeline has ${heldForReview} email${heldForReview === 1 ? '' : 's'} to individual vendors that need your review before sending. These are personal communications that require the human touch.\n\nAuto-sent: ${autoSent} (to estate agents/solicitors)\nSkipped: ${skipped} (no email address)`,
+        description: `The outreach pipeline has ${heldForReview} email${heldForReview === 1 ? '' : 's'} to vendors and other non-business contacts that need your review before sending. These are personal communications that require the human touch.\n\nAuto-sent: ${autoSent} (to ${AUTO_SEND_CONTACT_TYPES.join(', ')} contacts only)\nSkipped: ${skipped} (no email address)`,
         agent: 'marketer',
         metadata: {
           heldForReview,

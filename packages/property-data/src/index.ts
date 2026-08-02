@@ -11,9 +11,11 @@
  *   - EPC Register        → energy rating, floor area, construction era
  *   - Companies House     → solicitor firm + executor officer lookup
  *
- * All five APIs are called concurrently. Individual failures degrade gracefully
- * (synthetic fallback). The full response is returned in ≤2 s on typical
- * UK broadband to GOV.UK APIs.
+ * All five APIs are called concurrently and individual failures degrade
+ * gracefully, but NEVER silently: a source that could not answer reports
+ * itself as unavailable or synthetic rather than passing invented data off as
+ * real. The full response is returned in ≤2 s on typical UK broadband to
+ * GOV.UK APIs.
  *
  * Usage:
  *   import { lookupProperty } from '@repo/property-data';
@@ -27,7 +29,7 @@ import 'server-only';
 
 import { z } from 'zod';
 
-import { getPricePaid, PricePaidSchema } from './hmlr';
+import { getPricePaid, PricePaidSchema, realTransactions } from './hmlr';
 import { getHousepriceIndex, HpiSchema } from './hmlr-hpi';
 import { getEpcData, EpcSchema } from './epc';
 import {
@@ -201,9 +203,12 @@ function deriveMarketTrend(
 function deriveAvgDaysOnMarket(
   pricePaid: Awaited<ReturnType<typeof getPricePaid>> | null
 ): number | null {
-  if (!pricePaid?.transactions || pricePaid.transactions.length < 2)
-    return null;
-  const sorted = [...pricePaid.transactions].sort((a, b) =>
+  if (!pricePaid?.transactions) return null;
+  // Synthetic rows carry invented dates spaced 18 months apart — deriving a
+  // days-on-market signal from them fabricates a market read. Real rows only.
+  const real = realTransactions(pricePaid.transactions);
+  if (real.length < 2) return null;
+  const sorted = [...real].sort((a, b) =>
     b.date.localeCompare(a.date)
   );
   const latest = sorted[0];
@@ -345,8 +350,9 @@ export async function lookupProperty(
               }
             : null,
           heldByCompany: ownership.estateHeldByCompany,
-          source:
-            ownership.solicitorCompany?.source ?? 'companies_house',
+          // 'none' when nothing was matched — don't claim a Companies House
+          // provenance for an empty result.
+          source: ownership.solicitorCompany?.source ?? 'none',
         }
       : null,
 

@@ -1,6 +1,6 @@
 'use server';
 
-import { auth } from '@repo/auth/server';
+import { requireFounder } from '@repo/auth/server';
 import { database } from '@repo/database';
 
 // Default eval configs based on current hardcoded values
@@ -74,8 +74,7 @@ const SEED_CONFIGS = {
 } as const;
 
 export async function seedEvalConfigs() {
-  const { userId } = await auth();
-  if (!userId) throw new Error('Unauthorized');
+  const { userId } = await requireFounder();
 
   const results: Array<{ evalType: string; version: number; id: string }> = [];
 
