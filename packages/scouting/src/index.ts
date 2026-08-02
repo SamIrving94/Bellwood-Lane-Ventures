@@ -919,6 +919,7 @@ export async function runScoutingPipeline(
       daysOnMarket?: number | null;
       discountPercent?: number | null;
       listingType?: string;
+      commercial?: boolean;
       /** Per-lead lease data (from the short-lease source) — takes precedence
        *  over postcode-level tenure enrichment when scoring. */
       tenure?: 'freehold' | 'leasehold' | 'unknown';
@@ -970,6 +971,7 @@ export async function runScoutingPipeline(
           typeof pd.listingType === 'string'
             ? (pd.listingType as string)
             : undefined,
+        commercial: pd.commercial === true,
       });
     }
   }

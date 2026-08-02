@@ -203,3 +203,118 @@ describe('listing lead-type mapping — volume impact', () => {
     expect(distinct.size).toBeGreaterThan(5);
   });
 });
+
+/**
+ * Scoring corrections measured in isolation.
+ *
+ * Both changes move acquisition points, so both need a number rather than an
+ * argument. Everything except the variable under test is held constant.
+ */
+describe('scoring corrections — measured', () => {
+  const base = (overrides: Partial<EnrichedLead> = {}): EnrichedLead => ({
+    probateRef: 'x',
+    address: '1 Test Street',
+    postcode: 'M14 5LL',
+    leadType: 'probate',
+    grantDate: '2026-07-30',
+    grantType: 'probate',
+    daysSinceGrant: 10,
+    goldenWindowLabel: 'warm',
+    solicitorFirm: null,
+    estateValuePence: 25_000_000,
+    contactName: null,
+    contactPhone: null,
+    contactEmail: null,
+    enrichmentTier: 3,
+    sourceTrail: 'test',
+    ...overrides,
+  });
+
+  it('letters-of-administration now outranks a plain probate grant', () => {
+    // Was: probate_admin missing from leadTypeScores -> leadTypeFallback 4,
+    // so the highest-intent probate cohort scored LOWEST. The separate
+    // lettersOfAdminBonus was designed to lift it above plain probate; it
+    // could not, because the base credit was 16 points short.
+    const plain = scoreLead(base(), null, null, {}, DEFAULT_SCORER_CONFIG);
+    const admin = scoreLead(
+      base({
+        leadType: 'probate_admin',
+        grantType: 'letters_of_administration',
+      }),
+      null,
+      null,
+      {},
+      DEFAULT_SCORER_CONFIG
+    );
+
+    console.info(
+      `[corrections] probate=${plain.total} probate_admin=${admin.total} (+${admin.total - plain.total})`
+    );
+    expect(admin.total).toBeGreaterThan(plain.total);
+    // The lift should be the letters-of-admin bonus, nothing more.
+    expect(admin.total - plain.total).toBe(
+      DEFAULT_SCORER_CONFIG.lettersOfAdminBonus
+    );
+  });
+
+  it('probate_admin is a real key, so it never hits the fallback', () => {
+    expect(DEFAULT_SCORER_CONFIG.leadTypeScores.probate_admin).toBe(
+      DEFAULT_SCORER_CONFIG.leadTypeScores.probate
+    );
+    expect(DEFAULT_SCORER_CONFIG.leadTypeScores.probate_admin).not.toBe(
+      DEFAULT_SCORER_CONFIG.leadTypeFallback
+    );
+  });
+
+  it('ranks a commercial listing below the same property as residential', () => {
+    // A pub was competing for a paid shortlist slot with a three-bed semi.
+    const residential = scoreLead(
+      base({ leadType: 'unknown', grantType: 'unknown' }),
+      null,
+      null,
+      { listingType: 'reduced-properties', reductionCount: 1 },
+      DEFAULT_SCORER_CONFIG
+    );
+    const commercial = scoreLead(
+      base({ leadType: 'unknown', grantType: 'unknown' }),
+      null,
+      null,
+      {
+        listingType: 'reduced-properties',
+        reductionCount: 1,
+        commercial: true,
+      },
+      DEFAULT_SCORER_CONFIG
+    );
+
+    console.info(
+      `[corrections] residential=${residential.total} commercial=${commercial.total} (${commercial.total - residential.total})`
+    );
+    expect(commercial.total).toBeLessThan(residential.total);
+  });
+
+  it('keeps commercial leads rather than filtering them out', () => {
+    // The founder asked to SEE these, badged. Demoting must not zero them.
+    const commercial = scoreLead(
+      base({ leadType: 'distressed_sale', grantType: 'unknown' }),
+      null,
+      null,
+      { listingType: 'quick-sale-properties', commercial: true },
+      DEFAULT_SCORER_CONFIG
+    );
+    expect(commercial.verdict).not.toBe('INSUFFICIENT_DATA');
+    expect(commercial.total).toBeGreaterThan(0);
+  });
+
+  it('names the commercial demotion in the score factors', () => {
+    // Transparency: the founder must be able to see WHY it ranked low.
+    const b = scoreLead(
+      base(),
+      null,
+      null,
+      { commercial: true },
+      DEFAULT_SCORER_CONFIG
+    );
+    expect(b.factors.some((f) => /commercial/i.test(f.label))).toBe(true);
+  });
+});

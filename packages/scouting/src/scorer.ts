@@ -95,6 +95,8 @@ export interface LeadSignals {
   daysOnMarket?: number | null;
   discountPercent?: number | null;
   listingType?: string;
+  /** True when the listing is non-residential (pub / shop / office / unit). */
+  commercial?: boolean;
   percentOver65?: number | null;
   percentOver75?: number | null;
   floodRisk?: string | null;
@@ -240,6 +242,14 @@ function scoreAcquisition(
   }
   if (lead.grantType === 'letters_of_administration') {
     add(factors, 'Letters of administration (unplanned)', config.lettersOfAdminBonus, 'acquisition');
+  }
+
+  // Non-residential listings are detected at sourcing and badged in the UI,
+  // but the flag never reached the scorer — so a pub ranked against a
+  // three-bed semi on equal terms and could take a paid shortlist slot. Kept
+  // (the founder wants to see them) but pushed down, not filtered out.
+  if (signals?.commercial) {
+    add(factors, 'Commercial premises (not a standard residential deal)', config.commercialPenalty, 'acquisition', 'negative');
   }
 
   // Short-lease marriage value motivates a sale.

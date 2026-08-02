@@ -68,6 +68,13 @@ export interface ScorerConfig {
   solicitorBonus: number;
   /** Letters of administration = unplanned estate. */
   lettersOfAdminBonus: number;
+  /**
+   * Acquisition penalty for a non-residential listing (pub, shop, office,
+   * restaurant, warehouse). Negative. The scout already detects these and
+   * badges them, but the signal never reached the scorer, so a pub competed
+   * for a shortlist slot on equal terms with a three-bed semi.
+   */
+  commercialPenalty: number;
   /** Short-lease marriage-value motivation (base + urgency-scaled). */
   marriageValueBase: number;
   marriageValueUrgencyMax: number;
@@ -135,6 +142,12 @@ export const DEFAULT_SCORER_CONFIG: ScorerConfig = {
   // Pillar 1 — acquisition likelihood
   leadTypeScores: {
     probate: 20,
+    // Letters of administration — died intestate, no will. `enrichLead` has
+    // always emitted this leadType, but it was never a key here, so it fell
+    // through to `leadTypeFallback: 4` and the highest-intent probate cohort
+    // scored lowest of all. Set level with `probate`; the separate
+    // `lettersOfAdminBonus` is what lifts it above, as designed.
+    probate_admin: 20,
     repossession: 18,
     distressed_sale: 18,
     mortgage_default: 16,
@@ -165,6 +178,7 @@ export const DEFAULT_SCORER_CONFIG: ScorerConfig = {
   distressBonus: 5,
   solicitorBonus: 4,
   lettersOfAdminBonus: 3,
+  commercialPenalty: -12,
   marriageValueBase: 10,
   marriageValueUrgencyMax: 8,
 
@@ -276,6 +290,7 @@ export function mergeScorerConfig(raw: unknown): ScorerConfig {
     distressBonus: num(raw.distressBonus, d.distressBonus),
     solicitorBonus: num(raw.solicitorBonus, d.solicitorBonus),
     lettersOfAdminBonus: num(raw.lettersOfAdminBonus, d.lettersOfAdminBonus),
+    commercialPenalty: num(raw.commercialPenalty, d.commercialPenalty),
     marriageValueBase: num(raw.marriageValueBase, d.marriageValueBase),
     marriageValueUrgencyMax: num(
       raw.marriageValueUrgencyMax,
