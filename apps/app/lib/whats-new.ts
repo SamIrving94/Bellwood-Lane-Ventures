@@ -53,6 +53,10 @@ export const WHATS_NEW: WhatsNewEntry[] = [
         emoji: '🔨',
         text: '**Works tracker** — once a property is yours, open a refurb project: budget vs quoted vs actual, one work order per trade, late flags. Your field network doubles as the contractor pool.',
       },
+      {
+        emoji: '📋',
+        text: '**Ant: a proposal awaits you in Strategy** — go Farringdon-first (Orbital\'s AI-native law firm) for conveyancing. Read it, pick the backup firm, decide who makes the call.',
+      },
     ],
     cta: { label: 'Open the field network', href: '/network' },
   },
