@@ -26,6 +26,37 @@ export type WhatsNewEntry = {
 /** Newest first. The popup shows index 0. */
 export const WHATS_NEW: WhatsNewEntry[] = [
   {
+    id: '2026-08-03-field-network-legal-works',
+    date: '2026-08-03',
+    emoji: '🏗️',
+    title: 'The back half of the deal just got a machine',
+    intro:
+      'Viewings, conveyancing and refurbs — the three stages that ate your week — now run on rails.',
+    bullets: [
+      {
+        emoji: '👷',
+        text: '**Field network** — add builders and retired contractors at /network. Assign one to a viewing and they get a **magic-link report form** for their phone: photos, condition scores, refurb gut-feel, how keen the seller is.',
+      },
+      {
+        emoji: '📱',
+        text: 'When their report lands you get a **high-priority action card** — review it, then confirm or tweak the offer. Their eyes, your judgement.',
+      },
+      {
+        emoji: '⚖️',
+        text: '**Legal is alive.** Going under offer now seeds a **12-step conveyancing checklist** with target days. Tick steps off on the deal page and log the panel firm.',
+      },
+      {
+        emoji: '✉️',
+        text: 'A weekday **legal chaser** drafts a nudge to the solicitor when steps run late — you review and hit send, it never fires on its own.',
+      },
+      {
+        emoji: '🔨',
+        text: '**Works tracker** — once a property is yours, open a refurb project: budget vs quoted vs actual, one work order per trade, late flags. Your field network doubles as the contractor pool.',
+      },
+    ],
+    cta: { label: 'Open the field network', href: '/network' },
+  },
+  {
     id: '2026-08-01-sell-page-shows-its-maths',
     date: '2026-08-01',
     emoji: '🧮',
@@ -72,7 +103,8 @@ export const WHATS_NEW: WhatsNewEntry[] = [
     date: '2026-07-30',
     emoji: '🌿',
     title: 'Your dashboard wears Kept. now too',
-    intro: 'The last room in the house got painted. Cream walls, forest ink, leaf buttons.',
+    intro:
+      'The last room in the house got painted. Cream walls, forest ink, leaf buttons.',
     bullets: [
       {
         emoji: '🎨',
@@ -97,7 +129,8 @@ export const WHATS_NEW: WhatsNewEntry[] = [
     date: '2026-07-30',
     emoji: '🎉',
     title: 'You said go — the company is now Kept.',
-    intro: 'The name flipped today. The whole front door reads kept. — wax dot and all.',
+    intro:
+      'The name flipped today. The whole front door reads kept. — wax dot and all.',
     bullets: [
       {
         emoji: '✍️',

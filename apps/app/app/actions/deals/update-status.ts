@@ -3,6 +3,7 @@
 import { requireFounder } from '@repo/auth/server';
 import { database } from '@repo/database';
 import type { DealStatus } from '@repo/database/generated/client';
+import { LEGAL_STEPS } from '@repo/database/legal-steps';
 import { revalidatePath } from 'next/cache';
 
 export async function updateDealStatus(dealId: string, newStatus: DealStatus) {
@@ -24,6 +25,16 @@ export async function updateDealStatus(dealId: string, newStatus: DealStatus) {
       stageEnteredAt: new Date(),
     },
   });
+
+  // Going under offer starts the legal clock: seed the conveyancing
+  // checklist so the legal-chaser cron has something to drive. Idempotent —
+  // (dealId, stepKey) is unique.
+  if (newStatus === 'under_offer') {
+    await database.legalStep.createMany({
+      data: LEGAL_STEPS.map((s) => ({ dealId, stepKey: s.key })),
+      skipDuplicates: true,
+    });
+  }
 
   await database.dealActivity.create({
     data: {

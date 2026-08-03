@@ -82,6 +82,7 @@ enum ActionType {
   ceo_escalation
   golden_window
   dispatch_campaign
+  review_viewing_report
   general
 }
 
@@ -178,6 +179,16 @@ model Deal {
   calendlyBookingLink String?
   calendlyEventAt     DateTime?
 
+  // Conveyancing — the instructed panel firm for THIS purchase. We anchor to
+  // Orbital-powered conveyancers (see docs/architecture/legal-orbital.md); the
+  // chaser cron uses these details to draft nudges when steps go stale.
+  solicitorFirm  String?
+  solicitorName  String?
+  solicitorEmail String?
+  solicitorPhone String?
+  solicitorRef   String? // the firm's matter/file reference
+  legalChasedAt  DateTime? // last time a chaser was actually sent
+
   // Horizon 2 — deal-flow-as-income. A deal is only shareable to investors /
   // referral partners AFTER Bellwood passes on it for its own book. This flag
   // is the guardrail: nothing leaves the pipeline without an explicit release.
@@ -218,6 +229,8 @@ model Deal {
   dealUpdates       DealUpdate[]
   trackToken        TrackToken?
   investorInterests InvestorInterest[]
+  viewings          Viewing[]
+  worksProject      WorksProject?
 
   @@index([status])
   @@index([postcode])
@@ -345,6 +358,124 @@ model LegalDocument {
   createdAt DateTime @default(now())
 
   @@index([dealId])
+}
+
+// ─── Field Partner Network ─────────────────────────────────
+// Builders / retired contractors who view properties on our behalf and take
+// refurb work orders. No accounts — each viewing gets a magic link (same
+// privacy-by-design pattern as InvestorAccessToken). One pool, two uses:
+// eyes-on-site during acquisition, hands-on-site during works.
+
+enum ViewingStatus {
+  requested // created, partner not yet confirmed a time
+  scheduled // time agreed with the vendor
+  submitted // partner filled the report, awaiting founder review
+  reviewed // founder read it and confirmed/adjusted the offer
+  cancelled
+}
+
+model FieldPartner {
+  id                String   @id @default(cuid())
+  name              String
+  email             String   @unique
+  phone             String?
+  background        String? // "retired builder", "roofer, 30yrs", "RICS surveyor"
+  postcodeAreas     String[] @default([]) // outward codes covered, e.g. ["SE15", "BR1"]
+  active            Boolean  @default(true)
+  viewingsCompleted Int      @default(0)
+  notes             String?  @db.Text
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  viewings   Viewing[]
+  workOrders WorkOrder[]
+
+  @@index([active])
+}
+
+model Viewing {
+  id          String        @id @default(cuid())
+  dealId      String
+  deal        Deal          @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  partnerId   String?
+  partner     FieldPartner? @relation(fields: [partnerId], references: [id], onDelete: SetNull)
+  token       String        @unique // url-safe, grants access to the report form
+  status      ViewingStatus @default(requested)
+  scheduledAt DateTime?
+  accessNotes String?       @db.Text // keys, vendor contact, parking — shown to the partner
+
+  // Structured report, filled by the partner on the mobile form. Condition
+  // scores are 1 (bad) – 5 (good) per area; the shared area list lives in
+  // packages/database/viewing-report.ts so form and dashboard can't drift.
+  submittedAt         DateTime?
+  conditionScores     Json? // { roof: 3, damp: 2, ... }
+  refurbEstimatePence Int? // partner's gut-feel total refurb cost
+  photos              String[]  @default([]) // uploaded photo URLs
+  vendorMotivation    String? // partner's read: "hot" | "warm" | "cold" | "unknown"
+  summary             String?   @db.Text
+  redFlags            String?   @db.Text // anything that should change the offer
+
+  reviewedBy String? // founder userId
+  reviewedAt DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  @@index([dealId])
+  @@index([partnerId])
+  @@index([status])
+}
+
+// ─── Works / Refurb Tracker ────────────────────────────────
+// Thin project management for acquired deals: one project per deal, one work
+// order per trade package. Budget lives here while the job runs; the final
+// actual rolls up into Deal.refurbCostPence when economics are recorded.
+
+enum WorkOrderStatus {
+  planned
+  quoted
+  in_progress
+  done
+  paid
+}
+
+model WorksProject {
+  id          String    @id @default(cuid())
+  dealId      String    @unique
+  deal        Deal      @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  status      String    @default("active") // active | paused | complete
+  budgetPence Int?
+  startedAt   DateTime?
+  targetEndAt DateTime?
+  completedAt DateTime?
+  notes       String?   @db.Text
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  workOrders WorkOrder[]
+
+  @@index([status])
+}
+
+model WorkOrder {
+  id             String          @id @default(cuid())
+  projectId      String
+  project        WorksProject    @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  title          String
+  trade          String? // "roofing", "electrics", "damp", "kitchen"
+  partnerId      String?
+  partner        FieldPartner?   @relation(fields: [partnerId], references: [id], onDelete: SetNull)
+  contractorName String? // for trades outside the partner network
+  quotedPence    Int?
+  actualPence    Int?
+  status         WorkOrderStatus @default(planned)
+  dueAt          DateTime?
+  notes          String?         @db.Text
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  @@index([projectId])
+  @@index([partnerId])
+  @@index([status])
 }
 
 model Contact {

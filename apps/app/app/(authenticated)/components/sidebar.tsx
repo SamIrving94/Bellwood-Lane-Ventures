@@ -30,10 +30,11 @@ import {
   MapIcon,
   MegaphoneIcon,
   SearchIcon,
-  SlidersHorizontalIcon,
   Settings2Icon,
   SheetIcon,
+  SlidersHorizontalIcon,
   TargetIcon,
+  UsersIcon,
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -66,6 +67,7 @@ const data = {
     { title: 'Deep appraisals', url: '/appraisals', icon: GavelIcon },
     { title: 'Batch', url: '/batch', icon: SheetIcon },
     { title: 'Pipeline', url: '/pipeline', icon: KanbanIcon },
+    { title: 'Field network', url: '/network', icon: UsersIcon },
   ],
   money: [
     { title: 'Book', url: '/book', icon: LineChartIcon },
@@ -147,14 +149,16 @@ function NavSection({
               asChild
               tooltip={item.title}
               isActive={
-                item.url === '/' ? pathname === '/' : pathname.startsWith(item.url)
+                item.url === '/'
+                  ? pathname === '/'
+                  : pathname.startsWith(item.url)
               }
             >
               <Link href={item.url}>
                 <item.icon />
                 <span>{item.title}</span>
                 {item.hasBadge && pendingActionCount > 0 && (
-                  <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1.5 text-xs font-medium text-white">
+                  <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1.5 font-medium text-white text-xs">
                     {pendingActionCount > 99 ? '99+' : pendingActionCount}
                   </span>
                 )}
