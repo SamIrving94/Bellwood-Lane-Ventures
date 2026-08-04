@@ -12,7 +12,7 @@ type LivePillProps = {
 export function LivePill({ children, tone = 'green' }: LivePillProps) {
   const dot = tone === 'green' ? 'var(--color-leaf)' : 'var(--color-wax)';
   return (
-    <span className="inline-flex items-center gap-2.5 font-serif text-sm text-stone-600 italic">
+    <span className="inline-flex items-center gap-2.5 font-serif text-sm text-stone-600">
       <span
         className="h-1.5 w-1.5 shrink-0 rounded-full"
         style={{ background: dot }}

@@ -59,7 +59,7 @@ export default async function InvestorFeedPage({
   return (
     <main className="mx-auto w-full max-w-5xl space-y-6 p-6">
       <div>
-        <p className="font-serif italic text-[13px] text-neutral-500">
+        <p className="font-serif text-[13px] text-neutral-500">
           Kept · Sourced deals
         </p>
         <h1 className="mt-1 font-semibold text-2xl tracking-tight">

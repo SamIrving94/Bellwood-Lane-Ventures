@@ -17,12 +17,12 @@ export default function BellwoodScorePage() {
       <div className="mx-auto max-w-3xl">
         <Link
           href="/agents"
-          className="inline-flex items-center gap-2 font-serif text-[13px] text-stone-500 italic transition hover:text-leaf"
+          className="inline-flex items-center gap-2 font-serif text-[13px] text-stone-500 transition hover:text-leaf"
         >
           <span aria-hidden>←</span> Back to agents
         </Link>
 
-        <p className="mt-10 font-serif text-[13px] text-leaf italic">
+        <p className="mt-10 font-serif text-[13px] text-leaf">
           Kept Score · For partner agents
         </p>
         <h1
@@ -30,7 +30,7 @@ export default function BellwoodScorePage() {
           style={{ fontSize: 'clamp(32px, 5vw, 52px)' }}
         >
           An indicative offer range you can show a seller{' '}
-          <span className="text-leaf italic">
+          <span className="text-leaf">
             before you&rsquo;ve left their living room.
           </span>
         </h1>
@@ -75,7 +75,7 @@ export default function BellwoodScorePage() {
           </ul>
         </div>
 
-        <p className="mt-12 font-serif text-[13px] text-stone-400 italic">
+        <p className="mt-12 font-serif text-[13px] text-stone-400">
           Kept · Property Redress Scheme (PRS) · HMRC AML
           supervised · ICO registered
         </p>

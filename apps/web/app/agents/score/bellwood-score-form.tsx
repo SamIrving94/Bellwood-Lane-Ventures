@@ -48,7 +48,7 @@ export function BellwoodScoreForm() {
       <form onSubmit={onSubmit} className="space-y-4">
         <div className="grid gap-4 md:grid-cols-2">
           <label className="block">
-            <span className="font-serif text-[13px] text-stone-600 italic">
+            <span className="font-serif text-[13px] text-stone-600">
               Postcode *
             </span>
             <input
@@ -61,7 +61,7 @@ export function BellwoodScoreForm() {
             />
           </label>
           <label className="block">
-            <span className="font-serif text-[13px] text-stone-600 italic">
+            <span className="font-serif text-[13px] text-stone-600">
               Address (optional)
             </span>
             <input
@@ -76,7 +76,7 @@ export function BellwoodScoreForm() {
 
         <div className="grid gap-4 md:grid-cols-3">
           <label className="block">
-            <span className="font-serif text-[13px] text-stone-600 italic">
+            <span className="font-serif text-[13px] text-stone-600">
               Property type
             </span>
             <select
@@ -92,7 +92,7 @@ export function BellwoodScoreForm() {
             </select>
           </label>
           <label className="block">
-            <span className="font-serif text-[13px] text-stone-600 italic">
+            <span className="font-serif text-[13px] text-stone-600">
               Bedrooms
             </span>
             <input
@@ -105,7 +105,7 @@ export function BellwoodScoreForm() {
             />
           </label>
           <label className="block">
-            <span className="font-serif text-[13px] text-stone-600 italic">
+            <span className="font-serif text-[13px] text-stone-600">
               Condition (1–10)
             </span>
             <input
@@ -120,7 +120,7 @@ export function BellwoodScoreForm() {
         </div>
 
         <label className="block">
-          <span className="font-serif text-[13px] text-stone-600 italic">
+          <span className="font-serif text-[13px] text-stone-600">
             Seller situation
           </span>
           <select
@@ -147,7 +147,7 @@ export function BellwoodScoreForm() {
 
       {result && result.ok && (
         <div className="mt-8 rounded-2xl border-2 border-leaf/40 bg-soft p-6 md:p-8">
-          <p className="font-serif text-[13px] text-leaf italic">
+          <p className="font-serif text-[13px] text-leaf">
             Indicative range
           </p>
           <p className="mt-2 font-semibold font-serif text-3xl text-forest tracking-[-0.02em] md:text-5xl">
@@ -197,7 +197,7 @@ export function BellwoodScoreForm() {
 
           {result.reasoning.length > 0 && (
             <details className="mt-5">
-              <summary className="cursor-pointer font-serif text-[13px] text-stone-500 italic hover:text-forest">
+              <summary className="cursor-pointer font-serif text-[13px] text-stone-500 hover:text-forest">
                 Reasoning ({result.reasoning.length})
               </summary>
               <ul className="mt-3 space-y-1.5 text-[12px] text-stone-600">

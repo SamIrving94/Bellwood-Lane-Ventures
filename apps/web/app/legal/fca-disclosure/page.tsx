@@ -194,12 +194,12 @@ export default function FCADisclosurePage() {
       <div className="mx-auto max-w-3xl">
         <Link
           href="/instant-offer"
-          className="inline-flex items-center gap-2 font-serif text-[13px] text-stone-500 italic transition hover:text-leaf"
+          className="inline-flex items-center gap-2 font-serif text-[13px] text-stone-500 transition hover:text-leaf"
         >
           <span aria-hidden>←</span> Back to indicative offer
         </Link>
 
-        <p className="mt-12 font-serif text-[13px] text-leaf italic">
+        <p className="mt-12 font-serif text-[13px] text-leaf">
           Regulatory disclosure
         </p>
         <h1
@@ -229,7 +229,7 @@ export default function FCADisclosurePage() {
         <div className="mt-16 space-y-16">
           {SECTIONS.map((s) => (
             <section key={s.id} id={s.id}>
-              <p className="font-serif text-[13px] text-leaf italic">
+              <p className="font-serif text-[13px] text-leaf">
                 {s.eyebrow}
               </p>
               <h2 className="mt-3 font-semibold font-serif text-3xl leading-[1.15] tracking-[-0.02em] md:text-4xl">
@@ -245,27 +245,27 @@ export default function FCADisclosurePage() {
         <hr className="my-20 border-stone-200" />
 
         <section>
-          <p className="font-serif text-[13px] text-stone-500 italic">
+          <p className="font-serif text-[13px] text-stone-500">
             Company details
           </p>
           <dl className="mt-5 grid grid-cols-1 gap-x-8 gap-y-3 text-[14px] sm:grid-cols-[160px_1fr]">
-            <dt className="font-serif text-[13px] text-stone-500 italic">
+            <dt className="font-serif text-[13px] text-stone-500">
               Legal name
             </dt>
             <dd>Bellwoods Lane Ventures Ltd (trading as Kept)</dd>
-            <dt className="font-serif text-[13px] text-stone-500 italic">
+            <dt className="font-serif text-[13px] text-stone-500">
               Registered in
             </dt>
             <dd>England &amp; Wales</dd>
-            <dt className="font-serif text-[13px] text-stone-500 italic">
+            <dt className="font-serif text-[13px] text-stone-500">
               Company number
             </dt>
             <dd>16454416</dd>
-            <dt className="font-serif text-[13px] text-stone-500 italic">
+            <dt className="font-serif text-[13px] text-stone-500">
               Registered office
             </dt>
             <dd>20 Wenlock Road, London N1 7GU</dd>
-            <dt className="font-serif text-[13px] text-stone-500 italic">
+            <dt className="font-serif text-[13px] text-stone-500">
               Compliance contact
             </dt>
             <dd>
@@ -279,7 +279,7 @@ export default function FCADisclosurePage() {
           </dl>
         </section>
 
-        <p className="mt-16 font-serif text-[13px] text-stone-400 italic">
+        <p className="mt-16 font-serif text-[13px] text-stone-400">
           Nothing on this page constitutes financial or legal advice.
         </p>
       </div>

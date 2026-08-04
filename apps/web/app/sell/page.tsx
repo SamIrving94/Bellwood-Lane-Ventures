@@ -2,7 +2,6 @@ import {
   Button,
   Eyebrow,
   LogoLockup,
-  Monogram,
   Seal,
   SectionNumber,
   Wordmark,
@@ -489,10 +488,6 @@ export default function SellPage() {
 
       {/* ————— PROMISE ————— */}
       <section className="relative overflow-hidden border-hair/70 border-b bg-brand-deep px-6 py-24 text-white md:px-12 md:py-28">
-        <Monogram
-          aria-hidden
-          className="-bottom-16 -right-16 pointer-events-none absolute h-80 w-auto opacity-[0.06]"
-        />
         <div className="relative mx-auto grid max-w-6xl grid-cols-1 gap-12 lg:grid-cols-[1fr_1.4fr]">
           <div>
             <Eyebrow tone="light">the written promise</Eyebrow>
@@ -641,10 +636,6 @@ export default function SellPage() {
       {/* ————— FINAL CTA ————— */}
       <section className="px-6 py-16 md:px-12">
         <div className="relative mx-auto max-w-6xl overflow-hidden rounded-sm bg-brand-deep px-8 py-16 text-white md:px-16 md:py-20">
-          <Monogram
-            aria-hidden
-            className="-bottom-12 pointer-events-none absolute right-6 h-64 w-auto opacity-[0.07]"
-          />
           <div className="relative grid grid-cols-1 items-center gap-10 lg:grid-cols-2">
             <div>
               <Eyebrow tone="light">see the number</Eyebrow>

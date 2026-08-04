@@ -78,7 +78,7 @@ export function EmailSampleButton() {
               </div>
             ) : (
               <>
-                <p className="font-serif text-[13px] text-leaf italic">
+                <p className="font-serif text-[13px] text-leaf">
                   Sample offer pack
                 </p>
                 <h3 className="mt-2 font-semibold font-serif text-2xl">

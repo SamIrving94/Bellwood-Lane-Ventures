@@ -113,12 +113,12 @@ export default async function TrackPage({
       <div className="mx-auto max-w-3xl">
         <Link
           href="/instant-offer"
-          className="inline-flex items-center gap-2 font-serif text-[13px] text-stone-500 italic transition hover:text-leaf"
+          className="inline-flex items-center gap-2 font-serif text-[13px] text-stone-500 transition hover:text-leaf"
         >
           <span aria-hidden>←</span> bellwoodslane.co.uk
         </Link>
 
-        <p className="mt-12 font-serif text-[13px] text-leaf italic">
+        <p className="mt-12 font-serif text-[13px] text-leaf">
           Live timeline · transparent
         </p>
         <h1
@@ -136,7 +136,7 @@ export default async function TrackPage({
         {/* Headline offer card */}
         {offer && (
           <div className="mt-10 rounded-2xl border-2 border-leaf/40 bg-soft p-7">
-            <p className="font-serif text-[13px] text-stone-500 italic">
+            <p className="font-serif text-[13px] text-stone-500">
               Cash offer
             </p>
             <p className="mt-2 font-semibold font-serif text-[48px] text-forest leading-none tracking-[-0.025em] md:text-[64px]">
@@ -164,7 +164,7 @@ export default async function TrackPage({
             <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-leaf-dark opacity-70" />
             <span className="relative inline-flex h-2 w-2 rounded-full bg-leaf-dark" />
           </span>
-          <span className="font-serif text-[13px] text-stone-600 italic">
+          <span className="font-serif text-[13px] text-stone-600">
             Live · refresh any time to see new events
           </span>
         </div>
@@ -193,7 +193,7 @@ export default async function TrackPage({
                     <span className="block h-1.5 w-1.5 rounded-full bg-white" />
                   )}
                 </span>
-                <p className="font-serif text-[13px] text-leaf italic">
+                <p className="font-serif text-[13px] text-leaf">
                   {KIND_LABEL[u.kind] ?? u.kind}
                 </p>
                 <h2 className="mt-2 font-semibold font-serif text-2xl leading-tight">
@@ -218,7 +218,7 @@ export default async function TrackPage({
         <hr className="my-16 border-stone-200" />
 
         <section>
-          <p className="font-serif text-[13px] text-stone-500 italic">
+          <p className="font-serif text-[13px] text-stone-500">
             Why this page exists
           </p>
           <p className="mt-4 text-[15px] text-stone-700 leading-relaxed">
@@ -240,7 +240,7 @@ export default async function TrackPage({
           <VendorReplyForm token={token} />
         </section>
 
-        <p className="mt-12 font-serif text-[13px] text-stone-400 italic">
+        <p className="mt-12 font-serif text-[13px] text-stone-400">
           Kept · Property Redress Scheme (PRS) · HMRC AML
           supervised · ICO registered
         </p>

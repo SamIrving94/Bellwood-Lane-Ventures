@@ -807,7 +807,7 @@ function OfferCard({ offer }: { offer: OfferResult }) {
 
       {offer.trackUrl && (
         <div className="mt-5 rounded-xl border border-stone-200 bg-cream p-4">
-          <p className="font-serif text-[13px] text-leaf italic">
+          <p className="font-serif text-[13px] text-leaf">
             Live timeline
           </p>
           <p className="mt-2 text-sm text-stone-700">
