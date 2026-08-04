@@ -52,6 +52,7 @@ import { scoreLead } from './scorer';
 import { DEFAULT_SCORER_CONFIG, type ScorerConfig } from './scorer-config';
 import { sanitisePayload, auditProtectedFields } from './rbac';
 import { enrichRationaleWithLlm } from './rationale-llm';
+import { classifyTrack, isBlockText } from './track';
 
 /**
  * Hard ceiling on the deduped candidate pool carried into ranking.
@@ -174,6 +175,12 @@ export {
 } from './scorer-config';
 export { sanitisePayload, auditProtectedFields } from './rbac';
 export { enrichRationaleWithLlm } from './rationale-llm';
+export {
+  classifyTrack,
+  isBlockText,
+  PRIME_MIN_VALUE_PENCE,
+  type DealTrackValue,
+} from './track';
 export { dedupeDealbreakerRules, screenDealbreakers } from './dealbreakers';
 export type { DealbreakerCandidate, DealbreakerHit } from './dealbreakers';
 export {
@@ -205,6 +212,8 @@ export interface ScoutLead {
   address: string;
   postcode: string;
   leadType: string;
+  /** Two-track classification — see ./track.ts. */
+  track: 'volume' | 'prime' | 'block';
   estimatedEquityPence: number | null;
   contactName: string | null;
   contactPhone: string | null;
@@ -567,17 +576,25 @@ export async function runScoutingPipeline(
           for (const p of properties) {
             const addrL = p.address.toLowerCase();
             const typeL = (p.propertyType ?? '').toLowerCase();
+            // Block-of-flats / portfolio language — checked FIRST because the
+            // block track deliberately overrides the drops and flags below: a
+            // "development site" that is actually a freehold block is a deal,
+            // and "units 1-6" must not trip the commercial `unit` keyword.
+            const blockLike = isBlockText(
+              `${p.address} ${p.summary ?? ''} ${p.propertyType ?? ''}`,
+            );
             // DROP non-dealable listings — land, garages, new-build plots,
             // development sites: there's no house to buy / refurb / flip, and the
             // AVM values them as a house (nonsense). Word-boundary matched so
             // real streets like "Corkland Road" are NOT caught.
             if (
-              /^\s*(plot|land)\b/.test(addrL) ||
-              /\bland and garages?\b/.test(addrL) ||
-              /\bgarages?\s+(on|at|to|adjacent)\b/.test(addrL) ||
-              /\bdevelopment site\b|\bbuilding plot\b/.test(addrL) ||
-              typeL.includes('land') ||
-              typeL.includes('garage')
+              !blockLike &&
+              (/^\s*(plot|land)\b/.test(addrL) ||
+                /\bland and garages?\b/.test(addrL) ||
+                /\bgarages?\s+(on|at|to|adjacent)\b/.test(addrL) ||
+                /\bdevelopment site\b|\bbuilding plot\b/.test(addrL) ||
+                typeL.includes('land') ||
+                typeL.includes('garage'))
             ) {
               continue;
             }
@@ -592,10 +609,11 @@ export async function runScoutingPipeline(
             // (the founder wants to see them) but mark it so the UI can badge it
             // and it's clear it isn't a standard residential deal.
             const commercial =
-              typeL.includes('commercial') ||
-              /\b(pub|bar|tavern|inn|brewery|brewdog|restaurant|cafe|café|office|shop|retail|unit|warehouse|industrial|licensed premises|public house)\b/.test(
-                addrL,
-              );
+              !blockLike &&
+              (typeL.includes('commercial') ||
+                /\b(pub|bar|tavern|inn|brewery|brewdog|restaurant|cafe|café|office|shop|retail|unit|warehouse|industrial|licensed premises|public house)\b/.test(
+                  addrL,
+                ));
             all.push({
               probateRef: `pd-${seed.label}-${p.id ?? p.address.slice(0, 16).replace(/\s+/g, '_')}`,
               address: p.address,
@@ -1272,12 +1290,26 @@ export async function runScoutingPipeline(
         }
       }
 
+      // Two-track classification. The sanitised payload still carries the
+      // source listing's propertyData (summary/type), so block language is
+      // visible here; gazette/charge leads classify on value + address alone.
+      const pd = (enrichedRaw?.propertyData ?? null) as {
+        summary?: string | null;
+        propertyType?: string | null;
+      } | null;
+      const track = classifyTrack({
+        valuePence: lead.estateValuePence,
+        text: `${lead.address} ${pd?.summary ?? ''}`,
+        propertyType: pd?.propertyType ?? null,
+      });
+
       const scoutLead: ScoutLead = {
         runDate,
         source: lead.sourceTrail.split(' → ')[0] ?? 'unknown',
         address: lead.address,
         postcode: lead.postcode,
         leadType: lead.leadType,
+        track,
         estimatedEquityPence: lead.estateValuePence,
         contactName: lead.contactName,
         contactPhone: lead.contactPhone,
@@ -1301,12 +1333,18 @@ export async function runScoutingPipeline(
   // Step 5 — Apply the sourcing gate, sort strongest first.
   // Ordering stays on the raw leadScore so the founder's list matches the score
   // shown in the UI; the gate is the only thing that reads sourcingScore.
+  //
+  // The gate applies to the VOLUME track only. Prime and block leads are
+  // scarce and the volume scorer is structurally hostile to them (relative
+  // equity bands, 5-bed ROI damping), so they always reach the founder —
+  // a human decides on those, not the threshold.
   const qualified = scored
     .filter(
       ({ scoutLead, sourcingScore }) =>
         scoutLead.verdict !== 'INSUFFICIENT_DATA' &&
-        sourcingScore >= sourcingThreshold &&
-        scoutLead.leadScore >= minScore,
+        (scoutLead.track !== 'volume' ||
+          (sourcingScore >= sourcingThreshold &&
+            scoutLead.leadScore >= minScore)),
     )
     .map(({ scoutLead }) => scoutLead)
     .sort((a, b) => b.leadScore - a.leadScore);

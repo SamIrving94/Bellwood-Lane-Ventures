@@ -177,6 +177,13 @@ function jsonLdItemToLot(item: Record<string, unknown>): AuctionLot | null {
   const guide = extractGuidePrice(item);
   const auctionDate = extractAuctionDate(item);
 
+  // Keep the advertised words: block/portfolio detection downstream needs
+  // the raw title + description, which the parsed fields alone lose.
+  const description =
+    typeof item.description === 'string' ? item.description : null;
+  const summary =
+    [name, description].filter(Boolean).join(' — ').slice(0, 1000) || null;
+
   return {
     sourceHouse: 'auction_house_uk',
     sourceLotRef: extractLotRef(name, url) ?? `AHN-${postcode.replace(/\s+/g, '')}`,
@@ -188,6 +195,7 @@ function jsonLdItemToLot(item: Record<string, unknown>): AuctionLot | null {
     guidePriceMaxPence: guide.maxPence,
     lotUrl: url,
     photoUrls: extractImagesFromJsonLd(item),
+    summary,
   };
 }
 
@@ -279,6 +287,15 @@ function parseLotsFromCss(html: string): AuctionLot[] {
       if (photoUrls.length < 10) photoUrls.push(absolute);
     });
 
+    // The card's heading carries the advertised lot title ("Block of 6
+    // flats…"); keep it for downstream block/portfolio classification.
+    const titleText = $card
+      .find('h1, h2, h3, .lot-title, .title')
+      .first()
+      .text()
+      .replace(/\s+/g, ' ')
+      .trim();
+
     lots.push({
       sourceHouse: 'auction_house_uk',
       sourceLotRef: lotRef ?? `AHN-${postcode.replace(/\s+/g, '')}`,
@@ -290,6 +307,7 @@ function parseLotsFromCss(html: string): AuctionLot[] {
       guidePriceMaxPence: guide.maxPence,
       lotUrl,
       photoUrls,
+      summary: titleText.slice(0, 1000) || null,
     });
   });
 

@@ -137,6 +137,18 @@ enum ParseStatus {
   manual_review
 }
 
+// Two-track model. `volume` is the high-volume sourcing business (smaller
+// tickets, released to investors for a fee). `prime` is high-value stock
+// (~£700k+ purchase, ~£1M+ post-refurb exit, architect-led) Kept buys for its
+// own book. `block` is multi-unit stock (blocks of flats, portfolios).
+// Classified at source by packages/scouting/src/track.ts and carried
+// lead → deal unchanged.
+enum DealTrack {
+  volume
+  prime
+  block
+}
+
 // Line 2 — investor sourcing fee lifecycle. A released deal earns a fee when
 // an investor takes it: proposed → agreed → invoiced → paid.
 enum SourcingFeeStatus {
@@ -156,6 +168,7 @@ model Deal {
   sellerType                SellerType @default(standard)
   source                    DealSource @default(manual)
   status                    DealStatus @default(new_lead)
+  track                     DealTrack  @default(volume)
   askingPricePence          Int?
   ourOfferPence             Int?
   estimatedMarketValuePence Int?
@@ -236,6 +249,7 @@ model Deal {
   @@index([postcode])
   @@index([sellerType])
   @@index([releasedForResale])
+  @@index([track])
 }
 
 model DealActivity {
@@ -251,12 +265,13 @@ model DealActivity {
 }
 
 model ScoutLead {
-  id                   String   @id @default(cuid())
+  id                   String    @id @default(cuid())
   runDate              DateTime
   source               String
   address              String
   postcode             String
   leadType             String
+  track                DealTrack @default(volume)
   estimatedEquityPence Int?
   contactName          String?
   contactPhone         String?
@@ -266,9 +281,9 @@ model ScoutLead {
   marketTrend          String?
   sourceTrail          String?
   rawPayload           Json?
-  status               String   @default("new")
+  status               String    @default("new")
   convertedDealId      String?
-  createdAt            DateTime @default(now())
+  createdAt            DateTime  @default(now())
 
   evalConfigVersion Int? // version of lead_scoring eval used
 
@@ -289,6 +304,7 @@ model ScoutLead {
   @@index([leadScore])
   @@index([postcode])
   @@index([campaignId])
+  @@index([track])
 }
 
 model WhatsAppIntake {
@@ -681,23 +697,27 @@ model OutreachHold {
 // ─── Auctions ───────────────────────────────────────────────
 
 model AuctionLot {
-  id                 String   @id @default(cuid())
+  id                 String    @id @default(cuid())
   sourceHouse        String // e.g. "auction_house_uk", "savills", "clive_emson"
   sourceLotRef       String // the auction house's own lot ref / number
   auctionDate        DateTime
   address            String
   postcode           String
   propertyType       String // terraced_house | semi_detached | detached | flat | commercial | land | other
+  track              DealTrack @default(volume)
+  // Raw lot title/description text, kept so track classification (block-of-
+  // flats / portfolio keywords) can run and re-run against the source words.
+  summary            String?   @db.Text
   guidePriceMinPence Int?
   guidePriceMaxPence Int?
-  sold               Boolean  @default(false)
+  sold               Boolean   @default(false)
   soldPricePence     Int?
   lotUrl             String?
   // Claude-vision condition screen (condition, conditionScore, flags,
   // rationale, confidence). Computed by /cron/auction-scan via screenAuctionLot.
   visualAssessment   Json?
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
 
   @@unique([sourceHouse, sourceLotRef])
   @@index([auctionDate])

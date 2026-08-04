@@ -9,6 +9,7 @@ type Lead = {
   address: string;
   postcode: string;
   leadType: string;
+  track: string;
   leadScore: number;
   verdict: string;
   estimatedEquityPence: number | null;
@@ -119,7 +120,8 @@ type FilterKey =
   | 'dissolved'
   | 'shortlease'
   | 'appraised'
-  | 'unappraised';
+  | 'unappraised'
+  | 'primeblock';
 
 // Source-type filters are analyst tools, not part of the daily "what do I
 // act on" job — they live behind a "More filters" disclosure.
@@ -195,6 +197,8 @@ export function LeadsTable({ leads, initialFilter, totalCount }: Props) {
         return lead.appraised;
       case 'unappraised':
         return !lead.appraised;
+      case 'primeblock':
+        return lead.track !== 'volume';
       default:
         return true;
     }
@@ -239,6 +243,11 @@ export function LeadsTable({ leads, initialFilter, totalCount }: Props) {
       count: leads.filter(
         (l) => l.verdict === 'VIABLE' && getStatus(l) !== 'passed',
       ).length,
+    },
+    {
+      key: 'primeblock',
+      label: 'Prime / Block',
+      count: leads.filter((l) => l.track !== 'volume').length,
     },
     { key: 'all', label: 'All', count: leads.length },
     { key: 'passed', label: 'Passed', count: countByStatus('passed') },
@@ -513,8 +522,24 @@ function LeadCard({
 
   // Cap the card to the 2 strongest "why act" signals (plain English) plus a
   // single collapsed risk pill — scanning 200 cards with 7+ pills each is
-  // impossible. Priority: price cut > falling fast > stale > HMO expiry.
+  // impossible. Priority: track > price cut > falling fast > stale > HMO expiry.
   const highlights: { label: string; cls: string; title?: string }[] = [];
+  if (lead.track === 'prime') {
+    highlights.push({
+      label: '★ Prime — own book',
+      cls: 'border-emerald-300 bg-emerald-100 text-emerald-900',
+      title:
+        '£700k+ value: a principal-track candidate for the Kept book (architect refurb), not the investor feed.',
+    });
+  }
+  if (lead.track === 'block') {
+    highlights.push({
+      label: '▦ Block / portfolio',
+      cls: 'border-emerald-300 bg-emerald-100 text-emerald-900',
+      title:
+        'Multi-unit language in the listing — whole block or portfolio. Principal-track candidate; the house AVM does not apply.',
+    });
+  }
   if (lead.discountPercent && lead.discountPercent > 0) {
     highlights.push({
       label: `↓ ${lead.discountPercent}% price cut${lead.reductionCount > 1 ? ` ×${lead.reductionCount}` : ''}`,

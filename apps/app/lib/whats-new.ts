@@ -26,6 +26,37 @@ export type WhatsNewEntry = {
 /** Newest first. The popup shows index 0. */
 export const WHATS_NEW: WhatsNewEntry[] = [
   {
+    id: '2026-08-04-two-track-prime-blocks',
+    date: '2026-08-04',
+    emoji: '⭐',
+    title: 'The scout now hunts big game too',
+    intro:
+      'Two businesses, one engine: volume sourcing for investors, prime + blocks for the Kept book.',
+    bullets: [
+      {
+        emoji: '⭐',
+        text: '**Prime track** — £700k+ properties are no longer buried by the volume scorer. They **skip the gate** and land on your desk with a ★ Prime badge. Architect refurb → £1M+ exits.',
+      },
+      {
+        emoji: '🏢',
+        text: '**Blocks detected** — "block of 6 flats", "freehold building", "portfolio" now get caught in listings **and** auction catalogues. They used to be dropped as development sites.',
+      },
+      {
+        emoji: '🚨',
+        text: 'Prime/block finds raise their **own daily high-priority card** — separate from the volume review pile.',
+      },
+      {
+        emoji: '🔍',
+        text: 'New **Prime / Block filter** on Leads, badges on Pipeline and deal pages. Track carries lead → deal automatically.',
+      },
+      {
+        emoji: '📋',
+        text: '**Ant: a second proposal in Strategy** — the two-track buy-box, architect terms, and blocks appetite need your call.',
+      },
+    ],
+    cta: { label: 'See prime leads', href: '/leads?filter=primeblock' },
+  },
+  {
     id: '2026-08-03-field-network-legal-works',
     date: '2026-08-03',
     emoji: '🏗️',

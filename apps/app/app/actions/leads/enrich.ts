@@ -246,7 +246,12 @@ export async function enrichLeadById(leadId: string): Promise<{
               null,
             comparableCount: (avmFull.comparableCount as number | null) ?? null,
             // 5+ beds ⇒ likely HMO/multi-let: a house AVM can't value it.
-            avmUnreliable: (bedrooms ?? 0) >= 5,
+            // Prime-track exception mirrors /cron/lead-appraise: big prime
+            // houses are the point of that track. Blocks stay unreliable —
+            // a house AVM cannot value a multi-unit freehold.
+            avmUnreliable:
+              lead.track === 'block' ||
+              (lead.track !== 'prime' && (bedrooms ?? 0) >= 5),
           },
           {
             hasCriticalData: true,

@@ -177,7 +177,21 @@ const DealDetailPage = async ({
         {/* Header */}
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="font-bold text-xl">{deal.address}</h1>
+            <h1 className="flex flex-wrap items-center gap-2 font-bold text-xl">
+              {deal.address}
+              {deal.track !== 'volume' && (
+                <span
+                  className="rounded-full border border-emerald-300 bg-emerald-100 px-2 py-0.5 font-medium text-[11px] text-emerald-900 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
+                  title={
+                    deal.track === 'prime'
+                      ? 'Prime track — own-book candidate (£700k+, architect refurb)'
+                      : 'Block track — multi-unit / portfolio, own-book candidate'
+                  }
+                >
+                  {deal.track === 'prime' ? '★ Prime' : '▦ Block'}
+                </span>
+              )}
+            </h1>
             <p className="text-muted-foreground text-sm">
               {deal.postcode} &middot; {deal.propertyType}
               {deal.bedrooms ? ` · ${deal.bedrooms} bed` : ''}

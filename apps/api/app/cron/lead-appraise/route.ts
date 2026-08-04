@@ -78,7 +78,14 @@ export const POST = async (request: Request) => {
   const candidates = await database.scoutLead.findMany({
     where: {
       status: { in: ['new', 'shortlisted', 'watching'] },
-      verdict: { in: ['STRONG', 'VIABLE'] },
+      // Volume leads must have earned STRONG/VIABLE; prime and block leads
+      // are appraised regardless — the volume scorer is structurally hostile
+      // to them (relative equity bands, 5-bed damping), so verdict is not a
+      // meaningful gate on those tracks.
+      OR: [
+        { verdict: { in: ['STRONG', 'VIABLE'] } },
+        { track: { in: ['prime', 'block'] } },
+      ],
     },
     orderBy: { leadScore: 'desc' },
     take: 60,
@@ -254,7 +261,13 @@ export const POST = async (request: Request) => {
                 null,
               comparableCount: (avmFull.comparableCount as number | null) ?? null,
               // 5+ beds ⇒ likely HMO/multi-let: a house AVM can't value it.
-              avmUnreliable: (bedrooms ?? 0) >= 5,
+              // Except on the prime track — a 6-bed prime house is exactly
+              // what that track exists for, and damping its ROI to zero
+              // buried every prime lead. Blocks stay unreliable regardless:
+              // a house AVM genuinely cannot value a multi-unit freehold.
+              avmUnreliable:
+                lead.track === 'block' ||
+                (lead.track !== 'prime' && (bedrooms ?? 0) >= 5),
             },
             {
               hasCriticalData: true,

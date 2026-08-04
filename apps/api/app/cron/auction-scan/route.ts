@@ -70,6 +70,7 @@ export const POST = async (request: Request) => {
         guidePriceMinPence: lot.guidePriceMinPence,
         guidePriceMaxPence: lot.guidePriceMaxPence,
         lotUrl: lot.lotUrl,
+        summary: lot.summary ?? null,
         visualAssessment: lot.visualAssessment ?? null,
       })),
       runSummary: {

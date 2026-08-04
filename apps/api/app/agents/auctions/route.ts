@@ -1,4 +1,5 @@
 import { database, Prisma } from '@repo/database';
+import { classifyTrack } from '@repo/scouting';
 import { NextResponse } from 'next/server';
 import { validateAgentAuth, unauthorizedResponse } from '../_lib/auth';
 
@@ -38,6 +39,8 @@ export const POST = async (request: Request) => {
       guidePriceMinPence?: number | null;
       guidePriceMaxPence?: number | null;
       lotUrl?: string | null;
+      /** Raw lot title/description text, for block/portfolio detection. */
+      summary?: string | null;
       /** Claude-vision condition screen from the auction-scan cron. */
       visualAssessment?: unknown;
     }>;
@@ -54,7 +57,16 @@ export const POST = async (request: Request) => {
   // Upsert each lot keyed by (sourceHouse, sourceLotRef)
   let createdCount = 0;
   let updatedCount = 0;
+  const trackByRef = new Map<string, 'volume' | 'prime' | 'block'>();
   for (const lot of lots) {
+    // Two-track classification from the advertised words + guide price:
+    // block/portfolio language wins, then £700k+ guide = prime.
+    const track = classifyTrack({
+      valuePence: lot.guidePriceMaxPence ?? lot.guidePriceMinPence,
+      text: `${lot.address} ${lot.summary ?? ''}`,
+      propertyType: lot.propertyType,
+    });
+    trackByRef.set(`${lot.sourceHouse}:${lot.sourceLotRef}`, track);
     const data = {
       sourceHouse: lot.sourceHouse,
       sourceLotRef: lot.sourceLotRef,
@@ -62,6 +74,8 @@ export const POST = async (request: Request) => {
       address: lot.address,
       postcode: lot.postcode,
       propertyType: lot.propertyType,
+      track,
+      summary: lot.summary ?? null,
       guidePriceMinPence: lot.guidePriceMinPence ?? null,
       guidePriceMaxPence: lot.guidePriceMaxPence ?? null,
       lotUrl: lot.lotUrl ?? null,
@@ -139,11 +153,43 @@ export const POST = async (request: Request) => {
     });
   }
 
+  // Prime/block lots are own-book candidates — a separate, higher-priority
+  // card so a block of flats never drowns under the volume review pile.
+  const primeLots = lots.filter(
+    (l) => trackByRef.get(`${l.sourceHouse}:${l.sourceLotRef}`) !== 'volume'
+  );
+  if (primeLots.length > 0) {
+    const blockCount = primeLots.filter(
+      (l) => trackByRef.get(`${l.sourceHouse}:${l.sourceLotRef}`) === 'block'
+    ).length;
+    const sample = primeLots
+      .slice(0, 3)
+      .map((l) => `${l.address} (${l.postcode})`)
+      .join(' | ');
+    await database.founderAction.create({
+      data: {
+        type: 'review_leads',
+        priority: 'high',
+        title: `${primeLots.length} prime/block auction lot${primeLots.length === 1 ? '' : 's'} — own-book candidates`,
+        description: `Auction scan surfaced ${blockCount} block/portfolio lot${blockCount === 1 ? '' : 's'} and ${primeLots.length - blockCount} £700k+ guide lot${primeLots.length - blockCount === 1 ? '' : 's'}. Principal-track candidates — review before the sale date. ${sample}`,
+        agent: 'scout',
+        agentEventId: event.id,
+        metadata: {
+          primeLotCount: primeLots.length,
+          blockLotCount: blockCount,
+          totalLots: lots.length,
+          runDate: new Date().toISOString(),
+        },
+      },
+    });
+  }
+
   return NextResponse.json({
     success: true,
     created: createdCount,
     updated: updatedCount,
     strongMatches: strongMatches.length,
+    primeLots: primeLots.length,
     eventId: event.id,
   });
 };
