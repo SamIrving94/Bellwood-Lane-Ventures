@@ -134,14 +134,18 @@ Reviewed every public route against the standard.
 `save-the-sale`, `why-we-wont-buy-any-home`, `partners/login` (+ form),
 `partners/signup` (+ form), `portal/layout`, `ledger-ticker`.
 
-### Replace (worst offenders)
+### Replace (worst offenders) — DONE, Aug 2026
 
-- **`instant-offer/components/chat-flow.tsx`**: the emoji condition scale
-  (`chat-flow.tsx:88-97`, `💀` through `🏆`), chat bubbles, and fake "thinking"
-  delay. Replace with a calm document/ledger styled form. This sits inside
-  `/sell` and `/agents`, so it drags the flagships down.
-- **`portal/page.tsx`**: emerald/blue status pills (`:16-17`), a four card grid
-  (`:82`), em dash greeting (`:51`).
+- **`instant-offer/components/chat-flow.tsx`**: rebuilt as the
+  document/ledger form this section asked for. No bubbles, no avatars, no
+  emoji condition scale, no fake thinking floor — answered questions
+  accumulate as courier ledger rows on paper, and the research checklist
+  runs only as long as the real API call. Same step machine and
+  `/api/quote` contract throughout.
+- **`portal/page.tsx`**: status pills now on the Kept palette (leaf for
+  live/positive, wax for declined, forest for converted), metrics are a
+  single hairline ledger strip, greeting and empty states de-dashed,
+  radii brought to `rounded-[2px]`.
 
 ## Shared offenders (fix once, applies everywhere)
 
