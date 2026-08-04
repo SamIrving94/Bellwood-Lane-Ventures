@@ -40,6 +40,27 @@ Runs inside the daily scouting cron; health-reported like every source.
 before purchase — an invalid appointment can void the sale. Flag for the
 conveyancing checklist on receivership deals.
 
+**Buying process quirks** ([Farrer & Co](https://www.farrer.co.uk/news-and-insights/buying-a-house-from-receivers/)):
+sold as seen with limited title guarantee; the receiver answers no enquiries
+(our viewing report + searches carry the diligence load); occupiers/tenants
+are the buyer's problem; speed and certainty win the deal.
+
+**Tax levers on this stock** (NOT advice — confirm per deal with the
+accountant; conditions are strict):
+- **6+ dwellings in one transaction** → non-residential SDLT rates (max 5%)
+  instead of residential + company surcharge. Big on blocks.
+  ([source](https://www.property-tax-advice.co.uk/knowledge-centre/six-or-more-dwellings-and-sdlt-when-residential-property-is-taxed-at-commercial-rates/))
+- **Company buying a dwelling >£500k** defaults to the punitive **15% flat
+  SDLT** — but **property developer/trader relief** disapplies it when the
+  purchase is exclusively for redevelopment + resale in a property trade
+  (our prime track). ([Keystone](https://keystonelaw.com/keynotes/sdlt-and-ated-what-reliefs-are-available/))
+- **5% VAT (not 20%)** on renovating a dwelling **empty 2+ years** —
+  receivership/probate stock often qualifies. Evidence: council Empty
+  Property Officer letter, obtained BEFORE works start (HMRC Notice 708).
+- **MDR was abolished June 2024** — never rely on it.
+- SPV share purchases (0.5% stamp duty, no SDLT) occasionally available on
+  portfolio sales — inherit liabilities, forensic diligence required.
+
 ## Channel 2 — Allsop auctions (SHIPPED: `sources/allsop.ts`)
 
 **Verified claims:**
