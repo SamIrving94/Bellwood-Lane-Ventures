@@ -35,6 +35,7 @@ import { matchProbateAddressToSale } from './hmlr-match';
 import { normaliseUkAddress } from './address-normalise';
 import { fetchShortLeaseLeads } from './short-lease';
 import { fetchCompaniesHouseDistressLeads } from './companies-house-charges';
+import { fetchReceivershipLeads } from './receiverships';
 import { leadTypeForListing } from './lead-type';
 import {
   baseFromProbateLead,
@@ -144,6 +145,12 @@ export type {
   ChDistressScoutResult,
   ChDistressScoutOptions,
 } from './companies-house-charges';
+export { fetchReceivershipLeads } from './receiverships';
+export type {
+  ReceivershipRawLead,
+  ReceivershipScoutResult,
+  ReceivershipScoutOptions,
+} from './receiverships';
 export {
   baseFromProbateLead,
   checkEnrichmentHealth,
@@ -364,6 +371,7 @@ export interface ScoutingPipelineResult {
     hmo?: string;
     dissolved?: string;
     chDistress?: string;
+    receivership?: string;
     staleListings?: string;
     shortLease?: string;
     enrichment?: string;
@@ -434,6 +442,7 @@ export async function runScoutingPipeline(
     hmo?: string;
     dissolved?: string;
     chDistress?: string;
+    receivership?: string;
     staleListings?: string;
     shortLease?: string;
     enrichment?: string;
@@ -485,7 +494,8 @@ export async function runScoutingPipeline(
   //    limit; CH has its own 600 req/5min pool) → parallel
   //  - PropertyData sources (sourced/planning/HMO) → serial to stay under
   //    the "4 calls / 10s" rate limit
-  const [hmctsGrants, gazetteGrants, chDistressResult] = await Promise.all([
+  const [hmctsGrants, gazetteGrants, chDistressResult, receivershipResult] =
+    await Promise.all([
     fetchProbateGrants(sinceDate, limit).catch((err) => {
       const msg = (err as Error)?.message ?? String(err);
       sourceErrors.hmcts = msg.slice(0, 200);
@@ -521,11 +531,29 @@ export async function runScoutingPipeline(
         >;
       },
     ),
+    // Gazette receivership/administration notices → CH charge particulars →
+    // property addresses. NOT district-filtered: receivership stock is scarce
+    // and the receiver must sell — a lead outside our patch is still worth a
+    // founder glance (prime/block candidates especially).
+    fetchReceivershipLeads().catch((err) => {
+      const msg = (err as Error)?.message ?? String(err);
+      sourceErrors.receivership = msg.slice(0, 200);
+      console.warn('[scouting] receivership source failed', err);
+      return {
+        leads: [],
+        noticesScanned: 0,
+        companiesPolled: 0,
+      } as Awaited<ReturnType<typeof fetchReceivershipLeads>>;
+    }),
   ]);
   const chDistressLeads = chDistressResult.leads;
   // Partial-failure surfacing (per-company poll errors, key still valid).
   if (chDistressResult.error && !sourceErrors.chDistress) {
     sourceErrors.chDistress = chDistressResult.error;
+  }
+  const receivershipLeads = receivershipResult.leads;
+  if (receivershipResult.error && !sourceErrors.receivership) {
+    sourceErrors.receivership = receivershipResult.error;
   }
 
   // ── PropertyData sources — serial (rate-limit constrained) ─────────
@@ -911,6 +939,7 @@ export async function runScoutingPipeline(
     ...hmoGrants,
     ...dissolvedGrants,
     ...chDistressLeads,
+    ...receivershipLeads,
     ...shortLeaseGrants,
   ].filter((g) => {
     const n = normaliseUkAddress(`${g.address}, ${g.postcode}`);
@@ -921,7 +950,7 @@ export async function runScoutingPipeline(
   }).slice(0, CANDIDATE_POOL_CAP);
 
   console.info(
-    `[scouting] sources: hmcts=${hmctsGrants.length} gazette=${gazetteGrants.length} propertydata=${sourcedFromPostcodes.length} planning=${planningGrants.length} hmo=${hmoGrants.length} chDistress=${chDistressLeads.length} shortLease=${shortLeaseGrants.length} (candidate pool after dedupe: ${candidates.length})`,
+    `[scouting] sources: hmcts=${hmctsGrants.length} gazette=${gazetteGrants.length} propertydata=${sourcedFromPostcodes.length} planning=${planningGrants.length} hmo=${hmoGrants.length} chDistress=${chDistressLeads.length} receivership=${receivershipLeads.length} shortLease=${shortLeaseGrants.length} (candidate pool after dedupe: ${candidates.length})`,
   );
 
   // Build signals lookup BEFORE enrichment (we lose rawGrant after enrich).
@@ -1373,6 +1402,7 @@ export async function runScoutingPipeline(
       hmo: hmoGrants.length,
       dissolved: dissolvedGrants.length,
       chDistress: chDistressLeads.length,
+      receivership: receivershipLeads.length,
       shortLease: shortLeaseGrants.length,
     },
     errors: sourceErrors,

@@ -73,6 +73,26 @@ Same engine feeds both. The scout now stamps every lead with a **track**:
 4. **Capital allocation** — how much of the new capital is reserved for
    prime vs kept liquid for volume bridging?
 
+## New sourcing channels feeding the tracks (shipped 4 Aug)
+
+Deep research found two channels with hard evidence, both now live in the scout:
+
+- **Receiverships** — lender-appointed receivers MUST sell. Appointments are
+  **~2x 2023 / ~3x 2022 levels**; **65% residential**; distress reportedly
+  concentrated in prime central London + part-built schemes. The scout now
+  reads Gazette receiver/administrator notices, pulls the company's charges
+  from Companies House, and mines property addresses out of the particulars.
+  New lead type \`receivership\` (scores just below probate). One legal
+  caveat: the receiver's appointment must be validated before purchase.
+- **Allsop auctions** — one catalogue = **344 lots** including whole London
+  blocks (verified: 18 flats in Finsbury Park at £1.6m+ guide, under
+  £90k/unit). New scraper feeds the Monday auction scan; prime/block lots
+  raise their own card.
+
+Full citations: \`docs/architecture/sourcing-channels.md\`. Next candidates
+(not built): Savills + Clive Emson parsers, unimplemented planning consents,
+expired listings.
+
 ## Honest caveats (deferred platform work)
 
 - The **AVM is not prime-ready**: sparse comparables make it under-value

@@ -26,6 +26,33 @@ export type WhatsNewEntry = {
 /** Newest first. The popup shows index 0. */
 export const WHATS_NEW: WhatsNewEntry[] = [
   {
+    id: '2026-08-04-receiverships-and-allsop',
+    date: '2026-08-04',
+    emoji: '🕵️',
+    title: 'Two new hunting grounds for the scout',
+    intro:
+      'Deep research found where the distressed prime and block stock actually surfaces — both channels are now live.',
+    bullets: [
+      {
+        emoji: '🏦',
+        text: '**Receiverships** — when a lender seizes a property, the receiver **must sell, fast**. The scout now reads Gazette receiver notices and digs the property addresses out of Companies House charges. Appointments are running at **3× 2022 levels**, 65% residential.',
+      },
+      {
+        emoji: '🔨',
+        text: '**Allsop auctions** — the big one we were missing. One catalogue = **344 lots**, including whole London blocks (18 flats in Finsbury Park at £1.6M guide = under £90k a unit). Now feeds the Monday auction scan.',
+      },
+      {
+        emoji: '⚖️',
+        text: 'Receivership deals get one extra legal check: **validate the receiver\'s appointment** before exchange — an invalid one can void the sale.',
+      },
+      {
+        emoji: '📚',
+        text: 'The full research with sources is in the repo, and the **Strategy proposal is updated** — Ant, the two-track decisions are still waiting on you.',
+      },
+    ],
+    cta: { label: 'Read the proposal', href: '/strategy' },
+  },
+  {
     id: '2026-08-04-two-track-prime-blocks',
     date: '2026-08-04',
     emoji: '⭐',

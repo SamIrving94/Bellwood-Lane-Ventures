@@ -135,6 +135,8 @@ export const DEFAULT_SCORER_CONFIG: ScorerConfig = {
   // Pillar 1 — acquisition likelihood
   leadTypeScores: {
     probate: 20,
+    // Receiver/administrator MUST sell — the most motivated vendor class.
+    receivership: 19,
     repossession: 18,
     distressed_sale: 18,
     mortgage_default: 16,

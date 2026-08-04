@@ -8,6 +8,7 @@
 
 export type AuctionHouse =
   | 'auction_house_uk'
+  | 'allsop'
   | 'savills'
   | 'clive_emson';
 

@@ -6,6 +6,7 @@
  *
  * Sources:
  *   - Auction House UK (nationwide)
+ *   - Allsop (nationwide; ~300+ lots/sale, carries whole blocks + prime London)
  *   - Savills (nationwide)
  *   - Clive Emson (southern England)
  *
@@ -17,6 +18,7 @@
 import 'server-only';
 
 import { fetchAuctionHouseUKUpcoming, fetchAuctionHouseUKResults } from './sources/auction-house';
+import { fetchAllsopUpcoming } from './sources/allsop';
 import { fetchSavillsUpcoming, fetchSavillsResults } from './sources/savills';
 import { fetchCliveEmsonUpcoming, fetchCliveEmsonResults } from './sources/clive-emson';
 import type { AuctionLot, AuctionResult, AuctionFilters } from './types';
@@ -43,12 +45,14 @@ export async function getUpcomingAuctions(
 ): Promise<AuctionLot[]> {
   const sources = filters.sourceHouses ?? [
     'auction_house_uk',
+    'allsop',
     'savills',
     'clive_emson',
   ];
 
   const jobs: Promise<AuctionLot[]>[] = [];
   if (sources.includes('auction_house_uk')) jobs.push(fetchAuctionHouseUKUpcoming());
+  if (sources.includes('allsop')) jobs.push(fetchAllsopUpcoming());
   if (sources.includes('savills')) jobs.push(fetchSavillsUpcoming());
   if (sources.includes('clive_emson')) jobs.push(fetchCliveEmsonUpcoming());
 
