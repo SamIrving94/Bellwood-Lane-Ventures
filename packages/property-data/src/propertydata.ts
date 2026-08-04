@@ -836,10 +836,13 @@ export const SOURCED_LIST_TYPES = [
 export type SourcedListType = (typeof SOURCED_LIST_TYPES)[number];
 
 /**
- * Default — the six strongest distress signals. PropertyData accepts
+ * Default — the seven strongest distress signals. PropertyData accepts
  * comma-separated list values, returning properties matching ANY.
+ * `back-on-market` (index 6) earned its place Aug 2026: a sale that fell
+ * through is a vendor who already chose to sell, now stuck — it maps to
+ * `chain_break` in lead-type.ts. Cost: one extra call per seed per run.
  */
-const DEFAULT_LIST = SOURCED_LIST_TYPES.slice(0, 6).join(',');
+const DEFAULT_LIST = SOURCED_LIST_TYPES.slice(0, 7).join(',');
 
 /**
  * Per-list-type probe — call /sourced-properties once per list type,
@@ -1134,7 +1137,9 @@ export async function getSourcedPropertiesMulti(
   postcode: string,
   opts?: { radiusMiles?: number; lists?: readonly string[] },
 ): Promise<SourcedProperty[]> {
-  const lists = opts?.lists ?? SOURCED_LIST_TYPES.slice(0, 6);
+  // Seven lists: the six core distress signals + back-on-market (failed
+  // sale = motivated vendor). Keep in lockstep with DEFAULT_LIST above.
+  const lists = opts?.lists ?? SOURCED_LIST_TYPES.slice(0, 7);
   const seen = new Map<string, SourcedProperty>();
   const failures: string[] = [];
 

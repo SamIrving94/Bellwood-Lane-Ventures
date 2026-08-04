@@ -64,13 +64,63 @@ watch `[auctions/allsop]` log lines.
 mortgagee-in-possession lots — we scan whole catalogues, so this doesn't
 bite us, but never "optimise" to vendor-tag filtering.
 
-## Channels researched, not yet built (in priority order)
+## Channel 3 — Back-on-market listings (SHIPPED 2026-08-04)
 
-1. **Savills / Clive Emson auctions** — parsers are stubs (`sources/savills.ts`,
-   `clive-emson.ts`). Blocks skew to regional houses.
-2. **Unimplemented planning consents** — prime refurb/extension upside;
-   planning data already partially flows via the planning source.
-3. **Expired/withdrawn listings** — vendor fatigue channel; PropertyData may
-   already carry the signal.
-4. **Probate solicitor partnerships** — relationship channel, not code;
-   pairs with the marketer-monthly solicitor outreach cron.
+A sale that fell through is a vendor who already chose to sell, now stuck.
+PropertyData's `back-on-market` sourcing list was already mapped to
+`chain_break` in `lead-type.ts` but sat outside the default list slice —
+now included (7th list, one extra API call per seed per run). Zero new code.
+
+## Verification status (do this once in prod)
+
+The dev sandbox's egress is allow-listed, so The Gazette and
+planning.data.gov.uk both 403 from here — the receivership feed contract
+could not be live-verified before shipping. It follows the SAME documented
+contract as the probate feed (verified live from prod 2026-07-30, fixture
+checked in). To verify after deploy:
+
+```sh
+# 1. Full pipeline with per-source breakdown (receivership appears in
+#    sourceHealth with a count or a real error):
+curl -X POST https://bellwood-api.vercel.app/cron/scout-debug \
+  -H "Authorization: Bearer $CRON_SECRET" | jq '.sourceHealth'
+
+# 2. Raw feed shape (run from any machine with open egress):
+curl -sS -H 'Accept: application/json' \
+  'https://www.thegazette.co.uk/insolvency/notice/data.json?noticecode=2453&results-page=1&results-page-size=3'
+```
+
+If notice titles don't carry "(Company Number NNNNNNNN)", tune
+`COMPANY_NUMBER_REGEX` / `BARE_NUMBER_REGEX` in
+`packages/scouting/src/receiverships.ts` to the real shape.
+
+## The plan — next channels (in priority order)
+
+1. **Unimplemented planning consents** (next build; spec below). Prime
+   refurb/extension upside: a consent lapses 3 years after grant
+   (s.91 TCPA 1990), so "granted, unbuilt, expiring within 12 months" =
+   an owner who paid for permission they can't use. Data: the official
+   [planning.data.gov.uk](https://www.planning.data.gov.uk/docs) API —
+   free, no key, 100+ datasets. **Blocked on one probe** (egress-blocked
+   from the dev sandbox — run from anywhere else):
+   `curl 'https://www.planning.data.gov.uk/entity.json?dataset=planning-application&limit=2'`
+   Confirm per-entity fields (decision-date, address/geometry, status) and
+   LPA coverage of our patch, then build
+   `packages/scouting/src/planning-consents.ts` mirroring the receivership
+   source pattern (new leadType `lapsing_consent`, prime/block classifier
+   applies automatically).
+2. **Savills / Clive Emson auction parsers** — stubs today; blocks skew to
+   regional houses (Clive Emson = southern England, our patch).
+3. **Ground-rent / freehold block portfolios** — the draft Commonhold and
+   Leasehold Reform Bill (Jan 2026) caps ground rents at £250 →
+   peppercorn, expected in force ~2028. Institutional freeholders become
+   motivated sellers of exactly our block stock over the next 1–2 years.
+   No data feed — a relationship channel (approach ground-rent funds
+   directly). Founder action, not code.
+4. **Probate solicitor partnerships** — relationship channel; pairs with
+   the marketer-monthly solicitor outreach cron.
+
+Researched and consciously dropped: bridging-defaults (no public data;
+enforcement funnels into receiverships/auctions which we now cover),
+divorce/matrimonial and HNW networks (not automatable), Land Registry
+corporate-owner mining (heavy lift, unproven yield).

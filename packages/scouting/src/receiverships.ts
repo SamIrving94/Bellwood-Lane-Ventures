@@ -53,8 +53,15 @@ const DEFAULT_SINCE_DAYS = 10;
 const DEFAULT_MAX_NOTICES = 25;
 /** UK postcode, used to mine charge particulars for property addresses. */
 const POSTCODE_REGEX = /\b([A-Z]{1,2}\d{1,2}[A-Z]?)\s*(\d[A-Z]{2})\b/g;
-/** Companies are named "... LTD (Company Number 01234567)" in notices. */
+/**
+ * Companies are named "... LTD (Company Number 01234567)" in notices; some
+ * notices carry the bare number in parentheses instead. Both patterns are
+ * tried, labelled first — could not be live-verified from the dev sandbox
+ * (Gazette 403s our egress), so verify in prod via /cron/scout-debug and
+ * tune here if the feed shape differs.
+ */
 const COMPANY_NUMBER_REGEX = /\b(?:company\s+number|co\.?\s*no\.?)[:\s]*([A-Z]{0,2}\d{6,8})\b/i;
+const BARE_NUMBER_REGEX = /\(([A-Z]{0,2}\d{6,8})\)/;
 
 export interface ReceivershipRawLead {
   probateRef: string;
@@ -136,9 +143,19 @@ export async function fetchReceivershipLeads(
         const published =
           typeof e.published === 'string' ? e.published : null;
         if (published && new Date(published) < cutoff) continue;
+        // Search title AND content for the company number — the feed's
+        // summary text sometimes carries it when the title doesn't.
+        const content =
+          typeof e.content === 'string'
+            ? e.content
+            : typeof (e.content as Record<string, unknown> | undefined)?.[
+                  '$t'
+                ] === 'string'
+              ? String((e.content as Record<string, unknown>).$t)
+              : '';
         notices.push({
           id,
-          title: String(e.title ?? ''),
+          title: `${String(e.title ?? '')} ${content}`.trim(),
           published,
           link: extractLink(e),
           noticeCode: code,
@@ -164,7 +181,9 @@ export async function fetchReceivershipLeads(
   const seenCompanies = new Set<string>();
 
   for (const notice of notices.slice(0, maxNotices)) {
-    const numMatch = COMPANY_NUMBER_REGEX.exec(notice.title);
+    const numMatch =
+      COMPANY_NUMBER_REGEX.exec(notice.title) ??
+      BARE_NUMBER_REGEX.exec(notice.title);
     const companyNumber = numMatch ? numMatch[1].padStart(8, '0') : null;
     const companyName = notice.title
       .replace(/\(company number[^)]*\)/i, '')

@@ -89,9 +89,15 @@ Deep research found two channels with hard evidence, both now live in the scout:
   £90k/unit). New scraper feeds the Monday auction scan; prime/block lots
   raise their own card.
 
-Full citations: \`docs/architecture/sourcing-channels.md\`. Next candidates
-(not built): Savills + Clive Emson parsers, unimplemented planning consents,
-expired listings.
+Also flipped on (4 Aug): PropertyData's **back-on-market** list — a failed
+sale is a motivated vendor, and we were already paying for the data.
+
+Full citations + the channel roadmap: \`docs/architecture/sourcing-channels.md\`.
+Next up: **unimplemented planning consents** (free government API, spec
+written, one prod-side probe needed), then Savills/Clive Emson parsers.
+One for Ant directly: **ground-rent freeholders** become motivated block
+sellers as the £250 ground-rent cap approaches (~2028) — that's a
+relationship channel, not a scraper.
 
 ## Honest caveats (deferred platform work)
 
