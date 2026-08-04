@@ -122,7 +122,7 @@ function Bubble({
           isBot ? 'bg-leaf text-forest' : 'bg-forest text-white'
         }`}
       >
-        {isBot ? 'B' : 'You'.charAt(0)}
+        {isBot ? 'k.' : 'You'.charAt(0)}
       </div>
       <div
         className={`max-w-[85%] rounded-2xl px-5 py-3 text-sm md:text-base ${
@@ -181,10 +181,10 @@ export function ChatFlow({ defaultRole }: ChatFlowProps = {}) {
   });
   const greeting =
     defaultRole === 'agent'
-      ? "Let's start with the property — what's the address?"
+      ? "Let's start with the property. What's the address?"
       : defaultRole === 'seller'
-        ? "Welcome — what's the property address?"
-        : "Hi — what's the property address?";
+        ? "Welcome. What's the property address?"
+        : "Hello. What's the property address?";
   const [history, setHistory] = useState<
     { from: 'bot' | 'user'; text: string }[]
   >([{ from: 'bot', text: greeting }]);
@@ -196,9 +196,18 @@ export function ChatFlow({ defaultRole }: ChatFlowProps = {}) {
   const [offer, setOffer] = useState<OfferResult | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const didMount = useRef(false);
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    // Never scroll on first mount — it hijacks the page load and dumps the
+    // visitor mid-page before they've seen the hero. Only follow the
+    // conversation once the visitor is actually in it, and only within the
+    // nearest scrollable ancestor rather than yanking the whole document.
+    if (!didMount.current) {
+      didMount.current = true;
+      return;
+    }
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   }, [history, step]);
 
   const pushBot = (text: string) =>
@@ -426,7 +435,7 @@ export function ChatFlow({ defaultRole }: ChatFlowProps = {}) {
                 placeholder="Postcode (e.g. M1 5AB)"
                 value={postcodeInput}
                 onChange={(e) => setPostcodeInput(e.target.value)}
-                className="flex-1 rounded-xl border border-stone-300 bg-white px-4 py-3 text-sm uppercase outline-none transition focus:border-leaf"
+                className="flex-1 rounded-xl border border-stone-300 bg-white px-4 py-3 text-sm uppercase outline-none transition placeholder:normal-case focus:border-leaf"
               />
               <button
                 type="submit"
@@ -492,7 +501,7 @@ export function ChatFlow({ defaultRole }: ChatFlowProps = {}) {
                 className="w-full accent-leaf"
               />
               <span className="min-w-[140px] text-right text-stone-600 text-xs">
-                {conditionInput}/10 — {CONDITION_LABELS[conditionInput]}
+                {conditionInput}/10 · {CONDITION_LABELS[conditionInput]}
               </span>
             </div>
             <div className="mt-3 flex gap-2">

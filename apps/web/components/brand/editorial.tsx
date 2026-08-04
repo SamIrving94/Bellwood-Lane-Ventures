@@ -76,7 +76,10 @@ export function SectionNumber({
   );
 }
 
-/** Quiet "live" note — a small leaf dot + italic serif. No pulse. */
+/** Quiet "live" note — a small leaf dot + serif. No pulse. (Roman, not
+ *  italic: the founder review flagged sprinkled italics as a template tell;
+ *  italics are reserved for genuine document conventions like the letter's
+ *  signature line.) */
 export function StatusNote({
   children,
   className,
@@ -87,7 +90,7 @@ export function StatusNote({
   return (
     <span
       className={cn(
-        'inline-flex items-center gap-2.5 font-serif text-body text-sm italic',
+        'inline-flex items-center gap-2.5 font-serif text-body text-sm',
         className
       )}
     >

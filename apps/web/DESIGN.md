@@ -29,15 +29,16 @@ everything" is a named, repeated signature of AI generated design
 | Role | Face | Why |
 |---|---|---|
 | Display / headings | **Libre Caslon Text** | English, legal, established. Reads as an old firm, not a startup. |
-| Body / UI | **Roboto** | The brand kit's working sans (matches the logo lockup). |
+| Body / UI | **Hanken Grotesk** | KEPT.md's sanctioned swap (Aug 2026): warmer and more drawn than Roboto, which still read as default/template in the founder review. |
 | Documents / numerals | **Courier Prime** | A real typed letter. Used for the offer document, refs, figures. |
 
 How it is wired (do not undo this):
 
 - All three are loaded once in `packages/design-system/lib/fonts.ts`.
 - The public root (`apps/web/app/layout.tsx`) repoints `--font-fraunces` to
-  Libre Caslon and `--font-inter` to Roboto, so every existing `font-serif` and
-  `font-sans` class switches without touching the authenticated dashboard.
+  Libre Caslon and `--font-inter` to Hanken Grotesk, so every existing
+  `font-serif` and `font-sans` class switches without touching the
+  authenticated dashboard.
 - The typewriter is used directly: `[font-family:var(--font-courier)]`.
 - **Never** re-import `next/font` inside a page or sub-layout. It double loads
   fonts and fights the root. Inherit the root.
@@ -85,8 +86,12 @@ does not merge.
    ([aiagentskills](https://www.aiagentskills.ai/blog/ai-websites-all-look-the-same)).
    Lead with a real artifact instead.
 9. **The faint giant monogram watermark.** Retired.
-10. **Uppercase `tracking-widest` mono eyebrows.** Use the brand `<Eyebrow>`
-    (Caslon italic kicker plus a short terracotta rule).
+10. **Uppercase `tracking-widest` mono eyebrows.** Use the brand `<Eyebrow>`.
+11. **Sprinkled italics** (founder review, Aug 2026): the "roman headline +
+    italic accent half in green" pattern repeated on every heading is a
+    template tell. Headings get contrast from weight and colour, never
+    `italic`. Italic is reserved for genuine document conventions only —
+    e.g. the offer letter's "Signed for Kept" line.
 
 ## The human moves we always make
 

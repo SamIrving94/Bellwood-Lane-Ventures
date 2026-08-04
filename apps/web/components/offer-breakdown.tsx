@@ -20,7 +20,7 @@ export function OfferBreakdown() {
       {/* ——— Our route: the maths we sign ——— */}
       <div className="rounded-sm border border-hair bg-white p-8 md:p-10">
         <Eyebrow tone="wax">the honest version</Eyebrow>
-        <p className="mt-4 font-serif text-sm text-stone-500 italic">
+        <p className="mt-4 font-serif text-sm text-stone-500">
           Worked example &middot; 14 Acacia Avenue, Stockport
           <sup className="ml-0.5 text-[10px]">1</sup>
         </p>
@@ -69,7 +69,7 @@ export function OfferBreakdown() {
       {/* ——— The open-market route — it wins the price line ——— */}
       <div className="rounded-sm border border-hair bg-cream p-8 md:p-10">
         <Eyebrow tone="muted">the open-market route</Eyebrow>
-        <p className="mt-4 font-serif text-sm text-stone-500 italic">
+        <p className="mt-4 font-serif text-sm text-stone-500">
           Same property, sold through a good local agent
         </p>
         <dl className="mt-6 space-y-5">
