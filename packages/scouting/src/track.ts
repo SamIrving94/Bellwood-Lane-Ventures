@@ -35,7 +35,7 @@ export const PRIME_MIN_VALUE_PENCE = 700_000_00;
  * the whole building or several units is changing hands.
  */
 const BLOCK_PATTERN =
-  /\bblocks? of (?:\d+\s+)?(?:flats|apartments|maisonettes)\b|\bportfolio of\b|\bproperty portfolio\b|\bfreehold (?:block|building|investment)\b|\bentire (?:block|building)\b|\bwhole building\b|\b\d+\s*x\s*(?:flats|apartments|units)\b|\bself-contained (?:flats|units)\b|\bhmo\b|\bmulti[- ]unit\b|\bground rents?\b/i;
+  /\bblocks? of (?:\d+\s+)?(?:flats|apartments|maisonettes)\b|\bportfolio of\b|\bproperty portfolio\b|\bfreehold (?:block|building|investment)\b|\bentire (?:block|building)\b|\bwhole building\b|\b\d+\s*x\s*(?:flats|apartments|units)\b|\bself-contained (?:flats|units)\b|\bhmo\b|\bmulti[- ]unit\b|\bground rents?\b|\b\d+\s+(?:net\s+)?dwellings\b/i;
 
 /** True when listing text reads as a whole block / portfolio, not one home. */
 export function isBlockText(text: string | null | undefined): boolean {

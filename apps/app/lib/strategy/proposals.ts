@@ -92,9 +92,13 @@ Deep research found two channels with hard evidence, both now live in the scout:
 Also flipped on (4 Aug): PropertyData's **back-on-market** list — a failed
 sale is a motivated vendor, and we were already paying for the data.
 
+Also live (5 Aug): **stalled planning consents** from the national
+brownfield register — sites permissioned 18+ months ago and still unbuilt,
+with dwelling counts (multi-unit sites auto-classify as block track). Free
+government API, verified live, runs weekly.
+
 Full citations + the channel roadmap: \`docs/architecture/sourcing-channels.md\`.
-Next up: **unimplemented planning consents** (free government API, spec
-written, one prod-side probe needed), then Savills/Clive Emson parsers.
+Next up: Savills/Clive Emson auction parsers.
 One for Ant directly: **ground-rent freeholders** become motivated block
 sellers as the £250 ground-rent cap approaches (~2028) — that's a
 relationship channel, not a scraper.

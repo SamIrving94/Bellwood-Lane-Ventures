@@ -117,22 +117,30 @@ curl -X POST https://bellwood-api.vercel.app/cron/scout-debug \
   -H "Authorization: Bearer $CRON_SECRET" | jq '.sourceHealth'
 ```
 
+## Channel 4 — Stalled consents via the brownfield register (SHIPPED 2026-08-05)
+
+Every council must publish a brownfield land register. Live entries carry
+`site-address` (with postcode), `point`, `planning-permission-status`,
+`planning-permission-date` and net-dwelling counts — **verified by founder
+browser probe 2026-08-05** (fixture:
+`__tests__/fixtures/planning-brownfield-live-2026-08-05.json`, locked by
+`planning-consents.test.ts`). A site that is `permissioned`, 18+ months past
+grant, and still on the register (no `end-date`) is a stalled scheme — an
+owner who paid for a consent they haven't built. Consents lapse 3 years
+after grant (s.91 TCPA 1990), so the pressure is dated.
+
+`packages/scouting/src/planning-consents.ts` walks the ~37.5k-row dataset
+**weekly (Wednesdays)** via `links.next` pagination (free API, no key), and
+self-reports `skipped` on other days so health never reads dark. New
+leadType `lapsing_consent` (12 pts); the summary carries the dwelling count
+so multi-unit sites classify as **block** automatically. The
+`planning-application` dataset also proved rich for participating boroughs
+(Camden publishes address + decision per application) — a per-borough
+application-level scan is a possible sharpening later.
+
 ## The plan — next channels (in priority order)
 
-1. **Unimplemented planning consents** (next build; spec below). Prime
-   refurb/extension upside: a consent lapses 3 years after grant
-   (s.91 TCPA 1990), so "granted, unbuilt, expiring within 12 months" =
-   an owner who paid for permission they can't use. Data: the official
-   [planning.data.gov.uk](https://www.planning.data.gov.uk/docs) API —
-   free, no key, 100+ datasets. **Blocked on one probe** (egress-blocked
-   from the dev sandbox — run from anywhere else):
-   `curl 'https://www.planning.data.gov.uk/entity.json?dataset=planning-application&limit=2'`
-   Confirm per-entity fields (decision-date, address/geometry, status) and
-   LPA coverage of our patch, then build
-   `packages/scouting/src/planning-consents.ts` mirroring the receivership
-   source pattern (new leadType `lapsing_consent`, prime/block classifier
-   applies automatically).
-2. **Savills / Clive Emson auction parsers** — stubs today; blocks skew to
+1. **Savills / Clive Emson auction parsers** — stubs today; blocks skew to
    regional houses (Clive Emson = southern England, our patch).
 3. **Ground-rent / freehold block portfolios** — the draft Commonhold and
    Leasehold Reform Bill (Jan 2026) caps ground rents at £250 →

@@ -36,6 +36,7 @@ import { normaliseUkAddress } from './address-normalise';
 import { fetchShortLeaseLeads } from './short-lease';
 import { fetchCompaniesHouseDistressLeads } from './companies-house-charges';
 import { fetchReceivershipLeads } from './receiverships';
+import { fetchPlanningConsentLeads } from './planning-consents';
 import { leadTypeForListing } from './lead-type';
 import {
   baseFromProbateLead,
@@ -151,6 +152,15 @@ export type {
   ReceivershipScoutResult,
   ReceivershipScoutOptions,
 } from './receiverships';
+export {
+  fetchPlanningConsentLeads,
+  parseBrownfieldPage,
+} from './planning-consents';
+export type {
+  PlanningConsentRawLead,
+  PlanningConsentsScoutResult,
+  PlanningConsentsScoutOptions,
+} from './planning-consents';
 export {
   baseFromProbateLead,
   checkEnrichmentHealth,
@@ -372,6 +382,7 @@ export interface ScoutingPipelineResult {
     dissolved?: string;
     chDistress?: string;
     receivership?: string;
+    planningConsents?: string;
     staleListings?: string;
     shortLease?: string;
     enrichment?: string;
@@ -443,6 +454,7 @@ export async function runScoutingPipeline(
     dissolved?: string;
     chDistress?: string;
     receivership?: string;
+    planningConsents?: string;
     staleListings?: string;
     shortLease?: string;
     enrichment?: string;
@@ -494,8 +506,13 @@ export async function runScoutingPipeline(
   //    limit; CH has its own 600 req/5min pool) → parallel
   //  - PropertyData sources (sourced/planning/HMO) → serial to stay under
   //    the "4 calls / 10s" rate limit
-  const [hmctsGrants, gazetteGrants, chDistressResult, receivershipResult] =
-    await Promise.all([
+  const [
+    hmctsGrants,
+    gazetteGrants,
+    chDistressResult,
+    receivershipResult,
+    planningConsentsResult,
+  ] = await Promise.all([
     fetchProbateGrants(sinceDate, limit).catch((err) => {
       const msg = (err as Error)?.message ?? String(err);
       sourceErrors.hmcts = msg.slice(0, 200);
@@ -545,6 +562,18 @@ export async function runScoutingPipeline(
         companiesPolled: 0,
       } as Awaited<ReturnType<typeof fetchReceivershipLeads>>;
     }),
+    // Brownfield register — stalled consents. Weekly (Wednesdays); other
+    // days it self-reports skipped so health shows "skipped", not dark.
+    fetchPlanningConsentLeads().catch((err) => {
+      const msg = (err as Error)?.message ?? String(err);
+      sourceErrors.planningConsents = msg.slice(0, 200);
+      console.warn('[scouting] planning-consents source failed', err);
+      return {
+        leads: [],
+        sitesScanned: 0,
+        pagesFetched: 0,
+      } as Awaited<ReturnType<typeof fetchPlanningConsentLeads>>;
+    }),
   ]);
   const chDistressLeads = chDistressResult.leads;
   // Partial-failure surfacing (per-company poll errors, key still valid).
@@ -554,6 +583,10 @@ export async function runScoutingPipeline(
   const receivershipLeads = receivershipResult.leads;
   if (receivershipResult.error && !sourceErrors.receivership) {
     sourceErrors.receivership = receivershipResult.error;
+  }
+  const planningConsentLeads = planningConsentsResult.leads;
+  if (planningConsentsResult.error && !sourceErrors.planningConsents) {
+    sourceErrors.planningConsents = planningConsentsResult.error;
   }
 
   // ── PropertyData sources — serial (rate-limit constrained) ─────────
@@ -940,6 +973,7 @@ export async function runScoutingPipeline(
     ...dissolvedGrants,
     ...chDistressLeads,
     ...receivershipLeads,
+    ...planningConsentLeads,
     ...shortLeaseGrants,
   ].filter((g) => {
     const n = normaliseUkAddress(`${g.address}, ${g.postcode}`);
@@ -950,7 +984,7 @@ export async function runScoutingPipeline(
   }).slice(0, CANDIDATE_POOL_CAP);
 
   console.info(
-    `[scouting] sources: hmcts=${hmctsGrants.length} gazette=${gazetteGrants.length} propertydata=${sourcedFromPostcodes.length} planning=${planningGrants.length} hmo=${hmoGrants.length} chDistress=${chDistressLeads.length} receivership=${receivershipLeads.length} shortLease=${shortLeaseGrants.length} (candidate pool after dedupe: ${candidates.length})`,
+    `[scouting] sources: hmcts=${hmctsGrants.length} gazette=${gazetteGrants.length} propertydata=${sourcedFromPostcodes.length} planning=${planningGrants.length} hmo=${hmoGrants.length} chDistress=${chDistressLeads.length} receivership=${receivershipLeads.length} planningConsents=${planningConsentLeads.length}${planningConsentsResult.skipped ? ' (skipped)' : ''} shortLease=${shortLeaseGrants.length} (candidate pool after dedupe: ${candidates.length})`,
   );
 
   // Build signals lookup BEFORE enrichment (we lose rawGrant after enrich).
@@ -1403,13 +1437,16 @@ export async function runScoutingPipeline(
       dissolved: dissolvedGrants.length,
       chDistress: chDistressLeads.length,
       receivership: receivershipLeads.length,
+      planningConsents: planningConsentLeads.length,
       shortLease: shortLeaseGrants.length,
     },
     errors: sourceErrors,
-    // `skipSlowSources` disables these three; the short-lease scout is opt-in.
+    // `skipSlowSources` disables these three; the short-lease scout is
+    // opt-in; the brownfield walk self-skips outside its weekly run day.
     skipped: [
       ...(skipSlowSources ? ['planning', 'hmo', 'dissolved'] : []),
       ...(scanShortLeases ? [] : ['shortLease']),
+      ...(planningConsentsResult.skipped ? ['planningConsents'] : []),
     ],
   });
 

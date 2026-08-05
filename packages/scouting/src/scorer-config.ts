@@ -143,6 +143,10 @@ export const DEFAULT_SCORER_CONFIG: ScorerConfig = {
     divorce: 14,
     lease_expiry: 14,
     empty_property: 12,
+    // Consented-but-unbuilt brownfield site, years past grant: the owner
+    // paid for a permission they haven't used. Moderate — stalled is not
+    // always selling.
+    lapsing_consent: 12,
     chain_break: 11,
     downsizing: 9,
     relocation: 8,

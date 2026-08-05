@@ -90,6 +90,12 @@ export const DISCOVERY_SOURCES: readonly SourceSpec[] = [
     core: false,
   },
   {
+    key: 'planningConsents',
+    label: 'Brownfield register (stalled consents, weekly)',
+    envKeys: [],
+    core: false,
+  },
+  {
     key: 'propertydata',
     label: 'PropertyData listings',
     envKeys: ['PROPERTYDATA_API_KEY'],
