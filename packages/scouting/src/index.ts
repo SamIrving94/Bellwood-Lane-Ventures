@@ -564,16 +564,20 @@ export async function runScoutingPipeline(
     }),
     // Brownfield register — stalled consents. Weekly (Wednesdays); other
     // days it self-reports skipped so health shows "skipped", not dark.
-    fetchPlanningConsentLeads().catch((err) => {
-      const msg = (err as Error)?.message ?? String(err);
-      sourceErrors.planningConsents = msg.slice(0, 200);
-      console.warn('[scouting] planning-consents source failed', err);
-      return {
-        leads: [],
-        sitesScanned: 0,
-        pagesFetched: 0,
-      } as Awaited<ReturnType<typeof fetchPlanningConsentLeads>>;
-    }),
+    // Ranked in-patch-first and capped to a founder-reviewable batch.
+    fetchPlanningConsentLeads({ priorityDistricts: targetDistricts }).catch(
+      (err) => {
+        const msg = (err as Error)?.message ?? String(err);
+        sourceErrors.planningConsents = msg.slice(0, 200);
+        console.warn('[scouting] planning-consents source failed', err);
+        return {
+          leads: [],
+          sitesScanned: 0,
+          pagesFetched: 0,
+          droppedBelowCap: 0,
+        } as Awaited<ReturnType<typeof fetchPlanningConsentLeads>>;
+      }
+    ),
   ]);
   const chDistressLeads = chDistressResult.leads;
   // Partial-failure surfacing (per-company poll errors, key still valid).

@@ -9,7 +9,7 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { parseBrownfieldPage } from '../planning-consents';
+import { parseBrownfieldPage, rankAndCapLeads } from '../planning-consents';
 import { classifyTrack } from '../track';
 
 const fixture = JSON.parse(
@@ -68,5 +68,32 @@ describe('parseBrownfieldPage (live 2026-08-05 fixture)', () => {
     expect(nextUrl).toBe(
       'http://www.planning.data.gov.uk/entity.json?dataset=brownfield-land&limit=3&offset=3'
     );
+  });
+});
+
+describe('rankAndCapLeads — the weekly review budget', () => {
+  it('ranks in-patch districts first, then freshest permission date', () => {
+    const { leads } = parseBrownfieldPage(fixture, OPTS);
+    // BFR001 (TQ14, 2001) vs BFR002 (TQ12, 2006). Unranked order is BFR001
+    // first; with TQ12 as our patch, BFR002 must jump ahead.
+    const ranked = rankAndCapLeads(leads, {
+      maxLeads: 10,
+      priorityDistricts: ['TQ12'],
+    });
+    expect(ranked.map((l) => l.planningSignal.reference)).toEqual([
+      'BFR002',
+      'BFR001',
+    ]);
+  });
+
+  it('caps to the review budget', () => {
+    const { leads } = parseBrownfieldPage(fixture, OPTS);
+    const capped = rankAndCapLeads(leads, {
+      maxLeads: 1,
+      priorityDistricts: [],
+    });
+    // No patch match → freshest permission wins the single slot (BFR002, 2006).
+    expect(capped).toHaveLength(1);
+    expect(capped[0].planningSignal.reference).toBe('BFR002');
   });
 });

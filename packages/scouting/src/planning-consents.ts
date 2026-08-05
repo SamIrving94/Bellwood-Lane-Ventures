@@ -46,6 +46,16 @@ const RUN_DAY = 3;
 
 /** Permission must be at least this old to read as "stalled". */
 const MIN_PERMISSION_AGE_MONTHS = 18;
+/**
+ * Weekly review budget. The register holds ~37.5k sites and thousands pass
+ * the raw filters — a founder can review ~40, so the walk RANKS and CAPS:
+ * in-patch districts first, then permission dates closest to the 3-year
+ * lapse deadline (freshest stalls = most sellable pressure). Everything
+ * dropped is logged by count, never silently.
+ */
+const MAX_LEADS_PER_RUN = 40;
+/** Schemes above this size are institutional, not Kept-sized. */
+const MAX_DWELLINGS = 40;
 /** UK postcode inside site-address. */
 const POSTCODE_REGEX = /\b([A-Z]{1,2}\d{1,2}[A-Z]?)\s*(\d[A-Z]{2})\b/i;
 
@@ -87,6 +97,8 @@ export interface PlanningConsentsScoutResult {
   leads: PlanningConsentRawLead[];
   sitesScanned: number;
   pagesFetched: number;
+  /** Sites that passed the filters but fell below the weekly review cap. */
+  droppedBelowCap: number;
   /** True when today isn't the weekly run day — source health shows skipped. */
   skipped?: boolean;
   /** First per-page error, when partial. */
@@ -98,6 +110,9 @@ export interface PlanningConsentsScoutOptions {
   force?: boolean;
   minPermissionAgeMonths?: number;
   maxPages?: number;
+  maxLeads?: number;
+  /** Outward-code districts of our patch — ranked first, never exclusive. */
+  priorityDistricts?: readonly string[];
 }
 
 /**
@@ -147,6 +162,9 @@ export function parseBrownfieldPage(
     const minDwellings = num('minimum-net-dwellings');
     const maxDwellings = num('maximum-net-dwellings');
     const dwellings = maxDwellings ?? minDwellings;
+    // Institutional-scale schemes are not Kept-sized deals — drop early so
+    // they never spend a founder minute.
+    if (dwellings !== null && dwellings > MAX_DWELLINGS) continue;
     const notes = str('notes');
 
     // The summary is what the track classifier reads: an explicit dwelling
@@ -208,7 +226,13 @@ export async function fetchPlanningConsentLeads(
 ): Promise<PlanningConsentsScoutResult> {
   const now = new Date();
   if (!options.force && now.getDay() !== RUN_DAY) {
-    return { leads: [], sitesScanned: 0, pagesFetched: 0, skipped: true };
+    return {
+      leads: [],
+      sitesScanned: 0,
+      pagesFetched: 0,
+      droppedBelowCap: 0,
+      skipped: true,
+    };
   }
 
   const minAge = options.minPermissionAgeMonths ?? MIN_PERMISSION_AGE_MONTHS;
@@ -257,12 +281,50 @@ export async function fetchPlanningConsentLeads(
     return true;
   });
 
+  const capped = rankAndCapLeads(deduped, {
+    maxLeads: options.maxLeads ?? MAX_LEADS_PER_RUN,
+    priorityDistricts: options.priorityDistricts ?? [],
+  });
+  const droppedBelowCap = deduped.length - capped.length;
+  if (droppedBelowCap > 0) {
+    console.info(
+      `[scouting/planning-consents] ${deduped.length} sites passed filters; keeping top ${capped.length}, dropping ${droppedBelowCap} below the weekly review cap`
+    );
+  }
+
   return {
-    leads: deduped,
+    leads: capped,
     sitesScanned,
     pagesFetched,
+    droppedBelowCap,
     ...(firstError ? { error: firstError.slice(0, 200) } : {}),
   };
+}
+
+/**
+ * Rank filtered sites by review value and cap to the weekly budget. Pure —
+ * exported for tests. Order: our patch first, then permission date DESC
+ * (the freshest stalls sit closest to the 3-year lapse deadline — the
+ * owner still has something to lose, which is the sellable pressure; a
+ * 2001 consent lapsed long ago and is a colder call).
+ */
+export function rankAndCapLeads(
+  leads: PlanningConsentRawLead[],
+  opts: { maxLeads: number; priorityDistricts: readonly string[] }
+): PlanningConsentRawLead[] {
+  const districts = new Set(
+    opts.priorityDistricts.map((d) => d.toUpperCase().replace(/\s+/g, ''))
+  );
+  const inPatch = (l: PlanningConsentRawLead): number =>
+    districts.has(l.postcode.split(' ')[0]) ? 0 : 1;
+
+  return [...leads]
+    .sort((a, b) => {
+      const patch = inPatch(a) - inPatch(b);
+      if (patch !== 0) return patch;
+      return (b.grantDate ?? '').localeCompare(a.grantDate ?? '');
+    })
+    .slice(0, Math.max(0, opts.maxLeads));
 }
 
 async function fetchJson(url: string): Promise<unknown> {
