@@ -11,14 +11,17 @@ function formatGBP(pence: number | null | undefined) {
   return `£${Math.round(pence / 100).toLocaleString('en-GB')}`;
 }
 
+// Status pills stay inside the Kept palette (DESIGN.md bans the
+// emerald/blue/amber stock scale): warm neutrals for passive states, leaf
+// for live/positive, wax reserved for the one state that needs attention.
 const STATUS_STYLES: Record<string, string> = {
   draft: 'bg-stone-100 text-stone-600',
-  processing: 'bg-amber-100 text-amber-700',
-  quoted: 'bg-blue-100 text-blue-700',
-  accepted: 'bg-emerald-100 text-emerald-700',
-  declined: 'bg-rose-100 text-rose-700',
+  processing: 'bg-soft text-body',
+  quoted: 'bg-leaf/10 text-leaf-dark',
+  accepted: 'bg-leaf/15 text-leaf-dark',
+  declined: 'bg-wax/10 text-wax',
   expired: 'bg-stone-100 text-stone-500',
-  converted_to_deal: 'bg-soft text-leaf',
+  converted_to_deal: 'bg-forest text-cream',
 };
 
 export default async function PortalPage() {
@@ -47,21 +50,21 @@ export default async function PortalPage() {
     <main className="mx-auto max-w-6xl px-6 py-12">
       {/* Greeting */}
       <section>
-        <p className="text-leaf text-xs uppercase tracking-widest">
+        <p className="font-serif text-[13px] text-leaf">
           Welcome back
         </p>
         <h1 className="mt-1 font-semibold font-serif text-4xl">
-          Hi {agent.contactName.split(' ')[0]} —
+          Hello, {agent.contactName.split(' ')[0]}.
         </h1>
       </section>
 
       {/* Referral link */}
-      <section className="mt-10 rounded-3xl border-2 border-leaf/40 bg-soft p-8">
-        <p className="text-leaf text-xs uppercase tracking-widest">
+      <section className="mt-10 rounded-[2px] border-2 border-leaf/40 bg-soft p-8">
+        <p className="font-serif text-[13px] text-leaf">
           Your referral link
         </p>
         <p className="mt-2 font-serif text-xl">
-          Share this with a seller — we credit every offer back to you.
+          Share this with a seller. We credit every offer back to you.
         </p>
         <div className="mt-4 flex flex-col items-stretch gap-2 sm:flex-row">
           <input
@@ -72,7 +75,7 @@ export default async function PortalPage() {
           <CopyButton text={referralLink} />
         </div>
         <div className="mt-4 flex items-center gap-2 text-sm text-stone-600">
-          <span className="text-stone-500 text-xs uppercase tracking-widest">
+          <span className="font-serif text-[13px] text-stone-500">
             Referral code:
           </span>
           <span className="font-mono font-semibold text-forest">
@@ -81,41 +84,43 @@ export default async function PortalPage() {
         </div>
       </section>
 
-      {/* Metrics */}
-      <section className="mt-10 grid grid-cols-2 gap-4 md:grid-cols-4">
-        {[
-          { label: 'Total referrals', value: metrics.total },
-          { label: 'Live quotes', value: metrics.quoted },
-          { label: 'Accepted', value: metrics.accepted },
-          { label: 'Completed', value: metrics.completed },
-        ].map((m) => (
-          <div
-            key={m.label}
-            className="rounded-2xl border border-stone-200 bg-white p-6"
-          >
-            <p className="text-stone-500 text-xs uppercase tracking-widest">
-              {m.label}
-            </p>
-            <p className="mt-2 font-semibold font-serif text-4xl">{m.value}</p>
-          </div>
-        ))}
+      {/* Metrics — a single ledger strip with hairline dividers, not the
+          four-card template grid */}
+      <section className="mt-10 rounded-[2px] border border-stone-200 bg-white">
+        <div className="grid grid-cols-2 divide-x divide-stone-200 md:grid-cols-4">
+          {[
+            { label: 'Total referrals', value: metrics.total },
+            { label: 'Live quotes', value: metrics.quoted },
+            { label: 'Accepted', value: metrics.accepted },
+            { label: 'Completed', value: metrics.completed },
+          ].map((m) => (
+            <div key={m.label} className="p-6">
+              <p className="font-serif text-[13px] text-stone-500">
+                {m.label}
+              </p>
+              <p className="mt-2 font-semibold font-serif text-4xl">
+                {m.value}
+              </p>
+            </div>
+          ))}
+        </div>
       </section>
 
       {/* Recent quotes */}
       <section className="mt-10">
         <h2 className="font-semibold font-serif text-2xl">Recent referrals</h2>
         {quotes.length === 0 ? (
-          <div className="mt-6 rounded-2xl border border-stone-300 border-dashed bg-white p-10 text-center">
+          <div className="mt-6 rounded-[2px] border border-stone-300 border-dashed bg-white p-10 text-center">
             <p className="font-serif text-lg">No referrals yet.</p>
             <p className="mt-2 text-sm text-stone-600">
-              Share your referral link with a seller — anything they submit
+              Share your referral link with a seller. Anything they submit
               using it will show up here.
             </p>
           </div>
         ) : (
-          <div className="mt-6 overflow-hidden rounded-2xl border border-stone-200 bg-white">
+          <div className="mt-6 overflow-hidden rounded-[2px] border border-stone-200 bg-white">
             <table className="min-w-full divide-y divide-stone-200 text-sm">
-              <thead className="bg-stone-50 text-stone-500 text-xs uppercase tracking-widest">
+              <thead className="bg-stone-50 font-serif text-[13px] text-stone-500">
                 <tr>
                   <th className="px-5 py-3 text-left">Property</th>
                   <th className="px-5 py-3 text-left">Status</th>
@@ -124,7 +129,7 @@ export default async function PortalPage() {
                   <th className="px-5 py-3 text-right">
                     Est. earnings
                     <span className="block font-normal normal-case tracking-normal">
-                      illustrative at 1% — your written terms apply
+                      illustrative at 1%, your written terms apply
                     </span>
                   </th>
                   <th className="px-5 py-3 text-left">Date</th>
@@ -178,8 +183,8 @@ export default async function PortalPage() {
 
       {/* Tier upsell */}
       {agent.tier === 'partner' && (
-        <section className="mt-10 rounded-3xl bg-forest p-8 text-white">
-          <p className="text-leaf text-xs uppercase tracking-widest">
+        <section className="mt-10 rounded-[2px] bg-forest p-8 text-white">
+          <p className="font-serif text-[13px] text-leaf">
             Unlock Preferred
           </p>
           <p className="mt-2 font-semibold font-serif text-2xl">
@@ -196,7 +201,7 @@ export default async function PortalPage() {
       <section className="mt-10 grid grid-cols-1 gap-4 md:grid-cols-2">
         <Link
           href="/save-the-sale"
-          className="rounded-2xl border-2 border-leaf/40 bg-white p-6 transition hover:border-leaf"
+          className="rounded-[2px] border-2 border-leaf/40 bg-white p-6 transition hover:border-leaf"
         >
           <p className="font-semibold font-serif text-lg">Save a sale →</p>
           <p className="mt-2 text-sm text-stone-600">
@@ -206,7 +211,7 @@ export default async function PortalPage() {
         </Link>
         <Link
           href="/agents/score"
-          className="rounded-2xl border-2 border-leaf/40 bg-white p-6 transition hover:border-leaf"
+          className="rounded-[2px] border-2 border-leaf/40 bg-white p-6 transition hover:border-leaf"
         >
           <p className="font-semibold font-serif text-lg">Kept Score →</p>
           <p className="mt-2 text-sm text-stone-600">
@@ -220,7 +225,7 @@ export default async function PortalPage() {
       <section className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
         <Link
           href="/instant-offer/partner-brief"
-          className="rounded-2xl border border-stone-200 bg-white p-6 transition hover:border-leaf"
+          className="rounded-[2px] border border-stone-200 bg-white p-6 transition hover:border-leaf"
         >
           <p className="font-semibold font-serif text-lg">
             Agent Partner Brief →
@@ -231,7 +236,7 @@ export default async function PortalPage() {
         </Link>
         <Link
           href="/instant-offer/seller-disclosure"
-          className="rounded-2xl border border-stone-200 bg-white p-6 transition hover:border-leaf"
+          className="rounded-[2px] border border-stone-200 bg-white p-6 transition hover:border-leaf"
         >
           <p className="font-semibold font-serif text-lg">
             Seller Disclosure Form →

@@ -140,14 +140,14 @@ export default function WhyWeWontBuyAnyHomePage() {
       {/* ————— HERO ————— */}
       <section className="px-6 pt-16 pb-12 md:px-12 md:pt-24 md:pb-16">
         <div className="mx-auto max-w-4xl">
-          <p className="font-serif text-[13px] text-leaf italic">Our line</p>
+          <p className="font-serif text-[13px] text-leaf">Our line</p>
           <h1
             className="mt-4 font-semibold font-serif text-forest leading-[0.98] tracking-[-0.025em]"
             style={{ fontSize: 'clamp(40px, 6.5vw, 76px)' }}
           >
             Some companies will buy any home.
             <br />
-            <span className="text-leaf italic">We won&rsquo;t.</span>
+            <span className="text-leaf">We won&rsquo;t.</span>
           </h1>
           <p className="mt-8 max-w-2xl text-lg text-stone-600 leading-relaxed">
             We&rsquo;re a UK direct-to-vendor cash buyer. We buy six specific
@@ -162,7 +162,7 @@ export default function WhyWeWontBuyAnyHomePage() {
       {/* ————— WHAT WE BUY ————— */}
       <section className="border-stone-200/60 border-y bg-white px-6 py-20 md:px-12 md:py-24">
         <div className="mx-auto max-w-6xl">
-          <p className="font-serif text-[13px] text-leaf italic">What we buy</p>
+          <p className="font-serif text-[13px] text-leaf">What we buy</p>
           <h2 className="mt-3 font-semibold font-serif text-3xl leading-[1.05] tracking-[-0.02em] md:text-5xl">
             Six situations. That&rsquo;s the list.
           </h2>
@@ -191,7 +191,7 @@ export default function WhyWeWontBuyAnyHomePage() {
       {/* ————— WHAT WE WON'T BUY ————— */}
       <section className="border-stone-200/60 border-b bg-soft px-6 py-20 md:px-12 md:py-28">
         <div className="mx-auto max-w-4xl">
-          <p className="font-serif text-[13px] text-leaf italic">
+          <p className="font-serif text-[13px] text-leaf">
             What we won&rsquo;t buy
           </p>
           <h2 className="mt-3 font-semibold font-serif text-3xl leading-[1.05] tracking-[-0.02em] md:text-5xl">
@@ -213,7 +213,7 @@ export default function WhyWeWontBuyAnyHomePage() {
                   {s.b}
                 </dd>
                 <dd className="mt-4 rounded-xl border-wax border-l-2 bg-white px-5 py-4 text-[14px] text-stone-700 leading-relaxed">
-                  <span className="font-serif text-[13px] text-wax italic">
+                  <span className="font-serif text-[13px] text-wax">
                     What we recommend instead
                   </span>
                   <p className="mt-2">{s.recommend}</p>
@@ -227,7 +227,7 @@ export default function WhyWeWontBuyAnyHomePage() {
       {/* ————— WHY SELECTIVITY HELPS YOU ————— */}
       <section className="border-stone-200/60 border-b px-6 py-20 md:px-12 md:py-24">
         <div className="mx-auto max-w-3xl">
-          <p className="font-serif text-[13px] text-leaf italic">
+          <p className="font-serif text-[13px] text-leaf">
             Why this matters to you
           </p>
           <h2 className="mt-3 font-semibold font-serif text-3xl leading-[1.1] tracking-[-0.02em] md:text-4xl">
@@ -261,7 +261,7 @@ export default function WhyWeWontBuyAnyHomePage() {
       {/* ————— ROUTING ————— */}
       <section className="border-stone-200/60 border-b bg-forest px-6 py-20 text-white md:px-12 md:py-24">
         <div className="mx-auto max-w-4xl">
-          <p className="font-serif text-[13px] text-leaf italic">
+          <p className="font-serif text-[13px] text-leaf">
             Where to go from here
           </p>
           <h2 className="mt-3 font-semibold font-serif text-3xl leading-[1.05] tracking-[-0.02em] md:text-4xl">
@@ -286,7 +286,7 @@ export default function WhyWeWontBuyAnyHomePage() {
               <p className="text-[15px] text-white/90">
                 Working chain, no urgency, testing the market
               </p>
-              <span className="font-serif text-[13px] text-white/50 italic">
+              <span className="font-serif text-[13px] text-white/50">
                 Use a high-street agent
               </span>
             </li>
@@ -298,7 +298,7 @@ export default function WhyWeWontBuyAnyHomePage() {
                 href="https://www.stepchange.org"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="font-serif text-[13px] text-white/70 italic underline-offset-4 hover:underline"
+                className="font-serif text-[13px] text-white/70 underline-offset-4 hover:underline"
               >
                 Talk to StepChange first →
               </a>
@@ -311,7 +311,7 @@ export default function WhyWeWontBuyAnyHomePage() {
       <section className="border-stone-200/60 border-b bg-stone-50 px-6 py-12 md:px-12">
         <div className="mx-auto flex max-w-5xl flex-col items-center justify-between gap-4 text-center md:flex-row md:text-left">
           <div>
-            <p className="font-serif text-[13px] text-stone-500 italic">
+            <p className="font-serif text-[13px] text-stone-500">
               Estate agent reading this?
             </p>
             <p className="mt-1 font-serif text-xl">

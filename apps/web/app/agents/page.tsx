@@ -2,7 +2,6 @@ import {
   Button,
   Eyebrow,
   LogoLockup,
-  Monogram,
   Seal,
   SectionNumber,
   StatusNote,
@@ -55,53 +54,160 @@ const FAQ: Array<{ q: string; a: string }> = [
 ];
 
 /** A signed cash-offer document — rendered as a real letter, not a web card. */
+/** The two-commission docket — the agent's hero artifact. The economics of
+ *  the referral rendered as a typed document, matching the /sell letter's
+ *  craft language: paper gradient, courier labels, dotted leaders, a solid
+ *  wax seal with weight. */
+function CommissionDocket() {
+  return (
+    <div className="rotate-[1.4deg] relative w-[300px] rounded-[2px] border border-hair bg-[linear-gradient(175deg,#fdfaf2_0%,#f7f2e6_70%,#f3edde_100%)] p-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.85),0_1px_2px_rgba(36,28,26,0.08),0_30px_56px_-26px_rgba(36,28,26,0.55)]">
+      <div className="-right-5 -top-5 absolute hidden rotate-[-6deg] sm:block">
+        <div
+          className="flex h-14 w-14 items-center justify-center bg-wax shadow-[inset_0_2px_3px_rgba(255,255,255,0.35),inset_0_-3px_4px_rgba(0,0,0,0.3),0_3px_6px_rgba(36,28,26,0.35)]"
+          style={{ borderRadius: '52% 48% 46% 54% / 48% 54% 46% 52%' }}
+        >
+          <span className="flex h-10 w-10 items-center justify-center rounded-full border border-white/40 font-bold font-serif text-[17px] text-cream">
+            k.
+          </span>
+        </div>
+      </div>
+      <div className="flex items-baseline justify-between gap-4">
+        <p className="font-bold font-serif text-[17px] text-brand-deep tracking-[0.01em]">
+          Kept
+        </p>
+        <p className="text-[10.5px] text-stone-400 [font-family:var(--font-courier)]">
+          Partner docket
+        </p>
+      </div>
+      <p className="mt-0.5 text-[10.5px] text-stone-400 [font-family:var(--font-courier)]">
+        Worked example &middot; £280,000 sale
+      </p>
+      <dl className="mt-4 space-y-2.5 border-stone-300/60 border-t border-dashed pt-3.5 text-[12px] text-stone-600 [font-family:var(--font-courier)]">
+        <div className="flex items-baseline gap-2">
+          <dt className="shrink-0">Sale fee</dt>
+          <span
+            aria-hidden
+            className="mb-[3px] flex-1 border-stone-400/50 border-b border-dotted"
+          />
+          <dd className="shrink-0 text-forest">£2,800</dd>
+        </div>
+        <div className="flex items-baseline gap-2">
+          <dt className="shrink-0">Resale instruction</dt>
+          <span
+            aria-hidden
+            className="mb-[3px] flex-1 border-stone-400/50 border-b border-dotted"
+          />
+          <dd className="shrink-0 text-forest">£4,480</dd>
+        </div>
+      </dl>
+      <div className="mt-4 border-stone-300/60 border-t border-dashed pt-3">
+        <p className="text-[10.5px] text-brand tracking-[0.08em] [font-family:var(--font-courier)]">
+          YOUR TOTAL EARNINGS
+        </p>
+        <p className="mt-1 font-bold font-serif text-[38px] text-forest leading-none tracking-[-0.01em]">
+          Up to £7,280
+        </p>
+      </div>
+      <p className="mt-4 border-stone-300/60 border-t border-dashed pt-3 text-[10px] text-stone-500 leading-relaxed [font-family:var(--font-courier)]">
+        All figures + VAT. Resale fee conditional on resale. Disclosed to the
+        seller in writing per NTSELAT guidance.
+      </p>
+    </div>
+  );
+}
+
 function SampleOfferDocument() {
   return (
-    <div className="relative mx-auto max-w-md rounded-sm border border-hair bg-white p-8 shadow-[0_30px_60px_-30px_rgba(43,34,32,0.35)]">
-      {/* corner seal */}
-      <div className="-right-5 -top-5 absolute hidden sm:block">
-        <Seal />
+    <div className="-rotate-[1.2deg] relative mx-auto w-full max-w-md rounded-[2px] border border-hair bg-[linear-gradient(175deg,#fdfaf2_0%,#f7f2e6_70%,#f3edde_100%)] p-8 shadow-[inset_0_1px_0_rgba(255,255,255,0.85),0_1px_2px_rgba(36,28,26,0.08),0_30px_60px_-30px_rgba(36,28,26,0.6)]">
+      {/* Wax seal — solid, irregular, embossed */}
+      <div className="-right-5 -top-5 absolute hidden rotate-[7deg] sm:block">
+        <div
+          className="flex h-14 w-14 items-center justify-center bg-wax shadow-[inset_0_2px_3px_rgba(255,255,255,0.35),inset_0_-3px_4px_rgba(0,0,0,0.3),0_3px_6px_rgba(36,28,26,0.35)]"
+          style={{ borderRadius: '46% 54% 50% 50% / 52% 46% 54% 48%' }}
+        >
+          <span className="flex h-10 w-10 items-center justify-center rounded-full border border-white/40 font-bold font-serif text-[17px] text-cream">
+            k.
+          </span>
+        </div>
       </div>
 
-      <Wordmark ventures className="text-[13px]" />
-      <p className="mt-1.5 font-serif text-[11px] text-stone-400 italic">
-        Binding offer document &middot; Ref BW-2026-0142
+      <div className="flex items-baseline justify-between gap-4">
+        <Wordmark ventures className="text-[13px]" />
+        <p className="text-[10.5px] text-stone-400 [font-family:var(--font-courier)]">
+          Ref BW-2026-0142
+        </p>
+      </div>
+      <p className="mt-1 text-[10.5px] text-stone-400 [font-family:var(--font-courier)]">
+        Binding offer document
       </p>
 
-      <div className="mt-7 space-y-1 border-hair border-t pt-5">
-        <p className="font-serif text-[11px] text-stone-400 italic">Property</p>
-        <p className="font-serif text-[15px] text-stone-700 leading-snug">
-          14 Acacia Avenue, Stockport, SK4 3HQ
+      <div className="mt-6 border-stone-300/60 border-t border-dashed pt-4">
+        <p className="text-[10.5px] text-stone-400 tracking-[0.08em] [font-family:var(--font-courier)]">
+          PROPERTY
+        </p>
+        <p className="mt-1 font-serif text-[15px] text-stone-700 leading-snug">
+          14 Acacia Avenue, Stockport SK4&nbsp;3HQ
         </p>
       </div>
 
-      <div className="mt-5 border-hair border-t pt-5">
-        <p className="font-serif text-[11px] text-brand italic">
-          Our cash offer
+      <div className="mt-4 border-stone-300/60 border-t border-dashed pt-4">
+        <p className="text-[10.5px] text-brand tracking-[0.08em] [font-family:var(--font-courier)]">
+          OUR CASH OFFER
         </p>
-        <p className="mt-1.5 font-semibold font-serif text-[44px] text-forest leading-none tracking-[-0.03em]">
+        <p className="mt-1.5 font-bold font-serif text-[44px] text-forest leading-none tracking-[-0.02em]">
           £244,000
         </p>
-        <p className="mt-2 text-[11px] text-stone-500">Locked for 72 hours</p>
+        <p className="mt-2 inline-block rotate-[-1.5deg] border border-wax/60 px-2 py-0.5 text-[10px] text-wax tracking-[0.14em] [font-family:var(--font-courier)]">
+          LOCKED · 72 HOURS
+        </p>
       </div>
 
-      <dl className="mt-6 space-y-2.5 border-hair border-t pt-5 text-[12px]">
+      <dl className="mt-5 space-y-2.5 border-stone-300/60 border-t border-dashed pt-4 text-[12px] text-stone-600 [font-family:var(--font-courier)]">
         {[
           ['Completion', 'Weeks not months'],
           ['Price changes', 'Documented exceptions only'],
           ['Your commission', 'Agreed per deal, in writing'],
           ['Resale instruction', 'Back to your firm'],
         ].map(([k, v]) => (
-          <div key={k} className="flex justify-between gap-6">
-            <dt className="text-stone-500">{k}</dt>
-            <dd className="text-right font-medium text-stone-700">{v}</dd>
+          <div key={k} className="flex items-baseline gap-2">
+            <dt className="shrink-0">{k}</dt>
+            <span
+              aria-hidden
+              className="mb-[3px] flex-1 border-stone-400/50 border-b border-dotted"
+            />
+            <dd className="shrink-0 text-right text-forest">{v}</dd>
           </div>
         ))}
       </dl>
 
-      <p className="mt-6 border-hair border-t pt-4 font-serif text-[11px] text-stone-500 italic leading-relaxed">
-        Signed for and on behalf of Kept. This offer is legally
-        binding upon Kept for 72 hours from issue.
+      {/* Ink signature */}
+      <svg viewBox="0 0 150 34" className="mt-5 h-7 w-32" aria-hidden="true">
+        <path
+          d="M4 24 C 8 8, 16 4, 18 12 C 20 20, 14 28, 22 26 C 30 24, 32 10, 40 12 C 45 13, 43 22, 50 21 C 58 20, 60 8, 68 11 C 74 13, 72 22, 80 20 C 90 17, 94 10, 104 12 C 112 14, 116 18, 126 13 C 134 9, 140 12, 146 15"
+          fill="none"
+          stroke="#26333c"
+          strokeWidth="1.6"
+          strokeLinecap="round"
+        />
+        <path
+          d="M30 29 C 55 26, 100 26, 132 24"
+          fill="none"
+          stroke="#26333c"
+          strokeWidth="0.8"
+          strokeLinecap="round"
+          opacity="0.55"
+        />
+      </svg>
+      <div className="mt-1 flex items-baseline justify-between gap-4">
+        <p className="font-serif text-[11px] text-stone-400 italic">
+          Signed for and on behalf of Kept
+        </p>
+        <p className="text-[10px] text-stone-400 [font-family:var(--font-courier)]">
+          A. Taylor
+        </p>
+      </div>
+      <p className="mt-3 border-stone-300/60 border-t border-dashed pt-3 text-[10px] text-stone-500 leading-relaxed [font-family:var(--font-courier)]">
+        This offer is legally binding upon Kept for 72 hours from issue.
       </p>
     </div>
   );
@@ -123,9 +229,7 @@ export default function AgentsPage() {
         href="/save-the-sale"
         className="group block bg-brand-deep px-6 py-2.5 text-center text-[13px] text-white/85 transition hover:bg-leaf-dark md:px-12"
       >
-        <span className="font-serif text-leaf italic">
-          Sale fallen through?
-        </span>
+        <span className="font-serif text-leaf">Sale fallen through?</span>
         <span className="ml-3">
           Buyer pulled out, mortgage refused, survey down-valued or chain broken
           &mdash; we&rsquo;re your replacement buyer.
@@ -156,45 +260,62 @@ export default function AgentsPage() {
         </div>
       </header>
 
-      {/* ————— HERO ————— */}
-      <section className="relative overflow-hidden px-6 pt-24 pb-20 md:px-12 md:pt-28 md:pb-24">
-        {/* oversized faint monogram watermark */}
-        <Monogram
-          aria-hidden
-          className="-right-24 -top-10 pointer-events-none absolute h-72 w-auto opacity-[0.05] md:h-[26rem]"
-        />
-        <div className="relative mx-auto max-w-4xl">
-          <Eyebrow>for UK estate agents</Eyebrow>
+      {/* ————— HERO —————
+          Same structural grammar as /sell (the anti-template composition):
+          courier dateline row, giant full-width Caslon headline, a typed
+          artifact laid over the composition, hairline baseline. The agent's
+          artifact is the commission docket — the number that makes the
+          referral rational, as a document rather than a claim. */}
+      <section className="relative overflow-hidden px-6 pt-10 pb-16 md:px-12 md:pt-12 md:pb-20">
+        <div className="relative mx-auto max-w-6xl">
+          {/* Dateline — the page opens like a document */}
+          <div className="flex items-baseline justify-between gap-6 border-hair border-b pb-4">
+            <Eyebrow>for UK estate agents</Eyebrow>
+            <p className="text-[11px] text-stone-400 tracking-[0.18em] [font-family:var(--font-courier)]">
+              EST. 2026 · UK
+            </p>
+          </div>
           <h1
-            className="mt-7 font-semibold font-serif text-forest leading-[0.95] tracking-[-0.03em]"
-            style={{ fontSize: 'clamp(44px, 6.5vw, 78px)' }}
+            className="relative z-10 mt-10 font-bold font-serif text-forest leading-[0.98] tracking-[-0.03em] md:mt-12"
+            style={{ fontSize: 'clamp(46px, 7.6vw, 92px)' }}
           >
-            Save the sale.
+            Save the sale<span className="text-wax">.</span>
             <br />
-            <span className="font-normal text-brand italic">
-              Before you re-list.
-            </span>
+            <span className="font-normal text-brand">Before you re-list.</span>
           </h1>
-          <p className="mt-8 max-w-xl text-lg text-stone-600 leading-relaxed">
-            Buyer pulled out, mortgage refused, survey down-valued, chain
-            broken. We&rsquo;re the replacement buyer agents call{' '}
-            <em>before</em> they relist, not after weeks of trying. Send the
-            address, we view the property, and we aim to make an offer within 24
-            to 48 hours of viewing.
-          </p>
-          <div className="mt-10 flex flex-wrap items-center gap-x-7 gap-y-4">
-            <Button href="#refer">Send the address</Button>
-            <StatusNote>Five fields. No portal login.</StatusNote>
+          <div className="mt-10 grid items-start gap-12 md:mt-8 md:grid-cols-[1fr_auto] md:gap-16">
+            <div className="max-w-md">
+              <p className="text-[16px] text-stone-600 leading-[1.75]">
+                Buyer pulled out, mortgage refused, survey down-valued, chain
+                broken. We&rsquo;re the replacement buyer agents call before
+                they relist, not after weeks of trying. Send the address, we
+                view the property, and we aim to make an offer within 24 to
+                48 hours of viewing.
+              </p>
+              <div className="mt-8 flex flex-wrap items-center gap-x-7 gap-y-4">
+                <Button href="#refer">Send the address</Button>
+                <StatusNote>Five fields. No portal login.</StatusNote>
+              </div>
+            </div>
+            <figure className="flex flex-col items-center md:items-end lg:-mt-16 xl:-mt-32">
+              <CommissionDocket />
+              <figcaption className="mt-6 max-w-[300px] text-center font-serif text-[13px] text-stone-500 md:text-right">
+                One referral, two transactions on your books.
+              </figcaption>
+            </figure>
+          </div>
+          {/* Hairline baseline */}
+          <div className="mt-14 border-hair border-t pt-5">
+            <p className="font-serif text-[13px] text-stone-500">
+              Property Redress Scheme &middot; HMRC AML supervised &middot;
+              ICO registered &middot; Fees disclosed per NTSELAT guidance
+            </p>
           </div>
         </div>
       </section>
 
       {/* ————— TWO OPTIONS. BOTH BAD. ————— */}
       <section className="relative overflow-hidden border-hair/70 border-y bg-brand-deep px-6 py-24 text-white md:px-12 md:py-28">
-        <Monogram
-          aria-hidden
-          className="-bottom-16 -left-16 pointer-events-none absolute h-80 w-auto opacity-[0.06]"
-        />
         <div className="relative mx-auto max-w-6xl">
           <SectionNumber tone="light">01</SectionNumber>
           <Eyebrow tone="light" className="mt-5">
@@ -202,7 +323,7 @@ export default function AgentsPage() {
           </Eyebrow>
           <h2 className="mt-4 max-w-3xl font-semibold font-serif text-4xl leading-[1.05] tracking-[-0.02em] md:text-6xl">
             When a sale collapses, you have two options.{' '}
-            <span className="font-normal text-leaf italic">Both are bad.</span>
+            <span className="font-normal text-leaf">Both are bad.</span>
           </h2>
           <p className="mt-6 max-w-2xl text-[15px] text-white/70 leading-relaxed">
             6,200 UK sales collapse every week. £3,000 commission gone per
@@ -233,7 +354,9 @@ export default function AgentsPage() {
               },
             ].map((o) => (
               <div key={o.n} className="bg-brand-deep p-7 md:p-9">
-                <p className="font-serif text-sm text-white/55 italic">{o.n}</p>
+                <p className="text-[11px] text-white/55 tracking-[0.14em] uppercase [font-family:var(--font-courier)]">
+                  {o.n}
+                </p>
                 <p className="mt-2 font-semibold font-serif text-2xl">{o.t}</p>
                 <ul className="mt-5 space-y-2.5 text-[14px] text-white/70 leading-relaxed">
                   {o.pts.map((p) => (
@@ -274,7 +397,7 @@ export default function AgentsPage() {
             <Eyebrow className="mt-5">the honest version</Eyebrow>
             <h2 className="mt-4 font-semibold font-serif text-4xl leading-[1.05] tracking-[-0.02em] md:text-5xl">
               You don&rsquo;t lose a commission.{' '}
-              <span className="font-normal text-brand italic">
+              <span className="font-normal text-brand">
                 You earn two.
               </span>
             </h2>
@@ -293,7 +416,7 @@ export default function AgentsPage() {
             </p>
           </div>
           <div className="rounded-sm border border-hair bg-white p-8 md:p-10">
-            <p className="font-serif text-sm text-stone-500 italic">
+            <p className="font-serif text-sm text-stone-500">
               Worked example &middot; £280k chain-break sale
             </p>
             <dl className="mt-6 space-y-5">
@@ -320,7 +443,7 @@ export default function AgentsPage() {
                 </dd>
               </div>
               <div className="flex items-baseline justify-between gap-6 pt-2">
-                <dt className="font-serif text-brand text-sm italic">
+                <dt className="font-serif text-brand text-sm">
                   Total earnings
                 </dt>
                 <dd className="font-semibold font-serif text-3xl text-brand">
@@ -348,7 +471,7 @@ export default function AgentsPage() {
               <Eyebrow className="mt-5">the written promise</Eyebrow>
               <h2 className="mt-4 font-semibold font-serif text-4xl leading-[1.05] tracking-[-0.02em] md:text-5xl">
                 No renegotiation.{' '}
-                <span className="font-normal text-brand italic">
+                <span className="font-normal text-brand">
                   In writing.
                 </span>
               </h2>
@@ -383,7 +506,7 @@ export default function AgentsPage() {
                 key={row.t}
                 className="grid grid-cols-1 gap-2 py-6 sm:grid-cols-[240px_1fr] sm:gap-12"
               >
-                <dt className="font-serif text-[17px] text-brand-deep italic">
+                <dt className="font-serif text-[17px] text-brand-deep">
                   {row.t}
                 </dt>
                 <dd className="text-[15px] text-stone-700 leading-relaxed">
@@ -405,7 +528,7 @@ export default function AgentsPage() {
           <Eyebrow className="mt-5">how the process actually runs</Eyebrow>
           <h2 className="mt-4 font-semibold font-serif text-4xl leading-[1.05] tracking-[-0.02em] md:text-5xl">
             Five steps.{' '}
-            <span className="font-normal text-brand italic">
+            <span className="font-normal text-brand">
               Honest about what each one means.
             </span>
           </h2>
@@ -463,7 +586,7 @@ export default function AgentsPage() {
                     {s.d}
                   </p>
                 </div>
-                <p className="font-serif text-brand text-sm italic md:text-right">
+                <p className="font-serif text-brand text-sm md:text-right">
                   {s.sla}
                 </p>
               </li>
@@ -480,7 +603,7 @@ export default function AgentsPage() {
             <h2 className="mt-4 font-semibold font-serif text-4xl leading-[1.05] tracking-[-0.02em] md:text-5xl">
               A signed offer document.
               <br />
-              <span className="font-normal text-leaf italic">
+              <span className="font-normal text-leaf">
                 Not a phone call.
               </span>
             </h2>
@@ -512,7 +635,7 @@ export default function AgentsPage() {
             <Eyebrow>while the deal runs</Eyebrow>
             <h2 className="mt-4 font-semibold font-serif text-4xl leading-[1.05] tracking-[-0.02em] md:text-5xl">
               One timeline.{' '}
-              <span className="font-normal text-brand italic">
+              <span className="font-normal text-brand">
                 Everyone sees the same thing.
               </span>
             </h2>
@@ -608,7 +731,7 @@ export default function AgentsPage() {
               <Seal label="Est. 2026" />
               <div className="pl-1">
                 <Wordmark ventures className="text-base" />
-                <p className="mt-2 font-serif text-sm text-stone-500 italic">
+                <p className="mt-2 font-serif text-sm text-stone-500">
                   Direct-to-vendor property buyers &middot; UK
                 </p>
               </div>
@@ -644,7 +767,7 @@ export default function AgentsPage() {
             </nav>
           </div>
           <div className="mt-10 border-hair border-t pt-6">
-            <p className="font-serif text-[12px] text-stone-500 italic">
+            <p className="font-serif text-[12px] text-stone-500">
               Property Redress Scheme (PRS) &middot; HMRC AML supervised
               &middot; ICO registered
             </p>

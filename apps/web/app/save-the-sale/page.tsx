@@ -62,7 +62,7 @@ export default async function SaveTheSalePage({
       <section className="px-6 pt-12 pb-20 md:px-12 md:pt-16 md:pb-24">
         <div className="mx-auto grid max-w-6xl grid-cols-1 gap-12 lg:grid-cols-[1fr_1.2fr] lg:gap-16">
           <div>
-            <p className="font-serif text-[13px] text-leaf italic">
+            <p className="font-serif text-[13px] text-leaf">
               For UK estate agents
             </p>
             <h1
@@ -71,7 +71,7 @@ export default async function SaveTheSalePage({
             >
               Sale fallen through?
               <br />
-              <span className="text-leaf italic">
+              <span className="text-leaf">
                 Save it before you re-list.
               </span>
             </h1>
@@ -137,7 +137,7 @@ export default async function SaveTheSalePage({
       {/* ————— TRUST FOOTER ————— */}
       <footer className="border-stone-200/60 border-t bg-white px-6 py-10 md:px-12">
         <div className="mx-auto flex max-w-5xl flex-col items-start justify-between gap-4 md:flex-row md:items-center">
-          <p className="font-serif text-[13px] text-stone-500 italic">
+          <p className="font-serif text-[13px] text-stone-500">
             Property Redress Scheme (PRS) &middot; HMRC AML supervised &middot;
             ICO registered
           </p>

@@ -3,9 +3,9 @@ import { GeistMono } from 'geist/font/mono';
 import {
   Courier_Prime,
   Fraunces,
+  Hanken_Grotesk,
   Inter,
   Libre_Caslon_Text,
-  Roboto,
 } from 'next/font/google';
 
 // Bellwoods Lane type system.
@@ -19,7 +19,9 @@ import {
 // exact signature that reads as AI-generated:
 //   Libre Caslon Text — display (English, legal, established; not the
 //                        startup-default serif)
-//   Roboto            — body / UI (the brand kit's working sans)
+//   Hanken Grotesk    — body / UI (KEPT.md's sanctioned swap, Aug 2026:
+//                        warmer and more drawn than Roboto, which read as
+//                        default/template)
 //   Courier Prime     — the offer document + numerals (a real typed letter)
 const inter = Inter({
   subsets: ['latin'],
@@ -42,11 +44,11 @@ const libreCaslon = Libre_Caslon_Text({
   style: ['normal', 'italic'],
 });
 
-const roboto = Roboto({
+const hanken = Hanken_Grotesk({
   subsets: ['latin'],
-  variable: '--font-roboto',
+  variable: '--font-hanken',
   display: 'swap',
-  weight: ['300', '400', '500', '700'],
+  weight: ['400', '500', '600', '700'],
 });
 
 const courierPrime = Courier_Prime({
@@ -60,7 +62,7 @@ export const fonts = cn(
   inter.variable,
   fraunces.variable,
   libreCaslon.variable,
-  roboto.variable,
+  hanken.variable,
   courierPrime.variable,
   GeistMono.variable,
   'touch-manipulation font-sans antialiased'

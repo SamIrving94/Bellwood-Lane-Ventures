@@ -300,7 +300,7 @@ export default function PrivacyPage() {
       <SiteHeader />
       <main className="min-h-screen bg-cream px-6 py-20 md:px-12 md:py-28">
         <div className="mx-auto max-w-3xl">
-          <p className="font-serif text-[13px] text-leaf italic">
+          <p className="font-serif text-[13px] text-leaf">
             Privacy notice
           </p>
           <h1
@@ -325,7 +325,7 @@ export default function PrivacyPage() {
           <div className="mt-16 space-y-16">
             {SECTIONS.map((s) => (
               <section key={s.id} id={s.id}>
-                <p className="font-serif text-[13px] text-leaf italic">
+                <p className="font-serif text-[13px] text-leaf">
                   {s.eyebrow}
                 </p>
                 <h2 className="mt-3 font-semibold font-serif text-3xl leading-[1.15] tracking-[-0.02em] md:text-4xl">

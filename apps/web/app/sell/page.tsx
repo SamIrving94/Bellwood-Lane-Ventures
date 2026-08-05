@@ -2,7 +2,6 @@ import {
   Button,
   Eyebrow,
   LogoLockup,
-  Monogram,
   Seal,
   SectionNumber,
   Wordmark,
@@ -79,60 +78,105 @@ const NAV = [
 ];
 
 /** The signed cash-offer letter, the hero artifact. A real typed document,
- *  not type on a flat field: Caslon letterhead, Courier body, wax seal. */
+ *  not type on a flat field: Caslon letterhead, Courier body, dotted spec
+ *  leaders, an actual wax-red seal with weight, and an ink signature. Every
+ *  detail here is doing anti-template work — this card is the brand. */
 function OfferLetter() {
   return (
-    <div className="-rotate-[1.6deg] relative w-[290px] rounded-[2px] border border-hair bg-cream p-6 shadow-[0_28px_52px_-24px_rgba(36,28,26,0.5)]">
-      <div className="-right-5 -top-5 absolute hidden sm:block">
-        <Seal />
+    <div className="-rotate-[1.6deg] relative w-[300px] rounded-[2px] border border-hair bg-[linear-gradient(175deg,#fdfaf2_0%,#f7f2e6_70%,#f3edde_100%)] p-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.85),0_1px_2px_rgba(36,28,26,0.08),0_30px_56px_-26px_rgba(36,28,26,0.55)]">
+      {/* Wax seal — solid, irregular, embossed. Not an outline. */}
+      <div className="-right-5 -top-5 absolute hidden rotate-[8deg] sm:block">
+        <div
+          className="flex h-14 w-14 items-center justify-center bg-wax shadow-[inset_0_2px_3px_rgba(255,255,255,0.35),inset_0_-3px_4px_rgba(0,0,0,0.3),0_3px_6px_rgba(36,28,26,0.35)]"
+          style={{ borderRadius: '46% 54% 50% 50% / 52% 46% 54% 48%' }}
+        >
+          <span className="flex h-10 w-10 items-center justify-center rounded-full border border-white/40 font-bold font-serif text-[17px] text-cream">
+            k.
+          </span>
+        </div>
       </div>
-      <p className="font-bold font-serif text-[17px] text-brand-deep tracking-[0.01em]">
-        Kept
+      <div className="flex items-baseline justify-between gap-4">
+        <p className="font-bold font-serif text-[17px] text-brand-deep tracking-[0.01em]">
+          Kept
+        </p>
+        <p className="text-[10.5px] text-stone-400 [font-family:var(--font-courier)]">
+          Ref BW-2026-0142
+        </p>
+      </div>
+      <p className="mt-0.5 text-[10.5px] text-stone-400 [font-family:var(--font-courier)]">
+        Sample document
       </p>
-      <p className="mt-1 text-[11px] text-stone-400 [font-family:var(--font-courier)]">
-        Sample &middot; Ref BW-2026-0142
-      </p>
-      <div className="mt-4 border-soft border-t pt-3">
-        <p className="text-[11px] text-stone-400 [font-family:var(--font-courier)]">
+      <div className="mt-4 border-stone-300/60 border-t border-dashed pt-3">
+        <p className="text-[10.5px] text-stone-400 tracking-[0.08em] [font-family:var(--font-courier)]">
           PROPERTY
         </p>
         <p className="mt-1 font-serif text-[15px] text-forest leading-snug">
-          14 Acacia Avenue, Stockport SK4 3HQ
+          14 Acacia Avenue, Stockport SK4&nbsp;3HQ
         </p>
       </div>
-      <div className="mt-3 border-soft border-t pt-3">
-        <p className="text-[11px] text-brand [font-family:var(--font-courier)]">
+      <div className="mt-3 border-stone-300/60 border-t border-dashed pt-3">
+        <p className="text-[10.5px] text-brand tracking-[0.08em] [font-family:var(--font-courier)]">
           OUR CASH OFFER
         </p>
-        <p className="mt-1 font-bold font-serif text-[40px] text-forest leading-none">
+        <p className="mt-1 font-bold font-serif text-[40px] text-forest leading-none tracking-[-0.01em]">
           £244,000
         </p>
-        <p className="mt-1.5 text-[11px] text-stone-500 [font-family:var(--font-courier)]">
-          Locked for 72 hours
+        <p className="mt-2 inline-block rotate-[-1.5deg] border border-wax/60 px-2 py-0.5 text-[10px] text-wax tracking-[0.14em] [font-family:var(--font-courier)]">
+          LOCKED · 72 HOURS
         </p>
       </div>
-      <dl className="mt-3 space-y-2 border-soft border-t pt-3 text-[12px] text-stone-600 [font-family:var(--font-courier)]">
-        <div className="flex justify-between gap-6">
-          <dt>Completion</dt>
-          <dd className="text-forest">Weeks, not months</dd>
+      <dl className="mt-4 space-y-2.5 border-stone-300/60 border-t border-dashed pt-3.5 text-[12px] text-stone-600 [font-family:var(--font-courier)]">
+        <div className="flex items-baseline gap-2">
+          <dt className="shrink-0">Completion</dt>
+          <span
+            aria-hidden
+            className="mb-[3px] flex-1 border-stone-400/50 border-b border-dotted"
+          />
+          <dd className="shrink-0 text-forest">Weeks, not months</dd>
         </div>
-        <div className="flex justify-between gap-6">
-          <dt>Fees to you</dt>
-          <dd className="text-forest">None</dd>
+        <div className="flex items-baseline gap-2">
+          <dt className="shrink-0">Fees to you</dt>
+          <span
+            aria-hidden
+            className="mb-[3px] flex-1 border-stone-400/50 border-b border-dotted"
+          />
+          <dd className="shrink-0 text-forest">None</dd>
+        </div>
+        <div className="flex items-baseline gap-2">
+          <dt className="shrink-0">Chain</dt>
+          <span
+            aria-hidden
+            className="mb-[3px] flex-1 border-stone-400/50 border-b border-dotted"
+          />
+          <dd className="shrink-0 text-forest">None. Cash.</dd>
         </div>
       </dl>
-      <svg viewBox="0 0 130 30" className="mt-3 h-6 w-28" aria-hidden="true">
+      {/* Ink signature — two strokes, imperfect baseline */}
+      <svg viewBox="0 0 150 34" className="mt-4 h-7 w-32" aria-hidden="true">
         <path
-          d="M3 21 C 13 3, 22 5, 23 17 S 36 27, 43 13 C 47 5, 54 23, 64 14 C 74 5, 83 25, 102 7 C 111 1, 120 5, 127 11"
+          d="M4 24 C 8 8, 16 4, 18 12 C 20 20, 14 28, 22 26 C 30 24, 32 10, 40 12 C 45 13, 43 22, 50 21 C 58 20, 60 8, 68 11 C 74 13, 72 22, 80 20 C 90 17, 94 10, 104 12 C 112 14, 116 18, 126 13 C 134 9, 140 12, 146 15"
           fill="none"
-          stroke="#1f332b"
-          strokeWidth="1.5"
+          stroke="#26333c"
+          strokeWidth="1.6"
           strokeLinecap="round"
         />
+        <path
+          d="M30 29 C 55 26, 100 26, 132 24"
+          fill="none"
+          stroke="#26333c"
+          strokeWidth="0.8"
+          strokeLinecap="round"
+          opacity="0.55"
+        />
       </svg>
-      <p className="mt-1 font-serif text-[11px] text-stone-400 italic">
-        Signed for Kept
-      </p>
+      <div className="mt-1 flex items-baseline justify-between gap-4">
+        <p className="font-serif text-[11px] text-stone-400 italic">
+          Signed for Kept
+        </p>
+        <p className="text-[10px] text-stone-400 [font-family:var(--font-courier)]">
+          A. Taylor
+        </p>
+      </div>
     </div>
   );
 }
@@ -161,41 +205,78 @@ export default function SellPage() {
         </div>
       </header>
 
-      {/* ————— HERO ————— */}
-      <section className="relative overflow-hidden px-6 pt-20 pb-20 md:px-12 md:pt-24 md:pb-24">
-        <div className="relative mx-auto grid max-w-6xl items-center gap-12 md:grid-cols-[1.05fr_0.95fr] md:gap-10">
-          <div>
+      {/* ————— HERO —————
+          Not the template split ("headline left, floating card right").
+          Structure borrowed from the reference set (docs/brand/
+          DESIGN-REFERENCES.md): a courier dateline row (the page opens like
+          a document), a giant full-width editorial headline (the Wise move),
+          the signed letter laid OVER the composition like an object on a
+          desk, and a real person next to the promise (the Farewill move). */}
+      <section className="relative overflow-hidden px-6 pt-10 pb-16 md:px-12 md:pt-12 md:pb-20">
+        <div className="relative mx-auto max-w-6xl">
+          {/* Dateline — the page itself is a document */}
+          <div className="flex items-baseline justify-between gap-6 border-hair border-b pb-4">
             <Eyebrow>for UK homeowners</Eyebrow>
-            <h1
-              className="mt-5 font-bold font-serif text-forest leading-[1.07]"
-              style={{ fontSize: 'clamp(40px, 5.4vw, 62px)' }}
-            >
-              A real cash offer,
-              <br />
-              <span className="font-normal text-brand italic">in writing.</span>
-            </h1>
-            <p className="mt-6 max-w-md text-[17px] text-stone-600 leading-relaxed">
-              Tell us about the property and we will come and view it. We aim to
-              make an offer within 24 to 48 hours of viewing, locked for 72
-              hours so you can take advice. The price we put in writing is the
-              price we complete at.
-            </p>
-            <div className="mt-8 flex flex-wrap items-center gap-x-6 gap-y-4">
-              <Button href="#offer">Get a cash offer</Button>
-              <Button href="/instant-offer/methodology" variant="ghost">
-                See how we calculate offers
-              </Button>
-            </div>
-            <p className="mt-7 text-[13px] text-stone-500 [font-family:var(--font-courier)]">
-              Every confirmed offer is a signed document like this one.
-            </p>
-            <p className="mt-4 font-serif text-[13px] text-stone-500 italic">
-              Property Redress Scheme &middot; HMRC AML supervised &middot; ICO
-              registered &middot; Zero fees
+            <p className="text-[11px] text-stone-400 tracking-[0.18em] [font-family:var(--font-courier)]">
+              EST. 2026 · UK
             </p>
           </div>
-          <div className="flex justify-center md:justify-end">
-            <OfferLetter />
+          {/* Full-width editorial headline — no half-column timidity */}
+          <h1
+            className="relative z-10 mt-10 font-bold font-serif text-forest leading-[0.98] tracking-[-0.03em] md:mt-12"
+            style={{ fontSize: 'clamp(46px, 7.6vw, 92px)' }}
+          >
+            A real cash offer,
+            <br />
+            <span className="font-normal text-brand">
+              in writing<span className="text-wax">.</span>
+            </span>
+          </h1>
+          {/* The letter is laid over the composition; the copy sits beside it */}
+          <div className="mt-10 grid items-start gap-12 md:mt-8 md:grid-cols-[1fr_auto] md:gap-16">
+            <div className="max-w-md">
+              <p className="text-[16px] text-stone-600 leading-[1.75]">
+                Tell us about the property and we will come and view it. We
+                aim to make an offer within 24 to 48 hours of viewing, locked
+                for 72 hours so you can take advice. The price we put in
+                writing is the price we complete at.
+              </p>
+              <div className="mt-8 flex flex-wrap items-center gap-x-6 gap-y-4">
+                <Button href="#offer">Get a cash offer</Button>
+                <Button href="/instant-offer/methodology" variant="ghost">
+                  See how we calculate offers
+                </Button>
+              </div>
+              {/* A person, not a pipeline — right where the promise is made */}
+              <div className="mt-10 flex items-center gap-4 border-hair border-t pt-6">
+                <Image
+                  src="/team/anthony-taylor.jpg"
+                  alt="Anthony Taylor of Kept"
+                  width={96}
+                  height={96}
+                  className="h-12 w-12 rounded-full border border-hair object-cover object-top"
+                />
+                <p className="max-w-[300px] text-[13.5px] text-stone-600 leading-snug">
+                  <span className="font-semibold text-forest">
+                    Anthony reads every enquiry.
+                  </span>{' '}
+                  Same-day reply, Monday to Friday.
+                </p>
+              </div>
+            </div>
+            <figure className="flex flex-col items-center md:items-end lg:-mt-16 xl:-mt-32">
+              <OfferLetter />
+              <figcaption className="mt-6 max-w-[300px] text-center font-serif text-[13px] text-stone-500 md:text-right">
+                Every confirmed offer is a signed document like this one.
+              </figcaption>
+            </figure>
+          </div>
+          {/* Hairline baseline — the hero ends on a rule, not on air */}
+          <div className="mt-14 border-hair border-t pt-5">
+            <p className="font-serif text-[13px] text-stone-500">
+              Property Redress Scheme &middot; HMRC AML supervised &middot;
+              ICO registered &middot; Zero fees
+            </p>
           </div>
         </div>
       </section>
@@ -207,7 +288,7 @@ export default function SellPage() {
             <Eyebrow>who we buy from</Eyebrow>
             <h2 className="mt-4 font-semibold font-serif text-4xl leading-[1.05] tracking-[-0.02em] md:text-5xl">
               Real reasons people choose{' '}
-              <span className="font-normal text-brand italic">certainty</span>{' '}
+              <span className="font-normal text-brand">certainty</span>{' '}
               over price.
             </h2>
           </div>
@@ -217,7 +298,7 @@ export default function SellPage() {
                 key={r.k}
                 className="rounded-sm border border-hair bg-white p-7 transition-shadow hover:shadow-[0_24px_48px_-32px_rgba(43,34,32,0.4)]"
               >
-                <p className="font-serif text-brand text-sm italic">{r.k}</p>
+                <p className="font-serif text-brand text-sm">{r.k}</p>
                 <p className="mt-3 font-semibold font-serif text-xl">{r.t}</p>
                 <p className="mt-3 text-sm text-stone-600 leading-relaxed">
                   {r.b}
@@ -248,7 +329,7 @@ export default function SellPage() {
             <Eyebrow className="mt-5">how it works</Eyebrow>
             <h2 className="mt-4 font-semibold font-serif text-4xl leading-[1] tracking-[-0.02em] md:text-6xl">
               Five steps.{' '}
-              <span className="font-normal text-brand italic">
+              <span className="font-normal text-brand">
                 No surprises.
               </span>
             </h2>
@@ -306,7 +387,7 @@ export default function SellPage() {
                     {s.d}
                   </p>
                 </div>
-                <p className="font-serif text-brand text-sm italic md:text-right">
+                <p className="font-serif text-brand text-sm md:text-right">
                   {s.sla}
                 </p>
               </li>
@@ -328,7 +409,7 @@ export default function SellPage() {
             </Eyebrow>
             <h2 className="mt-4 font-semibold font-serif text-4xl leading-[1.05] tracking-[-0.02em] md:text-5xl">
               Where the number{' '}
-              <span className="font-normal text-brand italic">
+              <span className="font-normal text-brand">
                 actually comes from.
               </span>
             </h2>
@@ -377,7 +458,7 @@ export default function SellPage() {
                 className="h-auto w-full"
               />
             </div>
-            <figcaption className="mt-3 text-center font-serif text-[13px] text-stone-500 italic md:text-left">
+            <figcaption className="mt-3 text-center font-serif text-[13px] text-stone-500 md:text-left">
               Anthony Taylor &middot; Kept
             </figcaption>
           </figure>
@@ -385,7 +466,7 @@ export default function SellPage() {
             <Eyebrow tone="muted">a person, not a pipeline</Eyebrow>
             <h2 className="mt-4 font-semibold font-serif text-3xl leading-tight tracking-[-0.02em] md:text-5xl">
               Software does the maths.{' '}
-              <span className="font-normal text-brand italic">
+              <span className="font-normal text-brand">
                 A person makes the promise.
               </span>
             </h2>
@@ -407,17 +488,13 @@ export default function SellPage() {
 
       {/* ————— PROMISE ————— */}
       <section className="relative overflow-hidden border-hair/70 border-b bg-brand-deep px-6 py-24 text-white md:px-12 md:py-28">
-        <Monogram
-          aria-hidden
-          className="-bottom-16 -right-16 pointer-events-none absolute h-80 w-auto opacity-[0.06]"
-        />
         <div className="relative mx-auto grid max-w-6xl grid-cols-1 gap-12 lg:grid-cols-[1fr_1.4fr]">
           <div>
             <Eyebrow tone="light">the written promise</Eyebrow>
             <h2 className="mt-4 font-semibold font-serif text-4xl leading-[1.05] tracking-[-0.02em] md:text-5xl">
               No renegotiation.
               <br />
-              <span className="font-normal text-leaf italic">
+              <span className="font-normal text-leaf">
                 No surprises.
               </span>
             </h2>
@@ -453,7 +530,7 @@ export default function SellPage() {
                 key={k as string}
                 className="grid grid-cols-1 gap-2 py-5 sm:grid-cols-[180px_1fr] sm:gap-8"
               >
-                <dt className="font-serif text-[15px] text-leaf italic">{k}</dt>
+                <dt className="font-serif text-[15px] text-leaf">{k}</dt>
                 <dd className="text-white/90">{v}</dd>
               </div>
             ))}
@@ -496,7 +573,7 @@ export default function SellPage() {
           <Eyebrow>the honest version</Eyebrow>
           <h2 className="mt-4 font-semibold font-serif text-3xl leading-tight tracking-[-0.02em] md:text-5xl">
             When we&rsquo;re probably{' '}
-            <span className="font-normal text-brand italic">not</span> the right
+            <span className="font-normal text-brand">not</span> the right
             answer
           </h2>
           <p className="mt-5 max-w-2xl text-[15px] text-stone-700 leading-relaxed">
@@ -559,16 +636,12 @@ export default function SellPage() {
       {/* ————— FINAL CTA ————— */}
       <section className="px-6 py-16 md:px-12">
         <div className="relative mx-auto max-w-6xl overflow-hidden rounded-sm bg-brand-deep px-8 py-16 text-white md:px-16 md:py-20">
-          <Monogram
-            aria-hidden
-            className="-bottom-12 pointer-events-none absolute right-6 h-64 w-auto opacity-[0.07]"
-          />
           <div className="relative grid grid-cols-1 items-center gap-10 lg:grid-cols-2">
             <div>
               <Eyebrow tone="light">see the number</Eyebrow>
               <h2 className="mt-4 font-semibold font-serif text-5xl leading-[1] tracking-[-0.025em] md:text-7xl">
                 A real offer{' '}
-                <span className="font-normal text-leaf italic">
+                <span className="font-normal text-leaf">
                   in writing.
                 </span>
               </h2>
@@ -590,7 +663,7 @@ export default function SellPage() {
               <Seal label="Est. 2026" />
               <div className="pl-1">
                 <Wordmark ventures className="text-base" />
-                <p className="mt-2 font-serif text-sm text-stone-500 italic">
+                <p className="mt-2 font-serif text-sm text-stone-500">
                   Direct-to-vendor property buyers &middot; UK
                 </p>
               </div>

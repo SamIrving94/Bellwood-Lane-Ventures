@@ -116,7 +116,7 @@ export default function ProbatePage() {
             style={{ fontSize: 'clamp(38px, 5vw, 58px)' }}
           >
             Probate,{' '}
-            <span className="font-normal text-brand italic">
+            <span className="font-normal text-brand">
               in plain English.
             </span>
           </h1>
@@ -126,7 +126,7 @@ export default function ProbatePage() {
             deadlines that matter, the costs that quietly accumulate, and
             where a sale fits. No euphemisms, no rush.
           </p>
-          <p className="mt-5 font-serif text-[13px] text-stone-500 italic">
+          <p className="mt-5 font-serif text-[13px] text-stone-500">
             This is general information, not legal or tax advice. For the
             estate&rsquo;s specific position, speak to a solicitor.
           </p>
@@ -176,7 +176,7 @@ export default function ProbatePage() {
           <Eyebrow className="mt-5">where a cash sale fits</Eyebrow>
           <h2 className="mt-4 font-semibold font-serif text-4xl leading-[1.05] tracking-[-0.02em] md:text-5xl">
             Agree the price now.{' '}
-            <span className="font-normal text-brand italic">
+            <span className="font-normal text-brand">
               Complete on the grant date.
             </span>
           </h2>
@@ -272,7 +272,7 @@ export default function ProbatePage() {
               <Seal label="Est. 2026" />
               <div className="pl-1">
                 <Wordmark ventures className="text-base" />
-                <p className="mt-2 font-serif text-sm text-stone-500 italic">
+                <p className="mt-2 font-serif text-sm text-stone-500">
                   Direct-to-vendor property buyers &middot; UK
                 </p>
               </div>

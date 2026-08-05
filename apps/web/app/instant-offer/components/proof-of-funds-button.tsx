@@ -94,7 +94,7 @@ export function ProofOfFundsButton() {
               </div>
             ) : (
               <>
-                <p className="font-serif text-[13px] text-leaf italic">
+                <p className="font-serif text-[13px] text-leaf">
                   Proof of funds
                 </p>
                 <h3

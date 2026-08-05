@@ -88,7 +88,7 @@ export default async function OfferCertificatePage({
         <Wordmark className="text-xl" />
         <div className="mt-6 flex items-end justify-between">
           <div>
-            <p className="font-serif text-[13px] text-wax italic">
+            <p className="font-serif text-[13px] text-wax">
               Binding cash offer
             </p>
             <h1 className="mt-2 font-semibold font-serif text-3xl leading-tight">
@@ -106,7 +106,7 @@ export default async function OfferCertificatePage({
 
       <section className="mt-10 grid grid-cols-2 gap-x-8 gap-y-6">
         <div>
-          <p className="font-serif text-[13px] text-stone-500 italic">
+          <p className="font-serif text-[13px] text-stone-500">
             Property
           </p>
           <p className="mt-2 font-serif text-lg leading-snug">
@@ -121,7 +121,7 @@ export default async function OfferCertificatePage({
           </p>
         </div>
         <div>
-          <p className="font-serif text-[13px] text-stone-500 italic">
+          <p className="font-serif text-[13px] text-stone-500">
             Seller situation
           </p>
           <p className="mt-2 font-serif text-lg capitalize">
@@ -131,7 +131,7 @@ export default async function OfferCertificatePage({
       </section>
 
       <section className="mt-10 rounded-2xl border-2 border-wax bg-soft p-8">
-        <p className="font-serif text-[13px] text-stone-500 italic">
+        <p className="font-serif text-[13px] text-stone-500">
           Our cash offer
         </p>
         <p
@@ -150,7 +150,7 @@ export default async function OfferCertificatePage({
       </section>
 
       <section className="mt-10">
-        <p className="font-serif text-[13px] text-stone-500 italic">Terms</p>
+        <p className="font-serif text-[13px] text-stone-500">Terms</p>
         <dl className="mt-3 divide-y divide-stone-200 border-stone-200 border-y">
           {[
             [
@@ -176,7 +176,7 @@ export default async function OfferCertificatePage({
               key={k}
               className="grid grid-cols-1 gap-1 py-3 sm:grid-cols-[180px_1fr] sm:gap-6"
             >
-              <dt className="font-serif text-[13px] text-stone-500 italic">
+              <dt className="font-serif text-[13px] text-stone-500">
                 {k}
               </dt>
               <dd className="text-[14px] text-forest">{v}</dd>
@@ -187,7 +187,7 @@ export default async function OfferCertificatePage({
 
       {reasoningLines.length > 0 && (
         <section className="mt-10">
-          <p className="font-serif text-[13px] text-stone-500 italic">
+          <p className="font-serif text-[13px] text-stone-500">
             How we got to this number
           </p>
           <ul className="mt-3 space-y-2 text-[13px] text-stone-700">
@@ -200,7 +200,7 @@ export default async function OfferCertificatePage({
 
       <section className="mt-12 grid grid-cols-2 gap-6">
         <div>
-          <p className="font-serif text-[13px] text-stone-500 italic">
+          <p className="font-serif text-[13px] text-stone-500">
             For the seller
           </p>
           <div className="mt-2 h-16 border-stone-400 border-b-2" />
@@ -209,7 +209,7 @@ export default async function OfferCertificatePage({
           </p>
         </div>
         <div>
-          <p className="font-serif text-[13px] text-stone-500 italic">
+          <p className="font-serif text-[13px] text-stone-500">
             For Kept
           </p>
           <div className="mt-2 h-16 border-stone-400 border-b-2" />

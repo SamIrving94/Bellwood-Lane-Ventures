@@ -47,7 +47,7 @@ export function VendorReplyForm({ token }: { token: string }) {
   if (status === 'sent') {
     return (
       <div className="mt-6 rounded-2xl border border-leaf-dark/30 bg-leaf/10 p-6">
-        <p className="font-serif text-[13px] text-leaf-dark italic">
+        <p className="font-serif text-[13px] text-leaf-dark">
           Message received
         </p>
         <p className="mt-3 text-[15px] text-stone-700 leading-relaxed">
@@ -61,7 +61,7 @@ export function VendorReplyForm({ token }: { token: string }) {
   return (
     <form onSubmit={onSubmit} className="mt-6 space-y-4">
       <label className="block">
-        <span className="font-serif text-[13px] text-stone-600 italic">
+        <span className="font-serif text-[13px] text-stone-600">
           Message
         </span>
         <textarea
@@ -117,7 +117,7 @@ export function VendorReplyForm({ token }: { token: string }) {
       <button
         type="submit"
         disabled={status === 'submitting' || !message.trim()}
-        className="inline-flex items-center gap-2 rounded-md bg-leaf px-6 py-3 font-serif text-[13px] text-white italic transition hover:bg-forest disabled:cursor-not-allowed disabled:opacity-50"
+        className="inline-flex items-center gap-2 rounded-md bg-leaf px-6 py-3 font-serif text-[13px] text-white transition hover:bg-forest disabled:cursor-not-allowed disabled:opacity-50"
       >
         {status === 'submitting' ? 'Sending…' : 'Send message'}
       </button>

@@ -169,7 +169,7 @@ export function AgentQuickForm({
     >
       <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
         <label className="block md:col-span-2">
-          <span className="font-serif text-[13px] text-stone-500 italic">
+          <span className="font-serif text-[13px] text-stone-500">
             Property address
           </span>
           <input
@@ -181,7 +181,7 @@ export function AgentQuickForm({
           />
         </label>
         <label className="block">
-          <span className="font-serif text-[13px] text-stone-500 italic">
+          <span className="font-serif text-[13px] text-stone-500">
             Postcode
           </span>
           <input
@@ -193,7 +193,7 @@ export function AgentQuickForm({
           />
         </label>
         <label className="block">
-          <span className="font-serif text-[13px] text-stone-500 italic">
+          <span className="font-serif text-[13px] text-stone-500">
             Your firm
           </span>
           <input
@@ -207,7 +207,7 @@ export function AgentQuickForm({
       </div>
 
       <div className="mt-6">
-        <span className="font-serif text-[13px] text-stone-500 italic">
+        <span className="font-serif text-[13px] text-stone-500">
           What&rsquo;s happened?
         </span>
         <div className="mt-2 flex flex-wrap gap-2">
@@ -230,7 +230,7 @@ export function AgentQuickForm({
 
       <div className="mt-6 grid grid-cols-1 gap-5 md:grid-cols-2">
         <label className="block">
-          <span className="font-serif text-[13px] text-stone-500 italic">
+          <span className="font-serif text-[13px] text-stone-500">
             Your name
           </span>
           <input
@@ -241,7 +241,7 @@ export function AgentQuickForm({
           />
         </label>
         <label className="block">
-          <span className="font-serif text-[13px] text-stone-500 italic">
+          <span className="font-serif text-[13px] text-stone-500">
             Email
           </span>
           <input
@@ -252,7 +252,7 @@ export function AgentQuickForm({
           />
         </label>
         <label className="block md:col-span-2">
-          <span className="font-serif text-[13px] text-stone-500 italic">
+          <span className="font-serif text-[13px] text-stone-500">
             Work mobile{' '}
             <span className="text-stone-400 normal-case tracking-normal">
               (WhatsApp · optional but faster)
@@ -310,7 +310,7 @@ function SuccessView({
   if (offer.requiresReview) {
     return (
       <div className="rounded-3xl border border-leaf/40 bg-white p-10 shadow-sm">
-        <p className="font-serif text-[13px] text-leaf italic">Manual review</p>
+        <p className="font-serif text-[13px] text-leaf">Manual review</p>
         <h3 className="mt-3 font-semibold font-serif text-3xl text-forest">
           This one needs a human look.
         </h3>
@@ -327,10 +327,10 @@ function SuccessView({
     <div className="space-y-5">
       <div className="rounded-3xl border-2 border-leaf/50 bg-white p-7 shadow-md md:p-9">
         <div className="flex items-baseline justify-between">
-          <p className="font-serif text-[13px] text-leaf italic">
+          <p className="font-serif text-[13px] text-leaf">
             Indicative offer
           </p>
-          <p className="font-serif text-[13px] text-stone-400 italic">
+          <p className="font-serif text-[13px] text-stone-400">
             Ref {offer.quoteId?.slice(-8).toUpperCase()}
           </p>
         </div>
@@ -342,7 +342,7 @@ function SuccessView({
         </p>
         <div className="mt-6 grid grid-cols-2 gap-6 text-sm md:grid-cols-3">
           <div>
-            <p className="font-serif text-[13px] text-stone-400 italic">
+            <p className="font-serif text-[13px] text-stone-400">
               AVM range
             </p>
             <p className="mt-1 text-stone-700">
@@ -351,7 +351,7 @@ function SuccessView({
             </p>
           </div>
           <div>
-            <p className="font-serif text-[13px] text-stone-400 italic">
+            <p className="font-serif text-[13px] text-stone-400">
               Completion
             </p>
             <p className="mt-1 text-stone-700">
@@ -359,7 +359,7 @@ function SuccessView({
             </p>
           </div>
           <div>
-            <p className="font-serif text-[13px] text-stone-400 italic">
+            <p className="font-serif text-[13px] text-stone-400">
               Locked
             </p>
             <p className="mt-1 text-stone-700">72 hours from now</p>
@@ -430,7 +430,7 @@ function VendorShareCard({
 
   return (
     <div className="rounded-2xl border border-stone-200 bg-white p-6">
-      <p className="font-serif text-[13px] text-leaf italic">
+      <p className="font-serif text-[13px] text-leaf">
         Share with your vendor
       </p>
       <p className="mt-2 text-[14px] text-stone-600 leading-relaxed">
