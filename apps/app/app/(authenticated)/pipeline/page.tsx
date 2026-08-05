@@ -140,6 +140,7 @@ async function LeadsTabContent({ filter }: { filter?: string }) {
           address: l.address,
           postcode: l.postcode,
           leadType: l.leadType,
+          track: l.track,
           leadScore: l.leadScore,
           verdict: l.verdict,
           estimatedEquityPence: l.estimatedEquityPence,

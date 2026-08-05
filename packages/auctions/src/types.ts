@@ -8,6 +8,7 @@
 
 export type AuctionHouse =
   | 'auction_house_uk'
+  | 'allsop'
   | 'savills'
   | 'clive_emson';
 
@@ -92,6 +93,12 @@ export interface AuctionLot {
   guidePriceMaxPence: number | null;
   /** Public URL to the lot listing */
   lotUrl: string | null;
+  /**
+   * Raw lot title/description text as advertised. Carried so downstream
+   * classification (block-of-flats / portfolio keyword detection) can run
+   * against the source words — the parsed fields alone lose them.
+   */
+  summary?: string | null;
   /**
    * Photo URLs scraped from the lot's public listing page (typically 5-15).
    * Optional — older scrape paths may not populate this.

@@ -19,6 +19,7 @@ export type CronName =
   | 'pipeline-outreach'
   | 'pipeline-summary'
   | 'sla-alerts'
+  | 'legal-chaser'
   | 'deep-appraisal';
 
 // Max age (hours) between successful runs before the watchdog alerts. Tuned to
@@ -30,6 +31,9 @@ export const CRON_MAX_STALENESS_HOURS: Record<CronName, number> = {
   'pipeline-outreach': 28,
   'pipeline-summary': 28,
   'sla-alerts': 28,
+  // Weekday-only schedule: Friday 09:30 → Monday 09:30 is a legitimate 72h
+  // gap, so the alert window must clear a full weekend.
+  'legal-chaser': 80,
   'deep-appraisal': 28,
 };
 

@@ -26,6 +26,99 @@ export type WhatsNewEntry = {
 /** Newest first. The popup shows index 0. */
 export const WHATS_NEW: WhatsNewEntry[] = [
   {
+    id: '2026-08-04-receiverships-and-allsop',
+    date: '2026-08-04',
+    emoji: '🕵️',
+    title: 'Two new hunting grounds for the scout',
+    intro:
+      'Deep research found where the distressed prime and block stock actually surfaces — both channels are now live.',
+    bullets: [
+      {
+        emoji: '🏦',
+        text: '**Receiverships** — when a lender seizes a property, the receiver **must sell, fast**. The scout now reads Gazette receiver notices and digs the property addresses out of Companies House charges. Appointments are running at **3× 2022 levels**, 65% residential.',
+      },
+      {
+        emoji: '🔨',
+        text: '**Allsop auctions** — the big one we were missing. One catalogue = **344 lots**, including whole London blocks (18 flats in Finsbury Park at £1.6M guide = under £90k a unit). Now feeds the Monday auction scan.',
+      },
+      {
+        emoji: '⚖️',
+        text: 'Receivership deals get one extra legal check: **validate the receiver\'s appointment** before exchange — an invalid one can void the sale.',
+      },
+      {
+        emoji: '📚',
+        text: 'The full research with sources is in the repo, and the **Strategy proposal is updated** — Ant, the two-track decisions are still waiting on you.',
+      },
+    ],
+    cta: { label: 'Read the proposal', href: '/strategy' },
+  },
+  {
+    id: '2026-08-04-two-track-prime-blocks',
+    date: '2026-08-04',
+    emoji: '⭐',
+    title: 'The scout now hunts big game too',
+    intro:
+      'Two businesses, one engine: volume sourcing for investors, prime + blocks for the Kept book.',
+    bullets: [
+      {
+        emoji: '⭐',
+        text: '**Prime track** — £700k+ properties are no longer buried by the volume scorer. They **skip the gate** and land on your desk with a ★ Prime badge. Architect refurb → £1M+ exits.',
+      },
+      {
+        emoji: '🏢',
+        text: '**Blocks detected** — "block of 6 flats", "freehold building", "portfolio" now get caught in listings **and** auction catalogues. They used to be dropped as development sites.',
+      },
+      {
+        emoji: '🚨',
+        text: 'Prime/block finds raise their **own daily high-priority card** — separate from the volume review pile.',
+      },
+      {
+        emoji: '🔍',
+        text: 'New **Prime / Block filter** on Leads, badges on Pipeline and deal pages. Track carries lead → deal automatically.',
+      },
+      {
+        emoji: '📋',
+        text: '**Ant: a second proposal in Strategy** — the two-track buy-box, architect terms, and blocks appetite need your call.',
+      },
+    ],
+    cta: { label: 'See prime leads', href: '/leads?filter=primeblock' },
+  },
+  {
+    id: '2026-08-03-field-network-legal-works',
+    date: '2026-08-03',
+    emoji: '🏗️',
+    title: 'The back half of the deal just got a machine',
+    intro:
+      'Viewings, conveyancing and refurbs — the three stages that ate your week — now run on rails.',
+    bullets: [
+      {
+        emoji: '👷',
+        text: '**Field network** — add builders and retired contractors at /network. Assign one to a viewing and they get a **magic-link report form** for their phone: photos, condition scores, refurb gut-feel, how keen the seller is.',
+      },
+      {
+        emoji: '📱',
+        text: 'When their report lands you get a **high-priority action card** — review it, then confirm or tweak the offer. Their eyes, your judgement.',
+      },
+      {
+        emoji: '⚖️',
+        text: '**Legal is alive.** Going under offer now seeds a **12-step conveyancing checklist** with target days. Tick steps off on the deal page and log the panel firm.',
+      },
+      {
+        emoji: '✉️',
+        text: 'A weekday **legal chaser** drafts a nudge to the solicitor when steps run late — you review and hit send, it never fires on its own.',
+      },
+      {
+        emoji: '🔨',
+        text: '**Works tracker** — once a property is yours, open a refurb project: budget vs quoted vs actual, one work order per trade, late flags. Your field network doubles as the contractor pool.',
+      },
+      {
+        emoji: '📋',
+        text: '**Ant: a proposal awaits you in Strategy** — go Farringdon-first (Orbital\'s AI-native law firm) for conveyancing. Read it, pick the backup firm, decide who makes the call.',
+      },
+    ],
+    cta: { label: 'Open the field network', href: '/network' },
+  },
+  {
     id: '2026-08-01-sell-page-shows-its-maths',
     date: '2026-08-01',
     emoji: '🧮',
@@ -72,7 +165,8 @@ export const WHATS_NEW: WhatsNewEntry[] = [
     date: '2026-07-30',
     emoji: '🌿',
     title: 'Your dashboard wears Kept. now too',
-    intro: 'The last room in the house got painted. Cream walls, forest ink, leaf buttons.',
+    intro:
+      'The last room in the house got painted. Cream walls, forest ink, leaf buttons.',
     bullets: [
       {
         emoji: '🎨',
@@ -97,7 +191,8 @@ export const WHATS_NEW: WhatsNewEntry[] = [
     date: '2026-07-30',
     emoji: '🎉',
     title: 'You said go — the company is now Kept.',
-    intro: 'The name flipped today. The whole front door reads kept. — wax dot and all.',
+    intro:
+      'The name flipped today. The whole front door reads kept. — wax dot and all.',
     bullets: [
       {
         emoji: '✍️',

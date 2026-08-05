@@ -180,4 +180,18 @@ export const LIMITS = {
     limit: 20,
     windowMs: 60 * 60 * 1000,
   },
+  /**
+   * Field-partner viewing report. Token buckets brute-force-cap a guessed
+   * link; the IP caps bound blob-storage writes from one device.
+   */
+  viewingSubmitByToken: {
+    bucket: 'viewing-submit:token',
+    limit: 10,
+    windowMs: 60 * 60 * 1000,
+  },
+  viewingPhotoByIp: {
+    bucket: 'viewing-photo:ip',
+    limit: 60,
+    windowMs: 60 * 60 * 1000,
+  },
 } as const satisfies Record<string, RateLimitRule>;

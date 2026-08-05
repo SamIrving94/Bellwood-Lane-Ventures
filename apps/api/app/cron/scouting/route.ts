@@ -490,6 +490,49 @@ export const POST = async (request: Request) => {
         update: { agentEventId: eventId, ...reviewData },
       });
 
+      // Prime/block surfacing — the second business line. These leads bypass
+      // the volume gate (a human decides, not the threshold), so they get
+      // their own high-priority card rather than drowning in the daily
+      // review pile. Deduped per calendar day: one card, refreshed per run.
+      const primeLeads = result.leads.filter((l) => l.track !== 'volume');
+      if (primeLeads.length > 0) {
+        const blockCount = primeLeads.filter((l) => l.track === 'block').length;
+        const primeCount = primeLeads.length - blockCount;
+        const dayBucket = result.runDate.toISOString().slice(0, 10);
+        const sample = primeLeads
+          .slice(0, 3)
+          .map((l) => `${l.address} (${l.track})`)
+          .join(' | ');
+        const primeData = {
+          priority: 'high',
+          status: 'pending',
+          title: `${primeLeads.length} prime/block lead${primeLeads.length === 1 ? '' : 's'} found — own-book candidates`,
+          description: `Scout surfaced ${primeCount} prime (£700k+) and ${blockCount} block/portfolio lead${blockCount === 1 ? '' : 's'} today. These are principal-track candidates for the Kept book (architect refurb / multi-unit), not the investor feed — the volume scorer does not gate them, so read each one. ${sample}`,
+          metadata: {
+            source: 'cron_scouting',
+            track: 'prime_block',
+            primeCount,
+            blockCount,
+            runDate: result.runDate.toISOString(),
+            link: '/pipeline?tab=leads',
+          },
+          resolvedAt: null,
+          resolvedBy: null,
+          expiresAt: new Date(Date.now() + 72 * 3600_000),
+        } as const;
+        await database.founderAction.upsert({
+          where: { dedupKey: `scout-prime-leads:${dayBucket}` },
+          create: {
+            type: 'review_leads',
+            agent: 'scout',
+            agentEventId: eventId,
+            dedupKey: `scout-prime-leads:${dayBucket}`,
+            ...primeData,
+          },
+          update: { agentEventId: eventId, ...primeData },
+        });
+      }
+
       // Marketer-facing draft action — high-scoring leads only (outreach is
       // costly + sensitive; we don't draft for borderline leads).
       if (highScoreLeads.length > 0) {

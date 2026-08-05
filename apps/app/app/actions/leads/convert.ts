@@ -30,6 +30,7 @@ export async function convertLeadToDeal(leadId: string) {
               ? 'short_lease'
               : 'standard',
       source: 'scout_lead',
+      track: lead.track,
       sellerName: lead.contactName,
       sellerEmail: lead.contactEmail,
       sellerPhone: lead.contactPhone,

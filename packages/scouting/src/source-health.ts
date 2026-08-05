@@ -84,6 +84,18 @@ export const DISCOVERY_SOURCES: readonly SourceSpec[] = [
     core: true,
   },
   {
+    key: 'receivership',
+    label: 'Gazette receiverships (lender-appointed sales)',
+    envKeys: ['COMPANIES_HOUSE_API_KEY'],
+    core: false,
+  },
+  {
+    key: 'planningConsents',
+    label: 'Brownfield register (stalled consents, weekly)',
+    envKeys: [],
+    core: false,
+  },
+  {
     key: 'propertydata',
     label: 'PropertyData listings',
     envKeys: ['PROPERTYDATA_API_KEY'],

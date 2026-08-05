@@ -41,6 +41,10 @@
       "schedule": "0 9 * * *"
     },
     {
+      "path": "/cron/legal-chaser",
+      "schedule": "30 9 * * 1-5"
+    },
+    {
       "path": "/cron/watchdog",
       "schedule": "0 * * * *"
     },

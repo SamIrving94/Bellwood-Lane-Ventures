@@ -90,7 +90,9 @@ describe('summariseSourceHealth', () => {
     // share a key with the one source that works, so a total-based headline
     // reads far healthier than the funnel actually is.
     const summary = summariseSourceHealth(healthFor(PROD_ENV_AS_FOUND));
-    expect(summary.live).toBe(5); // gazette + propertydata + planning/hmo/shortLease
+    // gazette + propertydata + planning/hmo/shortLease + planningConsents
+    // (keyless, so live by default; receivership needs the CH key and is not)
+    expect(summary.live).toBe(6);
     expect(summary.headline).toBe('2 of 4 core discovery sources live');
   });
 

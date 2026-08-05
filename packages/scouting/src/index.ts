@@ -35,6 +35,8 @@ import { matchProbateAddressToSale } from './hmlr-match';
 import { normaliseUkAddress } from './address-normalise';
 import { fetchShortLeaseLeads } from './short-lease';
 import { fetchCompaniesHouseDistressLeads } from './companies-house-charges';
+import { fetchReceivershipLeads } from './receiverships';
+import { fetchPlanningConsentLeads } from './planning-consents';
 import { leadTypeForListing } from './lead-type';
 import {
   baseFromProbateLead,
@@ -52,6 +54,7 @@ import { scoreLead } from './scorer';
 import { DEFAULT_SCORER_CONFIG, type ScorerConfig } from './scorer-config';
 import { sanitisePayload, auditProtectedFields } from './rbac';
 import { enrichRationaleWithLlm } from './rationale-llm';
+import { classifyTrack, isBlockText } from './track';
 
 /**
  * Hard ceiling on the deduped candidate pool carried into ranking.
@@ -143,6 +146,21 @@ export type {
   ChDistressScoutResult,
   ChDistressScoutOptions,
 } from './companies-house-charges';
+export { fetchReceivershipLeads } from './receiverships';
+export type {
+  ReceivershipRawLead,
+  ReceivershipScoutResult,
+  ReceivershipScoutOptions,
+} from './receiverships';
+export {
+  fetchPlanningConsentLeads,
+  parseBrownfieldPage,
+} from './planning-consents';
+export type {
+  PlanningConsentRawLead,
+  PlanningConsentsScoutResult,
+  PlanningConsentsScoutOptions,
+} from './planning-consents';
 export {
   baseFromProbateLead,
   checkEnrichmentHealth,
@@ -174,6 +192,12 @@ export {
 } from './scorer-config';
 export { sanitisePayload, auditProtectedFields } from './rbac';
 export { enrichRationaleWithLlm } from './rationale-llm';
+export {
+  classifyTrack,
+  isBlockText,
+  PRIME_MIN_VALUE_PENCE,
+  type DealTrackValue,
+} from './track';
 export { dedupeDealbreakerRules, screenDealbreakers } from './dealbreakers';
 export type { DealbreakerCandidate, DealbreakerHit } from './dealbreakers';
 export {
@@ -205,6 +229,8 @@ export interface ScoutLead {
   address: string;
   postcode: string;
   leadType: string;
+  /** Two-track classification — see ./track.ts. */
+  track: 'volume' | 'prime' | 'block';
   estimatedEquityPence: number | null;
   contactName: string | null;
   contactPhone: string | null;
@@ -355,6 +381,8 @@ export interface ScoutingPipelineResult {
     hmo?: string;
     dissolved?: string;
     chDistress?: string;
+    receivership?: string;
+    planningConsents?: string;
     staleListings?: string;
     shortLease?: string;
     enrichment?: string;
@@ -425,6 +453,8 @@ export async function runScoutingPipeline(
     hmo?: string;
     dissolved?: string;
     chDistress?: string;
+    receivership?: string;
+    planningConsents?: string;
     staleListings?: string;
     shortLease?: string;
     enrichment?: string;
@@ -476,7 +506,13 @@ export async function runScoutingPipeline(
   //    limit; CH has its own 600 req/5min pool) → parallel
   //  - PropertyData sources (sourced/planning/HMO) → serial to stay under
   //    the "4 calls / 10s" rate limit
-  const [hmctsGrants, gazetteGrants, chDistressResult] = await Promise.all([
+  const [
+    hmctsGrants,
+    gazetteGrants,
+    chDistressResult,
+    receivershipResult,
+    planningConsentsResult,
+  ] = await Promise.all([
     fetchProbateGrants(sinceDate, limit).catch((err) => {
       const msg = (err as Error)?.message ?? String(err);
       sourceErrors.hmcts = msg.slice(0, 200);
@@ -512,11 +548,49 @@ export async function runScoutingPipeline(
         >;
       },
     ),
+    // Gazette receivership/administration notices → CH charge particulars →
+    // property addresses. NOT district-filtered: receivership stock is scarce
+    // and the receiver must sell — a lead outside our patch is still worth a
+    // founder glance (prime/block candidates especially).
+    fetchReceivershipLeads().catch((err) => {
+      const msg = (err as Error)?.message ?? String(err);
+      sourceErrors.receivership = msg.slice(0, 200);
+      console.warn('[scouting] receivership source failed', err);
+      return {
+        leads: [],
+        noticesScanned: 0,
+        companiesPolled: 0,
+      } as Awaited<ReturnType<typeof fetchReceivershipLeads>>;
+    }),
+    // Brownfield register — stalled consents. Weekly (Wednesdays); other
+    // days it self-reports skipped so health shows "skipped", not dark.
+    // Ranked in-patch-first and capped to a founder-reviewable batch.
+    fetchPlanningConsentLeads({ priorityDistricts: targetDistricts }).catch(
+      (err) => {
+        const msg = (err as Error)?.message ?? String(err);
+        sourceErrors.planningConsents = msg.slice(0, 200);
+        console.warn('[scouting] planning-consents source failed', err);
+        return {
+          leads: [],
+          sitesScanned: 0,
+          pagesFetched: 0,
+          droppedBelowCap: 0,
+        } as Awaited<ReturnType<typeof fetchPlanningConsentLeads>>;
+      }
+    ),
   ]);
   const chDistressLeads = chDistressResult.leads;
   // Partial-failure surfacing (per-company poll errors, key still valid).
   if (chDistressResult.error && !sourceErrors.chDistress) {
     sourceErrors.chDistress = chDistressResult.error;
+  }
+  const receivershipLeads = receivershipResult.leads;
+  if (receivershipResult.error && !sourceErrors.receivership) {
+    sourceErrors.receivership = receivershipResult.error;
+  }
+  const planningConsentLeads = planningConsentsResult.leads;
+  if (planningConsentsResult.error && !sourceErrors.planningConsents) {
+    sourceErrors.planningConsents = planningConsentsResult.error;
   }
 
   // ── PropertyData sources — serial (rate-limit constrained) ─────────
@@ -567,17 +641,25 @@ export async function runScoutingPipeline(
           for (const p of properties) {
             const addrL = p.address.toLowerCase();
             const typeL = (p.propertyType ?? '').toLowerCase();
+            // Block-of-flats / portfolio language — checked FIRST because the
+            // block track deliberately overrides the drops and flags below: a
+            // "development site" that is actually a freehold block is a deal,
+            // and "units 1-6" must not trip the commercial `unit` keyword.
+            const blockLike = isBlockText(
+              `${p.address} ${p.summary ?? ''} ${p.propertyType ?? ''}`,
+            );
             // DROP non-dealable listings — land, garages, new-build plots,
             // development sites: there's no house to buy / refurb / flip, and the
             // AVM values them as a house (nonsense). Word-boundary matched so
             // real streets like "Corkland Road" are NOT caught.
             if (
-              /^\s*(plot|land)\b/.test(addrL) ||
-              /\bland and garages?\b/.test(addrL) ||
-              /\bgarages?\s+(on|at|to|adjacent)\b/.test(addrL) ||
-              /\bdevelopment site\b|\bbuilding plot\b/.test(addrL) ||
-              typeL.includes('land') ||
-              typeL.includes('garage')
+              !blockLike &&
+              (/^\s*(plot|land)\b/.test(addrL) ||
+                /\bland and garages?\b/.test(addrL) ||
+                /\bgarages?\s+(on|at|to|adjacent)\b/.test(addrL) ||
+                /\bdevelopment site\b|\bbuilding plot\b/.test(addrL) ||
+                typeL.includes('land') ||
+                typeL.includes('garage'))
             ) {
               continue;
             }
@@ -592,10 +674,11 @@ export async function runScoutingPipeline(
             // (the founder wants to see them) but mark it so the UI can badge it
             // and it's clear it isn't a standard residential deal.
             const commercial =
-              typeL.includes('commercial') ||
-              /\b(pub|bar|tavern|inn|brewery|brewdog|restaurant|cafe|café|office|shop|retail|unit|warehouse|industrial|licensed premises|public house)\b/.test(
-                addrL,
-              );
+              !blockLike &&
+              (typeL.includes('commercial') ||
+                /\b(pub|bar|tavern|inn|brewery|brewdog|restaurant|cafe|café|office|shop|retail|unit|warehouse|industrial|licensed premises|public house)\b/.test(
+                  addrL,
+                ));
             all.push({
               probateRef: `pd-${seed.label}-${p.id ?? p.address.slice(0, 16).replace(/\s+/g, '_')}`,
               address: p.address,
@@ -893,6 +976,8 @@ export async function runScoutingPipeline(
     ...hmoGrants,
     ...dissolvedGrants,
     ...chDistressLeads,
+    ...receivershipLeads,
+    ...planningConsentLeads,
     ...shortLeaseGrants,
   ].filter((g) => {
     const n = normaliseUkAddress(`${g.address}, ${g.postcode}`);
@@ -903,7 +988,7 @@ export async function runScoutingPipeline(
   }).slice(0, CANDIDATE_POOL_CAP);
 
   console.info(
-    `[scouting] sources: hmcts=${hmctsGrants.length} gazette=${gazetteGrants.length} propertydata=${sourcedFromPostcodes.length} planning=${planningGrants.length} hmo=${hmoGrants.length} chDistress=${chDistressLeads.length} shortLease=${shortLeaseGrants.length} (candidate pool after dedupe: ${candidates.length})`,
+    `[scouting] sources: hmcts=${hmctsGrants.length} gazette=${gazetteGrants.length} propertydata=${sourcedFromPostcodes.length} planning=${planningGrants.length} hmo=${hmoGrants.length} chDistress=${chDistressLeads.length} receivership=${receivershipLeads.length} planningConsents=${planningConsentLeads.length}${planningConsentsResult.skipped ? ' (skipped)' : ''} shortLease=${shortLeaseGrants.length} (candidate pool after dedupe: ${candidates.length})`,
   );
 
   // Build signals lookup BEFORE enrichment (we lose rawGrant after enrich).
@@ -1272,12 +1357,26 @@ export async function runScoutingPipeline(
         }
       }
 
+      // Two-track classification. The sanitised payload still carries the
+      // source listing's propertyData (summary/type), so block language is
+      // visible here; gazette/charge leads classify on value + address alone.
+      const pd = (enrichedRaw?.propertyData ?? null) as {
+        summary?: string | null;
+        propertyType?: string | null;
+      } | null;
+      const track = classifyTrack({
+        valuePence: lead.estateValuePence,
+        text: `${lead.address} ${pd?.summary ?? ''}`,
+        propertyType: pd?.propertyType ?? null,
+      });
+
       const scoutLead: ScoutLead = {
         runDate,
         source: lead.sourceTrail.split(' → ')[0] ?? 'unknown',
         address: lead.address,
         postcode: lead.postcode,
         leadType: lead.leadType,
+        track,
         estimatedEquityPence: lead.estateValuePence,
         contactName: lead.contactName,
         contactPhone: lead.contactPhone,
@@ -1301,12 +1400,18 @@ export async function runScoutingPipeline(
   // Step 5 — Apply the sourcing gate, sort strongest first.
   // Ordering stays on the raw leadScore so the founder's list matches the score
   // shown in the UI; the gate is the only thing that reads sourcingScore.
+  //
+  // The gate applies to the VOLUME track only. Prime and block leads are
+  // scarce and the volume scorer is structurally hostile to them (relative
+  // equity bands, 5-bed ROI damping), so they always reach the founder —
+  // a human decides on those, not the threshold.
   const qualified = scored
     .filter(
       ({ scoutLead, sourcingScore }) =>
         scoutLead.verdict !== 'INSUFFICIENT_DATA' &&
-        sourcingScore >= sourcingThreshold &&
-        scoutLead.leadScore >= minScore,
+        (scoutLead.track !== 'volume' ||
+          (sourcingScore >= sourcingThreshold &&
+            scoutLead.leadScore >= minScore)),
     )
     .map(({ scoutLead }) => scoutLead)
     .sort((a, b) => b.leadScore - a.leadScore);
@@ -1335,13 +1440,17 @@ export async function runScoutingPipeline(
       hmo: hmoGrants.length,
       dissolved: dissolvedGrants.length,
       chDistress: chDistressLeads.length,
+      receivership: receivershipLeads.length,
+      planningConsents: planningConsentLeads.length,
       shortLease: shortLeaseGrants.length,
     },
     errors: sourceErrors,
-    // `skipSlowSources` disables these three; the short-lease scout is opt-in.
+    // `skipSlowSources` disables these three; the short-lease scout is
+    // opt-in; the brownfield walk self-skips outside its weekly run day.
     skipped: [
       ...(skipSlowSources ? ['planning', 'hmo', 'dissolved'] : []),
       ...(scanShortLeases ? [] : ['shortLease']),
+      ...(planningConsentsResult.skipped ? ['planningConsents'] : []),
     ],
   });
 
