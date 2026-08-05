@@ -92,28 +92,30 @@ PropertyData's `back-on-market` sourcing list was already mapped to
 `chain_break` in `lead-type.ts` but sat outside the default list slice —
 now included (7th list, one extra API call per seed per run). Zero new code.
 
-## Verification status (do this once in prod)
+## Verification status
 
-The dev sandbox's egress is allow-listed, so The Gazette and
-planning.data.gov.uk both 403 from here — the receivership feed contract
-could not be live-verified before shipping. It follows the SAME documented
-contract as the probate feed (verified live from prod 2026-07-30, fixture
-checked in). To verify after deploy:
+**Gazette insolvency feed: VERIFIED live 2026-08-05** (founder browser
+probe; the dev sandbox's egress is blocked by The Gazette). The response is
+checked in as
+`packages/scouting/src/__tests__/fixtures/gazette-insolvency-live-2026-08-05.json`
+and locked by `receiverships.test.ts`. Hard-won contract facts:
+
+- **Never send a `noticecode` filter on this feed** — a wrong code value
+  500s the search backend (bare `{"status":"500"}`). Real corporate codes
+  seen live: 2442 Meetings of Creditors, 2443 Appointment of Liquidators.
+  The scanner filters client-side on `category['@term']` instead.
+- Entry `title` = company name; the **company number is in `content`** in
+  two shapes ("(Company Number 11416317 )" / "Company Number: 09184913").
+- PowerShell's Invoke-RestMethod gets 500s from this API even on valid
+  URLs — verify with a browser or real curl, never PowerShell.
+
+Companies House side: same key + auth convention as the working charges
+source; end-to-end confirmation after deploy:
 
 ```sh
-# 1. Full pipeline with per-source breakdown (receivership appears in
-#    sourceHealth with a count or a real error):
 curl -X POST https://bellwood-api.vercel.app/cron/scout-debug \
   -H "Authorization: Bearer $CRON_SECRET" | jq '.sourceHealth'
-
-# 2. Raw feed shape (run from any machine with open egress):
-curl -sS -H 'Accept: application/json' \
-  'https://www.thegazette.co.uk/insolvency/notice/data.json?noticecode=2453&results-page=1&results-page-size=3'
 ```
-
-If notice titles don't carry "(Company Number NNNNNNNN)", tune
-`COMPANY_NUMBER_REGEX` / `BARE_NUMBER_REGEX` in
-`packages/scouting/src/receiverships.ts` to the real shape.
 
 ## The plan — next channels (in priority order)
 
