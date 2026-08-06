@@ -315,8 +315,8 @@ export default function AgentsPage() {
       </section>
 
       {/* ————— TWO OPTIONS. BOTH BAD. ————— */}
-      <section className="relative overflow-hidden border-hair/70 border-y bg-brand-deep px-6 py-24 text-white md:px-12 md:py-28">
-        <div className="relative mx-auto max-w-6xl">
+      <section className="px-4 py-10 md:px-8">
+        <div className="relative mx-auto max-w-6xl rounded-sm bg-brand-deep px-8 py-16 text-white md:px-14 md:py-20">
           <SectionNumber tone="light">01</SectionNumber>
           <Eyebrow tone="light" className="mt-5">
             the agent&rsquo;s dilemma
@@ -387,11 +387,8 @@ export default function AgentsPage() {
       </section>
 
       {/* ————— THE WEDGE: TWO COMMISSIONS ————— */}
-      <section
-        id="how"
-        className="border-hair/70 border-b bg-soft px-6 py-24 md:px-12 md:py-28"
-      >
-        <div className="mx-auto grid max-w-6xl grid-cols-1 gap-12 lg:grid-cols-[1fr_1.2fr] lg:gap-20">
+      <section id="how" className="scroll-mt-24 px-4 py-10 md:px-8">
+        <div className="mx-auto grid max-w-6xl grid-cols-1 gap-12 rounded-sm border border-hair bg-white px-6 py-16 shadow-[0_1px_2px_rgba(36,28,26,0.05),0_24px_60px_-40px_rgba(36,28,26,0.4)] md:px-14 md:py-20 lg:grid-cols-[1fr_1.2fr] lg:gap-20">
           <div>
             <SectionNumber>02</SectionNumber>
             <Eyebrow className="mt-5">the honest version</Eyebrow>
@@ -462,7 +459,7 @@ export default function AgentsPage() {
       {/* ————— THE PROMISE ————— */}
       <section
         id="promise"
-        className="relative overflow-hidden border-hair/70 border-b px-6 py-24 md:px-12 md:py-28"
+        className="relative scroll-mt-24 px-6 py-20 md:px-12 md:py-24"
       >
         <div className="mx-auto max-w-4xl">
           <div className="flex items-start justify-between gap-8">
@@ -519,11 +516,8 @@ export default function AgentsPage() {
       </section>
 
       {/* ————— THE 5-STEP PROCESS ————— */}
-      <section
-        id="process"
-        className="border-hair/70 border-b bg-white px-6 py-24 md:px-12 md:py-28"
-      >
-        <div className="mx-auto max-w-5xl">
+      <section id="process" className="scroll-mt-24 px-4 py-10 md:px-8">
+        <div className="mx-auto max-w-5xl rounded-sm border border-hair bg-white px-6 py-16 shadow-[0_1px_2px_rgba(36,28,26,0.05),0_24px_60px_-40px_rgba(36,28,26,0.4)] md:px-14 md:py-20">
           <SectionNumber>04</SectionNumber>
           <Eyebrow className="mt-5">how the process actually runs</Eyebrow>
           <h2 className="mt-4 font-semibold font-serif text-4xl leading-[1.05] tracking-[-0.02em] md:text-5xl">
@@ -596,8 +590,8 @@ export default function AgentsPage() {
       </section>
 
       {/* ————— THE PROOF ————— */}
-      <section className="border-hair/70 border-b bg-brand-deep px-6 py-24 text-white md:px-12 md:py-28">
-        <div className="mx-auto grid max-w-6xl grid-cols-1 items-center gap-16 lg:grid-cols-2">
+      <section className="px-4 py-10 md:px-8">
+        <div className="mx-auto grid max-w-6xl grid-cols-1 items-center gap-16 rounded-sm bg-brand-deep px-8 py-16 text-white md:px-14 md:py-20 lg:grid-cols-2">
           <div>
             <Eyebrow tone="light">what your client receives</Eyebrow>
             <h2 className="mt-4 font-semibold font-serif text-4xl leading-[1.05] tracking-[-0.02em] md:text-5xl">
@@ -628,7 +622,7 @@ export default function AgentsPage() {
       {/* ————— ONE TIMELINE, EVERYONE ————— */}
       <section
         id="timeline"
-        className="border-hair/70 border-b bg-soft px-6 py-24 md:px-12 md:py-28"
+        className="scroll-mt-24 px-6 py-20 md:px-12 md:py-24"
       >
         <div className="mx-auto grid max-w-6xl grid-cols-1 items-center gap-14 lg:grid-cols-2">
           <div>
@@ -660,7 +654,7 @@ export default function AgentsPage() {
       {/* ————— REFER ————— */}
       <section
         id="refer"
-        className="border-hair/70 border-b px-6 py-24 md:px-12 md:py-28"
+        className="scroll-mt-24 px-6 py-20 md:px-12 md:py-24"
       >
         <div className="mx-auto max-w-4xl">
           <Eyebrow>the fastest way to find out</Eyebrow>
@@ -682,7 +676,7 @@ export default function AgentsPage() {
       {/* ————— FAQ ————— */}
       <section
         id="faq"
-        className="border-hair/70 border-b px-6 py-24 md:px-12 md:py-28"
+        className="scroll-mt-24 px-6 py-20 md:px-12 md:py-24"
       >
         <div className="mx-auto max-w-3xl">
           <Eyebrow>honest answers</Eyebrow>
@@ -708,8 +702,8 @@ export default function AgentsPage() {
       {/* ————— PROOF BAND ————— */}
       <ProofBand />
 
-      {/* ————— SELLERS LINK ————— */}
-      <section className="border-hair/70 border-b bg-soft px-6 py-14 md:px-12">
+      {/* ————— SELLERS LINK — a quiet desk row ————— */}
+      <section className="px-6 py-12 md:px-12">
         <div className="mx-auto flex max-w-5xl flex-col items-center justify-between gap-5 text-center md:flex-row md:text-left">
           <div>
             <Eyebrow tone="muted">not an agent?</Eyebrow>

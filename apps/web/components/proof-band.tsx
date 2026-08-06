@@ -47,11 +47,10 @@ const PROOFS: Array<{
 
 export function ProofBand({ id }: { id?: string }) {
   return (
-    <section
-      id={id}
-      className="border-hair/70 border-b bg-soft px-6 py-20 md:px-12 md:py-24"
-    >
-      <div className="mx-auto max-w-6xl">
+    <section id={id} className="px-4 py-10 md:px-8">
+      {/* An inset tinted sheet on the desk, not a full-bleed band — the
+          founder review flagged horizontal band-slicing as a template tell. */}
+      <div className="mx-auto max-w-6xl rounded-sm border border-hair bg-soft px-6 py-14 md:px-12 md:py-16">
         <Eyebrow>one claim, one proof</Eyebrow>
         <h2 className="mt-4 max-w-2xl font-semibold font-serif text-3xl leading-tight tracking-[-0.02em] md:text-4xl">
           Don&rsquo;t take our word for any of this.

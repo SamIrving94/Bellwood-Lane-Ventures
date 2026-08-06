@@ -282,7 +282,7 @@ export default function SellPage() {
       </section>
 
       {/* ————— REASONS / SITUATIONS ————— */}
-      <section className="border-hair/70 border-y bg-soft px-6 py-24 md:px-12 md:py-28">
+      <section className="px-6 py-20 md:px-12 md:py-24">
         <div className="mx-auto max-w-6xl">
           <div className="mb-12 max-w-3xl">
             <Eyebrow>who we buy from</Eyebrow>
@@ -319,11 +319,12 @@ export default function SellPage() {
       </section>
 
       {/* ————— HOW IT WORKS ————— */}
-      <section
-        id="how"
-        className="border-hair/70 border-y bg-white px-6 py-24 md:px-12 md:py-28"
-      >
-        <div className="mx-auto grid max-w-6xl grid-cols-1 gap-12 lg:grid-cols-[1fr_2fr] lg:gap-16">
+      {/* HOW + MATHS share one white sheet laid on the desk (the Monzo
+          inset-canvas move in Kept's material): hairline edge, near-square
+          corners, and the breakdown cards overhang its bottom edge. */}
+      <section id="how" className="px-4 md:px-8">
+        <div className="mx-auto max-w-6xl rounded-sm border border-hair bg-white px-6 py-16 shadow-[0_1px_2px_rgba(36,28,26,0.05),0_24px_60px_-40px_rgba(36,28,26,0.4)] md:px-14 md:py-20">
+        <div className="grid grid-cols-1 gap-12 lg:grid-cols-[1fr_2fr] lg:gap-16">
           <div>
             <SectionNumber>01</SectionNumber>
             <Eyebrow className="mt-5">how it works</Eyebrow>
@@ -394,14 +395,12 @@ export default function SellPage() {
             ))}
           </ol>
         </div>
-      </section>
 
-      {/* ————— THE MATHS (OFFER BREAKDOWN) ————— */}
-      <section
-        id="maths"
-        className="border-hair/70 border-b bg-soft px-6 py-24 md:px-12 md:py-28"
-      >
-        <div className="mx-auto max-w-6xl">
+        {/* ————— THE MATHS — part two of the same sheet ————— */}
+        <div
+          id="maths"
+          className="mt-16 scroll-mt-24 border-stone-300/60 border-t border-dashed pt-14 md:mt-20"
+        >
           <div className="mb-12 max-w-3xl">
             <SectionNumber>02</SectionNumber>
             <Eyebrow tone="wax" className="mt-5">
@@ -419,14 +418,18 @@ export default function SellPage() {
               beats us on price.
             </p>
           </div>
-          <OfferBreakdown />
+          {/* The cards overhang the sheet's bottom edge onto the desk */}
+          <div className="relative z-10 -mb-28 md:-mb-32">
+            <OfferBreakdown />
+          </div>
+        </div>
         </div>
       </section>
 
-      {/* ————— THE OFFER (CHAT) ————— */}
+      {/* ————— THE OFFER (CHAT) — on the desk itself ————— */}
       <section
         id="offer"
-        className="border-hair/70 border-b px-6 py-24 md:px-12 md:py-28"
+        className="scroll-mt-24 px-6 pt-44 pb-24 md:px-12 md:pt-48 md:pb-28"
       >
         <div className="mx-auto max-w-3xl">
           <div className="mb-12 flex flex-col items-center text-center">
@@ -445,8 +448,8 @@ export default function SellPage() {
         </div>
       </section>
 
-      {/* ————— A PERSON, NOT A PIPELINE ————— */}
-      <section className="border-hair/70 border-b bg-white px-6 py-20 md:px-12 md:py-24">
+      {/* ————— A PERSON, NOT A PIPELINE — on the desk ————— */}
+      <section className="px-6 py-16 md:px-12 md:py-20">
         <div className="mx-auto grid max-w-5xl grid-cols-1 items-center gap-10 md:grid-cols-[260px_1fr] md:gap-14">
           <figure className="mx-auto w-[220px] md:w-full">
             <div className="overflow-hidden rounded-[2px] border border-hair shadow-[0_24px_48px_-28px_rgba(36,28,26,0.45)]">
@@ -486,9 +489,14 @@ export default function SellPage() {
         </div>
       </section>
 
-      {/* ————— PROMISE ————— */}
-      <section className="relative overflow-hidden border-hair/70 border-b bg-brand-deep px-6 py-24 text-white md:px-12 md:py-28">
-        <div className="relative mx-auto grid max-w-6xl grid-cols-1 gap-12 lg:grid-cols-[1fr_1.4fr]">
+      {/* ————— PROMISE — the forest sheet (the poster, laid on the desk),
+          with the wax seal straddling its top edge ————— */}
+      <section className="px-4 py-10 md:px-8">
+        <div className="relative mx-auto max-w-6xl rounded-sm bg-brand-deep px-8 py-16 text-white md:px-14 md:py-20">
+          <div className="-top-10 absolute right-10 hidden md:block">
+            <Seal className="border-wax/60 bg-cream shadow-[0_10px_24px_-12px_rgba(36,28,26,0.4)]" />
+          </div>
+        <div className="relative grid grid-cols-1 gap-12 lg:grid-cols-[1fr_1.4fr]">
           <div>
             <Eyebrow tone="light">the written promise</Eyebrow>
             <h2 className="mt-4 font-semibold font-serif text-4xl leading-[1.05] tracking-[-0.02em] md:text-5xl">
@@ -536,15 +544,16 @@ export default function SellPage() {
             ))}
           </dl>
         </div>
+        </div>
       </section>
 
       {/* ————— PROOF BAND ————— */}
       <ProofBand />
 
-      {/* ————— FAQ ————— */}
+      {/* ————— FAQ — on the desk ————— */}
       <section
         id="faq"
-        className="border-hair/70 border-b px-6 py-24 md:px-12 md:py-28"
+        className="scroll-mt-24 px-6 py-20 md:px-12 md:py-24"
       >
         <div className="mx-auto max-w-3xl">
           <Eyebrow>honest answers</Eyebrow>
@@ -567,9 +576,9 @@ export default function SellPage() {
         </div>
       </section>
 
-      {/* ————— WHEN NOT TO USE US ————— */}
-      <section className="border-hair/70 border-b bg-soft px-6 py-20 md:px-12 md:py-24">
-        <div className="mx-auto max-w-4xl">
+      {/* ————— WHEN NOT TO USE US — the honest note, a tinted sheet ————— */}
+      <section className="px-4 py-10 md:px-8">
+        <div className="mx-auto max-w-4xl rounded-sm border border-hair bg-soft px-6 py-14 md:px-12 md:py-16">
           <Eyebrow>the honest version</Eyebrow>
           <h2 className="mt-4 font-semibold font-serif text-3xl leading-tight tracking-[-0.02em] md:text-5xl">
             When we&rsquo;re probably{' '}
@@ -618,8 +627,8 @@ export default function SellPage() {
         </div>
       </section>
 
-      {/* ————— AGENTS LINK ————— */}
-      <section className="border-hair/70 border-b bg-white px-6 py-14 md:px-12">
+      {/* ————— AGENTS LINK — a quiet desk row ————— */}
+      <section className="px-6 py-12 md:px-12">
         <div className="mx-auto flex max-w-5xl flex-col items-center justify-between gap-5 text-center md:flex-row md:text-left">
           <div>
             <Eyebrow tone="muted">are you an estate agent?</Eyebrow>
