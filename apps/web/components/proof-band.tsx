@@ -47,10 +47,12 @@ const PROOFS: Array<{
 
 export function ProofBand({ id }: { id?: string }) {
   return (
-    <section id={id} className="px-4 py-10 md:px-8">
-      {/* An inset tinted sheet on the desk, not a full-bleed band — the
-          founder review flagged horizontal band-slicing as a template tell. */}
-      <div className="mx-auto max-w-6xl rounded-sm border border-hair bg-soft px-6 py-14 md:px-12 md:py-16">
+    <section id={id} className="px-3 py-4 md:px-6">
+      {/* A soft, borderless tinted canvas on the desk (Monzo's inset-canvas
+          structure) — content inside sits on the shared max-w-6xl rail so
+          it aligns with every other section. */}
+      <div className="mx-auto max-w-[1500px] rounded-[20px] bg-soft md:rounded-[28px]">
+        <div className="mx-auto max-w-6xl px-6 py-16 md:px-12 md:py-20">
         <Eyebrow>one claim, one proof</Eyebrow>
         <h2 className="mt-4 max-w-2xl font-semibold font-serif text-3xl leading-tight tracking-[-0.02em] md:text-4xl">
           Don&rsquo;t take our word for any of this.
@@ -96,6 +98,7 @@ export function ProofBand({ id }: { id?: string }) {
           </Link>
           .
         </p>
+        </div>
       </div>
     </section>
   );

@@ -319,11 +319,15 @@ export default function SellPage() {
       </section>
 
       {/* ————— HOW IT WORKS ————— */}
-      {/* HOW + MATHS share one white sheet laid on the desk (the Monzo
-          inset-canvas move in Kept's material): hairline edge, near-square
-          corners, and the breakdown cards overhang its bottom edge. */}
-      <section id="how" className="px-4 md:px-8">
-        <div className="mx-auto max-w-6xl rounded-sm border border-hair bg-white px-6 py-16 shadow-[0_1px_2px_rgba(36,28,26,0.05),0_24px_60px_-40px_rgba(36,28,26,0.4)] md:px-14 md:py-20">
+      {/* HOW + MATHS share one white canvas laid on the desk (the Monzo
+          inset-canvas structure): soft corners because the object is big,
+          borderless, near-full-bleed — while the CONTENT inside sits on the
+          same max-w-6xl rail as every other section, so every edge on the
+          page aligns and nothing is squeezed. The breakdown cards overhang
+          the canvas edge onto the desk. */}
+      <section id="how" className="scroll-mt-24 px-3 py-4 md:px-6">
+        <div className="mx-auto max-w-[1500px] rounded-[20px] bg-white md:rounded-[28px]">
+        <div className="mx-auto max-w-6xl px-6 py-24 md:px-12 md:py-28">
         <div className="grid grid-cols-1 gap-12 lg:grid-cols-[1fr_2fr] lg:gap-16">
           <div>
             <SectionNumber>01</SectionNumber>
@@ -418,10 +422,11 @@ export default function SellPage() {
               beats us on price.
             </p>
           </div>
-          {/* The cards overhang the sheet's bottom edge onto the desk */}
-          <div className="relative z-10 -mb-28 md:-mb-32">
+          {/* The cards overhang the canvas's bottom edge onto the desk */}
+          <div className="relative z-10 -mb-52 md:-mb-56">
             <OfferBreakdown />
           </div>
+        </div>
         </div>
         </div>
       </section>
@@ -489,13 +494,14 @@ export default function SellPage() {
         </div>
       </section>
 
-      {/* ————— PROMISE — the forest sheet (the poster, laid on the desk),
-          with the wax seal straddling its top edge ————— */}
-      <section className="px-4 py-10 md:px-8">
-        <div className="relative mx-auto max-w-6xl rounded-sm bg-brand-deep px-8 py-16 text-white md:px-14 md:py-20">
-          <div className="-top-10 absolute right-10 hidden md:block">
+      {/* ————— PROMISE — the forest poster canvas, wax seal straddling
+          its top edge ————— */}
+      <section className="px-3 py-4 md:px-6">
+        <div className="relative mx-auto max-w-[1500px] rounded-[20px] bg-brand-deep text-white md:rounded-[28px]">
+          <div className="-top-10 absolute right-14 hidden md:block">
             <Seal className="border-wax/60 bg-cream shadow-[0_10px_24px_-12px_rgba(36,28,26,0.4)]" />
           </div>
+        <div className="mx-auto max-w-6xl px-6 py-24 md:px-12 md:py-28">
         <div className="relative grid grid-cols-1 gap-12 lg:grid-cols-[1fr_1.4fr]">
           <div>
             <Eyebrow tone="light">the written promise</Eyebrow>
@@ -545,6 +551,7 @@ export default function SellPage() {
           </dl>
         </div>
         </div>
+        </div>
       </section>
 
       {/* ————— PROOF BAND ————— */}
@@ -576,9 +583,10 @@ export default function SellPage() {
         </div>
       </section>
 
-      {/* ————— WHEN NOT TO USE US — the honest note, a tinted sheet ————— */}
-      <section className="px-4 py-10 md:px-8">
-        <div className="mx-auto max-w-4xl rounded-sm border border-hair bg-soft px-6 py-14 md:px-12 md:py-16">
+      {/* ————— WHEN NOT TO USE US — the honest note, a tinted canvas ————— */}
+      <section className="px-3 py-4 md:px-6">
+        <div className="mx-auto max-w-[1500px] rounded-[20px] bg-soft md:rounded-[28px]">
+        <div className="mx-auto max-w-6xl px-6 py-20 md:px-12 md:py-24">
           <Eyebrow>the honest version</Eyebrow>
           <h2 className="mt-4 font-semibold font-serif text-3xl leading-tight tracking-[-0.02em] md:text-5xl">
             When we&rsquo;re probably{' '}
@@ -625,6 +633,7 @@ export default function SellPage() {
             sold well than sold to us.
           </p>
         </div>
+        </div>
       </section>
 
       {/* ————— AGENTS LINK — a quiet desk row ————— */}
@@ -642,9 +651,10 @@ export default function SellPage() {
         </div>
       </section>
 
-      {/* ————— FINAL CTA ————— */}
-      <section className="px-6 py-16 md:px-12">
-        <div className="relative mx-auto max-w-6xl overflow-hidden rounded-sm bg-brand-deep px-8 py-16 text-white md:px-16 md:py-20">
+      {/* ————— FINAL CTA — forest canvas ————— */}
+      <section className="px-3 py-4 md:px-6">
+        <div className="relative mx-auto max-w-[1500px] overflow-hidden rounded-[20px] bg-brand-deep text-white md:rounded-[28px]">
+          <div className="mx-auto max-w-6xl px-6 py-20 md:px-12 md:py-24">
           <div className="relative grid grid-cols-1 items-center gap-10 lg:grid-cols-2">
             <div>
               <Eyebrow tone="light">see the number</Eyebrow>
@@ -660,6 +670,7 @@ export default function SellPage() {
                 Get my offer
               </Button>
             </div>
+          </div>
           </div>
         </div>
       </section>

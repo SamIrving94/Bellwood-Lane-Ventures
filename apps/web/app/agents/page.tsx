@@ -315,8 +315,9 @@ export default function AgentsPage() {
       </section>
 
       {/* ————— TWO OPTIONS. BOTH BAD. ————— */}
-      <section className="px-4 py-10 md:px-8">
-        <div className="relative mx-auto max-w-6xl rounded-sm bg-brand-deep px-8 py-16 text-white md:px-14 md:py-20">
+      <section className="px-3 py-4 md:px-6">
+        <div className="relative mx-auto max-w-[1500px] rounded-[20px] bg-brand-deep text-white md:rounded-[28px]">
+        <div className="mx-auto max-w-6xl px-6 py-24 md:px-12 md:py-28">
           <SectionNumber tone="light">01</SectionNumber>
           <Eyebrow tone="light" className="mt-5">
             the agent&rsquo;s dilemma
@@ -384,11 +385,13 @@ export default function AgentsPage() {
             </p>
           </div>
         </div>
+        </div>
       </section>
 
       {/* ————— THE WEDGE: TWO COMMISSIONS ————— */}
-      <section id="how" className="scroll-mt-24 px-4 py-10 md:px-8">
-        <div className="mx-auto grid max-w-6xl grid-cols-1 gap-12 rounded-sm border border-hair bg-white px-6 py-16 shadow-[0_1px_2px_rgba(36,28,26,0.05),0_24px_60px_-40px_rgba(36,28,26,0.4)] md:px-14 md:py-20 lg:grid-cols-[1fr_1.2fr] lg:gap-20">
+      <section id="how" className="scroll-mt-24 px-3 py-4 md:px-6">
+        <div className="mx-auto max-w-[1500px] rounded-[20px] bg-white md:rounded-[28px]">
+        <div className="mx-auto grid max-w-6xl grid-cols-1 gap-12 px-6 py-24 md:px-12 md:py-28 lg:grid-cols-[1fr_1.2fr] lg:gap-20">
           <div>
             <SectionNumber>02</SectionNumber>
             <Eyebrow className="mt-5">the honest version</Eyebrow>
@@ -454,6 +457,7 @@ export default function AgentsPage() {
             </p>
           </div>
         </div>
+        </div>
       </section>
 
       {/* ————— THE PROMISE ————— */}
@@ -516,8 +520,9 @@ export default function AgentsPage() {
       </section>
 
       {/* ————— THE 5-STEP PROCESS ————— */}
-      <section id="process" className="scroll-mt-24 px-4 py-10 md:px-8">
-        <div className="mx-auto max-w-5xl rounded-sm border border-hair bg-white px-6 py-16 shadow-[0_1px_2px_rgba(36,28,26,0.05),0_24px_60px_-40px_rgba(36,28,26,0.4)] md:px-14 md:py-20">
+      <section id="process" className="scroll-mt-24 px-3 py-4 md:px-6">
+        <div className="mx-auto max-w-[1500px] rounded-[20px] bg-white md:rounded-[28px]">
+        <div className="mx-auto max-w-6xl px-6 py-24 md:px-12 md:py-28">
           <SectionNumber>04</SectionNumber>
           <Eyebrow className="mt-5">how the process actually runs</Eyebrow>
           <h2 className="mt-4 font-semibold font-serif text-4xl leading-[1.05] tracking-[-0.02em] md:text-5xl">
@@ -587,11 +592,13 @@ export default function AgentsPage() {
             ))}
           </ol>
         </div>
+        </div>
       </section>
 
       {/* ————— THE PROOF ————— */}
-      <section className="px-4 py-10 md:px-8">
-        <div className="mx-auto grid max-w-6xl grid-cols-1 items-center gap-16 rounded-sm bg-brand-deep px-8 py-16 text-white md:px-14 md:py-20 lg:grid-cols-2">
+      <section className="px-3 py-4 md:px-6">
+        <div className="mx-auto max-w-[1500px] rounded-[20px] bg-brand-deep text-white md:rounded-[28px]">
+        <div className="mx-auto grid max-w-6xl grid-cols-1 items-center gap-16 px-6 py-24 md:px-12 md:py-28 lg:grid-cols-2">
           <div>
             <Eyebrow tone="light">what your client receives</Eyebrow>
             <h2 className="mt-4 font-semibold font-serif text-4xl leading-[1.05] tracking-[-0.02em] md:text-5xl">
@@ -616,6 +623,7 @@ export default function AgentsPage() {
           <div className="lg:pl-6">
             <SampleOfferDocument />
           </div>
+        </div>
         </div>
       </section>
 
