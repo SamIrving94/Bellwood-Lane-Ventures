@@ -32,7 +32,7 @@ export function OfferBreakdown() {
                 HM Land Registry comparables, 24 months, trend-adjusted
               </p>
             </dt>
-            <dd className="font-semibold font-serif text-2xl text-forest">
+            <dd className="shrink-0 whitespace-nowrap font-semibold font-serif text-2xl text-forest">
               £268,000
             </dd>
           </div>
@@ -45,7 +45,7 @@ export function OfferBreakdown() {
                 Named, not hidden. It is how we make money.
               </p>
             </dt>
-            <dd className="font-semibold font-serif text-2xl text-wax">
+            <dd className="shrink-0 whitespace-nowrap font-semibold font-serif text-2xl text-wax">
               −£24,000
             </dd>
           </div>
@@ -59,7 +59,7 @@ export function OfferBreakdown() {
                 weeks
               </p>
             </dt>
-            <dd className="font-bold font-serif text-4xl text-forest">
+            <dd className="shrink-0 whitespace-nowrap font-bold font-serif text-4xl text-forest">
               £244,000
             </dd>
           </div>
@@ -80,7 +80,7 @@ export function OfferBreakdown() {
                 Higher than our figure. That is the honest headline.
               </p>
             </dt>
-            <dd className="font-semibold font-serif text-2xl text-forest">
+            <dd className="shrink-0 whitespace-nowrap font-semibold font-serif text-2xl text-forest">
               £268,000
             </dd>
           </div>
@@ -92,7 +92,7 @@ export function OfferBreakdown() {
                 <sup className="ml-0.5 text-[10px]">2</sup>
               </p>
             </dt>
-            <dd className="font-semibold font-serif text-2xl text-forest">
+            <dd className="shrink-0 whitespace-nowrap font-semibold font-serif text-2xl text-forest">
               −£4,800
             </dd>
           </div>
@@ -104,7 +104,7 @@ export function OfferBreakdown() {
                 empty or half-lived-in home
               </p>
             </dt>
-            <dd className="font-semibold font-serif text-2xl text-forest">
+            <dd className="shrink-0 whitespace-nowrap font-semibold font-serif text-2xl text-forest">
               −£££
             </dd>
           </div>
@@ -116,43 +116,52 @@ export function OfferBreakdown() {
                 <sup className="ml-0.5 text-[10px]">3</sup>
               </p>
             </dt>
-            <dd className="font-semibold font-serif text-2xl text-forest">
+            <dd className="shrink-0 whitespace-nowrap font-semibold font-serif text-2xl text-forest">
               ~1 in 3
             </dd>
           </div>
         </dl>
       </div>
 
-      {/* ——— The plain-words verdict + footnotes ——— */}
-      <div className="lg:col-span-2">
-        <p className="max-w-3xl text-[15px] text-stone-700 leading-relaxed">
-          If time is on your side, the open-market route usually puts more
-          money in your pocket — and we&rsquo;d genuinely tell you to take it.
-          Our figure wins on one thing only:{' '}
-          <strong className="font-medium text-forest">
-            it is certain, it is fast, and it does not fall through.
-          </strong>{' '}
-          That is the whole trade, stated out loud.
-        </p>
-        <ol className="mt-6 max-w-3xl space-y-1 text-[11px] text-stone-500 leading-relaxed">
-          <li>
-            1. Illustrative example — a fictional property. Every real offer
-            sets out its own figures line by line; see the{' '}
-            <Link
-              className="underline underline-offset-2"
-              href="/instant-offer/methodology"
-            >
-              published methodology
-            </Link>
-            .
-          </li>
-          <li>
-            2. Typical UK high-street sole-agency fee range; your agent may
-            charge more or less.
-          </li>
-          <li>3. Source: TwentyCi fall-through data, 2025.</li>
-        </ol>
-      </div>
+    </div>
+  );
+}
+
+/**
+ * The plain-words verdict + footnotes, separated from the cards so the page
+ * can let the CARDS overhang the canvas edge while prose stays on solid
+ * ground — text must never straddle a background boundary.
+ */
+export function OfferBreakdownNotes() {
+  return (
+    <div>
+      <p className="max-w-3xl text-[15px] text-stone-700 leading-relaxed">
+        If time is on your side, the open-market route usually puts more
+        money in your pocket — and we&rsquo;d genuinely tell you to take it.
+        Our figure wins on one thing only:{' '}
+        <strong className="font-medium text-forest">
+          it is certain, it is fast, and it does not fall through.
+        </strong>{' '}
+        That is the whole trade, stated out loud.
+      </p>
+      <ol className="mt-6 max-w-3xl space-y-1 text-[11px] text-stone-500 leading-relaxed">
+        <li>
+          1. Illustrative example — a fictional property. Every real offer
+          sets out its own figures line by line; see the{' '}
+          <Link
+            className="underline underline-offset-2"
+            href="/instant-offer/methodology"
+          >
+            published methodology
+          </Link>
+          .
+        </li>
+        <li>
+          2. Typical UK high-street sole-agency fee range; your agent may
+          charge more or less.
+        </li>
+        <li>3. Source: TwentyCi fall-through data, 2025.</li>
+      </ol>
     </div>
   );
 }

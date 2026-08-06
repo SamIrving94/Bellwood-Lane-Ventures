@@ -6,7 +6,10 @@ import {
   SectionNumber,
   Wordmark,
 } from '@/components/brand';
-import { OfferBreakdown } from '@/components/offer-breakdown';
+import {
+  OfferBreakdown,
+  OfferBreakdownNotes,
+} from '@/components/offer-breakdown';
 import { ProofBand } from '@/components/proof-band';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -399,12 +402,15 @@ export default function SellPage() {
             ))}
           </ol>
         </div>
+        </div>
+        </div>
+      </section>
 
-        {/* ————— THE MATHS — part two of the same sheet ————— */}
-        <div
-          id="maths"
-          className="mt-16 scroll-mt-24 border-stone-300/60 border-t border-dashed pt-14 md:mt-20"
-        >
+      {/* ————— THE MATHS — its own canvas; only the CARDS overhang its
+          bottom edge, the prose stays on solid ground ————— */}
+      <section id="maths" className="scroll-mt-24 px-3 py-4 md:px-6">
+        <div className="mx-auto max-w-[1500px] rounded-[20px] bg-white md:rounded-[28px]">
+        <div className="mx-auto max-w-6xl px-6 pt-24 pb-24 md:px-12 md:pt-28 md:pb-28">
           <div className="mb-12 max-w-3xl">
             <SectionNumber>02</SectionNumber>
             <Eyebrow tone="wax" className="mt-5">
@@ -428,13 +434,19 @@ export default function SellPage() {
           </div>
         </div>
         </div>
-        </div>
       </section>
+
+      {/* The verdict + footnotes, on the desk under the overhanging cards */}
+      <div className="px-6 md:px-12">
+        <div className="mx-auto max-w-6xl pt-40 md:pt-44">
+          <OfferBreakdownNotes />
+        </div>
+      </div>
 
       {/* ————— THE OFFER (CHAT) — on the desk itself ————— */}
       <section
         id="offer"
-        className="scroll-mt-24 px-6 pt-44 pb-24 md:px-12 md:pt-48 md:pb-28"
+        className="scroll-mt-24 px-6 py-24 md:px-12 md:py-28"
       >
         <div className="mx-auto max-w-3xl">
           <div className="mb-12 flex flex-col items-center text-center">
