@@ -115,21 +115,24 @@ export function Wordmark({
 }
 
 /**
- * Nav/footer lockup: the monogram, a hairline rule, and the wordmark.
- * Sized via the wordmark text size; the monogram tracks it.
+ * Nav/footer lockup: the wordmark alone.
+ *
+ * It used to pair the monogram + a hairline + the wordmark, which put two
+ * marks and two wax dots in the same corner — founder review (Aug 2026)
+ * called it out, and KEPT.md agrees: the monogram is for seals, favicons
+ * and watermarks, never for standing beside the wordmark. One mark, one
+ * dot.
  */
 export function LogoLockup({
   href = '/agents',
   className,
   wordmarkClassName,
-  monogramClassName,
   ventures = false,
   animate = false,
 }: {
   href?: string;
   className?: string;
   wordmarkClassName?: string;
-  monogramClassName?: string;
   ventures?: boolean;
   animate?: boolean;
 }) {
@@ -137,14 +140,12 @@ export function LogoLockup({
     <Link
       href={href}
       aria-label={`${brand.name} — home`}
-      className={cn('group inline-flex items-center gap-3.5', className)}
+      className={cn('group inline-flex items-center', className)}
     >
-      <Monogram className={cn('h-9 w-auto md:h-10', monogramClassName)} />
-      <span className="h-7 w-px bg-hair" aria-hidden />
       <Wordmark
         ventures={ventures}
         animate={animate}
-        className={cn('text-[15px] md:text-base', wordmarkClassName)}
+        className={cn('text-[19px] md:text-[21px]', wordmarkClassName)}
       />
     </Link>
   );
