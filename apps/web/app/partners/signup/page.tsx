@@ -7,7 +7,7 @@ export default function SignupPage() {
     <div className="mx-auto max-w-xl px-6 py-20">
       <div className="text-center">
         <LogoLockup
-          href="/instant-offer"
+          href="/agents"
           className="justify-center"
           wordmarkClassName="text-lg md:text-xl"
         />

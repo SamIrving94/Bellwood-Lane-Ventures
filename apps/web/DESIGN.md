@@ -70,8 +70,15 @@ does not merge.
 3. **Uniform radius and padding on everything** ("the same 16px radius and 24px
    padding on every element" is a named tell,
    [925studios](https://www.925studios.co/blog/ai-slop-web-design-guide)). Vary
-   it with intent. Paper is near square (`rounded-[2px]`), buttons are their own
-   radius. No `rounded-2xl`/`rounded-3xl` cards.
+   it with intent — radius scales with the object (founder review, Aug 2026):
+   - **Paper artifacts** (offer letter, docket, enquiry form, timeline card)
+     are near square: `rounded-[2px]`. Crisp documents.
+   - **Section canvases** (the big sheets laid on the desk) are soft:
+     `rounded-[20px] md:rounded-[28px]`, borderless, near-full-bleed
+     (`max-w-[1500px]`), with the content inside on the shared `max-w-6xl`
+     rail so every edge on the page aligns.
+   - Buttons are their own radius (pill). No `rounded-2xl`/`rounded-3xl`
+     mid-size cards — that's the template zone between the two materials.
 4. **Four card / even grids** as the default layout
    ([Medium](https://medium.com/@chiragthummar16/your-ai-built-websites-look-identical-to-everyone-elses-these-10-skills-fix-that-046ddf58e4d5)).
    Prefer asymmetry and editorial rhythm.
