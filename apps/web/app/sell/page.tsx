@@ -6,10 +6,6 @@ import {
   SectionNumber,
   Wordmark,
 } from '@/components/brand';
-import {
-  OfferBreakdown,
-  OfferBreakdownNotes,
-} from '@/components/offer-breakdown';
 import { ProofBand } from '@/components/proof-band';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -18,33 +14,38 @@ import { ChatFlow } from '../instant-offer/components/chat-flow';
 
 export const revalidate = 300;
 
+/* Situations, in the seller's words — never in ours, and never with a number
+   in them. Founder note (Aug 2026): the probate card used to open on HMRC
+   interest and council tax, which is an accountant talking to someone who has
+   just lost a parent. Every card now names the situation, then says what we
+   do about it, and lands on the same place: getting back to what matters. */
 const REASONS: Array<{ k: string; t: string; b: string }> = [
   {
     k: 'Probate',
-    t: 'You inherited a property',
-    b: "HMRC charges 8.75% interest on inheritance tax six months after the death. Empty homes bleed council tax and insurance. We complete on the grant date so the estate doesn't lose money waiting.",
+    t: 'You’re the executor of an estate',
+    b: 'There is a lot to carry, and the house is only part of it. We complete with speed and certainty, at whatever pace the grant allows — so you and your loved ones can move on and focus on the things that matter most.',
   },
   {
     k: 'Chain break',
     t: 'Your buyer pulled out',
-    b: "You've spent months getting to exchange. Don't lose your onward purchase. We step in with a binding offer so the chain holds and your move stays on track.",
+    b: 'Months of work, undone weeks from the finish. We step in and hold the chain together, so your onward move survives and you can get on with it.',
   },
   {
     k: 'Relocation',
     t: 'You’re moving abroad or for work',
-    b: 'International signatures, time-zone delays, empty house syndrome. You sign once, we complete on your timeline.',
+    b: 'Signatures across time zones, an empty house behind you, a life starting somewhere else. You sign once. We complete when you need us to.',
   },
   {
     k: 'Divorce or separation',
     t: 'You need a clean break',
-    b: 'Court-ordered timelines, joint mortgage to clear, emotional weight. We move quietly and quickly. Solicitors talk to solicitors.',
+    b: 'Court-ordered timelines, a joint mortgage to clear, emotional weight. We move quietly and quickly. Solicitors talk to solicitors.',
   },
 ];
 
 const FAQ: Array<{ q: string; a: string }> = [
   {
     q: 'Why is the offer below open-market?',
-    a: "Because we buy for cash, complete in weeks rather than months, charge no fee, and take the risk of fall-through. The price reflects the speed and certainty of the transaction. You're paying us a speed premium for certainty.",
+    a: 'Because we buy for cash, complete in weeks rather than months, charge no fee, and carry the risk of the sale falling through. The price reflects the speed and the certainty of the transaction.',
   },
   {
     q: 'Can I change my mind after I accept?',
@@ -52,15 +53,15 @@ const FAQ: Array<{ q: string; a: string }> = [
   },
   {
     q: 'What does it cost me?',
-    a: 'Zero. No agent fee, no survey fee, and no fee to us at any point. As the buyer we pay for our own legals, searches and survey. The figure you see in the offer is the figure that lands in your account on completion day.',
+    a: 'There is no agent fee and no fee to us, at any point. You instruct your own solicitor and pay their costs; we pay ours. The figure in our offer is the figure we complete at, minus your own legal costs.',
   },
   {
     q: 'How is the offer calculated?',
-    a: "We pull every comparable sale within 0.5 miles of your home from HM Land Registry's last 24 months, adjust for market trend, score risk factors, then apply a transparent speed-premium discount. The full methodology is published.",
+    a: "We pull every comparable sale within 0.5 miles of the property from HM Land Registry's last 24 months, adjust for market trend, score the risk factors, then arrive at a figure we can commit to. The full methodology is published.",
   },
   {
     q: 'How quickly can you complete?',
-    a: 'In weeks rather than months, paced to suit a probate grant or onward move. We instruct solicitors as soon as you accept and share proof of funds straight away.',
+    a: 'At the pace you need. We can complete in as little as two weeks — or take as long as your circumstances require, if you are waiting on a grant of probate, a court date, or an onward purchase. We instruct solicitors as soon as you accept and share proof of funds straight away.',
   },
   {
     q: 'Can the offer change later?',
@@ -73,116 +74,22 @@ const FAQ: Array<{ q: string; a: string }> = [
 ];
 
 const NAV = [
+  { href: '#broken', label: 'Why we exist' },
   { href: '#how', label: 'How it works' },
-  { href: '#maths', label: 'The maths' },
+  { href: '#promise', label: 'Our promise' },
   { href: '#faq', label: 'FAQ' },
-  { href: '/instant-offer/methodology', label: 'Methodology' },
   { href: '/agents', label: 'For agents' },
 ];
 
-/** The signed cash-offer letter, the hero artifact. A real typed document,
- *  not type on a flat field: Caslon letterhead, Courier body, dotted spec
- *  leaders, an actual wax-red seal with weight, and an ink signature. Every
- *  detail here is doing anti-template work — this card is the brand. */
-function OfferLetter() {
-  return (
-    <div className="-rotate-[1.6deg] relative w-[300px] rounded-[2px] border border-hair bg-[linear-gradient(175deg,#fdfaf2_0%,#f7f2e6_70%,#f3edde_100%)] p-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.85),0_1px_2px_rgba(36,28,26,0.08),0_30px_56px_-26px_rgba(36,28,26,0.55)]">
-      {/* Wax seal — solid, irregular, embossed. Not an outline. */}
-      <div className="-right-5 -top-5 absolute hidden rotate-[8deg] sm:block">
-        <div
-          className="flex h-14 w-14 items-center justify-center bg-wax shadow-[inset_0_2px_3px_rgba(255,255,255,0.35),inset_0_-3px_4px_rgba(0,0,0,0.3),0_3px_6px_rgba(36,28,26,0.35)]"
-          style={{ borderRadius: '46% 54% 50% 50% / 52% 46% 54% 48%' }}
-        >
-          <span className="flex h-10 w-10 items-center justify-center rounded-full border border-white/40 font-bold font-serif text-[17px] text-cream">
-            k.
-          </span>
-        </div>
-      </div>
-      <div className="flex items-baseline justify-between gap-4">
-        <p className="font-bold font-serif text-[17px] text-brand-deep tracking-[0.01em]">
-          Kept
-        </p>
-        <p className="text-[10.5px] text-stone-400 [font-family:var(--font-courier)]">
-          Ref BW-2026-0142
-        </p>
-      </div>
-      <p className="mt-0.5 text-[10.5px] text-stone-400 [font-family:var(--font-courier)]">
-        Sample document
-      </p>
-      <div className="mt-4 border-stone-300/60 border-t border-dashed pt-3">
-        <p className="text-[10.5px] text-stone-400 tracking-[0.08em] [font-family:var(--font-courier)]">
-          PROPERTY
-        </p>
-        <p className="mt-1 font-serif text-[15px] text-forest leading-snug">
-          14 Acacia Avenue, Stockport SK4&nbsp;3HQ
-        </p>
-      </div>
-      <div className="mt-3 border-stone-300/60 border-t border-dashed pt-3">
-        <p className="text-[10.5px] text-brand tracking-[0.08em] [font-family:var(--font-courier)]">
-          OUR CASH OFFER
-        </p>
-        <p className="mt-1 font-bold font-serif text-[40px] text-forest leading-none tracking-[-0.01em]">
-          £244,000
-        </p>
-        <p className="mt-2 inline-block rotate-[-1.5deg] border border-wax/60 px-2 py-0.5 text-[10px] text-wax tracking-[0.14em] [font-family:var(--font-courier)]">
-          LOCKED · 72 HOURS
-        </p>
-      </div>
-      <dl className="mt-4 space-y-2.5 border-stone-300/60 border-t border-dashed pt-3.5 text-[12px] text-stone-600 [font-family:var(--font-courier)]">
-        <div className="flex items-baseline gap-2">
-          <dt className="shrink-0">Completion</dt>
-          <span
-            aria-hidden
-            className="mb-[3px] flex-1 border-stone-400/50 border-b border-dotted"
-          />
-          <dd className="shrink-0 text-forest">Weeks, not months</dd>
-        </div>
-        <div className="flex items-baseline gap-2">
-          <dt className="shrink-0">Fees to you</dt>
-          <span
-            aria-hidden
-            className="mb-[3px] flex-1 border-stone-400/50 border-b border-dotted"
-          />
-          <dd className="shrink-0 text-forest">None</dd>
-        </div>
-        <div className="flex items-baseline gap-2">
-          <dt className="shrink-0">Chain</dt>
-          <span
-            aria-hidden
-            className="mb-[3px] flex-1 border-stone-400/50 border-b border-dotted"
-          />
-          <dd className="shrink-0 text-forest">None. Cash.</dd>
-        </div>
-      </dl>
-      {/* Ink signature — two strokes, imperfect baseline */}
-      <svg viewBox="0 0 150 34" className="mt-4 h-7 w-32" aria-hidden="true">
-        <path
-          d="M4 24 C 8 8, 16 4, 18 12 C 20 20, 14 28, 22 26 C 30 24, 32 10, 40 12 C 45 13, 43 22, 50 21 C 58 20, 60 8, 68 11 C 74 13, 72 22, 80 20 C 90 17, 94 10, 104 12 C 112 14, 116 18, 126 13 C 134 9, 140 12, 146 15"
-          fill="none"
-          stroke="#26333c"
-          strokeWidth="1.6"
-          strokeLinecap="round"
-        />
-        <path
-          d="M30 29 C 55 26, 100 26, 132 24"
-          fill="none"
-          stroke="#26333c"
-          strokeWidth="0.8"
-          strokeLinecap="round"
-          opacity="0.55"
-        />
-      </svg>
-      <div className="mt-1 flex items-baseline justify-between gap-4">
-        <p className="font-serif text-[11px] text-stone-400 italic">
-          Signed for Kept
-        </p>
-        <p className="text-[10px] text-stone-400 [font-family:var(--font-courier)]">
-          A. Taylor
-        </p>
-      </div>
-    </div>
-  );
-}
+/** The three documented exceptions, listed in full wherever we say we do not
+ *  renegotiate. Founder note: never assert the promise without them visible —
+ *  an unqualified absolute would be the one thing on this page we could not
+ *  stand behind. */
+const EXCEPTIONS = [
+  'A survey reveals a material defect that was not visible or disclosed at viewing.',
+  'A title issue emerges during conveyancing that materially affects value.',
+  'Information provided about the property turns out to be materially incorrect.',
+];
 
 export default function SellPage() {
   return (
@@ -209,77 +116,208 @@ export default function SellPage() {
       </header>
 
       {/* ————— HERO —————
-          Not the template split ("headline left, floating card right").
-          Structure borrowed from the reference set (docs/brand/
-          DESIGN-REFERENCES.md): a courier dateline row (the page opens like
-          a document), a giant full-width editorial headline (the Wise move),
-          the signed letter laid OVER the composition like an object on a
-          desk, and a real person next to the promise (the Farewill move). */}
+          The signed-letter artefact and the wax seal are gone (founder review,
+          Aug 2026). In their place the brand itself sits behind the type: an
+          oversized, near-translucent `kept.` watermark, bled off the right
+          edge. It is decorative only (aria-hidden) and renders through the
+          same Wordmark component as the nav mark, so it follows the brand
+          phase rather than hard-coding a name. */}
       <section className="relative overflow-hidden px-6 pt-10 pb-16 md:px-12 md:pt-12 md:pb-20">
+        {/* The watermark. Sits under everything, never intercepts a click. */}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0 select-none overflow-hidden"
+        >
+          <Wordmark className="-right-[6vw] -translate-y-1/2 absolute top-1/2 text-[26vw] text-forest/[0.045] leading-none md:text-[22vw]" />
+        </div>
+
         <div className="relative mx-auto max-w-6xl">
           {/* Dateline — the page itself is a document */}
           <div className="flex items-baseline justify-between gap-6 border-hair border-b pb-4">
-            <Eyebrow>for UK homeowners</Eyebrow>
+            <Eyebrow>for UK property sellers</Eyebrow>
             <p className="text-[11px] text-stone-400 tracking-[0.18em] [font-family:var(--font-courier)]">
               EST. 2026 · UK
             </p>
           </div>
-          {/* Full-width editorial headline — no half-column timidity */}
+
           <h1
-            className="relative z-10 mt-10 font-bold font-serif text-forest leading-[0.98] tracking-[-0.03em] md:mt-12"
-            style={{ fontSize: 'clamp(46px, 7.6vw, 92px)' }}
+            className="relative z-10 mt-10 max-w-4xl font-bold font-serif text-forest leading-[0.98] tracking-[-0.03em] md:mt-12"
+            style={{ fontSize: 'clamp(44px, 7vw, 86px)' }}
           >
-            A real cash offer,
+            A real cash offer in writing.
             <br />
             <span className="font-normal text-brand">
-              in writing<span className="text-wax">.</span>
+              And a promise we keep<span className="text-wax">.</span>
             </span>
           </h1>
-          {/* The letter is laid over the composition; the copy sits beside it */}
-          <div className="mt-10 grid items-start gap-12 md:mt-8 md:grid-cols-[1fr_auto] md:gap-16">
-            <div className="max-w-md">
-              <p className="text-[16px] text-stone-600 leading-[1.75]">
-                Tell us about the property and we will come and view it. We
-                aim to make an offer within 24 to 48 hours of viewing, locked
-                for 72 hours so you can take advice. The price we put in
-                writing is the price we complete at.
+
+          <div className="mt-12 grid items-start gap-12 md:mt-14 md:grid-cols-[1.1fr_1fr] md:gap-20">
+            <div>
+              <Eyebrow tone="wax">our promise is simple</Eyebrow>
+              <p className="mt-5 max-w-xl text-[17px] text-stone-700 leading-[1.7]">
+                Tell us about the property and we will be in touch the same day.
+                We come and see every home ourselves before we put a price on
+                paper. Then we send you our offer in writing, held for 72 hours,
+                so you have time to think it over and talk it through. What we
+                write down is what we complete at.
               </p>
               <div className="mt-8 flex flex-wrap items-center gap-x-6 gap-y-4">
                 <Button href="#offer">Get a cash offer</Button>
-                <Button href="/instant-offer/methodology" variant="ghost">
-                  See how we calculate offers
+                <Button href="#how" variant="ghost">
+                  See how it works
                 </Button>
               </div>
-              {/* A person, not a pipeline — right where the promise is made */}
-              <div className="mt-10 flex items-center gap-4 border-hair border-t pt-6">
-                <Image
-                  src="/team/anthony-taylor.jpg"
-                  alt="Anthony Taylor of Kept"
-                  width={96}
-                  height={96}
-                  className="h-12 w-12 rounded-full border border-hair object-cover object-top"
-                />
-                <p className="max-w-[300px] text-[13.5px] text-stone-600 leading-snug">
-                  <span className="font-semibold text-forest">
-                    Anthony reads every enquiry.
-                  </span>{' '}
-                  Same-day reply, Monday to Friday.
+            </div>
+
+            {/* Who we are — replaces the founder byline that used to sit here.
+                First person throughout: this is the business talking, not a
+                credential being presented. */}
+            <div className="border-hair border-t pt-8 md:border-t-0 md:border-l md:pt-0 md:pl-12">
+              <h2 className="font-semibold font-serif text-2xl text-forest leading-tight tracking-[-0.01em]">
+                We&rsquo;re Kept. We&rsquo;re not a{' '}
+                <span className="text-brand">
+                  &ldquo;we buy any home&rdquo;
+                </span>
+                .
+              </h2>
+              <div className="mt-5 space-y-4 text-[15px] text-stone-600 leading-relaxed">
+                <p>
+                  A home is usually the biggest thing a family will ever own,
+                  and we treat it that way. We are a people business that
+                  happens to buy property — which is why we will never make you
+                  an offer on a house we have not stood in.
+                </p>
+                <p>
+                  We show our workings, we say plainly what we are and what we
+                  are not, and whatever your circumstances you will get an
+                  honest steer from us. Even when that steer is to sell
+                  somewhere other than to us.
+                </p>
+                <p className="text-forest">
+                  Honesty and respect, both ways. That is the whole of it.
                 </p>
               </div>
             </div>
-            <figure className="flex flex-col items-center md:items-end lg:-mt-16 xl:-mt-32">
-              <OfferLetter />
-              <figcaption className="mt-6 max-w-[300px] text-center font-serif text-[13px] text-stone-500 md:text-right">
-                Every confirmed offer is a signed document like this one.
-              </figcaption>
-            </figure>
           </div>
-          {/* Hairline baseline — the hero ends on a rule, not on air */}
+
           <div className="mt-14 border-hair border-t pt-5">
             <p className="font-serif text-[13px] text-stone-500">
-              Property Redress Scheme &middot; HMRC AML supervised &middot;
-              ICO registered &middot; Zero fees
+              Property Redress Scheme &middot; HMRC AML supervised &middot; ICO
+              registered &middot; No fees to you
             </p>
+          </div>
+        </div>
+      </section>
+
+      {/* ————— THE MARKET IS BROKEN —————
+          Moved to the top of the page (founder review, Aug 2026), taking the
+          slot the offer-maths breakdown used to hold further down. The
+          argument runs problem → promise: here is what is wrong with selling a
+          house in this country, and here is the sentence we are willing to be
+          held to. */}
+      <section id="broken" className="scroll-mt-24 px-3 py-4 md:px-6">
+        <div className="mx-auto max-w-[1500px] rounded-[20px] bg-white md:rounded-[28px]">
+          <div className="mx-auto max-w-6xl px-6 py-20 md:px-12 md:py-24">
+            <div className="max-w-3xl">
+              <Eyebrow tone="wax">why we exist</Eyebrow>
+              <h2 className="mt-4 font-semibold font-serif text-4xl leading-[1.05] tracking-[-0.02em] md:text-5xl">
+                The way we sell homes in this country is{' '}
+                <span className="font-normal text-brand">broken.</span>
+              </h2>
+            </div>
+
+            <dl className="mt-12 grid grid-cols-1 gap-px overflow-hidden rounded-sm border border-hair bg-hair sm:grid-cols-3">
+              {[
+                {
+                  stat: '~1 in 3',
+                  t: 'agreed sales collapse',
+                  d: 'Roughly a third of sales agreed in England and Wales never reach completion.',
+                  note: '1',
+                },
+                {
+                  stat: '4–6 months',
+                  t: 'from offer to keys',
+                  d: 'The average conveyancing timeline, and it has been getting longer, not shorter.',
+                  note: '2',
+                },
+                {
+                  stat: '1–1.5%',
+                  t: 'agent fee, plus VAT',
+                  d: 'Paid by you, on completion, whether the sale was quick or agonising.',
+                  note: '3',
+                },
+              ].map((s) => (
+                <div key={s.t} className="bg-white p-7">
+                  {/* The footnote marker rides the label, never the figure —
+                      "~1 in 3" with a superscript 1 on it reads as "1 in 31". */}
+                  <p className="font-bold font-serif text-4xl text-forest tracking-[-0.02em]">
+                    {s.stat}
+                  </p>
+                  <p className="mt-2 font-serif text-[17px] text-brand">
+                    {s.t}
+                    <sup className="ml-1 align-super text-[11px] text-stone-400">
+                      {s.note}
+                    </sup>
+                  </p>
+                  <p className="mt-2 text-[14px] text-stone-600 leading-relaxed">
+                    {s.d}
+                  </p>
+                </div>
+              ))}
+            </dl>
+
+            <div className="mt-12 grid grid-cols-1 gap-10 lg:grid-cols-[1fr_1fr] lg:gap-16">
+              <div>
+                <p className="text-[17px] text-stone-700 leading-[1.7]">
+                  Months of not knowing. A fee for the privilege. And a one in
+                  three chance that after all of it, you are back where you
+                  started.
+                </p>
+                <p className="mt-5 text-[17px] text-stone-700 leading-[1.7]">
+                  We are the other way round.{' '}
+                  <strong className="font-medium text-forest">
+                    We can complete in as little as two weeks, and the price we
+                    quote is the price we complete at.
+                  </strong>{' '}
+                  We will not come back and try to renegotiate — with three
+                  exceptions, written down here so you can hold us to them.
+                </p>
+              </div>
+              <ul className="space-y-px overflow-hidden rounded-sm border border-hair bg-hair">
+                {EXCEPTIONS.map((e) => (
+                  <li key={e} className="flex items-start gap-4 bg-soft p-5">
+                    <span className="mt-2.5 h-px w-4 shrink-0 bg-wax" />
+                    <p className="text-[14px] text-stone-700 leading-relaxed">
+                      {e}
+                    </p>
+                  </li>
+                ))}
+                <li className="bg-soft px-5 pt-2 pb-5">
+                  <p className="text-[13px] text-stone-500 leading-relaxed">
+                    In each case you can walk away at no cost. Nothing else
+                    moves the price.
+                  </p>
+                </li>
+              </ul>
+            </div>
+
+            <p className="mt-12 font-semibold font-serif text-2xl text-forest tracking-[-0.01em] md:text-3xl">
+              A promise made is a promise{' '}
+              <span className="font-normal text-brand">Kept.</span>
+            </p>
+
+            <ol className="mt-10 space-y-1 border-hair border-t pt-5 text-[11px] text-stone-500 leading-relaxed">
+              <li>1. TwentyCi fall-through data, 2025.</li>
+              <li>
+                2. Typical UK residential conveyancing timeline from offer
+                accepted to completion; your own transaction may be faster or
+                slower.
+              </li>
+              <li>
+                3. Typical UK high-street sole-agency fee range; your agent may
+                charge more or less.
+              </li>
+            </ol>
           </div>
         </div>
       </section>
@@ -291,8 +329,8 @@ export default function SellPage() {
             <Eyebrow>who we buy from</Eyebrow>
             <h2 className="mt-4 font-semibold font-serif text-4xl leading-[1.05] tracking-[-0.02em] md:text-5xl">
               Real reasons people choose{' '}
-              <span className="font-normal text-brand">certainty</span>{' '}
-              over price.
+              <span className="font-normal text-brand">certainty</span>, so they
+              can focus on what matters most.
             </h2>
           </div>
           <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
@@ -321,142 +359,157 @@ export default function SellPage() {
         </div>
       </section>
 
-      {/* ————— HOW IT WORKS ————— */}
-      {/* HOW + MATHS share one white canvas laid on the desk (the Monzo
-          inset-canvas structure): soft corners because the object is big,
-          borderless, near-full-bleed — while the CONTENT inside sits on the
-          same max-w-6xl rail as every other section, so every edge on the
-          page aligns and nothing is squeezed. The breakdown cards overhang
-          the canvas edge onto the desk. */}
+      {/* ————— 01 · HOW IT WORKS —————
+          Four steps, not five. The indicative-offer step is gone: we no longer
+          put any figure in front of a seller before we have viewed the
+          property (founder decision, Aug 2026 — offers are reviewed by hand
+          and sent by email until the AVM has earned more trust). */}
       <section id="how" className="scroll-mt-24 px-3 py-4 md:px-6">
         <div className="mx-auto max-w-[1500px] rounded-[20px] bg-white md:rounded-[28px]">
-        <div className="mx-auto max-w-6xl px-6 py-24 md:px-12 md:py-28">
-        <div className="grid grid-cols-1 gap-12 lg:grid-cols-[1fr_2fr] lg:gap-16">
-          <div>
-            <SectionNumber>01</SectionNumber>
-            <Eyebrow className="mt-5">how it works</Eyebrow>
-            <h2 className="mt-4 font-semibold font-serif text-4xl leading-[1] tracking-[-0.02em] md:text-6xl">
-              Five steps.{' '}
-              <span className="font-normal text-brand">
-                No surprises.
-              </span>
-            </h2>
-            <p className="mt-6 text-[15px] text-stone-600 leading-relaxed">
-              Every offer is generated from real comparable sales. The maths are
-              published. Nothing hidden. The price we confirm in writing is the
-              price we complete at.
-            </p>
-          </div>
-          <ol className="divide-y divide-hair border-hair border-y">
-            {[
-              {
-                n: '01',
-                t: 'You get in touch',
-                sla: 'Straight away',
-                d: 'Tell us the address and a little about your situation. We acknowledge receipt and pull what we can from public records, Land Registry, EPC and planning, before bothering you for anything else.',
-              },
-              {
-                n: '02',
-                t: 'Indicative offer',
-                sla: 'After desk research',
-                d: 'We send an indicative offer range based on comparable sales, PropertyData valuation, and the public records we found. Clearly labelled INDICATIVE — our honest starting point, subject only to viewing.',
-              },
-              {
-                n: '03',
-                t: 'We come and view the property',
-                sla: 'At your convenience',
-                d: 'We physically view every property before we confirm a price. We assess condition and anything not clear from the records. We tell you in advance what we are looking for.',
-              },
-              {
-                n: '04',
-                t: 'Confirmed price in writing',
-                sla: 'We aim for 24–48 hours after viewing',
-                d: 'The price we send is the price we complete at. We share the survey notes that informed it. Locked for 72 hours so you can take advice.',
-              },
-              {
-                n: '05',
-                t: 'Conveyancing and completion',
-                sla: 'Paced to suit you',
-                d: 'You instruct your own solicitor. We can recommend firms accustomed to working on expedited timelines to keep the transaction efficient. We instruct ours straight away. Regular updates on a live timeline you can share with anyone. We pay all our own legal costs.',
-              },
-            ].map((s) => (
-              <li
-                key={s.n}
-                className="grid grid-cols-[44px_1fr] items-start gap-5 py-6 md:grid-cols-[56px_1fr_170px] md:gap-7"
-              >
-                <span className="font-light font-serif text-3xl text-brand-deep/30 tabular-nums">
-                  {s.n}
-                </span>
-                <div>
-                  <h3 className="font-semibold font-serif text-lg md:text-xl">
-                    {s.t}
-                  </h3>
-                  <p className="mt-2 text-[14px] text-stone-600 leading-relaxed">
-                    {s.d}
-                  </p>
-                </div>
-                <p className="font-serif text-brand text-sm md:text-right">
-                  {s.sla}
+          <div className="mx-auto max-w-6xl px-6 py-24 md:px-12 md:py-28">
+            <div className="grid grid-cols-1 gap-12 lg:grid-cols-[1fr_2fr] lg:gap-16">
+              <div>
+                <SectionNumber>01</SectionNumber>
+                <Eyebrow className="mt-5">how it works</Eyebrow>
+                <h2 className="mt-4 font-semibold font-serif text-4xl leading-[1] tracking-[-0.02em] md:text-6xl">
+                  Four steps.{' '}
+                  <span className="font-normal text-brand">No surprises.</span>
+                </h2>
+                <p className="mt-6 text-[15px] text-stone-600 leading-relaxed">
+                  We never price a home we have not seen, and we never send a
+                  number a person has not checked. The price we confirm in
+                  writing is the price we complete at.
                 </p>
-              </li>
-            ))}
-          </ol>
-        </div>
-        </div>
+              </div>
+              <ol className="divide-y divide-hair border-hair border-y">
+                {[
+                  {
+                    n: '01',
+                    t: 'You get in touch',
+                    sla: 'Same day',
+                    d: 'Tell us the address and a little about your situation. We come back to you the same day. Before we bother you for anything else, we pull what we can ourselves — Land Registry, EPC, planning.',
+                  },
+                  {
+                    n: '02',
+                    t: 'We come and see the property',
+                    sla: 'At your convenience',
+                    d: 'We view every property before we price it. We tell you in advance what we are looking for, so there is nothing to prepare and nothing to dread.',
+                  },
+                  {
+                    n: '03',
+                    t: 'Our offer, in writing',
+                    sla: 'We aim for 24–48 hours after viewing',
+                    d: 'The price we send is the price we complete at. We share the notes that informed it. Held for 72 hours, so you can take advice and talk it over with whoever you need to.',
+                  },
+                  {
+                    n: '04',
+                    t: 'Conveyancing and completion',
+                    sla: 'At the pace you need',
+                    d: 'You instruct your own solicitor — we can recommend firms used to working quickly — and we instruct ours straight away. Regular updates on a live timeline you can share with anyone. We pay our own legal costs.',
+                  },
+                ].map((s) => (
+                  <li
+                    key={s.n}
+                    className="grid grid-cols-[44px_1fr] items-start gap-5 py-6 md:grid-cols-[56px_1fr_170px] md:gap-7"
+                  >
+                    <span className="font-light font-serif text-3xl text-brand-deep/30 tabular-nums">
+                      {s.n}
+                    </span>
+                    <div>
+                      <h3 className="font-semibold font-serif text-lg md:text-xl">
+                        {s.t}
+                      </h3>
+                      <p className="mt-2 text-[14px] text-stone-600 leading-relaxed">
+                        {s.d}
+                      </p>
+                    </div>
+                    <p className="font-serif text-brand text-sm md:text-right">
+                      {s.sla}
+                    </p>
+                  </li>
+                ))}
+              </ol>
+            </div>
+          </div>
         </div>
       </section>
 
-      {/* ————— THE MATHS — its own canvas; only the CARDS overhang its
-          bottom edge, the prose stays on solid ground ————— */}
-      <section id="maths" className="scroll-mt-24 px-3 py-4 md:px-6">
-        <div className="mx-auto max-w-[1500px] rounded-[20px] bg-white md:rounded-[28px]">
-        <div className="mx-auto max-w-6xl px-6 pt-24 pb-24 md:px-12 md:pt-28 md:pb-28">
-          <div className="mb-12 max-w-3xl">
-            <SectionNumber>02</SectionNumber>
-            <Eyebrow tone="wax" className="mt-5">
-              the honest version
-            </Eyebrow>
-            <h2 className="mt-4 font-semibold font-serif text-4xl leading-[1.05] tracking-[-0.02em] md:text-5xl">
-              Where the number{' '}
-              <span className="font-normal text-brand">
-                actually comes from.
-              </span>
-            </h2>
-            <p className="mt-6 max-w-2xl text-[15px] text-stone-700 leading-relaxed">
-              We buy below open-market value. On purpose, and we say so. Here
-              is the whole trade, side by side — including the route that
-              beats us on price.
-            </p>
+      {/* ————— 02 · THE PROMISE —————
+          Promoted into the slot the offer-maths breakdown used to hold. It
+          answers the section above it: the market breaks its word, and this is
+          ours, itemised. */}
+      <section id="promise" className="scroll-mt-24 px-3 py-4 md:px-6">
+        <div className="relative mx-auto max-w-[1500px] rounded-[20px] bg-brand-deep text-white md:rounded-[28px]">
+          <div className="-top-10 absolute right-14 hidden md:block">
+            <Seal className="border-wax/60 bg-cream shadow-[0_10px_24px_-12px_rgba(36,28,26,0.4)]" />
           </div>
-          {/* The cards overhang the canvas's bottom edge onto the desk */}
-          <div className="relative z-10 -mb-52 md:-mb-56">
-            <OfferBreakdown />
+          <div className="mx-auto max-w-6xl px-6 py-24 md:px-12 md:py-28">
+            <div className="relative grid grid-cols-1 gap-12 lg:grid-cols-[1fr_1.4fr]">
+              <div>
+                <SectionNumber tone="light">02</SectionNumber>
+                <Eyebrow tone="light" className="mt-5">
+                  the written promise
+                </Eyebrow>
+                <h2 className="mt-4 font-semibold font-serif text-4xl leading-[1.05] tracking-[-0.02em] md:text-5xl">
+                  No renegotiation.
+                  <br />
+                  <span className="font-normal text-leaf">A promise Kept.</span>
+                </h2>
+                <p className="mt-6 text-[15px] text-white/70 leading-relaxed">
+                  The single biggest complaint about cash buyers is the
+                  last-minute price drop. We put the price in writing and we
+                  stand behind it.
+                </p>
+              </div>
+              <dl className="divide-y divide-white/10 border-white/10 border-t">
+                {[
+                  [
+                    'Offer validity',
+                    'Binding upon Kept for 72 hours. Time-stamped, in writing, downloadable as a PDF.',
+                  ],
+                  [
+                    'No price reduction',
+                    'We do not renegotiate between issue and exchange. There are three documented exceptions: a survey reveals a material defect not visible at viewing, a title issue emerges that materially affects value, or information provided proves materially incorrect. In each case you can walk away at no cost.',
+                  ],
+                  [
+                    'Your timeline',
+                    'We work to the timeline that suits you. Fast when you need fast — as little as two weeks. Patient when you are waiting on a grant of probate, a court date, or somewhere to move to.',
+                  ],
+                  [
+                    'Walk-away free',
+                    'You may withdraw at any point before exchange. No penalty, no chase.',
+                  ],
+                  [
+                    'Costs covered',
+                    'No agent fee, and no fee to us at any point. You instruct your own solicitor and pay their costs; we pay ours.',
+                  ],
+                ].map(([k, v]) => (
+                  <div
+                    key={k as string}
+                    className="grid grid-cols-1 gap-2 py-5 sm:grid-cols-[180px_1fr] sm:gap-8"
+                  >
+                    <dt className="font-serif text-[15px] text-leaf">{k}</dt>
+                    <dd className="text-white/90">{v}</dd>
+                  </div>
+                ))}
+              </dl>
+            </div>
           </div>
-        </div>
         </div>
       </section>
 
-      {/* The verdict + footnotes, on the desk under the overhanging cards */}
-      <div className="px-6 md:px-12">
-        <div className="mx-auto max-w-6xl pt-40 md:pt-44">
-          <OfferBreakdownNotes />
-        </div>
-      </div>
-
-      {/* ————— THE OFFER (CHAT) — on the desk itself ————— */}
-      <section
-        id="offer"
-        className="scroll-mt-24 px-6 py-24 md:px-12 md:py-28"
-      >
+      {/* ————— THE OFFER (CHAT) ————— */}
+      <section id="offer" className="scroll-mt-24 px-6 py-24 md:px-12 md:py-28">
         <div className="mx-auto max-w-3xl">
           <div className="mb-12 flex flex-col items-center text-center">
             <Eyebrow>get an offer</Eyebrow>
             <h2 className="mt-4 font-semibold font-serif text-4xl md:text-5xl">
-              Tell us about your home.
+              Tell us about the property.
             </h2>
             <p className="mt-4 text-stone-600">
-              A few quick details. An indicative figure first, then a confirmed
-              offer in writing after we view the property.
+              A few quick details, then we will be in touch the same day. We
+              come and view the property before we put any figure to you — and
+              when we do, it comes in writing.
             </p>
           </div>
           <Suspense fallback={<div className="h-96" />}>
@@ -465,7 +518,7 @@ export default function SellPage() {
         </div>
       </section>
 
-      {/* ————— A PERSON, NOT A PIPELINE — on the desk ————— */}
+      {/* ————— A PERSON, NOT A PIPELINE ————— */}
       <section className="px-6 py-16 md:px-12 md:py-20">
         <div className="mx-auto grid max-w-5xl grid-cols-1 items-center gap-10 md:grid-cols-[260px_1fr] md:gap-14">
           <figure className="mx-auto w-[220px] md:w-full">
@@ -493,8 +546,8 @@ export default function SellPage() {
             <p className="mt-6 max-w-xl text-[15px] text-stone-600 leading-relaxed">
               Comparable sales, title records, market trend — the desk research
               is automated, which is why it&rsquo;s fast. The judgment
-              isn&rsquo;t. Nothing is sent to you until a person has read it
-              and put their name to it, and when you write to us, it&rsquo;s
+              isn&rsquo;t. No figure reaches you until one of us has read it,
+              checked it and put our name to it. Write to us and it&rsquo;s
               Anthony who reads it. Same-day response, Monday to Friday.
             </p>
             <div className="mt-8">
@@ -506,74 +559,11 @@ export default function SellPage() {
         </div>
       </section>
 
-      {/* ————— PROMISE — the forest poster canvas, wax seal straddling
-          its top edge ————— */}
-      <section className="px-3 py-4 md:px-6">
-        <div className="relative mx-auto max-w-[1500px] rounded-[20px] bg-brand-deep text-white md:rounded-[28px]">
-          <div className="-top-10 absolute right-14 hidden md:block">
-            <Seal className="border-wax/60 bg-cream shadow-[0_10px_24px_-12px_rgba(36,28,26,0.4)]" />
-          </div>
-        <div className="mx-auto max-w-6xl px-6 py-24 md:px-12 md:py-28">
-        <div className="relative grid grid-cols-1 gap-12 lg:grid-cols-[1fr_1.4fr]">
-          <div>
-            <Eyebrow tone="light">the written promise</Eyebrow>
-            <h2 className="mt-4 font-semibold font-serif text-4xl leading-[1.05] tracking-[-0.02em] md:text-5xl">
-              No renegotiation.
-              <br />
-              <span className="font-normal text-leaf">
-                No surprises.
-              </span>
-            </h2>
-            <p className="mt-6 text-[15px] text-white/70 leading-relaxed">
-              The single biggest complaint about cash buyers is the last-minute
-              price drop. We put the price in writing and stand behind it.
-            </p>
-            <Seal
-              label="Kept"
-              className="mt-10 hidden lg:inline-flex"
-            />
-          </div>
-          <dl className="divide-y divide-white/10 border-white/10 border-t">
-            {[
-              [
-                'Offer validity',
-                'Legally binding upon Kept for 72 hours. Time-stamped, in writing, downloadable as PDF.',
-              ],
-              [
-                'No price reduction',
-                'We do not renegotiate between issue and exchange. There are three documented exceptions: a survey reveals a material defect not visible at viewing, a title issue emerges that materially affects value, or information provided proves materially incorrect. In each case you can walk away at no cost.',
-              ],
-              [
-                'Walk-away free',
-                'You may withdraw at any point before exchange. No penalty, no chase.',
-              ],
-              [
-                'Costs covered',
-                'No fee to us at any point. As the buyer we pay our own legals, searches and survey.',
-              ],
-            ].map(([k, v]) => (
-              <div
-                key={k as string}
-                className="grid grid-cols-1 gap-2 py-5 sm:grid-cols-[180px_1fr] sm:gap-8"
-              >
-                <dt className="font-serif text-[15px] text-leaf">{k}</dt>
-                <dd className="text-white/90">{v}</dd>
-              </div>
-            ))}
-          </dl>
-        </div>
-        </div>
-        </div>
-      </section>
-
       {/* ————— PROOF BAND ————— */}
       <ProofBand />
 
-      {/* ————— FAQ — on the desk ————— */}
-      <section
-        id="faq"
-        className="scroll-mt-24 px-6 py-20 md:px-12 md:py-24"
-      >
+      {/* ————— FAQ ————— */}
+      <section id="faq" className="scroll-mt-24 px-6 py-20 md:px-12 md:py-24">
         <div className="mx-auto max-w-3xl">
           <Eyebrow>honest answers</Eyebrow>
           <h2 className="mt-4 font-semibold font-serif text-4xl md:text-5xl">
@@ -595,60 +585,60 @@ export default function SellPage() {
         </div>
       </section>
 
-      {/* ————— WHEN NOT TO USE US — the honest note, a tinted canvas ————— */}
+      {/* ————— WHEN NOT TO USE US ————— */}
       <section className="px-3 py-4 md:px-6">
         <div className="mx-auto max-w-[1500px] rounded-[20px] bg-soft md:rounded-[28px]">
-        <div className="mx-auto max-w-6xl px-6 py-20 md:px-12 md:py-24">
-          <Eyebrow>the honest version</Eyebrow>
-          <h2 className="mt-4 font-semibold font-serif text-3xl leading-tight tracking-[-0.02em] md:text-5xl">
-            When we&rsquo;re probably{' '}
-            <span className="font-normal text-brand">not</span> the right
-            answer
-          </h2>
-          <p className="mt-5 max-w-2xl text-[15px] text-stone-700 leading-relaxed">
-            We buy below open market value, at a price that reflects the speed
-            and certainty of the transaction. That trade is right for some
-            sellers and wrong for others. We&rsquo;d rather tell you so up front
-            than waste your time.
-          </p>
-          <ul className="mt-8 space-y-px overflow-hidden rounded-sm border border-hair bg-hair">
-            {[
-              {
-                t: 'You have plenty of time and no pressure to sell.',
-                d: 'If you can wait 4–8 months for the right buyer, the open market will almost certainly get you a better price. Speed is the trade you’re paying for with us.',
-              },
-              {
-                t: 'Your property is in excellent condition and high demand.',
-                d: 'Family homes in popular streets, with no chain issues, usually sell fast at full market value through a good high-street agent. That’s their wedge, not ours.',
-              },
-              {
-                t: 'You want to maximise every pound of sale price.',
-                d: 'Our offer is below open-market value by design — a speed premium for cash, certainty, and no chain. If maximising is the goal, this isn’t the route.',
-              },
-            ].map((item) => (
-              <li key={item.t} className="flex items-start gap-4 bg-white p-6">
-                <span className="mt-2.5 h-px w-4 shrink-0 bg-brand" />
-                <div>
-                  <p className="font-semibold font-serif text-[17px] text-forest">
-                    {item.t}
-                  </p>
-                  <p className="mt-1 text-[14px] text-stone-600 leading-relaxed">
-                    {item.d}
-                  </p>
-                </div>
-              </li>
-            ))}
-          </ul>
-          <p className="mt-8 max-w-2xl text-[14px] text-stone-600 leading-relaxed">
-            If you read those and one of them describes you, we&rsquo;d
-            genuinely suggest calling a local agent first. We&rsquo;d rather you
-            sold well than sold to us.
-          </p>
-        </div>
+          <div className="mx-auto max-w-6xl px-6 py-20 md:px-12 md:py-24">
+            <Eyebrow>the honest version</Eyebrow>
+            <h2 className="mt-4 font-semibold font-serif text-3xl leading-tight tracking-[-0.02em] md:text-5xl">
+              When we&rsquo;re probably{' '}
+              <span className="font-normal text-brand">not</span> the right
+              answer
+            </h2>
+            <p className="mt-5 max-w-2xl text-[15px] text-stone-700 leading-relaxed">
+              We buy below open market value, at a price that reflects the speed
+              and certainty of the transaction. That trade is right for some
+              sellers and wrong for others. We&rsquo;d rather tell you so up
+              front than waste your time.
+            </p>
+            <ul className="mt-8 space-y-px overflow-hidden rounded-sm border border-hair bg-hair">
+              {[
+                {
+                  t: 'You have plenty of time and no pressure to sell.',
+                  d: 'If you can wait months for the right buyer, the open market will almost certainly get you a better price. Speed is the trade you’re paying for with us.',
+                },
+                {
+                  t: 'Your property is in excellent condition and high demand.',
+                  d: 'Family homes in popular streets, with no chain issues, usually sell fast at full market value through a good high-street agent. That’s their wedge, not ours.',
+                },
+                {
+                  t: 'You want to maximise every pound of sale price.',
+                  d: 'Our offer is below open-market value by design. If maximising is the goal, this isn’t the route.',
+                },
+              ].map((item) => (
+                <li key={item.t} className="flex items-start gap-4 bg-white p-6">
+                  <span className="mt-2.5 h-px w-4 shrink-0 bg-brand" />
+                  <div>
+                    <p className="font-semibold font-serif text-[17px] text-forest">
+                      {item.t}
+                    </p>
+                    <p className="mt-1 text-[14px] text-stone-600 leading-relaxed">
+                      {item.d}
+                    </p>
+                  </div>
+                </li>
+              ))}
+            </ul>
+            <p className="mt-8 max-w-2xl text-[14px] text-stone-600 leading-relaxed">
+              If you read those and one of them describes you, we&rsquo;d
+              genuinely suggest calling a local agent first. We&rsquo;d rather
+              you sold well than sold to us.
+            </p>
+          </div>
         </div>
       </section>
 
-      {/* ————— AGENTS LINK — a quiet desk row ————— */}
+      {/* ————— AGENTS LINK ————— */}
       <section className="px-6 py-12 md:px-12">
         <div className="mx-auto flex max-w-5xl flex-col items-center justify-between gap-5 text-center md:flex-row md:text-left">
           <div>
@@ -663,26 +653,24 @@ export default function SellPage() {
         </div>
       </section>
 
-      {/* ————— FINAL CTA — forest canvas ————— */}
+      {/* ————— FINAL CTA ————— */}
       <section className="px-3 py-4 md:px-6">
         <div className="relative mx-auto max-w-[1500px] overflow-hidden rounded-[20px] bg-brand-deep text-white md:rounded-[28px]">
           <div className="mx-auto max-w-6xl px-6 py-20 md:px-12 md:py-24">
-          <div className="relative grid grid-cols-1 items-center gap-10 lg:grid-cols-2">
-            <div>
-              <Eyebrow tone="light">see the number</Eyebrow>
-              <h2 className="mt-4 font-semibold font-serif text-5xl leading-[1] tracking-[-0.025em] md:text-7xl">
-                A real offer{' '}
-                <span className="font-normal text-leaf">
-                  in writing.
-                </span>
-              </h2>
+            <div className="relative grid grid-cols-1 items-center gap-10 lg:grid-cols-2">
+              <div>
+                <Eyebrow tone="light">talk to us</Eyebrow>
+                <h2 className="mt-4 font-semibold font-serif text-5xl leading-[1] tracking-[-0.025em] md:text-7xl">
+                  A real offer{' '}
+                  <span className="font-normal text-leaf">in writing.</span>
+                </h2>
+              </div>
+              <div className="lg:text-right">
+                <Button href="#offer" variant="accent">
+                  Get my offer
+                </Button>
+              </div>
             </div>
-            <div className="lg:text-right">
-              <Button href="#offer" variant="accent">
-                Get my offer
-              </Button>
-            </div>
-          </div>
           </div>
         </div>
       </section>
@@ -732,10 +720,10 @@ export default function SellPage() {
           </div>
           <div className="mt-10 border-hair border-t pt-6">
             <p className="text-[11px] text-stone-500 leading-relaxed">
-              Kept is a UK cash property buyer, not an
-              FCA-authorised firm. We do not provide financial or legal advice.
-              Seek independent legal advice before accepting any offer. All
-              offers are subject to satisfactory survey and title searches.
+              Kept is a UK cash property buyer, not an FCA-authorised firm. We
+              do not provide financial or legal advice. Seek independent legal
+              advice before accepting any offer. All offers are subject to
+              satisfactory survey and title searches.
             </p>
             <p className="mt-4 text-[11px] text-stone-400">
               © {new Date().getFullYear()} Kept.

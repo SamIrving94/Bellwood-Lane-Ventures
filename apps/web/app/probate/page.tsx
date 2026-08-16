@@ -39,7 +39,7 @@ const STEPS: Array<{ n: string; t: string; d: string }> = [
   {
     n: '03',
     t: 'Value the estate for inheritance tax',
-    d: 'Everything the person owned, including the property, valued at the date of death. Inheritance tax is due by the end of the sixth month after the death — after that, HMRC charges interest on what is outstanding. This deadline is why timing matters more in probate sales than almost anywhere else.',
+    d: 'Everything the person owned, including the property, valued at the date of death. Inheritance tax is due by the end of the sixth month after the death. A solicitor or probate specialist will walk you through this part — it is the bit most executors would rather not do alone.',
   },
   {
     n: '04',
@@ -49,12 +49,12 @@ const STEPS: Array<{ n: string; t: string; d: string }> = [
   {
     n: '05',
     t: 'Look after the property while you wait',
-    d: 'An empty home still costs money: council tax, utilities, maintenance — and standard home insurance often lapses once a property is empty for more than 30 to 60 days, so tell the insurer. Meanwhile the estate cannot distribute anything.',
+    d: 'An empty home still needs looking after — council tax, utilities, the garden, the post. One practical thing people miss: tell the insurer, because standard home insurance often lapses once a property has been empty for 30 to 60 days.',
   },
   {
     n: '06',
     t: 'Sell or transfer the property',
-    d: 'You can market the property and agree a sale before the grant arrives — you just cannot complete until it does. That gap is where most probate sales stall, and where the carrying costs quietly add up.',
+    d: 'You can market the property and agree a sale before the grant arrives — you just cannot complete until it does. Most probate sales sit waiting in that gap.',
   },
 ];
 
@@ -69,7 +69,7 @@ const FAQ: Array<{ q: string; a: string }> = [
   },
   {
     q: 'What does using Kept cost the estate?',
-    a: 'Nothing. No fee to us at any point; as the buyer we pay our own legals, searches and survey. The figure in the offer is the figure the estate receives on completion.',
+    a: 'There is no agent fee, and no fee to us at any point. The estate instructs its own solicitor and pays their costs; we pay ours, along with our searches and survey.',
   },
   {
     q: 'Is a cash sale right for every estate?',
@@ -139,7 +139,7 @@ export default function ProbatePage() {
           <SectionNumber>01</SectionNumber>
           <Eyebrow className="mt-5">what happens, in order</Eyebrow>
           <h2 className="mt-4 font-semibold font-serif text-4xl leading-[1.05] tracking-[-0.02em] md:text-5xl">
-            Six steps. Two deadlines that bite.
+            Six steps, in the order they happen.
           </h2>
           <ol className="mt-12 divide-y divide-hair border-hair border-y">
             {STEPS.map((s) => (
@@ -162,9 +162,10 @@ export default function ProbatePage() {
             ))}
           </ol>
           <p className="mt-8 max-w-3xl text-[13px] text-stone-500 leading-relaxed">
-            The two deadlines: inheritance tax falls due at the end of month
-            six, and interest runs after it. Empty-property insurance lapses
-            fast. Everything else in probate can wait; those two cannot.
+            Two dates worth putting in the diary: inheritance tax falls due at
+            the end of month six, and empty-property insurance can lapse after
+            30 to 60 days. A solicitor or probate specialist will keep you right
+            on both. Most of the rest can wait until you are ready.
           </p>
         </div>
       </section>
@@ -181,11 +182,11 @@ export default function ProbatePage() {
             </span>
           </h2>
           <p className="mt-6 max-w-2xl text-[15px] text-stone-700 leading-relaxed">
-            Because completion has to wait for the grant anyway, the months of
-            waiting cost a probate seller nothing with us — we do the viewing,
-            confirm the price in writing, and set completion for the day the
-            grant arrives. The estate stops bleeding carrying costs the moment
-            it completes, and the tax bill can be paid on time.
+            Because completion has to wait for the grant anyway, the waiting
+            costs you nothing with us. We come and view the property, confirm
+            the price in writing, and set completion for the day the grant
+            arrives. It becomes one less thing to think about while you deal
+            with everything else.
           </p>
           <div className="mt-10 grid grid-cols-1 gap-5 sm:grid-cols-3">
             {[
@@ -198,8 +199,8 @@ export default function ProbatePage() {
                 d: 'Cash, no mortgage condition, no onward chain to collapse — the fall-through risk that haunts probate sales is removed.',
               },
               {
-                t: 'No cost to the estate',
-                d: 'No agent fee, no fee to us. We pay our own legals, searches and survey.',
+                t: 'No fees to the estate',
+                d: 'No agent fee, and no fee to us. The estate instructs its own solicitor and pays their costs; we pay ours.',
               },
             ].map((c) => (
               <div
@@ -219,20 +220,19 @@ export default function ProbatePage() {
             And the honest other half: if the estate is under no time
             pressure and the beneficiaries want the best possible price, a
             good local agent will very likely net the estate more than we
-            will. Our offer is below open-market value by design — the maths
-            is shown line by line on{' '}
+            will. Our offer is below open-market value by design, and our{' '}
             <Link
               className="text-leaf underline decoration-leaf/50 underline-offset-4 hover:decoration-leaf"
-              href="/sell#maths"
+              href="/instant-offer/methodology"
             >
-              the seller page
-            </Link>
-            .
+              full methodology is published
+            </Link>{' '}
+            so you can see exactly how we get there.
           </p>
           <div className="mt-10 flex flex-wrap items-center gap-x-6 gap-y-4">
-            <Button href="/sell#offer">Get an indicative figure</Button>
-            <Button href="/sell#maths" variant="ghost">
-              See where the number comes from
+            <Button href="/sell#offer">Talk to us about the property</Button>
+            <Button href="/instant-offer/methodology" variant="ghost">
+              See how we calculate offers
             </Button>
           </div>
         </div>
