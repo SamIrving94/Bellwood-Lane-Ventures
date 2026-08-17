@@ -23,7 +23,7 @@ const REASONS: Array<{ k: string; t: string; b: string }> = [
   {
     k: 'Probate',
     t: 'You’re the executor of an estate',
-    b: 'There is a lot to carry, and the house is only part of it. We complete with speed and certainty, at whatever pace the grant allows — so you and your loved ones can move on and focus on the things that matter most.',
+    b: 'There is a lot to carry, and the house is only part of it. We complete with speed and certainty, at whatever pace the grant allows, so you and your loved ones can move on and focus on the things that matter most.',
   },
   {
     k: 'Chain break',
@@ -61,7 +61,7 @@ const FAQ: Array<{ q: string; a: string }> = [
   },
   {
     q: 'How quickly can you complete?',
-    a: 'At the pace you need. We can complete in as little as two weeks — or take as long as your circumstances require, if you are waiting on a grant of probate, a court date, or an onward purchase. We instruct solicitors as soon as you accept and share proof of funds straight away.',
+    a: 'At the pace you need. We can complete in as little as two weeks, or take as long as your circumstances require if you are waiting on a grant of probate, a court date, or an onward purchase. We instruct solicitors as soon as you accept and share proof of funds straight away.',
   },
   {
     q: 'Can the offer change later?',
@@ -69,7 +69,7 @@ const FAQ: Array<{ q: string; a: string }> = [
   },
   {
     q: 'Are you regulated?',
-    a: 'Cash property buying is unregulated by the FCA. We are members of the Property Redress Scheme (PRS) — a government-approved independent redress body — voluntarily follow The Property Ombudsman code, are HMRC-registered for AML supervision, and ICO-registered as a data controller.',
+    a: 'Cash property buying is unregulated by the FCA. We are members of the Property Redress Scheme (PRS), a government-approved independent redress body. We voluntarily follow The Property Ombudsman code, are HMRC-registered for AML supervision, and ICO-registered as a data controller.',
   },
 ];
 
@@ -123,12 +123,21 @@ export default function SellPage() {
           same Wordmark component as the nav mark, so it follows the brand
           phase rather than hard-coding a name. */}
       <section className="relative overflow-hidden px-6 pt-10 pb-16 md:px-12 md:pt-12 md:pb-20">
-        {/* The watermark. Sits under everything, never intercepts a click. */}
+        {/* The watermark. Anchored to the TOP of the section so it sits behind
+            the headline only: large, high-contrast display type can carry a
+            tint behind it, running body copy cannot.
+
+            The clipping band is sized in `vw`, the SAME unit as the wordmark,
+            so it stays proportional at every width. A fixed pixel height does
+            not survive the breakpoints — at exactly 768px the headline drops a
+            line, the columns move up, and a px band overshoots into them.
+            Glyph box = font-size (18/24vw) offset by -6vw, so a band of
+            18vw/24vw contains it exactly. Decorative only, never clickable. */}
         <div
           aria-hidden
-          className="pointer-events-none absolute inset-0 select-none overflow-hidden"
+          className="pointer-events-none absolute inset-x-0 top-0 h-[24vw] select-none overflow-hidden md:h-[18vw]"
         >
-          <Wordmark className="-right-[6vw] -translate-y-1/2 absolute top-1/2 text-[26vw] text-forest/[0.045] leading-none md:text-[22vw]" />
+          <Wordmark className="-right-[8vw] -top-[6vw] absolute text-[30vw] text-forest/[0.05] leading-none md:text-[24vw]" />
         </div>
 
         <div className="relative mx-auto max-w-6xl">
@@ -141,8 +150,8 @@ export default function SellPage() {
           </div>
 
           <h1
-            className="relative z-10 mt-10 max-w-4xl font-bold font-serif text-forest leading-[0.98] tracking-[-0.03em] md:mt-12"
-            style={{ fontSize: 'clamp(44px, 7vw, 86px)' }}
+            className="relative z-10 mt-10 max-w-4xl text-balance font-bold font-serif text-forest leading-[1.02] tracking-[-0.028em] md:mt-12"
+            style={{ fontSize: 'clamp(38px, 5vw, 62px)' }}
           >
             A real cash offer in writing.
             <br />
@@ -151,60 +160,107 @@ export default function SellPage() {
             </span>
           </h1>
 
-          <div className="mt-12 grid items-start gap-12 md:mt-14 md:grid-cols-[1.1fr_1fr] md:gap-20">
-            <div>
-              <Eyebrow tone="wax">our promise is simple</Eyebrow>
-              <p className="mt-5 max-w-xl text-[17px] text-stone-700 leading-[1.7]">
-                Tell us about the property and we will be in touch the same day.
-                We come and see every home ourselves before we put a price on
-                paper. Then we send you our offer in writing, held for 72 hours,
-                so you have time to think it over and talk it through. What we
-                write down is what we complete at.
-              </p>
-              <div className="mt-8 flex flex-wrap items-center gap-x-6 gap-y-4">
-                <Button href="#offer">Get a cash offer</Button>
-                <Button href="#how" variant="ghost">
-                  See how it works
-                </Button>
-              </div>
-            </div>
-
-            {/* Who we are — replaces the founder byline that used to sit here.
-                First person throughout: this is the business talking, not a
-                credential being presented. */}
-            <div className="border-hair border-t pt-8 md:border-t-0 md:border-l md:pt-0 md:pl-12">
-              <h2 className="font-semibold font-serif text-2xl text-forest leading-tight tracking-[-0.01em]">
-                We&rsquo;re Kept. We&rsquo;re not a{' '}
-                <span className="text-brand">
-                  &ldquo;we buy any home&rdquo;
-                </span>
-                .
-              </h2>
-              <div className="mt-5 space-y-4 text-[15px] text-stone-600 leading-relaxed">
-                <p>
-                  A home is usually the biggest thing a family will ever own,
-                  and we treat it that way. We are a people business that
-                  happens to buy property — which is why we will never make you
-                  an offer on a house we have not stood in.
-                </p>
-                <p>
-                  We show our workings, we say plainly what we are and what we
-                  are not, and whatever your circumstances you will get an
-                  honest steer from us. Even when that steer is to sell
-                  somewhere other than to us.
-                </p>
-                <p className="text-forest">
-                  Honesty and respect, both ways. That is the whole of it.
-                </p>
-              </div>
+          {/* ONE column of prose, never two. The hero used to carry a second
+              block of body copy beside this one, which is the layout you get
+              when a removed artefact is replaced with text instead of with a
+              composition. The values block that sat here now has its own
+              section below. */}
+          <div className="relative z-10 mt-10 max-w-xl md:mt-12">
+            <Eyebrow tone="wax">our promise is simple</Eyebrow>
+            <p className="mt-5 text-[17px] text-stone-700 leading-[1.7]">
+              We come and see every home ourselves before we put a price on
+              paper. Then we send you our offer in writing, held for 72 hours.
+              What we write down is what we complete at.
+            </p>
+            <div className="mt-8 flex flex-wrap items-center gap-x-6 gap-y-4">
+              <Button href="#offer">Get a cash offer</Button>
+              <Button href="#how" variant="ghost">
+                See how it works
+              </Button>
             </div>
           </div>
 
-          <div className="mt-14 border-hair border-t pt-5">
+          {/* Verbs as navigation (DESIGN-REFERENCES.md, the Farewill steal).
+              Someone in the middle of a bad week self-selects by situation in
+              one glance, rather than reading a pitch and working out whether
+              it is aimed at them. This is the hero's second element instead of
+              a second column of prose. */}
+          <div className="relative z-10 mt-16 border-hair border-t pt-6 md:mt-20">
+            <Eyebrow tone="muted">why are you selling?</Eyebrow>
+            <ul className="mt-5 grid grid-cols-1 gap-px overflow-hidden rounded-sm border border-hair bg-hair sm:grid-cols-2 lg:grid-cols-4">
+              {[
+                { t: 'I’m an executor', s: 'Probate', href: '/probate' },
+                { t: 'My buyer pulled out', s: 'Chain break', href: '#situations' },
+                { t: 'We’re separating', s: 'Divorce', href: '#situations' },
+                { t: 'I’m relocating', s: 'Moving away', href: '#situations' },
+              ].map((r) => (
+                <li key={r.t} className="bg-white">
+                  <Link
+                    href={r.href}
+                    className="group flex h-full flex-col justify-between gap-6 p-5 transition-colors hover:bg-soft"
+                  >
+                    <span className="font-semibold font-serif text-[19px] text-forest leading-snug">
+                      {r.t}
+                    </span>
+                    <span className="flex items-baseline justify-between gap-3">
+                      <span className="text-[11px] text-stone-500 tracking-[0.14em] uppercase [font-family:var(--font-courier)]">
+                        {r.s}
+                      </span>
+                      <span
+                        aria-hidden
+                        className="text-brand transition-transform group-hover:translate-x-0.5"
+                      >
+                        →
+                      </span>
+                    </span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <div className="mt-12 border-hair border-t pt-5">
             <p className="font-serif text-[13px] text-stone-500">
               Property Redress Scheme &middot; HMRC AML supervised &middot; ICO
               registered &middot; No fees to you
             </p>
+          </div>
+        </div>
+      </section>
+
+      {/* ————— WHO WE ARE —————
+          Lifted out of the hero, where it was competing with the promise for
+          the same eyeline. On its own it can be what it actually is: the
+          argument for why we are not the company sellers are afraid of. */}
+      <section className="px-6 pt-20 pb-4 md:px-12 md:pt-24">
+        <div className="mx-auto max-w-6xl">
+          <div className="grid grid-cols-1 gap-10 lg:grid-cols-[1fr_1.25fr] lg:gap-20">
+            <h2 className="font-semibold font-serif text-3xl text-forest leading-[1.1] tracking-[-0.02em] md:text-[42px]">
+              We&rsquo;re Kept.
+              <br />
+              We&rsquo;re not a{' '}
+              <span className="font-normal text-brand">
+                &ldquo;we buy any home&rdquo;
+              </span>
+              <span className="text-wax">.</span>
+            </h2>
+            <div className="space-y-5 text-[16px] text-stone-600 leading-[1.75]">
+              <p>
+                A home is usually the biggest thing a family will ever own, and
+                we treat it that way. We are a people business that happens to
+                buy property. That is why we will never make you an offer on a
+                house we have not stood in.
+              </p>
+              <p>
+                We show our workings, we say plainly what we are and what we are
+                not, and whatever your circumstances you will get an honest
+                steer from us. Even when that steer is to sell somewhere other
+                than to us.
+              </p>
+              <p className="font-serif text-[19px] text-forest">
+                Honesty and respect, both ways. That is the whole of it.
+              </p>
+            </div>
           </div>
         </div>
       </section>
@@ -279,7 +335,7 @@ export default function SellPage() {
                     We can complete in as little as two weeks, and the price we
                     quote is the price we complete at.
                   </strong>{' '}
-                  We will not come back and try to renegotiate — with three
+                  We will not come back and try to renegotiate. There are three
                   exceptions, written down here so you can hold us to them.
                 </p>
               </div>
@@ -322,8 +378,9 @@ export default function SellPage() {
         </div>
       </section>
 
-      {/* ————— REASONS / SITUATIONS ————— */}
-      <section className="px-6 py-20 md:px-12 md:py-24">
+      {/* ————— REASONS / SITUATIONS —————
+          Anchor target for the hero's self-selection row. */}
+      <section id="situations" className="scroll-mt-24 px-6 py-20 md:px-12 md:py-24">
         <div className="mx-auto max-w-6xl">
           <div className="mb-12 max-w-3xl">
             <Eyebrow>who we buy from</Eyebrow>
@@ -387,7 +444,7 @@ export default function SellPage() {
                     n: '01',
                     t: 'You get in touch',
                     sla: 'Same day',
-                    d: 'Tell us the address and a little about your situation. We come back to you the same day. Before we bother you for anything else, we pull what we can ourselves — Land Registry, EPC, planning.',
+                    d: 'Tell us the address and a little about your situation. We come back to you the same day. Before we bother you for anything else, we pull what we can ourselves: Land Registry, EPC, planning.',
                   },
                   {
                     n: '02',
@@ -405,7 +462,7 @@ export default function SellPage() {
                     n: '04',
                     t: 'Conveyancing and completion',
                     sla: 'At the pace you need',
-                    d: 'You instruct your own solicitor — we can recommend firms used to working quickly — and we instruct ours straight away. Regular updates on a live timeline you can share with anyone. We pay our own legal costs.',
+                    d: 'You instruct your own solicitor, and we can recommend firms used to working quickly. We instruct ours straight away. Regular updates on a live timeline you can share with anyone. We pay our own legal costs.',
                   },
                 ].map((s) => (
                   <li
@@ -473,7 +530,7 @@ export default function SellPage() {
                   ],
                   [
                     'Your timeline',
-                    'We work to the timeline that suits you. Fast when you need fast — as little as two weeks. Patient when you are waiting on a grant of probate, a court date, or somewhere to move to.',
+                    'We work to the timeline that suits you. Fast when you need fast, as little as two weeks. Patient when you are waiting on a grant of probate, a court date, or somewhere to move to.',
                   ],
                   [
                     'Walk-away free',
@@ -508,7 +565,7 @@ export default function SellPage() {
             </h2>
             <p className="mt-4 text-stone-600">
               A few quick details, then we will be in touch the same day. We
-              come and view the property before we put any figure to you — and
+              come and view the property before we put any figure to you, and
               when we do, it comes in writing.
             </p>
           </div>
@@ -544,7 +601,7 @@ export default function SellPage() {
               </span>
             </h2>
             <p className="mt-6 max-w-xl text-[15px] text-stone-600 leading-relaxed">
-              Comparable sales, title records, market trend — the desk research
+              Comparable sales, title records, market trend: the desk research
               is automated, which is why it&rsquo;s fast. The judgment
               isn&rsquo;t. No figure reaches you until one of us has read it,
               checked it and put our name to it. Write to us and it&rsquo;s

@@ -1,5 +1,7 @@
 # Kept. — brand & design system
 
+_Last verified against the live site: 2026-08-17._
+
 **Status:** exploration approved by both founders, July 2026. Domain secured:
 **wearekept.co.uk**. Legal/trading structure TBC (trademark class 36 search
 still to be run before public use).
@@ -62,16 +64,22 @@ migration, and visual continuity through the dual-name transition:
 
 ## Signature artefacts (these ARE the brand)
 
-1. **The offer letter** — cream paper, serif letterhead, Courier labels,
-   the figure huge in serif, wax seal, signature. Slight rotation at rest;
-   straightens on hover.
-2. **The promise card** — bone card, brass/wax seal, three numbered
-   promises.
-3. **The offer-breakdown widget** — shows the maths: market estimate →
-   "speed & certainty — our margin" → your figure. Radical transparency;
-   we never hide the discount.
-4. **The WhatsApp thread** — the agent channel's native artefact.
-5. **The poster** — giant lowercase `kept.` on forest, one line, one link.
+1. **The `kept.` watermark** — the wordmark oversized and near-translucent
+   (~5% forest), bled off the page edge behind the headline. Never behind
+   running body text; large display type can carry a tint, prose cannot.
+2. **The promise card** — bone card, brass/wax seal, numbered promises.
+3. **The WhatsApp thread** — the agent channel's native artefact.
+4. **The poster** — giant lowercase `kept.` on forest, one line, one link.
+
+**Retired, Aug 2026 — do not reintroduce or brief from these:**
+
+- ~~The signed offer letter~~ — removed from the `/sell` hero at founder
+  review. The watermark replaced it.
+- ~~The offer-breakdown widget~~ — the market-estimate → margin → your-figure
+  maths panel. Component deleted (`components/offer-breakdown.tsx`). The
+  below-market trade is still stated in the `/sell` FAQ and the "when we're
+  probably not the right answer" section, but it is **no longer shown as a
+  worked example, and not on every page**.
 
 ## Motion
 
@@ -91,10 +99,23 @@ migration, and visual continuity through the dual-name transition:
 ## Copy truth rules (binding)
 
 The live site copy is the source of truth for every claim. The promise is:
-**same-day indicative response → we view every property → confirmed written
-offer within 24–48 hours of viewing, locked 72 hours → completion in weeks
-not months.** Three documented renegotiation exceptions, always stated.
-Never advertise internal ops targets. See CLAUDE.md "Public promises".
+**same-day response → we view every property → confirmed written offer we
+_aim_ to send within 24–48 hours of viewing, locked 72 hours → completion in
+weeks not months, as little as two weeks.** Three documented renegotiation
+exceptions, always stated. Never advertise internal ops targets.
+See CLAUDE.md "Public promises".
+
+Also binding, from the Aug 2026 founder review:
+
+- **No indicative offers**, and no generated figure shown on screen anywhere.
+- **No em dashes** in any copy, on the site or in documents. Comma, colon, or
+  split the sentence. En dashes in number ranges (24–48) are fine.
+- **Never "advice"** — we are not FCA authorised. Use "an honest steer".
+- **Never "legally binding"** — "binding on Kept for 72 hours".
+- **No numbers in probate copy.** No IHT interest, no carrying costs. Closure,
+  not a deadline.
+- Sellers pay their own legal costs; we pay ours. Never imply the offer figure
+  lands whole.
 
 ## Digital home
 

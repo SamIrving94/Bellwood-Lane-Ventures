@@ -139,7 +139,7 @@ export function LogoLockup({
   return (
     <Link
       href={href}
-      aria-label={`${brand.name} — home`}
+      aria-label={`${brand.name}, home`}
       className={cn('group inline-flex items-center', className)}
     >
       <Wordmark

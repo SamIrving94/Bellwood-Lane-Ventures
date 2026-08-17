@@ -209,7 +209,7 @@ function EnquiryReceived() {
     <div className="rounded-[2px] border border-leaf/40 bg-soft p-6">
       <DocLabel>ENQUIRY RECEIVED</DocLabel>
       <h3 className="mt-2 font-semibold font-serif text-2xl text-forest">
-        Thank you — we will be in touch.
+        Thank you. We will be in touch.
       </h3>
       <div className="mt-3 space-y-3 text-sm text-stone-700 leading-relaxed">
         <p>
@@ -219,8 +219,8 @@ function EnquiryReceived() {
         </p>
         <p>
           We do not put a price on a home we have not stood in. Once we have
-          viewed it, we aim to send our offer in writing within 24 to 48 hours
-          — held for 72 hours, with no obligation on you at all.
+          viewed it, we aim to send our offer in writing within 24 to 48 hours,
+          held for 72 hours, with no obligation on you at all.
         </p>
       </div>
     </div>

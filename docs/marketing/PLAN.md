@@ -1,5 +1,7 @@
 # Bellwood Lane — Marketing Plan
 
+_Last verified against the live site: 2026-08-17._
+
 **Status:** May 2026 (v1).
 **Audience:** CEO, Marketer, Liaison, Designer, Counsel.
 **Companion docs:** `HANDOVER.md`, `PAPERCLIP-SYNC-BRIEF.md` §5.6.
@@ -59,11 +61,14 @@ In priority order for Bellwood's economics:
 
 ### 3.1 Probate executors (highest priority)
 
-- **Why:** HMRC IHT clock = real time pressure. Empty property bleeding council
-  tax. Underserved. Low emotional attachment to maximum price.
+- **Why:** underserved, and speed genuinely helps. Completion can be set to
+  the grant date.
+- **Framing (binding, Aug 2026):** do NOT sell on the IHT clock or carrying
+  costs. No numbers. The message is closure and getting back to what matters.
+  See `docs/brand/KEPT.md` copy-truth rules.
 - **Channel:** Google search, solicitor referrals, local press in target
   postcodes
-- **Landing:** `/sell/probate`
+- **Landing:** `/probate`
 - **Content:** probate-specific blog posts, anonymised executor case studies
 
 ### 3.2 Chain break vendors going direct
@@ -209,7 +214,7 @@ These pages earn trust and stay live forever:
    - *"Our promise to vendors"*
    - *"What we won't buy"*
 4. **`/live` quarterly completion-rate page** — published per our promise
-5. **`/sell/probate`** — dedicated probate-executor landing
+5. **`/probate`** — dedicated probate-executor landing (LIVE)
 6. **`/sell/distress`** — divorce/repos with charity signposting
 7. **`/sell/problem-property`** — knotweed, short lease, cladding
 8. **Press kit page** for journalists/bloggers writing about cash buyers
@@ -250,7 +255,7 @@ MSE, Citizens Advice). Huge domain authority lift over 12 months.
 
 ### Days 1–30 — foundations on both sides
 
-- Engineer: scaffold `/why-we-wont-buy-any-home`, `/sell/probate`,
+- Engineer: scaffold `/why-we-wont-buy-any-home`, `/probate`,
   `/sell/distress`, `/sell/problem-property` routes
 - Marketer: 8 distress-question blog posts (vendor) + 5 LinkedIn templates
   + 5 email outreach templates (agent)
