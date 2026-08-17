@@ -42,9 +42,15 @@ promise (the dot, the seal, "the honest version" labels). Leaf green is
 
 ## Type — DECIDED: inherit the Bellwoods editorial set
 
-All three faces already load on the public site (Google Fonts, free,
-`packages/design-system/lib/fonts.ts`) — zero licensing cost, zero
-migration, and visual continuity through the dual-name transition:
+All faces are **self-hosted** in `packages/design-system/lib/fonts/` and
+loaded via `next/font/local` from `packages/design-system/lib/fonts.ts`.
+They were `next/font/google` until Aug 2026, when a Vercel build failed on
+`Failed to fetch font file from fonts.gstatic.com` and took the marketing
+site's deployment down. Builds no longer touch the network for type. All
+five families are SIL OFL, so there is no licensing cost either way. The
+woff2 files are the `latin` subset only.
+
+The set, unchanged by the hosting move:
 
 - **Headlines & promise lines:** **Libre Caslon Text** — Caslon is the
   English document face (legal, publishing, letterpress): exactly Kept's
