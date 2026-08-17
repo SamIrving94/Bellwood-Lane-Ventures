@@ -1,8 +1,20 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useTransition } from 'react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@repo/design-system/components/ui/alert-dialog';
 import { TriageButtons } from '../components/triage-buttons';
 import type { TriageStatus } from '../../actions/leads/triage';
+import { clearNewLeadsInbox } from '../../actions/leads/clear-inbox';
 
 type Lead = {
   id: string;
@@ -349,20 +361,25 @@ export function LeadsTable({ leads, initialFilter, totalCount }: Props) {
         </div>
       )}
 
-      <p className="text-muted-foreground text-sm">
-        {filteredLeads.length === 0
-          ? '0 leads'
-          : `Showing ${pageStart + 1}–${pageStart + pagedLeads.length} of ${filteredLeads.length} lead${filteredLeads.length !== 1 ? 's' : ''}`}
-        {truncated && (
-          <>
-            {' '}
-            <span className="text-amber-700">
-              · loaded the top {leads.length} of {totalCount} by score; older
-              lower-scoring leads are not shown
-            </span>
-          </>
+      <div className="flex items-center justify-between">
+        <p className="text-muted-foreground text-sm">
+          {filteredLeads.length === 0
+            ? '0 leads'
+            : `Showing ${pageStart + 1}–${pageStart + pagedLeads.length} of ${filteredLeads.length} lead${filteredLeads.length !== 1 ? 's' : ''}`}
+          {truncated && (
+            <>
+              {' '}
+              <span className="text-amber-700">
+                · loaded the top {leads.length} of {totalCount} by score;
+                older lower-scoring leads are not shown
+              </span>
+            </>
+          )}
+        </p>
+        {activeFilter === 'new' && filteredLeads.length > 0 && (
+          <ClearInboxButton count={filteredLeads.length} />
         )}
-      </p>
+      </div>
 
       {filteredLeads.length === 0 ? (
         <div className="rounded-lg border bg-card p-8 text-center">
@@ -470,6 +487,64 @@ export function LeadsTable({ leads, initialFilter, totalCount }: Props) {
         </>
       )}
     </>
+  );
+}
+
+function ClearInboxButton({ count }: { count: number }) {
+  const [open, setOpen] = useState(false);
+  const [isPending, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+
+  const handleConfirm = () => {
+    setError(null);
+    startTransition(async () => {
+      try {
+        await clearNewLeadsInbox();
+        setOpen(false);
+      } catch {
+        setError('Failed to clear — try again');
+      }
+    });
+  };
+
+  return (
+    <AlertDialog open={open} onOpenChange={setOpen}>
+      <AlertDialogTrigger asChild>
+        <button
+          type="button"
+          className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted/80"
+        >
+          Clear inbox
+        </button>
+      </AlertDialogTrigger>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>
+            Clear {count} new lead{count === 1 ? '' : 's'}?
+          </AlertDialogTitle>
+          <AlertDialogDescription>
+            This removes every untriaged lead from your inbox. None of them
+            get marked passed, so it doesn't count against them — if a scout
+            run finds the same property again and it still looks solid, it
+            comes back as a fresh lead. Anything already shortlisted,
+            watched, passed, or converted is untouched.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        {error && <p className="text-xs text-red-600">{error}</p>}
+        <AlertDialogFooter>
+          <AlertDialogCancel disabled={isPending}>Cancel</AlertDialogCancel>
+          <AlertDialogAction
+            onClick={(e) => {
+              e.preventDefault();
+              handleConfirm();
+            }}
+            disabled={isPending}
+          >
+            {isPending ? 'Clearing…' : 'Clear inbox'}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   );
 }
 
