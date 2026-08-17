@@ -2,6 +2,7 @@ import {
   Button,
   Eyebrow,
   LogoLockup,
+  Monogram,
   Seal,
   SectionNumber,
   Wordmark,
@@ -117,27 +118,35 @@ export default function SellPage() {
 
       {/* ————— HERO —————
           The signed-letter artefact and the wax seal are gone (founder review,
-          Aug 2026). In their place the brand itself sits behind the type: an
-          oversized, near-translucent `kept.` watermark, bled off the right
-          edge. It is decorative only (aria-hidden) and renders through the
-          same Wordmark component as the nav mark, so it follows the brand
-          phase rather than hard-coding a name. */}
+          Aug 2026). Removing the letter left a hole on the right, and for a
+          while it was filled with a second column of body copy, which is the
+          layout you get by default rather than by decision. The hero is now a
+          full-rail headline over two columns that BOTH carry content: the
+          promise on the left, the situation index on the right. */}
       <section className="relative overflow-hidden px-6 pt-10 pb-16 md:px-12 md:pt-12 md:pb-20">
-        {/* The watermark. Anchored to the TOP of the section so it sits behind
-            the headline only: large, high-contrast display type can carry a
-            tint behind it, running body copy cannot.
+        {/* The watermark is the MONOGRAM, not the wordmark.
 
-            The clipping band is sized in `vw`, the SAME unit as the wordmark,
-            so it stays proportional at every width. A fixed pixel height does
-            not survive the breakpoints — at exactly 768px the headline drops a
-            line, the columns move up, and a px band overshoots into them.
-            Glyph box = font-size (18/24vw) offset by -6vw, so a band of
-            18vw/24vw contains it exactly. Decorative only, never clickable. */}
+            The founder's reference was the old Bellwoods `B`: one letter,
+            oversized, translucent. The full word does not survive the
+            treatment. "kept" set this large has to be sliced by two page edges
+            to fit, and a word cut through its own x-height reads as a
+            rendering fault rather than a decision. A single `k.` bleeds off
+            one edge, keeps its whole letterform, and is what KEPT.md already
+            reserves the monogram for: seals, favicons, ghosted watermarks.
+            It sits in the headline band, above both columns, so it never tints
+            running body copy.
+
+            Opacity goes on the WRAPPER, not on the letter's text colour.
+            `Monogram` draws its full stop through `KeptDot`, which carries its
+            own `text-wax`; a `text-forest/[0.06]` on the parent leaves that
+            dot at FULL strength, i.e. a solid red circle the height of the
+            headline. Fading the whole element keeps the dot wax and in
+            proportion. */}
         <div
           aria-hidden
-          className="pointer-events-none absolute inset-x-0 top-0 h-[24vw] select-none overflow-hidden md:h-[18vw]"
+          className="pointer-events-none absolute inset-0 select-none overflow-hidden opacity-[0.07]"
         >
-          <Wordmark className="-right-[8vw] -top-[6vw] absolute text-[30vw] text-forest/[0.05] leading-none md:text-[24vw]" />
+          <Monogram className="-right-[7vw] absolute top-[2vw] text-[34vw] text-forest leading-none md:text-[26vw]" />
         </div>
 
         <div className="relative mx-auto max-w-6xl">
@@ -149,9 +158,12 @@ export default function SellPage() {
             </p>
           </div>
 
+          {/* The headline runs the full rail. It used to stop at max-w-4xl,
+              which left the right third of every rule on the page pointing at
+              nothing. */}
           <h1
-            className="relative z-10 mt-10 max-w-4xl text-balance font-bold font-serif text-forest leading-[1.02] tracking-[-0.028em] md:mt-12"
-            style={{ fontSize: 'clamp(38px, 5vw, 62px)' }}
+            className="relative z-10 mt-9 text-balance font-bold font-serif text-forest leading-[1.0] tracking-[-0.03em] md:mt-10"
+            style={{ fontSize: 'clamp(40px, 6.2vw, 78px)' }}
           >
             A real cash offer in writing.
             <br />
@@ -160,66 +172,77 @@ export default function SellPage() {
             </span>
           </h1>
 
-          {/* ONE column of prose, never two. The hero used to carry a second
-              block of body copy beside this one, which is the layout you get
-              when a removed artefact is replaced with text instead of with a
-              composition. The values block that sat here now has its own
-              section below. */}
-          <div className="relative z-10 mt-10 max-w-xl md:mt-12">
-            <Eyebrow tone="wax">our promise is simple</Eyebrow>
-            <p className="mt-5 text-[17px] text-stone-700 leading-[1.7]">
-              We come and see every home ourselves before we put a price on
-              paper. Then we send you our offer in writing, held for 72 hours.
-              What we write down is what we complete at.
-            </p>
-            <div className="mt-8 flex flex-wrap items-center gap-x-6 gap-y-4">
-              <Button href="#offer">Get a cash offer</Button>
-              <Button href="#how" variant="ghost">
-                See how it works
-              </Button>
+          {/* Two columns that BOTH carry content: the promise on the left, the
+              situation index on the right. The right column is where the
+              signed letter used to sit; leaving it empty is what made the
+              composition fall off the right-hand edge. */}
+          <div className="relative z-10 mt-12 grid grid-cols-1 gap-x-16 gap-y-12 border-hair border-t pt-9 md:mt-14 lg:grid-cols-[minmax(0,1fr)_minmax(0,0.95fr)]">
+            <div>
+              <Eyebrow tone="wax">our promise is simple</Eyebrow>
+              <p className="mt-5 max-w-md text-[17px] text-stone-700 leading-[1.7]">
+                We come and see every home ourselves before we put a price on
+                paper. Then we send you our offer in writing, held for 72 hours.
+                What we write down is what we complete at.
+              </p>
+              <div className="mt-7 flex flex-wrap items-center gap-x-6 gap-y-4">
+                <Button href="#offer">Get a cash offer</Button>
+                <Button href="#how" variant="ghost">
+                  See how it works
+                </Button>
+              </div>
             </div>
-          </div>
 
-          {/* Verbs as navigation (DESIGN-REFERENCES.md, the Farewill steal).
-              Someone in the middle of a bad week self-selects by situation in
-              one glance, rather than reading a pitch and working out whether
-              it is aimed at them. This is the hero's second element instead of
-              a second column of prose. */}
-          <div className="relative z-10 mt-16 border-hair border-t pt-6 md:mt-20">
-            <Eyebrow tone="muted">why are you selling?</Eyebrow>
-            <ul className="mt-5 grid grid-cols-1 gap-px overflow-hidden rounded-sm border border-hair bg-hair sm:grid-cols-2 lg:grid-cols-4">
-              {[
-                { t: 'I’m an executor', s: 'Probate', href: '/probate' },
-                { t: 'My buyer pulled out', s: 'Chain break', href: '#situations' },
-                { t: 'We’re separating', s: 'Divorce', href: '#situations' },
-                { t: 'I’m relocating', s: 'Moving away', href: '#situations' },
-              ].map((r) => (
-                <li key={r.t} className="bg-white">
-                  <Link
-                    href={r.href}
-                    className="group flex h-full flex-col justify-between gap-6 p-5 transition-colors hover:bg-soft"
-                  >
-                    <span className="font-semibold font-serif text-[19px] text-forest leading-snug">
-                      {r.t}
-                    </span>
-                    <span className="flex items-baseline justify-between gap-3">
-                      <span className="text-[11px] text-stone-500 tracking-[0.14em] uppercase [font-family:var(--font-courier)]">
+            {/* Verbs as navigation (DESIGN-REFERENCES.md, the Farewill steal),
+                set as an index with dotted leaders. That texture is lifted
+                straight from the offer letter's spec table, which is the one
+                piece of the document world still available to us now the
+                letter artefact itself has gone. */}
+            <div>
+              <Eyebrow tone="muted">why are you selling?</Eyebrow>
+              <ul className="mt-4 divide-y divide-hair border-hair border-y">
+                {[
+                  { t: 'I’m an executor', s: 'Probate', href: '/probate' },
+                  {
+                    t: 'My buyer pulled out',
+                    s: 'Chain break',
+                    href: '#situations',
+                  },
+                  { t: 'We’re separating', s: 'Divorce', href: '#situations' },
+                  {
+                    t: 'I’m relocating',
+                    s: 'Moving away',
+                    href: '#situations',
+                  },
+                ].map((r) => (
+                  <li key={r.t}>
+                    <Link
+                      href={r.href}
+                      className="group flex items-baseline gap-3 py-3.5 transition-colors hover:text-brand-deep"
+                    >
+                      <span className="shrink-0 font-serif text-[18px] text-forest transition-colors group-hover:text-brand">
+                        {r.t}
+                      </span>
+                      <span
+                        aria-hidden
+                        className="mb-[5px] flex-1 border-stone-400/40 border-b border-dotted"
+                      />
+                      <span className="shrink-0 text-[10.5px] text-stone-500 uppercase tracking-[0.14em] [font-family:var(--font-courier)]">
                         {r.s}
                       </span>
                       <span
                         aria-hidden
-                        className="text-brand transition-transform group-hover:translate-x-0.5"
+                        className="shrink-0 text-brand transition-transform group-hover:translate-x-0.5"
                       >
                         →
                       </span>
-                    </span>
-                  </Link>
-                </li>
-              ))}
-            </ul>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
           </div>
 
-          <div className="mt-12 border-hair border-t pt-5">
+          <div className="mt-14 border-hair border-t pt-5">
             <p className="font-serif text-[13px] text-stone-500">
               Property Redress Scheme &middot; HMRC AML supervised &middot; ICO
               registered &middot; No fees to you
@@ -380,7 +403,10 @@ export default function SellPage() {
 
       {/* ————— REASONS / SITUATIONS —————
           Anchor target for the hero's self-selection row. */}
-      <section id="situations" className="scroll-mt-24 px-6 py-20 md:px-12 md:py-24">
+      <section
+        id="situations"
+        className="scroll-mt-24 px-6 py-20 md:px-12 md:py-24"
+      >
         <div className="mx-auto max-w-6xl">
           <div className="mb-12 max-w-3xl">
             <Eyebrow>who we buy from</Eyebrow>
@@ -673,7 +699,10 @@ export default function SellPage() {
                   d: 'Our offer is below open-market value by design. If maximising is the goal, this isn’t the route.',
                 },
               ].map((item) => (
-                <li key={item.t} className="flex items-start gap-4 bg-white p-6">
+                <li
+                  key={item.t}
+                  className="flex items-start gap-4 bg-white p-6"
+                >
                   <span className="mt-2.5 h-px w-4 shrink-0 bg-brand" />
                   <div>
                     <p className="font-semibold font-serif text-[17px] text-forest">
