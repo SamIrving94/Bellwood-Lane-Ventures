@@ -51,7 +51,8 @@ export const POST = async (request: Request) => {
   //
   // Fix: pick the MAX_SEEDS_PER_RUN oldest-probed (never-probed first) areas,
   // stamp lastProbe after the run so tomorrow picks the next batch, and rotate
-  // through the whole list over a few days.
+  // through the whole list over a few days. `track: 'prime'` areas sit outside
+  // this rotation and are scanned every run instead — see below.
   const MAX_SEEDS_PER_RUN = 6;
 
   type ScanSeed = { label?: string; postcode: string; radiusMiles: number };
@@ -75,7 +76,7 @@ export const POST = async (request: Request) => {
       areasRaw = (areasSetting.value as unknown[]).filter(
         (r): r is Record<string, unknown> => !!r && typeof r === 'object',
       );
-      const areas = areasRaw.flatMap((a) => {
+      const parsed = areasRaw.flatMap((a) => {
         const seedPostcode =
           typeof a.seedPostcode === 'string' ? a.seedPostcode : null;
         const radiusMiles =
@@ -83,6 +84,7 @@ export const POST = async (request: Request) => {
         const label = typeof a.label === 'string' ? a.label : undefined;
         const id =
           typeof a.id === 'string' ? a.id : (seedPostcode ?? `${label}`);
+        const isPrime = a.track === 'prime';
         // never-probed → 0 so it sorts to the FRONT of the rotation queue.
         const lp = a.lastProbe as { checkedAt?: unknown } | null | undefined;
         const lastProbeAt =
@@ -92,18 +94,28 @@ export const POST = async (request: Request) => {
                 : 0)
             : 0;
         if (!seedPostcode) return [];
-        return [{ id, seedPostcode, radiusMiles, label, lastProbeAt }];
+        return [{ id, seedPostcode, radiusMiles, label, lastProbeAt, isPrime }];
       });
-      rotationAreaCount = areas.length;
+
+      // Prime-focus areas are scanned on EVERY run — scarce, high-value stock
+      // (see packages/scouting/src/track.ts) is worth a founder glance
+      // whenever it appears, so a once-every-few-days rotation slot isn't a
+      // real "focus". They sit outside the rotation entirely: not counted
+      // against MAX_SEEDS_PER_RUN, not part of the sweep-length math below.
+      const primeAreas = parsed.filter((a) => a.isPrime);
+      const volumeAreas = parsed.filter((a) => !a.isPrime);
+
+      rotationAreaCount = volumeAreas.length;
       // Oldest-probed (and never-probed) first; bounded batch per run.
-      areas.sort((a, b) => a.lastProbeAt - b.lastProbeAt);
-      const batch = areas.slice(0, MAX_SEEDS_PER_RUN);
-      scanSeeds = batch.map((a) => ({
+      volumeAreas.sort((a, b) => a.lastProbeAt - b.lastProbeAt);
+      const batch = volumeAreas.slice(0, MAX_SEEDS_PER_RUN);
+      const selected = [...primeAreas, ...batch];
+      scanSeeds = selected.map((a) => ({
         label: a.label,
         postcode: a.seedPostcode,
         radiusMiles: a.radiusMiles,
       }));
-      selectedAreaIds = batch.map((a) => a.id);
+      selectedAreaIds = selected.map((a) => a.id);
       // Deliberately DO NOT pass bare districts as sourcedPropertyPostcodes —
       // PropertyData rejects districts on /sourced-properties yet they still
       // incur the expensive serial sleep loops. Companies-House district

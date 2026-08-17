@@ -7,10 +7,12 @@ import {
   clearAllLeads,
   removeArea,
   reProbeArea,
+  setAreaTrack,
   triggerScoutNow,
   widenArea,
   type Area,
   type AreaLeadStats,
+  type AreaTrack,
   type Suggestion,
 } from './areas-actions';
 import { AreaTypeahead } from './area-typeahead';
@@ -96,6 +98,103 @@ function Sparkline({
   );
 }
 
+function AreaRow({
+  area: a,
+  stats,
+  pendingAction,
+  onWiden,
+  onReProbe,
+  onRemove,
+  onToggleTrack,
+}: {
+  area: Area;
+  stats: AreaLeadStats | undefined;
+  pendingAction: boolean;
+  onWiden: (id: string) => void;
+  onReProbe: (id: string) => void;
+  onRemove: (area: Area) => void;
+  onToggleTrack: (area: Area) => void;
+}) {
+  const count = a.lastProbe?.listingCount ?? 0;
+  const error = a.lastProbe?.error ?? null;
+  const checked = a.lastProbe?.checkedAt;
+  const isPrime = a.track === 'prime';
+  return (
+    <li className="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3 text-sm">
+      <span className="text-lg leading-none">
+        <StatusDot count={count} error={error} />
+      </span>
+      <div className="min-w-0 flex-1">
+        <div className="flex flex-wrap items-baseline gap-x-2">
+          <span className="font-semibold text-slate-900">{a.label}</span>
+          {isPrime && (
+            <span className="rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-800">
+              ★ Prime
+            </span>
+          )}
+          <span className="font-mono text-[11px] text-slate-500">
+            {a.district} · seed {a.seedPostcode} · {a.radiusMiles}mi
+          </span>
+        </div>
+        <div className="mt-0.5 text-[12px] text-muted-foreground">
+          {error
+            ? `Error: ${error.slice(0, 80)}`
+            : `${count} listing${count === 1 ? '' : 's'}${checked ? ` · checked ${formatRelative(checked)}` : ''}`}
+        </div>
+        <LeadBreakdown stats={stats} />
+      </div>
+      <Sparkline history={a.history} />
+      <div className="flex items-center gap-1">
+        <button
+          type="button"
+          onClick={() => onToggleTrack(a)}
+          disabled={pendingAction}
+          title={
+            isPrime
+              ? 'Scanned every day. Click to move back into the volume rotation.'
+              : 'Click to scan this area every day, regardless of rotation.'
+          }
+          className={`rounded-lg border px-3 py-1 text-xs font-medium transition disabled:opacity-50 ${
+            isPrime
+              ? 'border-amber-300 bg-amber-50 text-amber-800 hover:bg-amber-100'
+              : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-50'
+          }`}
+        >
+          {isPrime ? '★ Prime' : 'Make prime'}
+        </button>
+        {!error && a.radiusMiles < 10 && (
+          <button
+            type="button"
+            onClick={() => onWiden(a.id)}
+            disabled={pendingAction}
+            className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-1 text-xs font-medium text-amber-900 transition hover:bg-amber-100 disabled:opacity-50"
+          >
+            Widen +1.5mi
+          </button>
+        )}
+        <button
+          type="button"
+          onClick={() => onReProbe(a.id)}
+          disabled={pendingAction}
+          className="rounded-lg border border-slate-300 bg-white px-3 py-1 text-xs font-medium text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
+          title="Re-check this area"
+        >
+          ↻
+        </button>
+        <button
+          type="button"
+          onClick={() => onRemove(a)}
+          disabled={pendingAction}
+          className="rounded-lg border border-transparent px-2 py-1 text-rose-600 hover:bg-rose-50 disabled:opacity-50"
+          aria-label={`Remove ${a.label}`}
+        >
+          ✕
+        </button>
+      </div>
+    </li>
+  );
+}
+
 function LeadBreakdown({ stats }: { stats: AreaLeadStats | undefined }) {
   if (!stats || stats.total7d === 0) return null;
   const { byType, total7d, strong7d } = stats;
@@ -122,6 +221,7 @@ function LeadBreakdown({ stats }: { stats: AreaLeadStats | undefined }) {
 export function AreasForm({ initial, leadStats }: Props) {
   const [areas, setAreas] = useState<Area[]>(initial);
   const [input, setInput] = useState('');
+  const [addTrack, setAddTrack] = useState<AreaTrack>('volume');
   const [pendingAdd, startAdd] = useTransition();
   const [pendingAction, startAction] = useTransition();
   const [pendingScout, startScout] = useTransition();
@@ -148,24 +248,28 @@ export function AreasForm({ initial, leadStats }: Props) {
 
     startAdd(async () => {
       const r = picked
-        ? await addAreaFromSuggestion({
-            label: picked.label,
-            seedPostcode: picked.seedPostcode,
-            district: picked.district,
-          })
-        : await addArea(optimisticLabel);
+        ? await addAreaFromSuggestion(
+            {
+              label: picked.label,
+              seedPostcode: picked.seedPostcode,
+              district: picked.district,
+            },
+            addTrack,
+          )
+        : await addArea(optimisticLabel, addTrack);
 
       setPendingRows((cur) => cur.filter((p) => p.tempId !== tempId));
 
       if (r.ok) {
         setAreas((cur) => [...cur, r.area]);
         const c = r.area.lastProbe?.listingCount ?? 0;
+        const primeNote = r.area.track === 'prime' ? ' · scanned every day' : '';
         showToast({
           kind: c > 0 ? 'success' : 'info',
           message:
             c > 0
-              ? `✓ ${r.area.label} added — ${c} listings found.`
-              : `${r.area.label} added. No listings yet — try widening the radius.`,
+              ? `✓ ${r.area.label} added — ${c} listings found${primeNote}.`
+              : `${r.area.label} added${primeNote}. No listings yet — try widening the radius.`,
         });
       } else {
         showToast({ kind: 'error', message: r.error });
@@ -176,6 +280,32 @@ export function AreasForm({ initial, leadStats }: Props) {
   function handleAdd() {
     if (!input.trim()) return;
     commitAdd();
+  }
+
+  function handleToggleTrack(area: Area) {
+    const next: AreaTrack = area.track === 'prime' ? 'volume' : 'prime';
+    setAreas((cur) =>
+      cur.map((a) => (a.id === area.id ? { ...a, track: next } : a)),
+    );
+    startAction(async () => {
+      const r = await setAreaTrack(area.id, next);
+      if (r.ok) {
+        setAreas((cur) => cur.map((a) => (a.id === area.id ? r.area : a)));
+        showToast({
+          kind: 'info',
+          message:
+            next === 'prime'
+              ? `★ ${area.label} is now a prime focus — scanned every day.`
+              : `${area.label} moved back into the volume rotation.`,
+        });
+      } else {
+        // Revert optimistic flip on failure.
+        setAreas((cur) =>
+          cur.map((a) => (a.id === area.id ? area : a)),
+        );
+        showToast({ kind: 'error', message: r.error });
+      }
+    });
   }
 
   function handlePick(s: Suggestion) {
@@ -301,6 +431,8 @@ export function AreasForm({ initial, leadStats }: Props) {
     (s, a) => s + (a.lastProbe?.listingCount ?? 0),
     0,
   );
+  const primeAreas = areas.filter((a) => a.track === 'prime');
+  const volumeAreas = areas.filter((a) => a.track !== 'prime');
 
   return (
     <div className="space-y-6">
@@ -331,6 +463,32 @@ export function AreasForm({ initial, leadStats }: Props) {
             className="rounded-xl bg-slate-900 px-6 py-3 text-sm font-medium text-white transition hover:bg-slate-800 disabled:opacity-50"
           >
             + Add area
+          </button>
+        </div>
+        <div className="mt-3 flex items-center gap-1.5">
+          <span className="text-[11px] text-muted-foreground">Scan as:</span>
+          <button
+            type="button"
+            onClick={() => setAddTrack('volume')}
+            className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+              addTrack === 'volume'
+                ? 'bg-slate-900 text-white'
+                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+            }`}
+          >
+            Volume
+          </button>
+          <button
+            type="button"
+            onClick={() => setAddTrack('prime')}
+            title="Scanned every day, not subject to the 6-area rotation — for scarce, high-value patches worth checking daily."
+            className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+              addTrack === 'prime'
+                ? 'bg-amber-500 text-white'
+                : 'bg-amber-50 text-amber-700 hover:bg-amber-100'
+            }`}
+          >
+            ★ Prime focus
           </button>
         </div>
       </div>
@@ -402,88 +560,70 @@ export function AreasForm({ initial, leadStats }: Props) {
             &ldquo;Leeds&rdquo;.
           </p>
         ) : (
-          <ul className="mt-4 divide-y divide-slate-200 rounded-xl border border-slate-200">
-            {areas.map((a) => {
-              const count = a.lastProbe?.listingCount ?? 0;
-              const error = a.lastProbe?.error ?? null;
-              const checked = a.lastProbe?.checkedAt;
-              const stats = leadStats[a.district];
-              return (
-                <li
-                  key={a.id}
-                  className="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3 text-sm"
-                >
-                  <span className="text-lg leading-none">
-                    <StatusDot count={count} error={error} />
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-baseline gap-x-2">
-                      <span className="font-semibold text-slate-900">
-                        {a.label}
-                      </span>
-                      <span className="font-mono text-[11px] text-slate-500">
-                        {a.district} · seed {a.seedPostcode} · {a.radiusMiles}mi
-                      </span>
-                    </div>
-                    <div className="mt-0.5 text-[12px] text-muted-foreground">
-                      {error
-                        ? `Error: ${error.slice(0, 80)}`
-                        : `${count} listing${count === 1 ? '' : 's'}${checked ? ` · checked ${formatRelative(checked)}` : ''}`}
-                    </div>
-                    <LeadBreakdown stats={stats} />
-                  </div>
-                  <Sparkline history={a.history} />
-                  <div className="flex items-center gap-1">
-                    {!error && a.radiusMiles < 10 && (
-                      <button
-                        type="button"
-                        onClick={() => handleWiden(a.id)}
-                        disabled={pendingAction}
-                        className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-1 text-xs font-medium text-amber-900 transition hover:bg-amber-100 disabled:opacity-50"
-                      >
-                        Widen +1.5mi
-                      </button>
-                    )}
-                    <button
-                      type="button"
-                      onClick={() => handleReProbe(a.id)}
-                      disabled={pendingAction}
-                      className="rounded-lg border border-slate-300 bg-white px-3 py-1 text-xs font-medium text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
-                      title="Re-check this area"
+          <>
+            {primeAreas.length > 0 && (
+              <>
+                <p className="mt-5 font-mono text-[10px] uppercase tracking-[0.18em] text-amber-700">
+                  ★ Prime focus — scanned every day
+                </p>
+                <ul className="mt-2 divide-y divide-slate-200 rounded-xl border border-amber-200">
+                  {primeAreas.map((a) => (
+                    <AreaRow
+                      key={a.id}
+                      area={a}
+                      stats={leadStats[a.district]}
+                      pendingAction={pendingAction}
+                      onWiden={handleWiden}
+                      onReProbe={handleReProbe}
+                      onRemove={handleRemove}
+                      onToggleTrack={handleToggleTrack}
+                    />
+                  ))}
+                </ul>
+              </>
+            )}
+
+            {(volumeAreas.length > 0 || pendingRows.length > 0) && (
+              <>
+                {primeAreas.length > 0 && (
+                  <p className="mt-5 font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+                    Volume rotation — 6 areas/day
+                  </p>
+                )}
+                <ul className="mt-2 divide-y divide-slate-200 rounded-xl border border-slate-200">
+                  {volumeAreas.map((a) => (
+                    <AreaRow
+                      key={a.id}
+                      area={a}
+                      stats={leadStats[a.district]}
+                      pendingAction={pendingAction}
+                      onWiden={handleWiden}
+                      onReProbe={handleReProbe}
+                      onRemove={handleRemove}
+                      onToggleTrack={handleToggleTrack}
+                    />
+                  ))}
+                  {/* Optimistic placeholder rows for areas being added */}
+                  {pendingRows.map((p) => (
+                    <li
+                      key={p.tempId}
+                      className="flex items-center gap-3 px-4 py-3 text-sm opacity-70"
                     >
-                      ↻
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleRemove(a)}
-                      disabled={pendingAction}
-                      className="rounded-lg border border-transparent px-2 py-1 text-rose-600 hover:bg-rose-50 disabled:opacity-50"
-                      aria-label={`Remove ${a.label}`}
-                    >
-                      ✕
-                    </button>
-                  </div>
-                </li>
-              );
-            })}
-            {/* Optimistic placeholder rows for areas being added */}
-            {pendingRows.map((p) => (
-              <li
-                key={p.tempId}
-                className="flex items-center gap-3 px-4 py-3 text-sm opacity-70"
-              >
-                <span className="inline-block h-3 w-3 animate-pulse rounded-full bg-amber-300" />
-                <div className="flex-1">
-                  <span className="font-semibold text-slate-900">
-                    {p.label}
-                  </span>
-                  <span className="ml-2 font-mono text-[11px] text-slate-500">
-                    Checking listings…
-                  </span>
-                </div>
-              </li>
-            ))}
-          </ul>
+                      <span className="inline-block h-3 w-3 animate-pulse rounded-full bg-amber-300" />
+                      <div className="flex-1">
+                        <span className="font-semibold text-slate-900">
+                          {p.label}
+                        </span>
+                        <span className="ml-2 font-mono text-[11px] text-slate-500">
+                          Checking listings…
+                        </span>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
+          </>
         )}
 
         <p className="mt-4 text-[12px] text-muted-foreground">

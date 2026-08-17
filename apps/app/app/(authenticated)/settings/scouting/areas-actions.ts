@@ -13,6 +13,8 @@ const LEGACY_SEEDS_KEY = 'scouting.scanSeeds';
 const FULL_POSTCODE_RE = /^[A-Z]{1,2}\d{1,2}[A-Z]?\s?\d[A-Z]{2}$/i;
 const DISTRICT_RE = /^[A-Z]{1,2}\d{1,2}[A-Z]?$/i;
 
+export type AreaTrack = 'volume' | 'prime';
+
 export type Area = {
   id: string;
   label: string;
@@ -26,6 +28,14 @@ export type Area = {
   } | null;
   /** Rolling 30-day listing-count history for the sparkline. */
   history?: Array<{ date: string; count: number }>;
+  /**
+   * `volume` (default) areas share the daily 6-area rotation. `prime` areas
+   * are scanned on EVERY run regardless of rotation — prime stock (£700k+,
+   * see packages/scouting/src/track.ts) is scarce and worth a founder glance
+   * whenever it appears, so a once-every-few-days rotation slot isn't a real
+   * "focus". Missing on older rows — treat as 'volume'.
+   */
+  track?: AreaTrack;
 };
 
 function appendHistory(
@@ -294,6 +304,7 @@ async function loadAreas(): Promise<Area[]> {
         history: Array.isArray(a.history)
           ? (a.history as Array<{ date: string; count: number }>)
           : [],
+        track: a.track === 'prime' ? 'prime' : 'volume',
       },
     ];
   });
@@ -477,6 +488,7 @@ export async function getAreas(): Promise<Area[]> {
 
 export async function addArea(
   input: string,
+  track: AreaTrack = 'volume',
 ): Promise<{ ok: true; area: Area } | { ok: false; error: string }> {
   const userId = (await getFounderSession())?.userId;
   if (!userId) return { ok: false, error: 'Unauthorized' };
@@ -488,6 +500,7 @@ export async function addArea(
     seedPostcode: resolved.seedPostcode,
     district: resolved.district,
     radiusMiles: resolved.radiusMiles,
+    track,
   });
 }
 
@@ -495,11 +508,14 @@ export async function addArea(
  * Add directly from a typeahead suggestion — skips the input parser since
  * we already have a resolved postcode + district.
  */
-export async function addAreaFromSuggestion(suggestion: {
-  label: string;
-  seedPostcode: string;
-  district: string;
-}): Promise<{ ok: true; area: Area } | { ok: false; error: string }> {
+export async function addAreaFromSuggestion(
+  suggestion: {
+    label: string;
+    seedPostcode: string;
+    district: string;
+  },
+  track: AreaTrack = 'volume',
+): Promise<{ ok: true; area: Area } | { ok: false; error: string }> {
   const userId = (await getFounderSession())?.userId;
   if (!userId) return { ok: false, error: 'Unauthorized' };
 
@@ -508,6 +524,7 @@ export async function addAreaFromSuggestion(suggestion: {
     seedPostcode: suggestion.seedPostcode,
     district: suggestion.district,
     radiusMiles: 1.5,
+    track,
   });
 }
 
@@ -518,6 +535,7 @@ async function addResolvedArea(
     seedPostcode: string;
     district: string;
     radiusMiles: number;
+    track?: AreaTrack;
   },
 ): Promise<{ ok: true; area: Area } | { ok: false; error: string }> {
   const existing = await migrateLegacyIfNeeded(userId);
@@ -542,12 +560,33 @@ async function addResolvedArea(
       error: probe.error,
     },
     history: appendHistory([], probe.listingCount),
+    track: resolved.track ?? 'volume',
   };
 
   const updated = [...existing, newArea];
   await saveAreas(updated, userId);
   revalidatePath('/settings/scouting');
   return { ok: true, area: newArea };
+}
+
+/** Toggle an existing area between the rotating volume pool and the
+ * always-scanned prime focus. */
+export async function setAreaTrack(
+  id: string,
+  track: AreaTrack,
+): Promise<{ ok: true; area: Area } | { ok: false; error: string }> {
+  const userId = (await getFounderSession())?.userId;
+  if (!userId) return { ok: false, error: 'Unauthorized' };
+  const existing = await loadAreas();
+  const idx = existing.findIndex((a) => a.id === id);
+  if (idx === -1) return { ok: false, error: 'Area not found' };
+
+  const updated: Area = { ...existing[idx]!, track };
+  const next = [...existing];
+  next[idx] = updated;
+  await saveAreas(next, userId);
+  revalidatePath('/settings/scouting');
+  return { ok: true, area: updated };
 }
 
 export async function removeArea(id: string): Promise<{ ok: boolean }> {
