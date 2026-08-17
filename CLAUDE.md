@@ -225,8 +225,7 @@ Rules:
   Vercel env vars on both projects. CI uses dummy values.
 - Helpful docs: `CONTEXT-HANDOVER.md` (session state, env keys, prod URLs),
   `docs/PAPERCLIP-SYNC-BRIEF.md` (agents), `docs/DECISION-STACK.md`,
-  `docs/architecture/`, `docs/HANDOVER.md`. `CHANGELOG.md` is auto-generated —
-  don't edit by hand.
+  `docs/architecture/`, `docs/HANDOVER.md`.
 - One-off maintenance scripts live in `scripts/` (run with
   `pnpm tsx scripts/<file>` / `node`); they include lead audits and seed/purge
   utilities — read before running, several mutate the database.
