@@ -1,21 +1,8 @@
 import { LogoLockup } from '@/components/brand';
+import { sansDocFont, serifDocFont } from '@repo/design-system/lib/fonts';
 import type { Metadata } from 'next';
-import { Fraunces, Inter } from 'next/font/google';
 import Link from 'next/link';
 import { AgentQuickForm } from '../agents/components/agent-quick-form';
-
-const fraunces = Fraunces({
-  subsets: ['latin'],
-  variable: '--font-serif',
-  display: 'swap',
-  weight: ['400', '500', '600', '700'],
-});
-
-const inter = Inter({
-  subsets: ['latin'],
-  variable: '--font-sans',
-  display: 'swap',
-});
 
 export const metadata: Metadata = {
   title: 'Sale fallen through? · Kept',
@@ -43,7 +30,7 @@ export default async function SaveTheSalePage({
   const { address, postcode, situation } = await searchParams;
   return (
     <div
-      className={`${fraunces.variable} ${inter.variable} min-h-screen bg-cream font-sans text-forest antialiased`}
+      className={`${serifDocFont.variable} ${sansDocFont.variable} min-h-screen bg-cream font-sans text-forest antialiased`}
     >
       {/* ————— MINIMAL HEADER ————— */}
       <header className="border-stone-200/60 border-b bg-white">
@@ -71,9 +58,7 @@ export default async function SaveTheSalePage({
             >
               Sale fallen through?
               <br />
-              <span className="text-leaf">
-                Save it before you re-list.
-              </span>
+              <span className="text-leaf">Save it before you re-list.</span>
             </h1>
             <p className="mt-7 max-w-md text-lg text-stone-600 leading-relaxed">
               Buyer pulled out, mortgage refused, survey down-valued, chain
@@ -148,9 +133,9 @@ export default async function SaveTheSalePage({
           </nav>
         </div>
         <p className="mx-auto mt-8 max-w-5xl font-mono text-[10px] text-stone-400 leading-relaxed">
-          Kept is a UK cash property buyer, not an FCA-authorised
-          firm. We do not provide financial or legal advice. All offers are
-          subject to satisfactory survey and title searches.
+          Kept is a UK cash property buyer, not an FCA-authorised firm. We do
+          not provide financial or legal advice. All offers are subject to
+          satisfactory survey and title searches.
         </p>
       </footer>
     </div>

@@ -1,21 +1,8 @@
 import { Wordmark } from '@/components/brand';
 import { SiteHeader } from '@/components/site-header';
+import { sansDocFont, serifDocFont } from '@repo/design-system/lib/fonts';
 import type { Metadata } from 'next';
-import { Fraunces, Inter } from 'next/font/google';
 import Link from 'next/link';
-
-const fraunces = Fraunces({
-  subsets: ['latin'],
-  variable: '--font-serif',
-  display: 'swap',
-  weight: ['400', '500', '600', '700'],
-});
-
-const inter = Inter({
-  subsets: ['latin'],
-  variable: '--font-sans',
-  display: 'swap',
-});
 
 export const metadata: Metadata = {
   title: "Why we won't buy any home · Kept",
@@ -130,7 +117,7 @@ const SITUATIONS_WE_BUY_FROM: Array<{
 export default function WhyWeWontBuyAnyHomePage() {
   return (
     <div
-      className={`${fraunces.variable} ${inter.variable} min-h-screen bg-cream font-sans text-forest antialiased`}
+      className={`${serifDocFont.variable} ${sansDocFont.variable} min-h-screen bg-cream font-sans text-forest antialiased`}
     >
       {/* ————— HEADER ————— */}
       {/* Shared site header — LogoLockup plus the one canonical nav, which

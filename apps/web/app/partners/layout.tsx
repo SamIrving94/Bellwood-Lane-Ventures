@@ -1,19 +1,6 @@
+import { sansDocFont, serifDocFont } from '@repo/design-system/lib/fonts';
 import type { Metadata } from 'next';
-import { Fraunces, Inter } from 'next/font/google';
 import type { ReactNode } from 'react';
-
-const fraunces = Fraunces({
-  subsets: ['latin'],
-  variable: '--font-serif',
-  display: 'swap',
-  weight: ['400', '500', '600', '700'],
-});
-
-const inter = Inter({
-  subsets: ['latin'],
-  variable: '--font-sans',
-  display: 'swap',
-});
 
 export const metadata: Metadata = {
   title: 'Agent Portal · Kept',
@@ -23,7 +10,7 @@ export const metadata: Metadata = {
 export default function PartnersLayout({ children }: { children: ReactNode }) {
   return (
     <div
-      className={`${fraunces.variable} ${inter.variable} min-h-screen bg-cream font-sans text-forest antialiased`}
+      className={`${serifDocFont.variable} ${sansDocFont.variable} min-h-screen bg-cream font-sans text-forest antialiased`}
     >
       {children}
     </div>

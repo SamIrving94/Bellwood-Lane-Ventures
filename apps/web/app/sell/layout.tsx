@@ -8,7 +8,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: 'Sell your home for cash · Kept',
     description:
-      'An indicative cash offer, confirmed in writing after viewing. Completion in weeks not months. No fees.',
+      'A cash offer in writing, after we have viewed your property. Completion in weeks not months. No fees to you.',
     type: 'website',
   },
 };

@@ -155,12 +155,46 @@ Run a task for one workspace with a filter, e.g.
   founder review (`OutreachHold`); CEO escalation fires for offers <60% of AVM;
   SLA breaches are deduplicated so they don't spawn duplicate `FounderAction`s.
 - **Public promises — live site copy is the source of truth.** The promise is:
-  same-day indicative response → we view every property → confirmed written
-  offer within 24–48 hours of viewing, locked 72 hours → completion in weeks
-  not months. Never state faster SLAs (60-second figures, 4-hour signed
-  offers) in vendor-facing, agent-facing, or marketing copy — internal ops
-  targets may be faster but are never advertised. If docs and the live site
-  disagree, the live site wins.
+  same-day response → we view every property → confirmed written offer we
+  _aim_ to send within 24–48 hours of viewing, locked 72 hours → completion in
+  weeks not months, as little as two weeks. Never state faster SLAs (60-second
+  figures, 4-hour signed offers) in vendor-facing, agent-facing, or marketing
+  copy — internal ops targets may be faster but are never advertised. If docs
+  and the live site disagree, the live site wins.
+- **No indicative offers, and no figure on screen** (founder decision, Aug
+  2026). We never put a price in front of a seller before viewing, and no
+  generated figure is displayed at all — offers are reviewed by a person and
+  sent by email. The quote is still generated and stored; display is gated on
+  `SHOW_ONSCREEN_OFFER` in
+  `apps/web/app/instant-offer/components/chat-flow.tsx`.
+
+### Keeping the derived docs evergreen (do this, every time)
+
+Several documents **describe** the public site rather than being the site.
+They go stale silently, and stale docs then get used to brief agencies, write
+new copy, or answer questions — which is how a claim we no longer make ends
+up back in front of a customer.
+
+**Whenever you change public-facing copy, a promise, an SLA, or a signature
+brand artefact in `apps/web`, update the derived docs in the same commit:**
+
+| Doc | What it derives from the site |
+|:---|:---|
+| `CLAUDE.md` (this file) | The public-promise rule above |
+| `docs/brand/KEPT.md` | Voice, copy-truth rules, signature artefacts |
+| `docs/marketing/PLAN.md` | Segment framing, landing routes, channel copy |
+| `docs/templates/binding-offer-letter.md` | Offer wording |
+
+Rules:
+
+1. **The live site wins.** If a doc disagrees, the doc is wrong — fix the doc.
+2. **Never brief anyone from a doc alone.** Read the actual page first; docs
+   are a summary, not the source.
+3. **Delete a doc's claim when you delete the feature.** If a component or
+   section is removed from the site, remove it from the docs rather than
+   leaving it described as current.
+4. **Stamp it.** Add `_Last verified against the live site: YYYY-MM-DD_` at the
+   top of any doc you touch, so the next reader knows how much to trust it.
 
 ## Testing & CI
 

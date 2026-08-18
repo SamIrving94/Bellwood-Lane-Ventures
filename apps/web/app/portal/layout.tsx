@@ -1,21 +1,8 @@
 import { getCurrentAgent } from '@/app/partners/_lib/auth';
 import { LogoLockup } from '@/components/brand';
-import { Fraunces, Inter } from 'next/font/google';
+import { sansDocFont, serifDocFont } from '@repo/design-system/lib/fonts';
 import { redirect } from 'next/navigation';
 import type { ReactNode } from 'react';
-
-const fraunces = Fraunces({
-  subsets: ['latin'],
-  variable: '--font-serif',
-  display: 'swap',
-  weight: ['400', '500', '600', '700'],
-});
-
-const inter = Inter({
-  subsets: ['latin'],
-  variable: '--font-sans',
-  display: 'swap',
-});
 
 export const metadata = {
   title: 'Agent Portal · Kept',
@@ -34,12 +21,15 @@ export default async function PortalLayout({
 
   return (
     <div
-      className={`${fraunces.variable} ${inter.variable} min-h-screen bg-cream font-sans text-forest antialiased`}
+      className={`${serifDocFont.variable} ${sansDocFont.variable} min-h-screen bg-cream font-sans text-forest antialiased`}
     >
       <header className="border-stone-200 border-b bg-white">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
           <div className="flex items-center gap-3">
-            <LogoLockup href="/portal" wordmarkClassName="text-base md:text-lg" />
+            <LogoLockup
+              href="/portal"
+              wordmarkClassName="text-base md:text-lg"
+            />
             <span className="font-normal text-stone-500 text-xs tracking-widest">
               PARTNER
             </span>

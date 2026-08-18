@@ -191,6 +191,42 @@ const INPUT =
 const SUBMIT =
   'rounded-full bg-leaf px-6 py-3 font-semibold text-sm text-white transition hover:bg-leaf-dark disabled:cursor-not-allowed disabled:opacity-50';
 
+/**
+ * Whether a generated figure is ever shown on screen.
+ *
+ * Founder decision, Aug 2026: no. Until the AVM has earned more trust, every
+ * offer is reviewed by a person and sent by email — nobody sees a number on
+ * this page. The quote is still generated and stored behind the scenes (the
+ * team needs it, and it is how the AVM gets graded), so flipping this back to
+ * `true` restores the on-screen offer with no other change.
+ */
+const SHOW_ONSCREEN_OFFER = false;
+
+/** What a seller sees once we have their details: an acknowledgement and a
+ *  promise to come back to them — never a figure. */
+function EnquiryReceived() {
+  return (
+    <div className="rounded-[2px] border border-leaf/40 bg-soft p-6">
+      <DocLabel>ENQUIRY RECEIVED</DocLabel>
+      <h3 className="mt-2 font-semibold font-serif text-2xl text-forest">
+        Thank you. We will be in touch.
+      </h3>
+      <div className="mt-3 space-y-3 text-sm text-stone-700 leading-relaxed">
+        <p>
+          We have everything we need to start. One of us will come back to you
+          the same day, Monday to Friday, to talk through your situation and
+          arrange a time to come and see the property.
+        </p>
+        <p>
+          We do not put a price on a home we have not stood in. Once we have
+          viewed it, we aim to send our offer in writing within 24 to 48 hours,
+          held for 72 hours, with no obligation on you at all.
+        </p>
+      </div>
+    </div>
+  );
+}
+
 type ChatFlowProps = {
   /** Pre-set the role so the role question is skipped. */
   defaultRole?: 'agent' | 'seller';
@@ -615,10 +651,11 @@ export function ChatFlow({ defaultRole }: ChatFlowProps = {}) {
                   className={INPUT}
                 />
                 <p className="text-[12px] text-stone-500">
-                  We only use these to send you the offer.
+                  We only use these to get back to you. Your details are never
+                  sold or passed to anyone else.
                 </p>
                 <button type="submit" className={`${SUBMIT} w-full`}>
-                  Generate offer →
+                  Send this to Kept →
                 </button>
               </form>
             )}
@@ -648,10 +685,17 @@ export function ChatFlow({ defaultRole }: ChatFlowProps = {}) {
         </div>
       )}
 
-      {/* Result */}
+      {/* Result. While SHOW_ONSCREEN_OFFER is false we still generate and
+          store the quote — the AVM runs, the figure is logged, the team gets
+          it — but nothing is put in front of the seller until a person has
+          reviewed it and sent it by email. */}
       {step === 'result' && offer && (
         <div className="mt-6">
-          <OfferCard offer={offer} />
+          {SHOW_ONSCREEN_OFFER ? (
+            <OfferCard offer={offer} />
+          ) : (
+            <EnquiryReceived />
+          )}
         </div>
       )}
 
@@ -791,7 +835,7 @@ function OfferCard({ offer }: { offer: OfferResult }) {
               .toUpperCase()}
           </p>
           <p className="text-[12px] text-stone-500">
-            Legally binding on Kept if accepted.
+            Binding on Kept if accepted.
           </p>
         </div>
       </div>
