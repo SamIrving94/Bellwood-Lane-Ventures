@@ -12,48 +12,49 @@
 
 import 'server-only';
 
+import {
+  filterCompaniesByDistrict,
+  searchDissolvedPropertyCompanies,
+} from '@repo/property-data/src/companies-house';
 import { getPricePaid } from '@repo/property-data/src/hmlr';
 import { getHousepriceIndex } from '@repo/property-data/src/hmlr-hpi';
 import {
-  getSourcedPropertiesMulti,
   getAccountCredits,
-  getPlanningApplications,
-  getHmoRegister,
   getDemographics,
-  getFloodRisk,
   getEpcByPostcode,
+  getFloodRisk,
+  getHmoRegister,
+  getPlanningApplications,
+  getSourcedPropertiesMulti,
   getTenureByPostcode,
 } from '@repo/property-data/src/propertydata';
-import {
-  searchDissolvedPropertyCompanies,
-  filterCompaniesByDistrict,
-} from '@repo/property-data/src/companies-house';
 
-import { fetchProbateGrants } from './probate-data';
-import { fetchGazetteProbateNotices } from './gazette';
-import { matchProbateAddressToSale } from './hmlr-match';
+import { isSyntheticPricePaid } from '@repo/property-data/src/hmlr';
 import { normaliseUkAddress } from './address-normalise';
-import { fetchShortLeaseLeads } from './short-lease';
 import { fetchCompaniesHouseDistressLeads } from './companies-house-charges';
-import { fetchReceivershipLeads } from './receiverships';
-import { fetchPlanningConsentLeads } from './planning-consents';
-import { leadTypeForListing } from './lead-type';
 import {
+  type EnrichmentSummary,
   baseFromProbateLead,
   checkEnrichmentHealth,
-  type EnrichmentSummary,
   enrichLeads,
   summariseEnrichment,
 } from './enrichment';
-import {
-  buildSourceHealth,
-  type SourceHealthEntry,
-  summariseSourceHealth,
-} from './source-health';
+import { fetchGazetteProbateNotices } from './gazette';
+import { matchProbateAddressToSale } from './hmlr-match';
+import { leadTypeForListing } from './lead-type';
+import { fetchPlanningConsentLeads } from './planning-consents';
+import { fetchProbateGrants } from './probate-data';
+import { enrichRationaleWithLlm } from './rationale-llm';
+import { auditProtectedFields, sanitisePayload } from './rbac';
+import { fetchReceivershipLeads } from './receiverships';
 import { scoreLead } from './scorer';
 import { DEFAULT_SCORER_CONFIG, type ScorerConfig } from './scorer-config';
-import { sanitisePayload, auditProtectedFields } from './rbac';
-import { enrichRationaleWithLlm } from './rationale-llm';
+import { fetchShortLeaseLeads } from './short-lease';
+import {
+  type SourceHealthEntry,
+  buildSourceHealth,
+  summariseSourceHealth,
+} from './source-health';
 import { classifyTrack, isBlockText } from './track';
 
 /**
@@ -87,7 +88,7 @@ const CANDIDATE_POOL_CAP = 500;
  */
 export function shortlistCutoff(
   scores: readonly number[],
-  limit: number,
+  limit: number
 ): { keepCount: number; tiesKept: number } {
   const base = Math.min(limit, scores.length);
   const cutoffScore = scores[limit - 1];
@@ -193,10 +194,16 @@ export {
 export { sanitisePayload, auditProtectedFields } from './rbac';
 export { enrichRationaleWithLlm } from './rationale-llm';
 export {
+  assessPrimeOpportunity,
   classifyTrack,
   isBlockText,
+  isPrimeDistrict,
+  LONDON_PRIME_DISTRICTS,
+  MIN_MEANINGFUL_DISCOUNT,
+  outwardCode,
   PRIME_MIN_VALUE_PENCE,
   type DealTrackValue,
+  type PrimeOpportunity,
 } from './track';
 export { dedupeDealbreakerRules, screenDealbreakers } from './dealbreakers';
 export type { DealbreakerCandidate, DealbreakerHit } from './dealbreakers';
@@ -469,9 +476,12 @@ export async function runScoutingPipeline(
       return null;
     });
     if (!credits) {
-      sourceErrors.propertydata = sourceErrors.propertydata ?? 'PROPERTYDATA_API_KEY missing or invalid on bellwood-api (account-credits returned null)';
+      sourceErrors.propertydata =
+        sourceErrors.propertydata ??
+        'PROPERTYDATA_API_KEY missing or invalid on bellwood-api (account-credits returned null)';
     } else if (credits.result) {
-      const remaining = (credits.result as { credits_remaining?: number }).credits_remaining;
+      const remaining = (credits.result as { credits_remaining?: number })
+        .credits_remaining;
       if (typeof remaining === 'number' && remaining <= 0) {
         sourceErrors.propertydata = `PropertyData credits exhausted (${remaining} remaining)`;
       }
@@ -497,8 +507,8 @@ export async function runScoutingPipeline(
         const norm = s.postcode.toUpperCase().replace(/\s+/g, '');
         const m = norm.match(/^([A-Z]{1,2}\d{1,2}[A-Z]?)/);
         return m?.[1] ?? norm;
-      }),
-    ),
+      })
+    )
   );
 
   // We split sources by rate-limit dependency:
@@ -538,16 +548,14 @@ export async function runScoutingPipeline(
           ReturnType<typeof fetchCompaniesHouseDistressLeads>
         >)
       : fetchCompaniesHouseDistressLeads({ districts: targetDistricts })
-    ).catch(
-      (err) => {
-        const msg = (err as Error)?.message ?? String(err);
-        sourceErrors.chDistress = msg.slice(0, 200);
-        console.warn('[scouting] Companies House distress source failed', err);
-        return { leads: [], scanned: 0 } as Awaited<
-          ReturnType<typeof fetchCompaniesHouseDistressLeads>
-        >;
-      },
-    ),
+    ).catch((err) => {
+      const msg = (err as Error)?.message ?? String(err);
+      sourceErrors.chDistress = msg.slice(0, 200);
+      console.warn('[scouting] Companies House distress source failed', err);
+      return { leads: [], scanned: 0 } as Awaited<
+        ReturnType<typeof fetchCompaniesHouseDistressLeads>
+      >;
+    }),
     // Gazette receivership/administration notices → CH charge particulars →
     // property addresses. NOT district-filtered: receivership stock is scarce
     // and the receiver must sell — a lead outside our patch is still worth a
@@ -595,136 +603,139 @@ export async function runScoutingPipeline(
 
   // ── PropertyData sources — serial (rate-limit constrained) ─────────
   const sourcedFromPostcodes = await (async () => {
-      const all: Array<{
-        probateRef: string;
-        address: string;
-        postcode: string;
-        grantDate: string;
-        executorName: null;
-        solicitorFirm: string | null;
-        estateValuePence: number | null;
-        grantType: 'unknown';
-        source: string;
-        /**
-         * Motivation implied by the distress list this property came from.
-         * Required, not optional: omitting it is what silently defaulted
-         * every listing to 'probate'.
-         */
-        leadTypeHint: string;
-        daysSinceGrant: number;
-        /** Rich PropertyData fields — flow through rawPayload to the UI. */
-        propertyData?: {
-          id: string | null;
-          listingType: string;
-          listingUrl: string | null;
-          imageUrl: string | null;
-          summary: string | null;
-          pricePence: number | null;
-          originalPricePence: number | null;
-          discountPercent: number | null;
-          reductionCount: number;
-          velocityScore: number;
-          bedrooms: number | null;
-          propertyType: string | null;
-          daysOnMarket: number | null;
-          daysSincePriceChange: number | null;
-          preciseAddress: string | null;
-          /** True for non-residential (pub/office/shop/unit) — kept but badged. */
-          commercial?: boolean;
-        };
-      }> = [];
-      for (const seed of allSeeds) {
-        try {
-          const properties = await getSourcedPropertiesMulti(seed.postcode, {
-            radiusMiles: seed.radiusMiles,
+    const all: Array<{
+      probateRef: string;
+      address: string;
+      postcode: string;
+      grantDate: string;
+      executorName: null;
+      solicitorFirm: string | null;
+      estateValuePence: number | null;
+      grantType: 'unknown';
+      source: string;
+      /**
+       * Motivation implied by the distress list this property came from.
+       * Required, not optional: omitting it is what silently defaulted
+       * every listing to 'probate'.
+       */
+      leadTypeHint: string;
+      daysSinceGrant: number;
+      /** Rich PropertyData fields — flow through rawPayload to the UI. */
+      propertyData?: {
+        id: string | null;
+        listingType: string;
+        listingUrl: string | null;
+        imageUrl: string | null;
+        summary: string | null;
+        pricePence: number | null;
+        originalPricePence: number | null;
+        discountPercent: number | null;
+        reductionCount: number;
+        velocityScore: number;
+        bedrooms: number | null;
+        propertyType: string | null;
+        daysOnMarket: number | null;
+        daysSincePriceChange: number | null;
+        preciseAddress: string | null;
+        /** True for non-residential (pub/office/shop/unit) — kept but badged. */
+        commercial?: boolean;
+      };
+    }> = [];
+    for (const seed of allSeeds) {
+      try {
+        const properties = await getSourcedPropertiesMulti(seed.postcode, {
+          radiusMiles: seed.radiusMiles,
+        });
+        for (const p of properties) {
+          const addrL = p.address.toLowerCase();
+          const typeL = (p.propertyType ?? '').toLowerCase();
+          // Block-of-flats / portfolio language — checked FIRST because the
+          // block track deliberately overrides the drops and flags below: a
+          // "development site" that is actually a freehold block is a deal,
+          // and "units 1-6" must not trip the commercial `unit` keyword.
+          const blockLike = isBlockText(
+            `${p.address} ${p.summary ?? ''} ${p.propertyType ?? ''}`
+          );
+          // DROP non-dealable listings — land, garages, new-build plots,
+          // development sites: there's no house to buy / refurb / flip, and the
+          // AVM values them as a house (nonsense). Word-boundary matched so
+          // real streets like "Corkland Road" are NOT caught.
+          if (
+            !blockLike &&
+            (/^\s*(plot|land)\b/.test(addrL) ||
+              /\bland and garages?\b/.test(addrL) ||
+              /\bgarages?\s+(on|at|to|adjacent)\b/.test(addrL) ||
+              /\bdevelopment site\b|\bbuilding plot\b/.test(addrL) ||
+              typeL.includes('land') ||
+              typeL.includes('garage'))
+          ) {
+            continue;
+          }
+          // DROP listings PropertyData flags as SSTC. We already send
+          // exclude_sstc=1 at fetch time, but the flag still comes back set
+          // on some rows — already under offer means every credit spent
+          // downstream (snapshot, AVM, vision) is wasted.
+          if (p.sstc === true) {
+            continue;
+          }
+          // FLAG commercial (pub / bar / office / shop / unit) — keep the lead
+          // (the founder wants to see them) but mark it so the UI can badge it
+          // and it's clear it isn't a standard residential deal.
+          const commercial =
+            !blockLike &&
+            (typeL.includes('commercial') ||
+              /\b(pub|bar|tavern|inn|brewery|brewdog|restaurant|cafe|café|office|shop|retail|unit|warehouse|industrial|licensed premises|public house)\b/.test(
+                addrL
+              ));
+          all.push({
+            probateRef: `pd-${seed.label}-${p.id ?? p.address.slice(0, 16).replace(/\s+/g, '_')}`,
+            address: p.address,
+            postcode: p.postcode,
+            grantDate: new Date().toISOString().slice(0, 10),
+            executorName: null,
+            solicitorFirm: null,
+            estateValuePence: p.originalPricePence ?? p.pricePence,
+            grantType: 'unknown' as const,
+            source: `propertydata_${p.listingType}`,
+            // Without an explicit hint `enrichLead` defaults to 'probate',
+            // which handed every listing on the market a 20-point probate
+            // credit it had not earned. Derive the type from the distress
+            // list the property actually came from instead — see
+            // ./lead-type.ts.
+            leadTypeHint: leadTypeForListing(p.listingType),
+            daysSinceGrant: p.daysOnMarket ?? 0,
+            propertyData: {
+              id: p.id,
+              listingType: p.listingType,
+              listingUrl: p.listingUrl,
+              imageUrl: p.imageUrl,
+              summary: p.summary,
+              pricePence: p.pricePence,
+              originalPricePence: p.originalPricePence,
+              discountPercent: p.discountPercent,
+              reductionCount: p.reductionCount,
+              velocityScore: p.velocityScore,
+              bedrooms: p.bedrooms,
+              propertyType: p.propertyType,
+              daysOnMarket: p.daysOnMarket,
+              daysSincePriceChange: p.daysSincePriceChange,
+              preciseAddress: p.preciseAddress,
+              commercial,
+            },
           });
-          for (const p of properties) {
-            const addrL = p.address.toLowerCase();
-            const typeL = (p.propertyType ?? '').toLowerCase();
-            // Block-of-flats / portfolio language — checked FIRST because the
-            // block track deliberately overrides the drops and flags below: a
-            // "development site" that is actually a freehold block is a deal,
-            // and "units 1-6" must not trip the commercial `unit` keyword.
-            const blockLike = isBlockText(
-              `${p.address} ${p.summary ?? ''} ${p.propertyType ?? ''}`,
-            );
-            // DROP non-dealable listings — land, garages, new-build plots,
-            // development sites: there's no house to buy / refurb / flip, and the
-            // AVM values them as a house (nonsense). Word-boundary matched so
-            // real streets like "Corkland Road" are NOT caught.
-            if (
-              !blockLike &&
-              (/^\s*(plot|land)\b/.test(addrL) ||
-                /\bland and garages?\b/.test(addrL) ||
-                /\bgarages?\s+(on|at|to|adjacent)\b/.test(addrL) ||
-                /\bdevelopment site\b|\bbuilding plot\b/.test(addrL) ||
-                typeL.includes('land') ||
-                typeL.includes('garage'))
-            ) {
-              continue;
-            }
-            // DROP listings PropertyData flags as SSTC. We already send
-            // exclude_sstc=1 at fetch time, but the flag still comes back set
-            // on some rows — already under offer means every credit spent
-            // downstream (snapshot, AVM, vision) is wasted.
-            if (p.sstc === true) {
-              continue;
-            }
-            // FLAG commercial (pub / bar / office / shop / unit) — keep the lead
-            // (the founder wants to see them) but mark it so the UI can badge it
-            // and it's clear it isn't a standard residential deal.
-            const commercial =
-              !blockLike &&
-              (typeL.includes('commercial') ||
-                /\b(pub|bar|tavern|inn|brewery|brewdog|restaurant|cafe|café|office|shop|retail|unit|warehouse|industrial|licensed premises|public house)\b/.test(
-                  addrL,
-                ));
-            all.push({
-              probateRef: `pd-${seed.label}-${p.id ?? p.address.slice(0, 16).replace(/\s+/g, '_')}`,
-              address: p.address,
-              postcode: p.postcode,
-              grantDate: new Date().toISOString().slice(0, 10),
-              executorName: null,
-              solicitorFirm: null,
-              estateValuePence: p.originalPricePence ?? p.pricePence,
-              grantType: 'unknown' as const,
-              source: `propertydata_${p.listingType}`,
-              // Without an explicit hint `enrichLead` defaults to 'probate',
-              // which handed every listing on the market a 20-point probate
-              // credit it had not earned. Derive the type from the distress
-              // list the property actually came from instead — see
-              // ./lead-type.ts.
-              leadTypeHint: leadTypeForListing(p.listingType),
-              daysSinceGrant: p.daysOnMarket ?? 0,
-              propertyData: {
-                id: p.id,
-                listingType: p.listingType,
-                listingUrl: p.listingUrl,
-                imageUrl: p.imageUrl,
-                summary: p.summary,
-                pricePence: p.pricePence,
-                originalPricePence: p.originalPricePence,
-                discountPercent: p.discountPercent,
-                reductionCount: p.reductionCount,
-                velocityScore: p.velocityScore,
-                bedrooms: p.bedrooms,
-                propertyType: p.propertyType,
-                daysOnMarket: p.daysOnMarket,
-                daysSincePriceChange: p.daysSincePriceChange,
-                preciseAddress: p.preciseAddress,
-                commercial,
-              },
-            });
-          }
-        } catch (err) {
-          const msg = (err as Error)?.message ?? String(err);
-          if (!sourceErrors.propertydata) {
-            sourceErrors.propertydata = `${seed.label}: ${msg.slice(0, 150)}`;
-          }
-          console.warn(`[scouting] /sourced-properties failed for ${seed.label}`, err);
         }
+      } catch (err) {
+        const msg = (err as Error)?.message ?? String(err);
+        if (!sourceErrors.propertydata) {
+          sourceErrors.propertydata = `${seed.label}: ${msg.slice(0, 150)}`;
+        }
+        console.warn(
+          `[scouting] /sourced-properties failed for ${seed.label}`,
+          err
+        );
       }
-      return all;
+    }
+    return all;
   })();
 
   // Helper for the planning + HMO source shape (matches probateRef contract)
@@ -833,7 +844,7 @@ export async function runScoutingPipeline(
       });
       for (const hmo of hmos) {
         const pcMatch = hmo.address.match(
-          /[A-Z]{1,2}\d{1,2}[A-Z]?\s?\d[A-Z]{2}/,
+          /[A-Z]{1,2}\d{1,2}[A-Z]?\s?\d[A-Z]{2}/
         );
         const pc = pcMatch ? pcMatch[0] : seed.postcode.split(' ')[0]!;
         hmoGrants.push({
@@ -870,43 +881,44 @@ export async function runScoutingPipeline(
   // Distinct rate-limit pool from PropertyData (different API), runs in
   // parallel with HMO loop safely. No-ops if COMPANIES_HOUSE_API_KEY unset.
   const dissolvedGrants: RawGrant[] = [];
-  if (!skipSlowSources) try {
-    const all = await searchDissolvedPropertyCompanies({ limit: 100 });
-    const inArea = filterCompaniesByDistrict(all, targetDistricts);
-    for (const c of inArea) {
-      if (!c.registeredAddress || !c.registeredPostcode) continue;
-      dissolvedGrants.push({
-        probateRef: `dis-${c.companyNumber}`,
-        address: c.registeredAddress,
-        postcode: c.registeredPostcode,
-        grantDate: c.dissolvedAt ?? new Date().toISOString().slice(0, 10),
-        executorName: null,
-        solicitorFirm: c.companyName,
-        estateValuePence: null,
-        grantType: 'unknown' as const,
-        source: 'companies_house_dissolved',
-        daysSinceGrant: c.dissolvedAt
-          ? Math.max(
-              0,
-              Math.floor(
-                (Date.now() - new Date(c.dissolvedAt).getTime()) /
-                  (1000 * 60 * 60 * 24),
-              ),
-            )
-          : 0,
-        dissolvedCompany: {
-          companyNumber: c.companyNumber,
-          companyName: c.companyName,
-          dissolvedAt: c.dissolvedAt,
-          sicCodes: c.sicCodes,
-          registeredAddress: c.registeredAddress,
-        },
-      });
+  if (!skipSlowSources)
+    try {
+      const all = await searchDissolvedPropertyCompanies({ limit: 100 });
+      const inArea = filterCompaniesByDistrict(all, targetDistricts);
+      for (const c of inArea) {
+        if (!c.registeredAddress || !c.registeredPostcode) continue;
+        dissolvedGrants.push({
+          probateRef: `dis-${c.companyNumber}`,
+          address: c.registeredAddress,
+          postcode: c.registeredPostcode,
+          grantDate: c.dissolvedAt ?? new Date().toISOString().slice(0, 10),
+          executorName: null,
+          solicitorFirm: c.companyName,
+          estateValuePence: null,
+          grantType: 'unknown' as const,
+          source: 'companies_house_dissolved',
+          daysSinceGrant: c.dissolvedAt
+            ? Math.max(
+                0,
+                Math.floor(
+                  (Date.now() - new Date(c.dissolvedAt).getTime()) /
+                    (1000 * 60 * 60 * 24)
+                )
+              )
+            : 0,
+          dissolvedCompany: {
+            companyNumber: c.companyNumber,
+            companyName: c.companyName,
+            dissolvedAt: c.dissolvedAt,
+            sicCodes: c.sicCodes,
+            registeredAddress: c.registeredAddress,
+          },
+        });
+      }
+    } catch (err) {
+      const msg = (err as Error)?.message ?? String(err);
+      sourceErrors.dissolved = msg.slice(0, 200);
     }
-  } catch (err) {
-    const msg = (err as Error)?.message ?? String(err);
-    sourceErrors.dissolved = msg.slice(0, 200);
-  }
 
   // ── Short-lease scout — opt-in (PropertyData /freeholds) ────────────
   // Surfaces leasehold flats near/under the 80-year marriage-value line: a
@@ -961,7 +973,8 @@ export async function runScoutingPipeline(
 
   // If we have no seeds at all, flag it as a config issue.
   if (allSeeds.length === 0 && !sourceErrors.propertydata) {
-    sourceErrors.propertydata = 'no scan seeds configured — add full-postcode seeds in /settings/scouting';
+    sourceErrors.propertydata =
+      'no scan seeds configured — add full-postcode seeds in /settings/scouting';
   }
 
   // De-duplicate on the NORMALISED address (house number|street|postcode), so
@@ -979,16 +992,19 @@ export async function runScoutingPipeline(
     ...receivershipLeads,
     ...planningConsentLeads,
     ...shortLeaseGrants,
-  ].filter((g) => {
-    const n = normaliseUkAddress(`${g.address}, ${g.postcode}`);
-    const key = n.key || `${g.address.toLowerCase()}|${g.postcode.toLowerCase()}`;
-    if (seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  }).slice(0, CANDIDATE_POOL_CAP);
+  ]
+    .filter((g) => {
+      const n = normaliseUkAddress(`${g.address}, ${g.postcode}`);
+      const key =
+        n.key || `${g.address.toLowerCase()}|${g.postcode.toLowerCase()}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    })
+    .slice(0, CANDIDATE_POOL_CAP);
 
   console.info(
-    `[scouting] sources: hmcts=${hmctsGrants.length} gazette=${gazetteGrants.length} propertydata=${sourcedFromPostcodes.length} planning=${planningGrants.length} hmo=${hmoGrants.length} chDistress=${chDistressLeads.length} receivership=${receivershipLeads.length} planningConsents=${planningConsentLeads.length}${planningConsentsResult.skipped ? ' (skipped)' : ''} shortLease=${shortLeaseGrants.length} (candidate pool after dedupe: ${candidates.length})`,
+    `[scouting] sources: hmcts=${hmctsGrants.length} gazette=${gazetteGrants.length} propertydata=${sourcedFromPostcodes.length} planning=${planningGrants.length} hmo=${hmoGrants.length} chDistress=${chDistressLeads.length} receivership=${receivershipLeads.length} planningConsents=${planningConsentLeads.length}${planningConsentsResult.skipped ? ' (skipped)' : ''} shortLease=${shortLeaseGrants.length} (candidate pool after dedupe: ${candidates.length})`
   );
 
   // Build signals lookup BEFORE enrichment (we lose rawGrant after enrich).
@@ -1100,7 +1116,7 @@ export async function runScoutingPipeline(
         null, // no price-paid lookup — costs credits, deferred to the shortlist
         null, // no HPI lookup — same
         signalsByRef.get(grant.probateRef),
-        scorerConfig,
+        scorerConfig
       ).total,
     }))
     // Stable sort: equal-scoring candidates keep their original source order.
@@ -1109,7 +1125,7 @@ export async function runScoutingPipeline(
   // Keep ties at the cutoff rather than cutting mid-tie — see shortlistCutoff.
   const { keepCount, tiesKept } = shortlistCutoff(
     ranked.map((r) => r.provisionalScore),
-    limit,
+    limit
   );
   const cutoffScore = ranked[limit - 1]?.provisionalScore;
 
@@ -1126,7 +1142,7 @@ export async function runScoutingPipeline(
     const cutoff = ranked[rawGrants.length - 1]?.provisionalScore ?? 0;
     const bestDropped = ranked[rawGrants.length]?.provisionalScore ?? 0;
     console.info(
-      `[scouting] shortlist: kept ${rawGrants.length}/${ranked.length} by provisional score (cutoff ${cutoff}, best dropped ${bestDropped}, ties kept ${tiesKept}${tieBandTruncated ? ', TIE BAND TRUNCATED at overflow cap' : ''}); ${droppedByCap} not enriched`,
+      `[scouting] shortlist: kept ${rawGrants.length}/${ranked.length} by provisional score (cutoff ${cutoff}, best dropped ${bestDropped}, ties kept ${tiesKept}${tieBandTruncated ? ', TIE BAND TRUNCATED at overflow cap' : ''}); ${droppedByCap} not enriched`
     );
   }
 
@@ -1173,7 +1189,7 @@ export async function runScoutingPipeline(
   // credits (each call cached). These drive the demographic boost
   // (pre-probate) and the risk dimension (flood/EPC/lease).
   const uniquePostcodes = Array.from(
-    new Set(enriched.map((l) => l.postcode).filter(Boolean)),
+    new Set(enriched.map((l) => l.postcode).filter(Boolean))
   );
   const enrichmentByPostcode = new Map<
     string,
@@ -1228,9 +1244,7 @@ export async function runScoutingPipeline(
       const epcRatings = epcs
         .map((e) => e.rating)
         .filter((r): r is string => !!r);
-      const dominantEpc = epcRatings.length
-        ? mostCommon(epcRatings)
-        : null;
+      const dominantEpc = epcRatings.length ? mostCommon(epcRatings) : null;
 
       // Most common tenure + min remaining lease years.
       const tenureCounts = { freehold: 0, leasehold: 0 };
@@ -1327,11 +1341,7 @@ export async function runScoutingPipeline(
       // Opt-in LLM rationale on STRONG leads only. Side-effect-safe: returns
       // null on missing key / call failure, in which case the deterministic
       // `rationale` field above is the surface the UI renders.
-      if (
-        enrichRationaleLlm &&
-        breakdown.verdict === 'STRONG' &&
-        enrichedRaw
-      ) {
+      if (enrichRationaleLlm && breakdown.verdict === 'STRONG' && enrichedRaw) {
         const llmRationale = await enrichRationaleWithLlm(breakdown, {
           address: lead.address,
           postcode: lead.postcode,
@@ -1366,10 +1376,23 @@ export async function runScoutingPipeline(
         summary?: string | null;
         propertyType?: string | null;
       } | null;
+      // The area average is what lets a lead with NO value of its own reach
+      // the prime book — which is every probate notice, every receivership
+      // and every Companies House charge, since all three hard-code
+      // `estateValuePence: null`. Synthetic comparables are passed as null:
+      // classifying against a fabricated average is worse than classifying
+      // against nothing (same rule the equity proxy applies in scorer.ts).
+      const areaAvgPence =
+        pricePaid?.avgPrice && !isSyntheticPricePaid(pricePaid)
+          ? pricePaid.avgPrice * 100
+          : null;
+
       const track = classifyTrack({
         valuePence: lead.estateValuePence,
         text: `${lead.address} ${pd?.summary ?? ''}`,
         propertyType: pd?.propertyType ?? null,
+        postcode: lead.postcode,
+        areaAvgPence,
       });
 
       const scoutLead: ScoutLead = {
@@ -1413,7 +1436,7 @@ export async function runScoutingPipeline(
         scoutLead.verdict !== 'INSUFFICIENT_DATA' &&
         (scoutLead.track !== 'volume' ||
           (sourcingScore >= sourcingThreshold &&
-            scoutLead.leadScore >= minScore)),
+            scoutLead.leadScore >= minScore))
     )
     .map(({ scoutLead }) => scoutLead)
     .sort((a, b) => b.leadScore - a.leadScore);
