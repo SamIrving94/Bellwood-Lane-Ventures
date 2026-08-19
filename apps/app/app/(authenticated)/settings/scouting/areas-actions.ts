@@ -2,8 +2,8 @@
 
 import { getFounderSession } from '@repo/auth/server';
 import { database } from '@repo/database';
-import { getSourcedProperties } from '@repo/property-data/src/propertydata';
 import { findPlaces } from '@repo/property-data/src/os-places';
+import { getSourcedProperties } from '@repo/property-data/src/propertydata';
 import { revalidatePath } from 'next/cache';
 
 const AREAS_KEY = 'scouting.areas';
@@ -40,7 +40,7 @@ export type Area = {
 
 function appendHistory(
   current: Area['history'] | undefined,
-  count: number,
+  count: number
 ): Array<{ date: string; count: number }> {
   const today = new Date().toISOString().slice(0, 10);
   const prev = current ?? [];
@@ -67,42 +67,175 @@ function appendHistory(
  * which PropertyData may or may not accept.
  */
 const DISTRICT_SAMPLES: Record<string, string> = {
+  // ── London prime districts (packages/scouting/src/track.ts) ──
+  // Every value below is a REAL postcode resolved from the outcode
+  // centroid via postcodes.io, then checked to belong to its own
+  // district. Before this, London fell through to the
+  // `<DISTRICT> 1AA` best-guess, and PropertyData answered 422
+  // because postcodes like SW3 1AA do not exist.
+  // South-west
+  SW3: 'SW3 3TH',
+  SW4: 'SW4 7BB',
+  SW6: 'SW6 4HL',
+  SW7: 'SW7 5BD',
+  SW11: 'SW11 2DR',
+  SW12: 'SW12 9AW',
+  SW16: 'SW16 3PX',
+  SW17: 'SW17 7EW',
+  SW18: 'SW18 4DJ',
+  // South-east
+  SE3: 'SE3 0AB',
+  SE15: 'SE15 5HE',
+  SE21: 'SE21 8AA',
+  SE22: 'SE22 9EL',
+  SE23: 'SE23 2DD',
+  SE24: 'SE24 0HD',
+  // North
+  N4: 'N4 1BH',
+  N7: 'N7 9RF',
+  N8: 'N8 8NH',
+  N10: 'N10 1QB',
+  N16: 'N16 0ND',
+  N19: 'N19 3EG',
+  // West
+  W3: 'W3 6SP',
+  W4: 'W4 4LR',
+  W5: 'W5 3SS',
+  W8: 'W8 7RX',
+  W11: 'W11 4AT',
+  W12: 'W12 0PH',
+  W13: 'W13 0NL',
+  // North-west
+  NW2: 'NW2 6SH',
+  NW3: 'NW3 5NX',
+  NW5: 'NW5 3EW',
+  NW6: 'NW6 4NA',
+  NW8: 'NW8 9JG',
+  NW10: 'NW10 4EJ',
+  // East
+  E5: 'E5 9SQ',
+  E8: 'E8 3DR',
+  E9: 'E9 5BJ',
+  E11: 'E11 3AD',
+  E17: 'E17 4SA',
   // Manchester
-  M1: 'M1 1AD', M2: 'M2 5DB', M3: 'M3 4FP', M4: 'M4 5DL',
-  M5: 'M5 4WX', M8: 'M8 8DJ', M9: 'M9 4DG', M11: 'M11 3AD',
-  M12: 'M12 5JL', M13: 'M13 9PL', M14: 'M14 5LL', M15: 'M15 6AY',
-  M16: 'M16 7BD', M17: 'M17 8AS', M18: 'M18 8WJ', M19: 'M19 2FD',
-  M20: 'M20 2PJ', M21: 'M21 9LD', M22: 'M22 4HW', M23: 'M23 9LX',
+  M1: 'M1 1AD',
+  M2: 'M2 5DB',
+  M3: 'M3 4FP',
+  M4: 'M4 5DL',
+  M5: 'M5 4WX',
+  M8: 'M8 8DJ',
+  M9: 'M9 4DG',
+  M11: 'M11 3AD',
+  M12: 'M12 5JL',
+  M13: 'M13 9PL',
+  M14: 'M14 5LL',
+  M15: 'M15 6AY',
+  M16: 'M16 7BD',
+  M17: 'M17 8AS',
+  M18: 'M18 8WJ',
+  M19: 'M19 2FD',
+  M20: 'M20 2PJ',
+  M21: 'M21 9LD',
+  M22: 'M22 4HW',
+  M23: 'M23 9LX',
   // Stockport / Cheshire
-  SK1: 'SK1 1ND', SK2: 'SK2 6AJ', SK3: 'SK3 8AB', SK4: 'SK4 4QR',
-  SK5: 'SK5 6BX', SK6: 'SK6 4DR', SK7: 'SK7 1AB', SK8: 'SK8 1JR',
-  SK9: 'SK9 1AT', SK10: 'SK10 1AA', SK12: 'SK12 1AS', SK14: 'SK14 1HJ',
-  SK15: 'SK15 1AY', SK16: 'SK16 4DD',
+  SK1: 'SK1 1ND',
+  SK2: 'SK2 6AJ',
+  SK3: 'SK3 8AB',
+  SK4: 'SK4 4QR',
+  SK5: 'SK5 6BX',
+  SK6: 'SK6 4DR',
+  SK7: 'SK7 1AB',
+  SK8: 'SK8 1JR',
+  SK9: 'SK9 1AT',
+  SK10: 'SK10 1AA',
+  SK12: 'SK12 1AS',
+  SK14: 'SK14 1HJ',
+  SK15: 'SK15 1AY',
+  SK16: 'SK16 4DD',
   // Leeds
-  LS1: 'LS1 4AP', LS2: 'LS2 9JT', LS6: 'LS6 3HN', LS7: 'LS7 3JB',
-  LS8: 'LS8 1ED', LS11: 'LS11 5DJ', LS12: 'LS12 1AA', LS13: 'LS13 3AB',
-  LS15: 'LS15 8GB', LS17: 'LS17 6BU', LS18: 'LS18 5BD', LS19: 'LS19 7BN',
-  LS25: 'LS25 6AA', LS26: 'LS26 8WA', LS27: 'LS27 0HQ', LS28: 'LS28 5UJ',
+  LS1: 'LS1 4AP',
+  LS2: 'LS2 9JT',
+  LS6: 'LS6 3HN',
+  LS7: 'LS7 3JB',
+  LS8: 'LS8 1ED',
+  LS11: 'LS11 5DJ',
+  LS12: 'LS12 1AA',
+  LS13: 'LS13 3AB',
+  LS15: 'LS15 8GB',
+  LS17: 'LS17 6BU',
+  LS18: 'LS18 5BD',
+  LS19: 'LS19 7BN',
+  LS25: 'LS25 6AA',
+  LS26: 'LS26 8WA',
+  LS27: 'LS27 0HQ',
+  LS28: 'LS28 5UJ',
   // Bradford
-  BD1: 'BD1 1AB', BD2: 'BD2 4SF', BD3: 'BD3 7DH', BD5: 'BD5 8LX',
-  BD7: 'BD7 1DP', BD8: 'BD8 9NS', BD9: 'BD9 5DA', BD10: 'BD10 9DF',
-  BD11: 'BD11 1HW', BD12: 'BD12 7DD', BD13: 'BD13 1JZ', BD14: 'BD14 6LB',
-  BD15: 'BD15 8DR', BD16: 'BD16 4LL', BD17: 'BD17 5JD', BD18: 'BD18 4SF',
+  BD1: 'BD1 1AB',
+  BD2: 'BD2 4SF',
+  BD3: 'BD3 7DH',
+  BD5: 'BD5 8LX',
+  BD7: 'BD7 1DP',
+  BD8: 'BD8 9NS',
+  BD9: 'BD9 5DA',
+  BD10: 'BD10 9DF',
+  BD11: 'BD11 1HW',
+  BD12: 'BD12 7DD',
+  BD13: 'BD13 1JZ',
+  BD14: 'BD14 6LB',
+  BD15: 'BD15 8DR',
+  BD16: 'BD16 4LL',
+  BD17: 'BD17 5JD',
+  BD18: 'BD18 4SF',
   // Sheffield
-  S1: 'S1 4DT', S2: 'S2 4UB', S3: 'S3 7TR', S4: 'S4 7WW', S5: 'S5 6FE',
-  S6: 'S6 2WB', S7: 'S7 1FH', S8: 'S8 7DH', S9: 'S9 1AA', S10: 'S10 5BG',
-  S11: 'S11 8RJ', S12: 'S12 4LJ', S13: 'S13 7AA',
+  S1: 'S1 4DT',
+  S2: 'S2 4UB',
+  S3: 'S3 7TR',
+  S4: 'S4 7WW',
+  S5: 'S5 6FE',
+  S6: 'S6 2WB',
+  S7: 'S7 1FH',
+  S8: 'S8 7DH',
+  S9: 'S9 1AA',
+  S10: 'S10 5BG',
+  S11: 'S11 8RJ',
+  S12: 'S12 4LJ',
+  S13: 'S13 7AA',
   // Liverpool
-  L1: 'L1 8JQ', L3: 'L3 5UF', L4: 'L4 0UF', L5: 'L5 3LF', L6: 'L6 1HD',
-  L7: 'L7 7HJ', L8: 'L8 5YN', L13: 'L13 0BE', L15: 'L15 2HG',
-  L17: 'L17 7AN', L18: 'L18 1HG', L25: 'L25 5JF',
+  L1: 'L1 8JQ',
+  L3: 'L3 5UF',
+  L4: 'L4 0UF',
+  L5: 'L5 3LF',
+  L6: 'L6 1HD',
+  L7: 'L7 7HJ',
+  L8: 'L8 5YN',
+  L13: 'L13 0BE',
+  L15: 'L15 2HG',
+  L17: 'L17 7AN',
+  L18: 'L18 1HG',
+  L25: 'L25 5JF',
   // Birmingham
-  B1: 'B1 1AE', B2: 'B2 5JR', B3: 'B3 1RB', B5: 'B5 4UB',
-  B12: 'B12 8AS', B13: 'B13 9JG', B14: 'B14 6AA', B15: 'B15 3HE',
-  B17: 'B17 9LJ', B18: 'B18 7AL', B19: 'B19 1HG', B20: 'B20 1AS',
+  B1: 'B1 1AE',
+  B2: 'B2 5JR',
+  B3: 'B3 1RB',
+  B5: 'B5 4UB',
+  B12: 'B12 8AS',
+  B13: 'B13 9JG',
+  B14: 'B14 6AA',
+  B15: 'B15 3HE',
+  B17: 'B17 9LJ',
+  B18: 'B18 7AL',
+  B19: 'B19 1HG',
+  B20: 'B20 1AS',
   // Newcastle / Gateshead
-  NE1: 'NE1 4LF', NE2: 'NE2 1RH', NE3: 'NE3 1XF', NE4: 'NE4 5PB',
-  NE6: 'NE6 5BB', NE8: 'NE8 1AE', NE9: 'NE9 5HA',
+  NE1: 'NE1 4LF',
+  NE2: 'NE2 1RH',
+  NE3: 'NE3 1XF',
+  NE4: 'NE4 5PB',
+  NE6: 'NE6 5BB',
+  NE8: 'NE8 1AE',
+  NE9: 'NE9 5HA',
 };
 
 /**
@@ -250,7 +383,7 @@ function resolveInput(raw: string): Resolved {
  */
 async function probeArea(
   seedPostcode: string,
-  radiusMiles: number,
+  radiusMiles: number
 ): Promise<{
   listingCount: number;
   error: string | null;
@@ -333,24 +466,27 @@ async function migrateLegacyIfNeeded(userId: string): Promise<Area[]> {
 
   const districts: string[] = Array.isArray(districtsRow?.value)
     ? (districtsRow!.value as unknown[]).filter(
-        (v): v is string => typeof v === 'string',
+        (v): v is string => typeof v === 'string'
       )
     : [];
 
-  const seeds: Array<{ label?: string; postcode: string; radiusMiles?: number }> =
-    Array.isArray(seedsRow?.value)
-      ? ((seedsRow!.value as unknown[])
-          .filter(
-            (v): v is Record<string, unknown> => !!v && typeof v === 'object',
-          )
-          .map((v) => ({
-            label: typeof v.label === 'string' ? v.label : undefined,
-            postcode: typeof v.postcode === 'string' ? v.postcode : '',
-            radiusMiles:
-              typeof v.radiusMiles === 'number' ? v.radiusMiles : undefined,
-          }))
-          .filter((s) => s.postcode))
-      : [];
+  const seeds: Array<{
+    label?: string;
+    postcode: string;
+    radiusMiles?: number;
+  }> = Array.isArray(seedsRow?.value)
+    ? (seedsRow!.value as unknown[])
+        .filter(
+          (v): v is Record<string, unknown> => !!v && typeof v === 'object'
+        )
+        .map((v) => ({
+          label: typeof v.label === 'string' ? v.label : undefined,
+          postcode: typeof v.postcode === 'string' ? v.postcode : '',
+          radiusMiles:
+            typeof v.radiusMiles === 'number' ? v.radiusMiles : undefined,
+        }))
+        .filter((s) => s.postcode)
+    : [];
 
   const migrated: Area[] = [];
   const seen = new Set<string>();
@@ -409,7 +545,7 @@ export type Suggestion = {
 };
 
 export async function searchAreaSuggestions(
-  query: string,
+  query: string
 ): Promise<Suggestion[]> {
   const userId = (await getFounderSession())?.userId;
   if (!userId || !query.trim() || query.trim().length < 2) return [];
@@ -436,16 +572,14 @@ export async function searchAreaSuggestions(
   }
   const upper = trimmed.toUpperCase().replace(/\s/g, '');
   for (const [district, postcode] of Object.entries(DISTRICT_SAMPLES)) {
-    if (district.startsWith(upper) && out.length < 8) {
-      if (!seen.has(district)) {
-        seen.add(district);
-        out.push({
-          label: district,
-          seedPostcode: postcode,
-          district,
-          source: 'builtin',
-        });
-      }
+    if (district.startsWith(upper) && out.length < 8 && !seen.has(district)) {
+      seen.add(district);
+      out.push({
+        label: district,
+        seedPostcode: postcode,
+        district,
+        source: 'builtin',
+      });
     }
   }
 
@@ -462,8 +596,7 @@ export async function searchAreaSuggestions(
         seen.add(district);
         // Use the OS address as the label, fall back to postcode + town
         const label = p.address
-          ? p.address.split(',').slice(-3, -1).join(',').trim() ||
-            p.postcode
+          ? p.address.split(',').slice(-3, -1).join(',').trim() || p.postcode
           : p.postcode;
         out.push({
           label: label.length > 60 ? label.slice(0, 60) + '…' : label,
@@ -488,7 +621,7 @@ export async function getAreas(): Promise<Area[]> {
 
 export async function addArea(
   input: string,
-  track: AreaTrack = 'volume',
+  track: AreaTrack = 'volume'
 ): Promise<{ ok: true; area: Area } | { ok: false; error: string }> {
   const userId = (await getFounderSession())?.userId;
   if (!userId) return { ok: false, error: 'Unauthorized' };
@@ -514,7 +647,7 @@ export async function addAreaFromSuggestion(
     seedPostcode: string;
     district: string;
   },
-  track: AreaTrack = 'volume',
+  track: AreaTrack = 'volume'
 ): Promise<{ ok: true; area: Area } | { ok: false; error: string }> {
   const userId = (await getFounderSession())?.userId;
   if (!userId) return { ok: false, error: 'Unauthorized' };
@@ -536,7 +669,7 @@ async function addResolvedArea(
     district: string;
     radiusMiles: number;
     track?: AreaTrack;
-  },
+  }
 ): Promise<{ ok: true; area: Area } | { ok: false; error: string }> {
   const existing = await migrateLegacyIfNeeded(userId);
   if (existing.some((a) => a.district === resolved.district)) {
@@ -573,7 +706,7 @@ async function addResolvedArea(
  * always-scanned prime focus. */
 export async function setAreaTrack(
   id: string,
-  track: AreaTrack,
+  track: AreaTrack
 ): Promise<{ ok: true; area: Area } | { ok: false; error: string }> {
   const userId = (await getFounderSession())?.userId;
   if (!userId) return { ok: false, error: 'Unauthorized' };
@@ -600,7 +733,7 @@ export async function removeArea(id: string): Promise<{ ok: boolean }> {
 }
 
 export async function widenArea(
-  id: string,
+  id: string
 ): Promise<{ ok: true; area: Area } | { ok: false; error: string }> {
   const userId = (await getFounderSession())?.userId;
   if (!userId) return { ok: false, error: 'Unauthorized' };
@@ -631,7 +764,7 @@ export async function widenArea(
 }
 
 export async function reProbeArea(
-  id: string,
+  id: string
 ): Promise<{ ok: true; area: Area } | { ok: false; error: string }> {
   const userId = (await getFounderSession())?.userId;
   if (!userId) return { ok: false, error: 'Unauthorized' };
@@ -676,7 +809,9 @@ export type AreaLeadStats = {
   };
 };
 
-export async function getAreaLeadStats(): Promise<Record<string, AreaLeadStats>> {
+export async function getAreaLeadStats(): Promise<
+  Record<string, AreaLeadStats>
+> {
   const userId = (await getFounderSession())?.userId;
   if (!userId) return {};
   const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
@@ -729,7 +864,12 @@ export async function clearAllLeads(): Promise<{
 }> {
   const userId = (await getFounderSession())?.userId;
   if (!userId) {
-    return { ok: false, deletedLeads: 0, deletedFeedback: 0, error: 'Unauthorized' };
+    return {
+      ok: false,
+      deletedLeads: 0,
+      deletedFeedback: 0,
+      error: 'Unauthorized',
+    };
   }
   try {
     const fb = await database.founderFeedback.deleteMany({
@@ -769,7 +909,8 @@ export async function triggerScoutNow(): Promise<{
       headers: { Authorization: `Bearer ${cronSecret}` },
     });
     const result = await res.json().catch(() => ({}));
-    if (!res.ok) return { ok: false, error: `Cron returned HTTP ${res.status}` };
+    if (!res.ok)
+      return { ok: false, error: `Cron returned HTTP ${res.status}` };
     return { ok: true, result };
   } catch (err) {
     return { ok: false, error: (err as Error).message };
