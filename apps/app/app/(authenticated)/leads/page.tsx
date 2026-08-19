@@ -53,13 +53,13 @@ const LeadsPage = async ({
               to HM Land Registry last-sale data, newest notice first. */}
           <a
             href="/leads/export/probate"
-            className="text-xs text-muted-foreground hover:text-foreground hover:underline"
+            className="text-muted-foreground text-xs hover:text-foreground hover:underline"
           >
             Export probate CSV ↓
           </a>
           <Link
             href="/leads/calibration"
-            className="text-xs text-muted-foreground hover:text-foreground hover:underline"
+            className="text-muted-foreground text-xs hover:text-foreground hover:underline"
           >
             Scorer calibration →
           </Link>
@@ -68,7 +68,9 @@ const LeadsPage = async ({
           leads={leads.map((l) => {
             const raw = (l.rawPayload ?? {}) as Record<string, unknown>;
             const pd = raw.propertyData as Record<string, unknown> | undefined;
-            const planning = raw.planning as Record<string, unknown> | undefined;
+            const planning = raw.planning as
+              | Record<string, unknown>
+              | undefined;
             const hmo = raw.hmo as Record<string, unknown> | undefined;
             const dissolved = raw.dissolvedCompany as
               | Record<string, unknown>
@@ -77,6 +79,13 @@ const LeadsPage = async ({
               | Record<string, unknown>
               | undefined;
             const avm = raw.avmFull as Record<string, unknown> | undefined;
+            const primeOpp = raw.primeOpportunity as
+              | {
+                  discountToArea?: number | null;
+                  isOpportunity?: boolean;
+                  reasons?: string[];
+                }
+              | undefined;
             return {
               id: l.id,
               address: l.address,
@@ -90,8 +99,7 @@ const LeadsPage = async ({
               status: l.status,
               source: l.source,
               // Rich PropertyData fields (when source is propertydata_*)
-              listingType:
-                (pd?.listingType as string | undefined) ?? null,
+              listingType: (pd?.listingType as string | undefined) ?? null,
               listingUrl: (pd?.listingUrl as string | undefined) ?? null,
               imageUrl: (pd?.imageUrl as string | undefined) ?? null,
               summary: (pd?.summary as string | undefined) ?? null,
@@ -100,15 +108,11 @@ const LeadsPage = async ({
                 (pd?.originalPricePence as number | undefined) ?? null,
               discountPercent:
                 (pd?.discountPercent as number | undefined) ?? null,
-              reductionCount:
-                (pd?.reductionCount as number | undefined) ?? 0,
-              velocityScore:
-                (pd?.velocityScore as number | undefined) ?? 0,
+              reductionCount: (pd?.reductionCount as number | undefined) ?? 0,
+              velocityScore: (pd?.velocityScore as number | undefined) ?? 0,
               bedrooms: (pd?.bedrooms as number | undefined) ?? null,
-              propertyType:
-                (pd?.propertyType as string | undefined) ?? null,
-              daysOnMarket:
-                (pd?.daysOnMarket as number | undefined) ?? null,
+              propertyType: (pd?.propertyType as string | undefined) ?? null,
+              daysOnMarket: (pd?.daysOnMarket as number | undefined) ?? null,
               // Planning + HMO labels
               planningDecision:
                 (planning?.decision as string | undefined) ?? null,
@@ -139,20 +143,26 @@ const LeadsPage = async ({
                 (avm?.confidenceLevel as string | undefined) ?? null,
               // Risk flags + score factors (computed scorer-side, stored on
               // rawPayload by the cron — pull defensively for older leads)
-              riskFlags:
-                (raw.riskFlags as string[] | undefined) ?? [],
-              rationale:
-                (raw.rationale as string | undefined) ?? null,
+              riskFlags: (raw.riskFlags as string[] | undefined) ?? [],
+              rationale: (raw.rationale as string | undefined) ?? null,
               topPositiveFactors: (
-                (raw.scoreFactors as Array<{
-                  label: string;
-                  points: number;
-                }> | undefined) ?? []
+                (raw.scoreFactors as
+                  | Array<{
+                      label: string;
+                      points: number;
+                    }>
+                  | undefined) ?? []
               )
                 .filter((f) => f.points > 0)
                 .sort((a, b) => b.points - a.points)
                 .slice(0, 3)
                 .map((f) => f.label),
+              primeIsOpportunity: primeOpp?.isOpportunity === true,
+              primeDiscountPct:
+                typeof primeOpp?.discountToArea === 'number'
+                  ? Math.round(primeOpp.discountToArea * 100)
+                  : null,
+              primeReasons: primeOpp?.reasons ?? [],
             };
           })}
           initialFilter={filter ?? 'new'}

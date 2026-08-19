@@ -5,6 +5,7 @@ import {
   classifyTrack,
   isBlockText,
   outwardCode,
+  primeOpportunityForTrack,
 } from '../track';
 
 describe('classifyTrack', () => {
@@ -218,5 +219,44 @@ describe('assessPrimeOpportunity', () => {
     expect(r.discountToArea).toBeNull();
     expect(r.isOpportunity).toBe(false);
     expect(r.reasons.join(' ')).toMatch(/not measurable/i);
+  });
+});
+
+describe('primeOpportunityForTrack — who gets the thesis applied', () => {
+  it('assesses every prime lead, and finds the opportunity when it is there', () => {
+    const r = primeOpportunityForTrack({
+      track: 'prime',
+      postcode: 'SE22 9EL',
+      valuePence: 800_000_00,
+      areaAvgPence: 1_100_000_00,
+      listingType: 'unmodernised-properties',
+    });
+    expect(r?.isOpportunity).toBe(true);
+  });
+
+  it('never assesses volume — a cheap flat on an expensive street is a flat', () => {
+    expect(
+      primeOpportunityForTrack({
+        track: 'volume',
+        postcode: 'N10 3SH',
+        valuePence: 300_000_00,
+        areaAvgPence: 1_400_000_00,
+      })
+    ).toBeNull();
+  });
+
+  it('assesses a block inside a prime district, not outside one', () => {
+    const base = {
+      track: 'block' as const,
+      valuePence: 1_200_000_00,
+      areaAvgPence: 1_600_000_00,
+      listingType: 'unmodernised-properties',
+    };
+    expect(
+      primeOpportunityForTrack({ ...base, postcode: 'E8 3DR' })
+    ).not.toBeNull();
+    expect(
+      primeOpportunityForTrack({ ...base, postcode: 'SK7 2AB' })
+    ).toBeNull();
   });
 });

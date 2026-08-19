@@ -36,7 +36,9 @@ const PipelinePage = async ({
   if (!userId) redirect('/sign-in');
 
   const { tab: rawTab, filter } = await searchParams;
-  const tab: Tab = (TABS.some((t) => t.id === rawTab) ? rawTab : 'deals') as Tab;
+  const tab: Tab = (
+    TABS.some((t) => t.id === rawTab) ? rawTab : 'deals'
+  ) as Tab;
 
   const [activeDealCount, newLeadCount, archivedDealCount] = await Promise.all([
     database.deal.count({
@@ -92,7 +94,7 @@ const PipelinePage = async ({
                   {count}
                 </span>
                 {isActive && (
-                  <span className="absolute bottom-[-1px] left-0 right-0 h-[2px] bg-foreground" />
+                  <span className="absolute right-0 bottom-[-1px] left-0 h-[2px] bg-foreground" />
                 )}
               </Link>
             );
@@ -131,10 +133,15 @@ async function LeadsTabContent({ filter }: { filter?: string }) {
         const dissolved = raw.dissolvedCompany as
           | Record<string, unknown>
           | undefined;
-        const lease = raw.leaseSignal as
-          | Record<string, unknown>
-          | undefined;
+        const lease = raw.leaseSignal as Record<string, unknown> | undefined;
         const avm = raw.avmFull as Record<string, unknown> | undefined;
+        const primeOpp = raw.primeOpportunity as
+          | {
+              discountToArea?: number | null;
+              isOpportunity?: boolean;
+              reasons?: string[];
+            }
+          | undefined;
         return {
           id: l.id,
           address: l.address,
@@ -147,41 +154,30 @@ async function LeadsTabContent({ filter }: { filter?: string }) {
           marketTrend: l.marketTrend,
           status: l.status,
           source: l.source,
-          listingType:
-            (pd?.listingType as string | undefined) ?? null,
+          listingType: (pd?.listingType as string | undefined) ?? null,
           listingUrl: (pd?.listingUrl as string | undefined) ?? null,
           imageUrl: (pd?.imageUrl as string | undefined) ?? null,
           summary: (pd?.summary as string | undefined) ?? null,
           pricePence: (pd?.pricePence as number | undefined) ?? null,
           originalPricePence:
             (pd?.originalPricePence as number | undefined) ?? null,
-          discountPercent:
-            (pd?.discountPercent as number | undefined) ?? null,
-          reductionCount:
-            (pd?.reductionCount as number | undefined) ?? 0,
-          velocityScore:
-            (pd?.velocityScore as number | undefined) ?? 0,
+          discountPercent: (pd?.discountPercent as number | undefined) ?? null,
+          reductionCount: (pd?.reductionCount as number | undefined) ?? 0,
+          velocityScore: (pd?.velocityScore as number | undefined) ?? 0,
           bedrooms: (pd?.bedrooms as number | undefined) ?? null,
-          propertyType:
-            (pd?.propertyType as string | undefined) ?? null,
-          daysOnMarket:
-            (pd?.daysOnMarket as number | undefined) ?? null,
-          planningDecision:
-            (planning?.decision as string | undefined) ?? null,
+          propertyType: (pd?.propertyType as string | undefined) ?? null,
+          daysOnMarket: (pd?.daysOnMarket as number | undefined) ?? null,
+          planningDecision: (planning?.decision as string | undefined) ?? null,
           planningRating:
             (planning?.decisionRating as string | undefined) ?? null,
-          planningProposal:
-            (planning?.proposal as string | undefined) ?? null,
-          planningUrl:
-            (planning?.url as string | undefined) ?? null,
+          planningProposal: (planning?.proposal as string | undefined) ?? null,
+          planningUrl: (planning?.url as string | undefined) ?? null,
           hmoExpiringSoon:
             (hmo?.licenceExpiringSoon as boolean | undefined) ?? false,
-          hmoLicenceExpiry:
-            (hmo?.licenceExpiry as string | undefined) ?? null,
+          hmoLicenceExpiry: (hmo?.licenceExpiry as string | undefined) ?? null,
           dissolvedCompanyName:
             (dissolved?.companyName as string | undefined) ?? null,
-          dissolvedAt:
-            (dissolved?.dissolvedAt as string | undefined) ?? null,
+          dissolvedAt: (dissolved?.dissolvedAt as string | undefined) ?? null,
           leaseRemainingYears:
             (lease?.remainingLeaseYears as number | undefined) ?? null,
           leaseMarriageValue:
@@ -189,22 +185,27 @@ async function LeadsTabContent({ filter }: { filter?: string }) {
           appraised: typeof avm?.pointEstimatePence === 'number',
           avmValuePence:
             (avm?.pointEstimatePence as number | undefined) ?? null,
-          avmConfidence:
-            (avm?.confidenceLevel as string | undefined) ?? null,
-          riskFlags:
-            (raw.riskFlags as string[] | undefined) ?? [],
-          rationale:
-            (raw.rationale as string | undefined) ?? null,
+          avmConfidence: (avm?.confidenceLevel as string | undefined) ?? null,
+          riskFlags: (raw.riskFlags as string[] | undefined) ?? [],
+          rationale: (raw.rationale as string | undefined) ?? null,
           topPositiveFactors: (
-            (raw.scoreFactors as Array<{
-              label: string;
-              points: number;
-            }> | undefined) ?? []
+            (raw.scoreFactors as
+              | Array<{
+                  label: string;
+                  points: number;
+                }>
+              | undefined) ?? []
           )
             .filter((f) => f.points > 0)
             .sort((a, b) => b.points - a.points)
             .slice(0, 3)
             .map((f) => f.label),
+          primeIsOpportunity: primeOpp?.isOpportunity === true,
+          primeDiscountPct:
+            typeof primeOpp?.discountToArea === 'number'
+              ? Math.round(primeOpp.discountToArea * 100)
+              : null,
+          primeReasons: primeOpp?.reasons ?? [],
         };
       })}
       initialFilter={filter ?? 'all'}
@@ -220,8 +221,10 @@ async function ArchiveTabContent() {
   });
   if (archived.length === 0) {
     return (
-      <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/50 p-12 text-center">
-        <p className="font-serif text-2xl text-slate-700">Nothing archived yet.</p>
+      <div className="rounded-2xl border border-slate-200 border-dashed bg-slate-50/50 p-12 text-center">
+        <p className="font-serif text-2xl text-slate-700">
+          Nothing archived yet.
+        </p>
         <p className="mt-2 text-muted-foreground text-sm">
           Completed, rejected and withdrawn deals appear here for retros.
         </p>

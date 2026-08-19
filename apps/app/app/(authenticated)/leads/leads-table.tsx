@@ -1,6 +1,5 @@
 'use client';
 
-import { useState, useTransition } from 'react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -12,9 +11,10 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@repo/design-system/components/ui/alert-dialog';
-import { TriageButtons } from '../components/triage-buttons';
-import type { TriageStatus } from '../../actions/leads/triage';
+import { useState, useTransition } from 'react';
 import { clearNewLeadsInbox } from '../../actions/leads/clear-inbox';
+import type { TriageStatus } from '../../actions/leads/triage';
+import { TriageButtons } from '../components/triage-buttons';
 
 type Lead = {
   id: string;
@@ -60,6 +60,9 @@ type Lead = {
   riskFlags: string[];
   rationale: string | null;
   topPositiveFactors: string[];
+  primeIsOpportunity: boolean;
+  primeDiscountPct: number | null;
+  primeReasons: string[];
 };
 
 type Props = {
@@ -150,7 +153,7 @@ const SECONDARY_FILTERS: FilterKey[] = [
 
 export function LeadsTable({ leads, initialFilter, totalCount }: Props) {
   const [activeFilter, setActiveFilter] = useState<FilterKey>(
-    (initialFilter as FilterKey) ?? 'new',
+    (initialFilter as FilterKey) ?? 'new'
   );
   const [page, setPage] = useState(1);
   const [showMoreFilters, setShowMoreFilters] = useState(false);
@@ -223,22 +226,25 @@ export function LeadsTable({ leads, initialFilter, totalCount }: Props) {
   const pageStart = (safePage - 1) * PAGE_SIZE;
   const pagedLeads = filteredLeads.slice(pageStart, pageStart + PAGE_SIZE);
   // True when the server had to cut the fetch — there are leads not loaded.
-  const truncated =
-    typeof totalCount === 'number' && totalCount > leads.length;
+  const truncated = typeof totalCount === 'number' && totalCount > leads.length;
 
   const countByStatus = (s: string) =>
     leads.filter((l) => getStatus(l) === s).length;
 
   const filters: { key: FilterKey; label: string; count: number }[] = [
     { key: 'new', label: 'New', count: countByStatus('new') },
-    { key: 'shortlist', label: 'Shortlist', count: countByStatus('shortlisted') },
+    {
+      key: 'shortlist',
+      label: 'Shortlist',
+      count: countByStatus('shortlisted'),
+    },
     {
       key: 'triage',
       label: 'Needs triage',
       count: leads.filter(
         (l) =>
           getStatus(l) === 'new' &&
-          (l.verdict === 'STRONG' || l.verdict === 'VIABLE'),
+          (l.verdict === 'STRONG' || l.verdict === 'VIABLE')
       ).length,
     },
     { key: 'watching', label: 'Watching', count: countByStatus('watching') },
@@ -246,14 +252,14 @@ export function LeadsTable({ leads, initialFilter, totalCount }: Props) {
       key: 'STRONG',
       label: 'Strong',
       count: leads.filter(
-        (l) => l.verdict === 'STRONG' && getStatus(l) !== 'passed',
+        (l) => l.verdict === 'STRONG' && getStatus(l) !== 'passed'
       ).length,
     },
     {
       key: 'VIABLE',
       label: 'Viable',
       count: leads.filter(
-        (l) => l.verdict === 'VIABLE' && getStatus(l) !== 'passed',
+        (l) => l.verdict === 'VIABLE' && getStatus(l) !== 'passed'
       ).length,
     },
     {
@@ -302,21 +308,24 @@ export function LeadsTable({ leads, initialFilter, totalCount }: Props) {
   ];
 
   const primaryFilters = filters.filter(
-    (f) => !SECONDARY_FILTERS.includes(f.key),
+    (f) => !SECONDARY_FILTERS.includes(f.key)
   );
   const secondaryFilters = filters.filter((f) =>
-    SECONDARY_FILTERS.includes(f.key),
+    SECONDARY_FILTERS.includes(f.key)
   );
 
   return (
     <>
-      <div className="flex flex-wrap items-center gap-1" data-tour="leads-filters">
+      <div
+        className="flex flex-wrap items-center gap-1"
+        data-tour="leads-filters"
+      >
         {primaryFilters.map((f) => (
           <button
             key={f.key}
             type="button"
             onClick={() => selectFilter(f.key)}
-            className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+            className={`rounded-full px-3 py-1 font-medium text-xs transition-colors ${
               activeFilter === f.key
                 ? 'bg-primary text-primary-foreground'
                 : 'bg-muted text-muted-foreground hover:bg-muted/80'
@@ -329,7 +338,7 @@ export function LeadsTable({ leads, initialFilter, totalCount }: Props) {
         <button
           type="button"
           onClick={() => setShowMoreFilters((v) => !v)}
-          className="rounded-full px-3 py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted/80"
+          className="rounded-full px-3 py-1 font-medium text-muted-foreground text-xs transition-colors hover:bg-muted/80"
         >
           {showMoreFilters ? 'Fewer filters' : 'More filters'}
           <span aria-hidden className="ml-1">
@@ -340,7 +349,7 @@ export function LeadsTable({ leads, initialFilter, totalCount }: Props) {
 
       {showMoreFilters && (
         <div className="flex flex-wrap items-center gap-1">
-          <span className="mr-1 font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+          <span className="mr-1 font-mono text-[10px] text-muted-foreground uppercase tracking-[0.18em]">
             More
           </span>
           {secondaryFilters.map((f) => (
@@ -348,7 +357,7 @@ export function LeadsTable({ leads, initialFilter, totalCount }: Props) {
               key={f.key}
               type="button"
               onClick={() => selectFilter(f.key)}
-              className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+              className={`rounded-full px-3 py-1 font-medium text-xs transition-colors ${
                 activeFilter === f.key
                   ? 'bg-primary text-primary-foreground'
                   : 'bg-muted text-muted-foreground hover:bg-muted/80'
@@ -370,8 +379,8 @@ export function LeadsTable({ leads, initialFilter, totalCount }: Props) {
             <>
               {' '}
               <span className="text-amber-700">
-                · loaded the top {leads.length} of {totalCount} by score;
-                older lower-scoring leads are not shown
+                · loaded the top {leads.length} of {totalCount} by score; older
+                lower-scoring leads are not shown
               </span>
             </>
           )}
@@ -409,8 +418,9 @@ export function LeadsTable({ leads, initialFilter, totalCount }: Props) {
                 Your shortlist is empty.
               </p>
               <p className="mt-1 text-muted-foreground text-sm">
-                Hit <span className="font-medium text-emerald-700">Shortlist</span> on
-                any lead to save it here.{' '}
+                Hit{' '}
+                <span className="font-medium text-emerald-700">Shortlist</span>{' '}
+                on any lead to save it here.{' '}
                 <button
                   type="button"
                   onClick={() => setActiveFilter('triage')}
@@ -512,7 +522,7 @@ function ClearInboxButton({ count }: { count: number }) {
       <AlertDialogTrigger asChild>
         <button
           type="button"
-          className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted/80"
+          className="rounded-full border border-slate-200 bg-white px-3 py-1 font-medium text-muted-foreground text-xs transition-colors hover:bg-muted/80"
         >
           Clear inbox
         </button>
@@ -523,14 +533,14 @@ function ClearInboxButton({ count }: { count: number }) {
             Clear {count} new lead{count === 1 ? '' : 's'}?
           </AlertDialogTitle>
           <AlertDialogDescription>
-            This removes every untriaged lead from your inbox. None of them
-            get marked passed, so it doesn't count against them — if a scout
-            run finds the same property again and it still looks solid, it
-            comes back as a fresh lead. Anything already shortlisted,
-            watched, passed, or converted is untouched.
+            This removes every untriaged lead from your inbox. None of them get
+            marked passed, so it doesn't count against them — if a scout run
+            finds the same property again and it still looks solid, it comes
+            back as a fresh lead. Anything already shortlisted, watched, passed,
+            or converted is untouched.
           </AlertDialogDescription>
         </AlertDialogHeader>
-        {error && <p className="text-xs text-red-600">{error}</p>}
+        {error && <p className="text-red-600 text-xs">{error}</p>}
         <AlertDialogFooter>
           <AlertDialogCancel disabled={isPending}>Cancel</AlertDialogCancel>
           <AlertDialogAction
@@ -564,9 +574,9 @@ function LeadCard({
   const isShortLease = lead.source.startsWith('short_lease');
 
   const sourceBadge = isPropertyData
-    ? (lead.listingType
-        ? LISTING_TYPE_LABELS[lead.listingType] ?? lead.listingType
-        : 'Distressed')
+    ? lead.listingType
+      ? (LISTING_TYPE_LABELS[lead.listingType] ?? lead.listingType)
+      : 'Distressed'
     : isPlanning
       ? `Planning · ${lead.planningRating ?? 'pending'}`
       : isHmo
@@ -599,19 +609,42 @@ function LeadCard({
   // single collapsed risk pill — scanning 200 cards with 7+ pills each is
   // impossible. Priority: track > price cut > falling fast > stale > HMO expiry.
   const highlights: { label: string; cls: string; title?: string }[] = [];
+  // The thesis, when the pipeline found it: under its street AND carrying
+  // the condition that explains why. That conjunction is the whole prime
+  // strategy, so it outranks the plain track badge.
+  const oppSuffix =
+    lead.primeIsOpportunity && lead.primeDiscountPct !== null
+      ? ` · ${lead.primeDiscountPct}% under street`
+      : '';
+  const oppTitle =
+    lead.primeReasons.length > 0 ? lead.primeReasons.join(' · ') : undefined;
   if (lead.track === 'prime') {
-    highlights.push({
-      label: '★ Prime — own book',
-      cls: 'border-emerald-300 bg-emerald-100 text-emerald-900',
-      title:
-        '£700k+ value: a principal-track candidate for the Kept book (architect refurb), not the investor feed.',
-    });
+    highlights.push(
+      lead.primeIsOpportunity
+        ? {
+            label: `★ Prime opportunity${oppSuffix}`,
+            cls: 'border-emerald-400 bg-emerald-200 text-emerald-950',
+            title: oppTitle,
+          }
+        : {
+            label: '★ Prime — own book',
+            cls: 'border-emerald-300 bg-emerald-100 text-emerald-900',
+            title:
+              oppTitle ??
+              'Prime-district (or high-value) stock: a principal-track candidate for the Kept book, not the investor feed. See packages/scouting/src/track.ts.',
+          }
+    );
   }
   if (lead.track === 'block') {
     highlights.push({
-      label: '▦ Block / portfolio',
-      cls: 'border-emerald-300 bg-emerald-100 text-emerald-900',
+      label: lead.primeIsOpportunity
+        ? `▦ Block opportunity${oppSuffix}`
+        : '▦ Block / portfolio',
+      cls: lead.primeIsOpportunity
+        ? 'border-emerald-400 bg-emerald-200 text-emerald-950'
+        : 'border-emerald-300 bg-emerald-100 text-emerald-900',
       title:
+        oppTitle ??
         'Multi-unit language in the listing — whole block or portfolio. Principal-track candidate; the house AVM does not apply.',
     });
   }
@@ -639,7 +672,9 @@ function LeadCard({
     highlights.push({
       label: 'HMO licence expiring',
       cls: 'border-rose-200 bg-rose-100 text-rose-800',
-      title: lead.hmoLicenceExpiry ? `Expires ${lead.hmoLicenceExpiry}` : undefined,
+      title: lead.hmoLicenceExpiry
+        ? `Expires ${lead.hmoLicenceExpiry}`
+        : undefined,
     });
   }
   if (typeof lead.leaseRemainingYears === 'number') {
@@ -690,20 +725,20 @@ function LeadCard({
 
               <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
                 <span
-                  className={`inline-flex rounded-full border px-2 py-0.5 text-[11px] font-medium ${
+                  className={`inline-flex rounded-full border px-2 py-0.5 font-medium text-[11px] ${
                     verdictColors[lead.verdict] || ''
                   }`}
                 >
                   {lead.verdict}
                 </span>
                 <span
-                  className={`inline-flex rounded-full border px-2 py-0.5 text-[11px] font-medium ${sourceBadgeColor}`}
+                  className={`inline-flex rounded-full border px-2 py-0.5 font-medium text-[11px] ${sourceBadgeColor}`}
                 >
                   {sourceBadge}
                 </span>
                 {lead.appraised ? (
                   <span
-                    className="inline-flex rounded-full border border-emerald-200 bg-emerald-100 px-2 py-0.5 text-[11px] font-medium text-emerald-800"
+                    className="inline-flex rounded-full border border-emerald-200 bg-emerald-100 px-2 py-0.5 font-medium text-[11px] text-emerald-800"
                     title={
                       lead.avmConfidence
                         ? `AVM run · ${lead.avmConfidence} confidence`
@@ -716,7 +751,7 @@ function LeadCard({
                       : ''}
                   </span>
                 ) : (
-                  <span className="inline-flex rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-medium text-slate-500">
+                  <span className="inline-flex rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 font-medium text-[11px] text-slate-500">
                     Not appraised
                   </span>
                 )}
@@ -724,14 +759,14 @@ function LeadCard({
                   <span
                     key={h.label}
                     title={h.title}
-                    className={`inline-flex rounded-full border px-2 py-0.5 text-[11px] font-medium ${h.cls}`}
+                    className={`inline-flex rounded-full border px-2 py-0.5 font-medium text-[11px] ${h.cls}`}
                   >
                     {h.label}
                   </span>
                 ))}
                 {riskCount > 0 && (
                   <span
-                    className="inline-flex rounded-full border border-rose-200 bg-rose-50 px-2 py-0.5 text-[11px] font-medium text-rose-700"
+                    className="inline-flex rounded-full border border-rose-200 bg-rose-50 px-2 py-0.5 font-medium text-[11px] text-rose-700"
                     title={lead.riskFlags.join(' · ')}
                   >
                     ⚠ {riskCount} risk{riskCount === 1 ? '' : 's'}
@@ -766,7 +801,7 @@ function LeadCard({
 
               {/* Summary or proposal */}
               {(lead.summary || lead.planningProposal) && (
-                <p className="mt-2 line-clamp-2 text-[13px] leading-relaxed text-slate-600">
+                <p className="mt-2 line-clamp-2 text-[13px] text-slate-600 leading-relaxed">
                   {lead.summary ?? lead.planningProposal}
                 </p>
               )}
@@ -779,17 +814,17 @@ function LeadCard({
             >
               <div>
                 <div
-                  className="font-mono text-2xl font-bold tabular-nums leading-none"
+                  className="font-bold font-mono text-2xl tabular-nums leading-none"
                   title={lead.rationale ?? undefined}
                 >
                   {lead.leadScore}
                 </div>
-                <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                <div className="text-[10px] text-muted-foreground uppercase tracking-wider">
                   Score
                 </div>
               </div>
               {lead.topPositiveFactors.length > 0 && (
-                <ul className="max-w-[180px] space-y-0.5 text-right text-[11px] leading-tight text-emerald-700">
+                <ul className="max-w-[180px] space-y-0.5 text-right text-[11px] text-emerald-700 leading-tight">
                   {lead.topPositiveFactors.map((f, i) => (
                     <li key={`${f}-${i}`}>+ {f}</li>
                   ))}
