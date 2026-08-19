@@ -2,9 +2,7 @@
 
 import { getFounderSession } from '@repo/auth/server';
 import { database } from '@repo/database';
-import {
-  getSourcedPropertiesRaw,
-} from '@repo/property-data/src/propertydata';
+import { getSourcedPropertiesRaw } from '@repo/property-data/src/propertydata';
 import { revalidatePath } from 'next/cache';
 
 const POSTCODE_KEY = 'scouting.targetPostcodes';
@@ -73,7 +71,11 @@ export async function setTargetPostcodes(postcodesRaw: string[]): Promise<{
   }
 
   if (accepted.length === 0) {
-    return { success: false, error: 'No valid postcodes — provide UK districts like M14, SK4, LS17.', rejected };
+    return {
+      success: false,
+      error: 'No valid postcodes — provide UK districts like M14, SK4, LS17.',
+      rejected,
+    };
   }
 
   await database.setting.upsert({
@@ -93,7 +95,7 @@ export async function setTargetPostcodes(postcodesRaw: string[]): Promise<{
  */
 export async function diagnoseSourcedProperties(
   postcode: string,
-  opts?: { radiusMiles?: number; list?: string },
+  opts?: { radiusMiles?: number; list?: string }
 ): Promise<{
   ok: boolean;
   postcode: string;
@@ -182,11 +184,16 @@ export async function setScanSeeds(seeds: ScanSeed[]): Promise<{
     if (!seed || !seed.postcode) continue;
     const norm = normaliseFullPostcode(seed.postcode);
     if (!norm) {
-      rejected.push({ postcode: seed.postcode, reason: 'not a full UK postcode (e.g. M14 5LL)' });
+      rejected.push({
+        postcode: seed.postcode,
+        reason: 'not a full UK postcode (e.g. M14 5LL)',
+      });
       continue;
     }
     const radius =
-      typeof seed.radiusMiles === 'number' && seed.radiusMiles > 0 && seed.radiusMiles <= 20
+      typeof seed.radiusMiles === 'number' &&
+      seed.radiusMiles > 0 &&
+      seed.radiusMiles <= 20
         ? seed.radiusMiles
         : 1;
     if (seen.has(norm)) continue;
@@ -219,7 +226,8 @@ export async function triggerScoutingCron(): Promise<{
   if (!userId) return { success: false, error: 'Unauthorized' };
 
   const cronSecret = process.env.CRON_SECRET;
-  if (!cronSecret) return { success: false, error: 'CRON_SECRET not configured' };
+  if (!cronSecret)
+    return { success: false, error: 'CRON_SECRET not configured' };
 
   try {
     const res = await fetch('https://bellwood-api.vercel.app/cron/scouting', {
@@ -232,6 +240,9 @@ export async function triggerScoutingCron(): Promise<{
     }
     return { success: true, result };
   } catch (err) {
-    return { success: false, error: `Failed to reach cron: ${(err as Error).message}` };
+    return {
+      success: false,
+      error: `Failed to reach cron: ${(err as Error).message}`,
+    };
   }
 }

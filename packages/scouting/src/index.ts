@@ -379,6 +379,19 @@ export interface ScoutingPipelineResult {
     tiesKept: number;
     postcodesScanned: number;
   };
+  /**
+   * Per-seed outcome of the /sourced-properties sweep. `sourceErrors`
+   * records only the FIRST failure across all seeds, which meant a run
+   * scanning six areas could fail five of them and report one line. The
+   * cron uses this to write a truthful lastProbe back onto every scanned
+   * area — including clearing a stale error when a seed succeeds.
+   */
+  seedOutcomes: Array<{
+    label: string;
+    postcode: string;
+    listingCount: number;
+    error: string | null;
+  }>;
   /** Per-source errors (truncated) for diagnostic surfacing. */
   sourceErrors: {
     hmcts?: string;
@@ -452,6 +465,12 @@ export async function runScoutingPipeline(
   const allGdprStripped: string[] = [];
 
   // Step 1 — Fetch from all sources in parallel. Capture errors per source.
+  const seedOutcomes: Array<{
+    label: string;
+    postcode: string;
+    listingCount: number;
+    error: string | null;
+  }> = [];
   const sourceErrors: {
     hmcts?: string;
     gazette?: string;
@@ -646,6 +665,12 @@ export async function runScoutingPipeline(
         const properties = await getSourcedPropertiesMulti(seed.postcode, {
           radiusMiles: seed.radiusMiles,
         });
+        seedOutcomes.push({
+          label: seed.label,
+          postcode: seed.postcode,
+          listingCount: properties.length,
+          error: null,
+        });
         for (const p of properties) {
           const addrL = p.address.toLowerCase();
           const typeL = (p.propertyType ?? '').toLowerCase();
@@ -726,6 +751,12 @@ export async function runScoutingPipeline(
         }
       } catch (err) {
         const msg = (err as Error)?.message ?? String(err);
+        seedOutcomes.push({
+          label: seed.label,
+          postcode: seed.postcode,
+          listingCount: 0,
+          error: msg.slice(0, 300),
+        });
         if (!sourceErrors.propertydata) {
           sourceErrors.propertydata = `${seed.label}: ${msg.slice(0, 150)}`;
         }
@@ -1506,6 +1537,7 @@ export async function runScoutingPipeline(
       tiesKept,
       postcodesScanned: allSeeds.length,
     },
+    seedOutcomes,
     sourceErrors,
     sourceHealth,
     enrichment: enrichmentSummary,

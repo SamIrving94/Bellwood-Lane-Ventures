@@ -43,15 +43,20 @@ async function withTimeout(url: string, init?: RequestInit): Promise<Response> {
 }
 
 /** Single postcode → coordinates (null if not found / on error). */
-export async function geocodePostcode(postcode: string): Promise<LatLng | null> {
+export async function geocodePostcode(
+  postcode: string
+): Promise<LatLng | null> {
   const key = normalise(postcode);
   const cached = cacheGet(key);
   if (cached !== undefined) return cached;
 
   try {
-    const res = await withTimeout(`${BASE}/postcodes/${encodeURIComponent(key)}`, {
-      headers: { Accept: 'application/json' },
-    });
+    const res = await withTimeout(
+      `${BASE}/postcodes/${encodeURIComponent(key)}`,
+      {
+        headers: { Accept: 'application/json' },
+      }
+    );
     if (!res.ok) {
       cache.set(key, { value: null, expiresAt: Date.now() + CACHE_TTL_MS });
       return null;
@@ -78,7 +83,7 @@ export async function geocodePostcode(postcode: string): Promise<LatLng | null> 
  * cached entries without a network round-trip.
  */
 export async function geocodePostcodes(
-  postcodes: string[],
+  postcodes: string[]
 ): Promise<Map<string, LatLng>> {
   const out = new Map<string, LatLng>();
   const toFetch: string[] = [];
@@ -99,7 +104,10 @@ export async function geocodePostcodes(
     try {
       const res = await withTimeout(`${BASE}/postcodes`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+        },
         body: JSON.stringify({ postcodes: chunk }),
       });
       if (!res.ok) continue;
@@ -125,6 +133,176 @@ export async function geocodePostcodes(
   }
 
   return out;
+}
+
+/**
+ * Outcode (postcode district) resolution.
+ *
+ * Added for the scouting area-add flow after the SW3 incident: the resolver
+ * used to fabricate `"<DISTRICT> 1AA"` for districts missing from its
+ * hand-curated table and hope PropertyData accepted it. SW3 1AA does not
+ * exist, PropertyData answered 422, and the failure surfaced days later as a
+ * truncated probe error. These two functions make ANY real UK district
+ * resolvable with no table maintenance — and make "we do not know this
+ * district" a first-class answer instead of a guess.
+ *
+ * The results are discriminated three ways on purpose. `not-found` is a fact
+ * about the input (cacheable: ZZ99 will not exist tomorrow either), while
+ * `unavailable` is a fact about the network right now (never cached — the
+ * next attempt may succeed, and caching it would turn a blip into a 30-day
+ * outage for that district).
+ */
+
+export type OutcodeLookup =
+  | { outcome: 'found'; centroid: LatLng }
+  | { outcome: 'not-found' }
+  | { outcome: 'unavailable' };
+
+export type OutcodeSeed =
+  | { outcome: 'found'; postcode: string }
+  | { outcome: 'not-found' }
+  | { outcome: 'unavailable' };
+
+const outcodeCache = new Map<
+  string,
+  { value: LatLng | null; expiresAt: number }
+>();
+
+/** Outcode → centroid. `not-found` (404) is cached; `unavailable` is not. */
+export async function lookupOutcode(outcode: string): Promise<OutcodeLookup> {
+  const key = normalise(outcode);
+  const cached = outcodeCache.get(key);
+  if (cached && cached.expiresAt >= Date.now()) {
+    return cached.value
+      ? { outcome: 'found', centroid: cached.value }
+      : { outcome: 'not-found' };
+  }
+
+  try {
+    const res = await withTimeout(
+      `${BASE}/outcodes/${encodeURIComponent(key)}`,
+      { headers: { Accept: 'application/json' } }
+    );
+    if (res.status === 404) {
+      outcodeCache.set(key, {
+        value: null,
+        expiresAt: Date.now() + CACHE_TTL_MS,
+      });
+      return { outcome: 'not-found' };
+    }
+    if (!res.ok) {
+      return { outcome: 'unavailable' };
+    }
+    const json = (await res.json()) as {
+      result?: { latitude?: number; longitude?: number };
+    };
+    const r = json.result;
+    if (
+      !r ||
+      typeof r.latitude !== 'number' ||
+      typeof r.longitude !== 'number'
+    ) {
+      // A 200 with no usable coordinates (a handful of outcodes have no
+      // centroid data). Treat as not-found: it is a fact about the outcode.
+      outcodeCache.set(key, {
+        value: null,
+        expiresAt: Date.now() + CACHE_TTL_MS,
+      });
+      return { outcome: 'not-found' };
+    }
+    const centroid = { latitude: r.latitude, longitude: r.longitude };
+    outcodeCache.set(key, {
+      value: centroid,
+      expiresAt: Date.now() + CACHE_TTL_MS,
+    });
+    return { outcome: 'found', centroid };
+  } catch {
+    return { outcome: 'unavailable' };
+  }
+}
+
+/**
+ * Outcode → a REAL, central postcode inside that district.
+ *
+ * Method: outcode centroid, then reverse-geocode to the nearest live
+ * postcodes and take the first that belongs to the requested district. The
+ * district check uses the API's own per-result `outcode` field, not string
+ * surgery — a centroid near a district boundary can land its nearest
+ * postcode in the neighbouring district.
+ *
+ * Some centroids sit on ground with no postcode at all (N4's is in Finsbury
+ * Park, NW5's on Hampstead Heath), so an empty first pass widens the search
+ * radius once before giving up.
+ */
+export async function seedPostcodeForOutcode(
+  outcode: string
+): Promise<OutcodeSeed> {
+  const looked = await lookupOutcode(outcode);
+  if (looked.outcome !== 'found') {
+    return looked;
+  }
+
+  const key = normalise(outcode);
+  const { latitude, longitude } = looked.centroid;
+
+  for (const radius of [1000, 2000]) {
+    try {
+      const res = await withTimeout(
+        `${BASE}/postcodes?lon=${longitude}&lat=${latitude}&limit=10&radius=${radius}`,
+        { headers: { Accept: 'application/json' } }
+      );
+      if (!res.ok) {
+        return { outcome: 'unavailable' };
+      }
+      const json = (await res.json()) as {
+        result?: Array<{ postcode?: string; outcode?: string }> | null;
+      };
+      const match = (json.result ?? []).find(
+        (p) => p.outcode && normalise(p.outcode) === key && p.postcode
+      );
+      if (match?.postcode) {
+        return { outcome: 'found', postcode: match.postcode };
+      }
+      // fall through to the wider radius
+    } catch {
+      return { outcome: 'unavailable' };
+    }
+  }
+
+  // Tier 3 — sector scan. In postcode-dense city centres the reverse
+  // geocode fills its result cap with NEIGHBOURING districts before the
+  // first in-district postcode appears (B2: 100 nearest postcodes to its
+  // own centroid, zero of them B2). The text search DOES respect the
+  // sector space when exact-prefix matches exist ("B2 2" → B2 2AB, while
+  // "B2 1" falls back to B21), so scan the ten possible sectors and
+  // validate each hit by prefix rather than trusting the search.
+  const spaced = `${key} `;
+  for (let sector = 0; sector <= 9; sector++) {
+    try {
+      const res = await withTimeout(
+        `${BASE}/postcodes?q=${encodeURIComponent(`${key} ${sector}`)}&limit=4`,
+        { headers: { Accept: 'application/json' } }
+      );
+      if (!res.ok) {
+        return { outcome: 'unavailable' };
+      }
+      const json = (await res.json()) as {
+        result?: Array<{ postcode?: string }> | null;
+      };
+      const hit = (json.result ?? []).find((p) =>
+        p.postcode?.toUpperCase().startsWith(spaced)
+      );
+      if (hit?.postcode) {
+        return { outcome: 'found', postcode: hit.postcode };
+      }
+    } catch {
+      return { outcome: 'unavailable' };
+    }
+  }
+
+  // The outcode exists but no live postcode was reachable by any method.
+  // Genuinely exotic; treat as a fact rather than a blip.
+  return { outcome: 'not-found' };
 }
 
 /** Haversine distance in miles between two coordinates. */

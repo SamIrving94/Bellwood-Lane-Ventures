@@ -2,9 +2,9 @@
 
 import { useState, useTransition } from 'react';
 import {
+  type ScanSeed,
   diagnoseSourcedProperties,
   setScanSeeds,
-  type ScanSeed,
 } from './actions';
 
 type Props = {
@@ -72,7 +72,9 @@ export function ScanSeedsForm({ initialSeeds }: Props) {
       });
       setStatus({
         kind: 'diag',
-        message: result.summary ?? (result.error ? `Error: ${result.error}` : 'No summary'),
+        message:
+          result.summary ??
+          (result.error ? `Error: ${result.error}` : 'No summary'),
         detail: result,
       });
     });
@@ -83,9 +85,7 @@ export function ScanSeedsForm({ initialSeeds }: Props) {
       {/* Current seeds */}
       <div>
         <div className="mb-2 flex items-center justify-between">
-          <p className="text-sm font-medium">
-            Active seeds ({seeds.length})
-          </p>
+          <p className="font-medium text-sm">Active seeds ({seeds.length})</p>
           {seeds.length > 0 && (
             <button
               type="button"
@@ -97,7 +97,7 @@ export function ScanSeedsForm({ initialSeeds }: Props) {
           )}
         </div>
         {seeds.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-6 text-center text-muted-foreground text-sm">
+          <div className="rounded-xl border border-slate-300 border-dashed bg-slate-50 p-6 text-center text-muted-foreground text-sm">
             No seeds yet. Add a full postcode + radius below.
           </div>
         ) : (
@@ -127,7 +127,7 @@ export function ScanSeedsForm({ initialSeeds }: Props) {
                     type="button"
                     onClick={() => handleTest(s)}
                     disabled={diagnosing || saving}
-                    className="rounded-lg border border-slate-300 bg-white px-3 py-1 text-xs font-medium text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
+                    className="rounded-lg border border-slate-300 bg-white px-3 py-1 font-medium text-slate-700 text-xs transition hover:bg-slate-50 disabled:opacity-50"
                   >
                     {diagnosing ? 'Testing…' : 'Test'}
                   </button>
@@ -182,7 +182,7 @@ export function ScanSeedsForm({ initialSeeds }: Props) {
         <button
           type="button"
           onClick={handleAdd}
-          className="rounded-xl border border-slate-300 bg-white px-5 py-2.5 text-sm font-medium hover:bg-slate-50"
+          className="rounded-xl border border-slate-300 bg-white px-5 py-2.5 font-medium text-sm hover:bg-slate-50"
         >
           Add
         </button>
@@ -194,7 +194,7 @@ export function ScanSeedsForm({ initialSeeds }: Props) {
           type="button"
           onClick={handleSave}
           disabled={saving}
-          className="rounded-xl bg-slate-900 px-5 py-2.5 text-sm font-medium text-white transition hover:bg-slate-800 disabled:opacity-50"
+          className="rounded-xl bg-slate-900 px-5 py-2.5 font-medium text-sm text-white transition hover:bg-slate-800 disabled:opacity-50"
         >
           {saving ? 'Saving…' : 'Save seeds'}
         </button>
@@ -226,13 +226,21 @@ export function ScanSeedsForm({ initialSeeds }: Props) {
       )}
 
       {/* Help */}
-      <div className="rounded-xl border border-dashed bg-slate-50/50 p-4 text-xs text-muted-foreground">
+      <div className="rounded-xl border border-dashed bg-slate-50/50 p-4 text-muted-foreground text-xs">
         <p className="font-medium text-slate-700">Picking a seed</p>
         <ul className="mt-1.5 space-y-1">
-          <li>· Use a full postcode you know (any address in the area is fine).</li>
-          <li>· 1 mile covers a single district pocket. 3 miles covers a small town.</li>
+          <li>
+            · Use a full postcode you know (any address in the area is fine).
+          </li>
+          <li>
+            · 1 mile covers a single district pocket. 3 miles covers a small
+            town.
+          </li>
           <li>· One PropertyData call per seed per day ≈ 3 credits each.</li>
-          <li>· Hit <strong>Test</strong> on a seed to confirm it returns listings before committing.</li>
+          <li>
+            · Hit <strong>Test</strong> on a seed to confirm it returns listings
+            before committing.
+          </li>
         </ul>
       </div>
     </div>

@@ -1,4 +1,5 @@
 import { env } from '@/env';
+import { mergeAreaProbes } from '../_lib/merge-area-probes';
 import { selfOrigin } from '../_lib/self-origin';
 import { database, Prisma } from '@repo/database';
 import {
@@ -323,29 +324,24 @@ export const POST = async (request: Request) => {
     createdCount = written.count;
   }
 
-  // ── Advance area rotation ───────────────────────────────────────────
-  // Stamp lastProbe.checkedAt on the areas we scanned this run. Because we
-  // select oldest-probed-first, stamping now pushes them to the back of the
-  // queue so the next run picks up the following batch — full coverage over
-  // ~ceil(areaCount / MAX_SEEDS_PER_RUN) days. Best-effort: a failure here
-  // never affects the leads already persisted above.
+  // ── Advance area rotation + write back what the run learned ─────────
+  // Because we select oldest-probed-first, stamping checkedAt pushes scanned
+  // areas to the back of the queue — full coverage over
+  // ~ceil(areaCount / MAX_SEEDS_PER_RUN) days. The merge also writes each
+  // area's listing count and error truthfully (see merge-area-probes.ts).
+  // Best-effort: a failure here never affects the leads persisted above.
   if (areasRaw && selectedAreaIds.length > 0) {
     try {
       const nowIso = result.runDate.toISOString();
-      const updatedAreas = areasRaw.map((a) => {
-        const id =
-          typeof a.id === 'string'
-            ? a.id
-            : typeof a.seedPostcode === 'string'
-              ? a.seedPostcode
-              : null;
-        if (!id || !selectedAreaIds.includes(id)) return a;
-        const prevLp =
-          a.lastProbe && typeof a.lastProbe === 'object'
-            ? (a.lastProbe as Record<string, unknown>)
-            : {};
-        return { ...a, lastProbe: { ...prevLp, checkedAt: nowIso } };
-      });
+      // Full truth, not just a timestamp: counts written, errors set on
+      // failure and CLEARED on success. The old checkedAt-only merge let a
+      // stale error survive forever under an ever-fresh timestamp.
+      const updatedAreas = mergeAreaProbes(
+        areasRaw,
+        selectedAreaIds,
+        result.seedOutcomes,
+        nowIso
+      );
       await database.setting.update({
         where: { key: 'scouting.areas' },
         data: { value: updatedAreas as Prisma.InputJsonValue },
