@@ -2,7 +2,6 @@ import {
   Button,
   Eyebrow,
   LogoLockup,
-  Monogram,
   Seal,
   SectionNumber,
   Wordmark,
@@ -110,139 +109,191 @@ export default function SellPage() {
               </Link>
             ))}
             <Button href="#offer" className="px-5 py-2 text-sm">
-              Get an offer
+              Get my offer
             </Button>
           </nav>
         </div>
       </header>
 
-      {/* ————— HERO —————
-          The signed-letter artefact and the wax seal are gone (founder review,
-          Aug 2026). Removing the letter left a hole on the right, and for a
-          while it was filled with a second column of body copy, which is the
-          layout you get by default rather than by decision. The hero is now a
-          full-rail headline over two columns that BOTH carry content: the
-          promise on the left, the situation index on the right. */}
-      <section className="relative overflow-hidden px-6 pt-10 pb-16 md:px-12 md:pt-12 md:pb-20">
-        {/* The watermark is the MONOGRAM, not the wordmark.
+      {/* ————— HERO (v2) —————
+          Rebuilt to the `design_handoff_hero` bundle, Aug 2026.
 
-            The founder's reference was the old Bellwoods `B`: one letter,
-            oversized, translucent. The full word does not survive the
-            treatment. "kept" set this large has to be sliced by two page edges
-            to fit, and a word cut through its own x-height reads as a
-            rendering fault rather than a decision. A single `k.` bleeds off
-            one edge, keeps its whole letterform, and is what KEPT.md already
-            reserves the monogram for: seals, favicons, ghosted watermarks.
-            It sits in the headline band, above both columns, so it never tints
-            running body copy.
+          The brief: everything that earns the click sits above the fold.
+          Kicker, headline, promise, ONE primary CTA, a trust row, an artefact,
+          and the selling-reason strip. Previously the headline ate the
+          viewport and the promise, CTA and reasons all fell below it.
 
-            Opacity goes on the WRAPPER, not on the letter's text colour.
-            `Monogram` draws its full stop through `KeptDot`, which carries its
-            own `text-wax`; a `text-forest/[0.06]` on the parent leaves that
-            dot at FULL strength, i.e. a solid red circle the height of the
-            headline. Fading the whole element keeps the dot wax and in
-            proportion. */}
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-0 select-none overflow-hidden opacity-[0.07]"
-        >
-          <Monogram className="-right-[7vw] absolute top-[2vw] text-[34vw] text-forest leading-none md:text-[26vw]" />
-        </div>
+          Three things the design review removed, and why:
 
-        <div className="relative mx-auto max-w-6xl">
-          {/* Dateline — the page itself is a document */}
-          <div className="flex items-baseline justify-between gap-6 border-hair border-b pb-4">
-            <Eyebrow>for UK property sellers</Eyebrow>
-            <p className="text-[11px] text-stone-400 tracking-[0.18em] [font-family:var(--font-courier)]">
-              EST. 2026 · UK
-            </p>
-          </div>
+          - The oversized faded `k.` watermark. It was cropped at the viewport
+            edge and collided with the corner text, reading as a rendering
+            fault rather than a decision. Gone, not resized.
+          - "EST. 2026". For a trust-led business, advertising that you are
+            brand new is a liability.
+          - The category tags (PROBATE, CHAIN BREAK…) beside each selling
+            reason. The sentence already says it.
 
-          {/* The headline runs the full rail. It used to stop at max-w-4xl,
-              which left the right third of every rule on the page pointing at
-              nothing. */}
-          <h1
-            className="relative z-10 mt-9 text-balance font-bold font-serif text-forest leading-[1.0] tracking-[-0.03em] md:mt-10"
-            style={{ fontSize: 'clamp(40px, 6.2vw, 78px)' }}
-          >
-            A real cash offer in writing.
-            <br />
-            <span className="font-normal text-brand">
-              And a promise we keep<span className="text-wax">.</span>
-            </span>
-          </h1>
+          And one thing it added: the trust row. Nothing on the old first
+          screen told a seller there were no fees and no obligation.
 
-          {/* Two columns that BOTH carry content: the promise on the left, the
-              situation index on the right. The right column is where the
-              signed letter used to sit; leaving it empty is what made the
-              composition fall off the right-hand edge. */}
-          <div className="relative z-10 mt-12 grid grid-cols-1 gap-x-16 gap-y-12 border-hair border-t pt-9 md:mt-14 lg:grid-cols-[minmax(0,1fr)_minmax(0,0.95fr)]">
+          The right column is the `promise` artefact: a document card carrying
+          the promise mechanics with NO figures on it, so nothing in the hero
+          can be mistaken for a quote. The handoff also specs `ledger` and
+          `example` variants; both are deliberately not built here. `ledger`
+          needs a real completion record we do not have yet, and `example`
+          puts a price beside a wax seal, which needs compliance sign-off. */}
+      <section className="px-6 pt-8 pb-4 md:px-12 md:pt-10">
+        <div className="mx-auto max-w-6xl">
+          <div className="grid grid-cols-1 items-center gap-x-16 gap-y-12 pb-10 lg:grid-cols-[1.04fr_0.96fr]">
+            {/* ——— Left: kicker, headline, promise, CTAs, trust ——— */}
             <div>
-              <Eyebrow tone="wax">our promise is simple</Eyebrow>
-              <p className="mt-5 max-w-md text-[17px] text-stone-700 leading-[1.7]">
+              <Eyebrow>for UK property sellers</Eyebrow>
+
+              <h1
+                className="mt-5 text-balance font-bold font-serif text-forest leading-[1.04] tracking-[-0.015em]"
+                style={{ fontSize: 'clamp(36px, 4.3vw, 58px)' }}
+              >
+                A real cash offer in writing.
+                <br />
+                <span className="font-normal text-leaf">
+                  And a promise we keep<span className="text-wax">.</span>
+                </span>
+              </h1>
+
+              <p className="mt-6 max-w-[44ch] text-[17px] text-body leading-[1.62]">
                 We come and see every home ourselves before we put a price on
                 paper. Then we send you our offer in writing, held for 72 hours.
                 What we write down is what we complete at.
               </p>
-              <div className="mt-7 flex flex-wrap items-center gap-x-6 gap-y-4">
-                <Button href="#offer">Get a cash offer</Button>
-                <Button href="#how" variant="ghost">
-                  See how it works
-                </Button>
-              </div>
-            </div>
 
-            {/* Verbs as navigation (DESIGN-REFERENCES.md, the Farewill steal),
-                set as an index with dotted leaders. That texture is lifted
-                straight from the offer letter's spec table, which is the one
-                piece of the document world still available to us now the
-                letter artefact itself has gone. */}
-            <div>
-              <Eyebrow tone="muted">why are you selling?</Eyebrow>
-              <ul className="mt-4 divide-y divide-hair border-hair border-y">
+              <div className="mt-8 flex flex-wrap items-center gap-x-7 gap-y-4">
+                <Button href="#offer">Get my offer</Button>
+                <Link
+                  href="#how"
+                  className="border-leaf/40 border-b pb-0.5 font-medium text-[14.5px] text-leaf transition-colors hover:border-leaf hover:text-leaf-dark"
+                >
+                  See how we price →
+                </Link>
+              </div>
+
+              {/* The trust row. Non-negotiable on the first screen per the
+                  design review: the old hero never said "no fees" anywhere a
+                  seller would see before scrolling. Wax dots, because these
+                  are promises, not actions. */}
+              <ul className="mt-7 flex max-w-[46ch] list-none flex-wrap items-center gap-x-4 gap-y-2 border-hair border-t pt-5 pl-0 text-[12.5px] text-body">
                 {[
-                  { t: 'I’m an executor', s: 'Probate', href: '/probate' },
-                  {
-                    t: 'My buyer pulled out',
-                    s: 'Chain break',
-                    href: '#situations',
-                  },
-                  { t: 'We’re separating', s: 'Divorce', href: '#situations' },
-                  {
-                    t: 'I’m relocating',
-                    s: 'Moving away',
-                    href: '#situations',
-                  },
-                ].map((r) => (
-                  <li key={r.t}>
-                    <Link
-                      href={r.href}
-                      className="group flex items-baseline gap-3 py-3.5 transition-colors hover:text-brand-deep"
-                    >
-                      <span className="shrink-0 font-serif text-[18px] text-forest transition-colors group-hover:text-brand">
-                        {r.t}
-                      </span>
+                  'No fees',
+                  'No obligation',
+                  'Walk away any time before exchange',
+                ].map((item, i) => (
+                  <li key={item} className="flex items-center gap-4">
+                    {i > 0 ? (
                       <span
                         aria-hidden
-                        className="mb-[5px] flex-1 border-stone-400/40 border-b border-dotted"
+                        className="h-1 w-1 shrink-0 rounded-full bg-wax"
                       />
-                      <span className="shrink-0 text-[10.5px] text-stone-500 uppercase tracking-[0.14em] [font-family:var(--font-courier)]">
-                        {r.s}
-                      </span>
-                      <span
-                        aria-hidden
-                        className="shrink-0 text-brand transition-transform group-hover:translate-x-0.5"
-                      >
-                        →
-                      </span>
-                    </Link>
+                    ) : null}
+                    {item}
                   </li>
                 ))}
               </ul>
             </div>
+
+            {/* ——— Right: the promise artefact ———
+                A document, which is what the brand is built on, but with no
+                number anywhere on it. It replaces the retired offer letter
+                without reintroducing a figure to the first screen. */}
+            <div className="mx-auto w-full max-w-[430px] lg:mr-0 lg:ml-auto">
+              <div className="lg:-rotate-1 rounded border border-hair bg-white p-8 shadow-[0_26px_52px_-26px_rgba(31,51,43,0.42)]">
+                <div className="flex items-baseline justify-between gap-4 border-hair border-b pb-4">
+                  <span className="font-bold font-serif text-[19px] text-forest tracking-[-0.01em]">
+                    Kept<span className="text-wax">.</span>
+                  </span>
+                  <span className="text-[10.5px] text-stone-500 tracking-[0.1em] [font-family:var(--font-courier)]">
+                    THE OFFER YOU&rsquo;LL RECEIVE
+                  </span>
+                </div>
+
+                <ul className="flex list-none flex-col gap-5 py-6 pl-0">
+                  {[
+                    {
+                      t: 'Seen in person first.',
+                      d: 'One of us walks through the house before any figure exists.',
+                    },
+                    {
+                      t: 'Put in writing.',
+                      d: 'On one page, with the market estimate it came from and the discount we take for speed.',
+                    },
+                    {
+                      t: 'Held for 72 hours.',
+                      d: 'No pressure to answer inside it. No change to the number after it.',
+                    },
+                  ].map((row) => (
+                    <li key={row.t} className="flex items-start gap-3.5">
+                      <span
+                        aria-hidden
+                        className="mt-2 h-[7px] w-[7px] shrink-0 rounded-full bg-wax"
+                      />
+                      <div>
+                        <p className="font-serif text-[18px] text-forest">
+                          {row.t}
+                        </p>
+                        <p className="mt-1 text-[13px] text-body leading-[1.5]">
+                          {row.d}
+                        </p>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+
+                <div className="mt-2 flex items-center gap-3 border-hair border-t border-dashed pt-4">
+                  <span
+                    aria-hidden
+                    className="h-[30px] w-[30px] shrink-0 rounded-full bg-[radial-gradient(circle_at_35%_30%,#D65A50,#8E2921_75%)] shadow-[inset_0_1px_3px_rgba(255,255,255,0.4),0_2px_5px_rgba(0,0,0,0.25)]"
+                  />
+                  <span className="text-[12.5px] text-body leading-[1.45]">
+                    We complete at the figure we write down.
+                  </span>
+                </div>
+              </div>
+            </div>
           </div>
 
-          <div className="mt-14 border-hair border-t pt-5">
+          {/* ——— Selling-reason strip ———
+              Verbs as navigation (DESIGN-REFERENCES.md, the Farewill steal).
+              Someone in the middle of a bad week self-selects in one glance.
+              The category tags that used to sit beside each one are gone: the
+              sentence already says it. */}
+          <div className="flex flex-col gap-y-4 border-hair border-t pt-6 pb-8 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-x-9 sm:gap-y-5">
+            <Eyebrow tone="muted">why are you selling?</Eyebrow>
+            {/* Stacks to full-width rows with >=44px hit targets under sm, per
+                the handoff's responsive note. A 17px serif link is a 30px
+                target inline, which is under the touch minimum. */}
+            <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-7 sm:gap-y-4">
+              {[
+                { t: 'I’m an executor', href: '/probate' },
+                { t: 'My buyer pulled out', href: '#situations' },
+                { t: 'We’re separating', href: '#situations' },
+                { t: 'I’m relocating', href: '#situations' },
+              ].map((r) => (
+                <Link
+                  key={r.t}
+                  href={r.href}
+                  className="flex min-h-11 items-center border-hair border-b font-serif text-[17px] text-forest transition-colors hover:border-leaf hover:text-leaf sm:min-h-0 sm:pb-[3px]"
+                >
+                  {r.t}
+                </Link>
+              ))}
+              <Link
+                href="#situations"
+                className="flex min-h-11 items-center text-[13.5px] text-leaf transition-colors hover:text-leaf-dark sm:min-h-0"
+              >
+                Something else →
+              </Link>
+            </div>
+          </div>
+
+          <div className="border-hair border-t pt-5 pb-2">
             <p className="font-serif text-[13px] text-stone-500">
               Property Redress Scheme &middot; HMRC AML supervised &middot; ICO
               registered &middot; No fees to you
@@ -250,7 +301,6 @@ export default function SellPage() {
           </div>
         </div>
       </section>
-
       {/* ————— WHO WE ARE —————
           Lifted out of the hero, where it was competing with the promise for
           the same eyeline. On its own it can be what it actually is: the
@@ -776,7 +826,7 @@ export default function SellPage() {
             </div>
             <nav className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-stone-600">
               <a href="#offer" className="hover:text-brand-deep">
-                Get an offer
+                Get my offer
               </a>
               <Link
                 href="/instant-offer/methodology"
