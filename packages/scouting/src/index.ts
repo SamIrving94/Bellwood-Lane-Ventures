@@ -55,7 +55,11 @@ import {
   buildSourceHealth,
   summariseSourceHealth,
 } from './source-health';
-import { classifyTrack, isBlockText } from './track';
+import {
+  classifyTrack,
+  isBlockText,
+  primeOpportunityForTrack,
+} from './track';
 
 /**
  * Hard ceiling on the deduped candidate pool carried into ranking.
@@ -1406,6 +1410,7 @@ export async function runScoutingPipeline(
       const pd = (enrichedRaw?.propertyData ?? null) as {
         summary?: string | null;
         propertyType?: string | null;
+        listingType?: string | null;
       } | null;
       // The area average is what lets a lead with NO value of its own reach
       // the prime book — which is every probate notice, every receivership
@@ -1425,6 +1430,24 @@ export async function runScoutingPipeline(
         postcode: lead.postcode,
         areaAvgPence,
       });
+
+      // The thesis, not just the ticket size. classifyTrack says "this is
+      // prime stock"; this says whether there is MONEY in it — priced below
+      // its street AND carrying the condition that explains why. Stamped
+      // onto rawPayload so the dashboard shows the evidence verbatim, and
+      // null for volume leads (a cheap flat on an expensive street is a
+      // flat). A human still makes the call — this is Steps, not Thoughts.
+      const primeOpportunity = primeOpportunityForTrack({
+        track,
+        postcode: lead.postcode,
+        valuePence: lead.estateValuePence,
+        areaAvgPence,
+        listingType: pd?.listingType ?? null,
+        text: `${lead.address} ${pd?.summary ?? ''}`,
+      });
+      if (primeOpportunity) {
+        enrichedRaw = { ...(enrichedRaw ?? {}), primeOpportunity };
+      }
 
       const scoutLead: ScoutLead = {
         runDate,

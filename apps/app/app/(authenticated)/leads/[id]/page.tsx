@@ -4,13 +4,13 @@ import { database } from '@repo/database';
 import { mergeValuationConfig } from '@repo/valuation';
 import type { Metadata } from 'next';
 import { notFound, redirect } from 'next/navigation';
-import { Header } from '../../components/header';
 import { FeedbackPanel } from '../../components/feedback-panel';
+import { Header } from '../../components/header';
+import { TriageButtons } from '../../components/triage-buttons';
 import { CalendlyButton } from './calendly-button';
 import { ConvertButton } from './convert-button';
 import { DealModelPanel } from './deal-model-panel';
 import { EnrichLeadButton } from './enrich-button';
-import { TriageButtons } from '../../components/triage-buttons';
 import { PropertyImage } from './property-image';
 
 export const metadata: Metadata = {
@@ -84,6 +84,16 @@ const LeadDetailPage = async ({
     | (Record<string, number> & { appraised?: boolean })
     | undefined;
   const rationale = (raw.rationale as string | undefined) ?? null;
+  // The prime thesis: priced under its street + the condition that explains
+  // why. Stamped by the pipeline for prime/block leads only (track.ts).
+  const primeOpportunity = raw.primeOpportunity as
+    | {
+        discountToArea: number | null;
+        isRefurbCandidate: boolean;
+        isOpportunity: boolean;
+        reasons: string[];
+      }
+    | undefined;
   type ScoreFactor = {
     label: string;
     points: number;
@@ -92,9 +102,11 @@ const LeadDetailPage = async ({
     provisional?: boolean;
   };
   // The single biggest driver — shown as the headline "why" (transparency).
-  const leadingIndicator = raw.leadingIndicator as ScoreFactor | null | undefined;
-  const scoreFactors =
-    (raw.scoreFactors as ScoreFactor[] | undefined) ?? [];
+  const leadingIndicator = raw.leadingIndicator as
+    | ScoreFactor
+    | null
+    | undefined;
+  const scoreFactors = (raw.scoreFactors as ScoreFactor[] | undefined) ?? [];
   const positiveFactors = scoreFactors
     .filter((f) => f.points > 0)
     .sort((a, b) => b.points - a.points);
@@ -102,7 +114,7 @@ const LeadDetailPage = async ({
     .filter((f) => f.points < 0)
     .sort((a, b) => a.points - b.points);
   const neutralFactors = scoreFactors.filter(
-    (f) => f.points === 0 && f.tone === 'neutral',
+    (f) => f.points === 0 && f.tone === 'neutral'
   );
   const DIMENSION_LABELS: Record<string, string> = {
     acquisition: 'Acquisition likelihood',
@@ -123,8 +135,7 @@ const LeadDetailPage = async ({
   const pricePence = (pd?.pricePence as number | undefined) ?? null;
   const originalPricePence =
     (pd?.originalPricePence as number | undefined) ?? null;
-  const discountPercent =
-    (pd?.discountPercent as number | undefined) ?? null;
+  const discountPercent = (pd?.discountPercent as number | undefined) ?? null;
   const bedrooms = (pd?.bedrooms as number | undefined) ?? null;
   const propertyType = (pd?.propertyType as string | undefined) ?? null;
   const daysOnMarket = (pd?.daysOnMarket as number | undefined) ?? null;
@@ -135,32 +146,27 @@ const LeadDetailPage = async ({
   // number the AVM locked the size to. Falls back to the street-only address.
   const preciseAddress =
     (pd?.preciseAddress as string | undefined) ??
-    ((raw.avmFull as { resolvedAddress?: string | null } | undefined)
+    (raw.avmFull as { resolvedAddress?: string | null } | undefined)
       ?.resolvedAddress ??
-      null);
+    null;
   const listingType = (pd?.listingType as string | undefined) ?? null;
   const listingUrl = (pd?.listingUrl as string | undefined) ?? null;
 
-  const planningProposal =
-    (planning?.proposal as string | undefined) ?? null;
-  const planningAuthority =
-    (planning?.authority as string | undefined) ?? null;
+  const planningProposal = (planning?.proposal as string | undefined) ?? null;
+  const planningAuthority = (planning?.authority as string | undefined) ?? null;
   const planningStatus = (planning?.status as string | undefined) ?? null;
   const planningDecision = (planning?.decision as string | undefined) ?? null;
   const planningRating =
     (planning?.decisionRating as string | undefined) ?? null;
   const planningReceivedAt =
     (planning?.receivedAt as string | undefined) ?? null;
-  const planningDecidedAt =
-    (planning?.decidedAt as string | undefined) ?? null;
+  const planningDecidedAt = (planning?.decidedAt as string | undefined) ?? null;
   const planningUrl = (planning?.url as string | undefined) ?? null;
-  const planningReference =
-    (planning?.reference as string | undefined) ?? null;
+  const planningReference = (planning?.reference as string | undefined) ?? null;
 
   const hmoCouncil = (hmo?.council as string | undefined) ?? null;
   const hmoLicenceType = (hmo?.licenceType as string | undefined) ?? null;
-  const hmoLicenceExpiry =
-    (hmo?.licenceExpiry as string | undefined) ?? null;
+  const hmoLicenceExpiry = (hmo?.licenceExpiry as string | undefined) ?? null;
   const hmoLicenceExpiringSoon =
     (hmo?.licenceExpiringSoon as boolean | undefined) ?? false;
 
@@ -169,11 +175,11 @@ const LeadDetailPage = async ({
   // the user on PropertyData, not the portal (bad UX). Resolve to the real
   // portal URL so "View on Zoopla/Rightmove" actually opens Zoopla/Rightmove.
   const resolveListingLink = (
-    url: string | null,
+    url: string | null
   ): { href: string; label: string } | null => {
     if (!url) return null;
     const outbound = url.match(
-      /propertydata\.co\.uk\/outbound\/([a-z]+)\/([^/?#]+)/i,
+      /propertydata\.co\.uk\/outbound\/([a-z]+)\/([^/?#]+)/i
     );
     if (outbound) {
       const portal = (outbound[1] ?? '').toLowerCase();
@@ -213,7 +219,7 @@ const LeadDetailPage = async ({
   // jump to Rightmove / Zoopla / Google / Land Registry even when the lead
   // has no stored URL.
   const researchAddress = encodeURIComponent(
-    `${preciseAddress ?? lead.address}, ${lead.postcode}`,
+    `${preciseAddress ?? lead.address}, ${lead.postcode}`
   );
   const postcodeForSearch = encodeURIComponent(lead.postcode);
   const researchLinks = [
@@ -247,7 +253,7 @@ const LeadDetailPage = async ({
   const effectiveListingType = listingType ?? inferredListingFromSource;
   const sourceLabel = isPropertyData
     ? effectiveListingType
-      ? LISTING_TYPE_LABELS[effectiveListingType] ?? effectiveListingType
+      ? (LISTING_TYPE_LABELS[effectiveListingType] ?? effectiveListingType)
       : 'Distressed listing'
     : isPlanning
       ? `Planning · ${planningRating ?? 'pending'}`
@@ -274,8 +280,7 @@ const LeadDetailPage = async ({
 
   // True when this lead lacks the rich PropertyData enrichment (likely
   // scouted before the schema upgrade). Used to surface a clear refresh CTA.
-  const isSparseData =
-    !pd && !planning && !hmo && scoreFactors.length === 0;
+  const isSparseData = !pd && !planning && !hmo && scoreFactors.length === 0;
 
   // ── Property snapshot (Tier 1 + 2 enrichment, may be missing) ──────
   type SoldTxn = {
@@ -386,7 +391,7 @@ const LeadDetailPage = async ({
       ? Math.round(
           ((avmFull.pointEstimatePence - askingPrice) /
             avmFull.pointEstimatePence) *
-            100,
+            100
         )
       : null;
   // Plain-English go/no-go read, driven by asking-vs-market and AVM confidence.
@@ -437,10 +442,7 @@ const LeadDetailPage = async ({
 
   return (
     <>
-      <Header
-        pages={[{ title: 'Leads', url: '/leads' }]}
-        page={lead.address}
-      />
+      <Header pages={[{ title: 'Leads', url: '/leads' }]} page={lead.address} />
       <div className="flex flex-1 flex-col gap-6 p-6">
         {/* Hero — image + price + key facts */}
         <div className="overflow-hidden rounded-2xl border bg-card">
@@ -450,27 +452,27 @@ const LeadDetailPage = async ({
             <div className="p-6">
               <div className="flex flex-wrap items-center gap-1.5">
                 <span
-                  className={`inline-flex rounded-full border px-2.5 py-0.5 text-xs font-medium ${
+                  className={`inline-flex rounded-full border px-2.5 py-0.5 font-medium text-xs ${
                     verdictColors[lead.verdict] || ''
                   }`}
                 >
                   {lead.verdict}
                 </span>
-                <span className="inline-flex rounded-full border border-purple-200 bg-purple-100 px-2.5 py-0.5 text-xs font-medium text-purple-800">
+                <span className="inline-flex rounded-full border border-purple-200 bg-purple-100 px-2.5 py-0.5 font-medium text-purple-800 text-xs">
                   {sourceLabel}
                 </span>
                 {discountPercent && discountPercent > 0 && (
-                  <span className="inline-flex rounded-full border border-orange-200 bg-orange-100 px-2.5 py-0.5 text-xs font-medium text-orange-800">
+                  <span className="inline-flex rounded-full border border-orange-200 bg-orange-100 px-2.5 py-0.5 font-medium text-orange-800 text-xs">
                     ↓ {discountPercent}% from original
                   </span>
                 )}
                 {typeof daysOnMarket === 'number' && daysOnMarket >= 60 && (
-                  <span className="inline-flex rounded-full border border-amber-200 bg-amber-50 px-2.5 py-0.5 text-xs font-medium text-amber-800">
+                  <span className="inline-flex rounded-full border border-amber-200 bg-amber-50 px-2.5 py-0.5 font-medium text-amber-800 text-xs">
                     Stale — {daysOnMarket} days on market
                   </span>
                 )}
                 {hmoLicenceExpiringSoon && (
-                  <span className="inline-flex rounded-full border border-rose-200 bg-rose-100 px-2.5 py-0.5 text-xs font-medium text-rose-800">
+                  <span className="inline-flex rounded-full border border-rose-200 bg-rose-100 px-2.5 py-0.5 font-medium text-rose-800 text-xs">
                     HMO licence expiring soon
                   </span>
                 )}
@@ -479,7 +481,7 @@ const LeadDetailPage = async ({
               <h1 className="mt-3 font-semibold text-xl leading-tight">
                 {preciseAddress ?? lead.address}
               </h1>
-              <p className="mt-0.5 font-mono text-xs text-muted-foreground">
+              <p className="mt-0.5 font-mono text-muted-foreground text-xs">
                 {lead.postcode}
               </p>
 
@@ -490,7 +492,7 @@ const LeadDetailPage = async ({
                     {formatGBP(pricePence)}
                   </p>
                   {originalPricePence && originalPricePence > pricePence && (
-                    <p className="mt-1 text-sm text-muted-foreground">
+                    <p className="mt-1 text-muted-foreground text-sm">
                       Was{' '}
                       <span className="line-through">
                         {formatGBP(originalPricePence)}
@@ -531,7 +533,11 @@ const LeadDetailPage = async ({
                     <span className="font-medium">
                       {Math.round(avmFull.floorAreaSqm)} m²
                       <span className="ml-1 text-[11px] text-muted-foreground">
-                        (EPC{avmFull.floorAreaSource === 'caller' ? ', entered' : ''})
+                        (EPC
+                        {avmFull.floorAreaSource === 'caller'
+                          ? ', entered'
+                          : ''}
+                        )
                       </span>
                     </span>
                   ) : (
@@ -545,10 +551,10 @@ const LeadDetailPage = async ({
               {/* Score + verdict block */}
               <div className="mt-4 grid grid-cols-2 gap-3 border-t pt-4">
                 <div>
-                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider">
                     Lead score
                   </p>
-                  <p className="font-mono font-bold text-2xl tabular-nums">
+                  <p className="font-bold font-mono text-2xl tabular-nums">
                     {lead.leadScore}
                     <span className="text-base text-muted-foreground">
                       /100
@@ -556,7 +562,7 @@ const LeadDetailPage = async ({
                   </p>
                 </div>
                 <div>
-                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider">
                     Market trend
                   </p>
                   <p className="font-semibold text-lg capitalize">
@@ -570,7 +576,7 @@ const LeadDetailPage = async ({
                 {lead.status === 'converted' ? (
                   <a
                     href={`/deals/${lead.convertedDealId}`}
-                    className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-emerald-700"
+                    className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-4 py-2 font-medium text-sm text-white transition hover:bg-emerald-700"
                   >
                     ✓ Converted — open deal →
                   </a>
@@ -586,7 +592,7 @@ const LeadDetailPage = async ({
                     href={externalUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-800"
+                    className="inline-flex items-center gap-1.5 rounded-lg bg-slate-900 px-4 py-2 font-medium text-sm text-white transition hover:bg-slate-800"
                   >
                     {externalLabel}
                     <span aria-hidden>↗</span>
@@ -606,7 +612,7 @@ const LeadDetailPage = async ({
         {avmFull?.pointEstimatePence ? (
           <section className="rounded-2xl border-2 border-slate-900/10 bg-white p-5">
             <div className="flex items-center justify-between gap-3">
-              <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
+              <p className="font-mono text-[10px] text-muted-foreground uppercase tracking-[0.22em]">
                 Deal decision
               </p>
               <div className="flex flex-wrap items-center gap-2">
@@ -620,7 +626,7 @@ const LeadDetailPage = async ({
             <div className="mt-3 grid gap-4 sm:grid-cols-4">
               <div>
                 <p className="text-[11px] text-muted-foreground">Asking</p>
-                <p className="font-mono font-bold text-2xl tabular-nums leading-none">
+                <p className="font-bold font-mono text-2xl tabular-nums leading-none">
                   {askingPrice ? formatGBP(askingPrice) : '—'}
                 </p>
               </div>
@@ -628,18 +634,19 @@ const LeadDetailPage = async ({
                 <p className="text-[11px] text-muted-foreground">
                   Market value (AVM)
                 </p>
-                <p className="font-mono font-bold text-2xl tabular-nums leading-none">
+                <p className="font-bold font-mono text-2xl tabular-nums leading-none">
                   {formatGBP(avmFull.pointEstimatePence)}
                 </p>
                 {avmFull.lowPence && avmFull.highPence && (
                   <p className="mt-0.5 font-mono text-[11px] text-muted-foreground">
-                    {formatGBP(avmFull.lowPence)} – {formatGBP(avmFull.highPence)}
+                    {formatGBP(avmFull.lowPence)} –{' '}
+                    {formatGBP(avmFull.highPence)}
                   </p>
                 )}
               </div>
               <div>
                 <p className="text-[11px] text-muted-foreground">Our offer</p>
-                <p className="font-mono font-bold text-2xl tabular-nums leading-none">
+                <p className="font-bold font-mono text-2xl tabular-nums leading-none">
                   {avmFull.finalOfferPence
                     ? formatGBP(avmFull.finalOfferPence)
                     : '—'}
@@ -664,7 +671,9 @@ const LeadDetailPage = async ({
             </div>
 
             {/* Asking vs market headline + plain-English read */}
-            <div className={`mt-4 rounded-lg border p-3 text-sm ${verdictTone}`}>
+            <div
+              className={`mt-4 rounded-lg border p-3 text-sm ${verdictTone}`}
+            >
               <span className="font-semibold">{verdictLabel}</span> —{' '}
               {verdictReason}
             </div>
@@ -682,10 +691,10 @@ const LeadDetailPage = async ({
             )}
           </section>
         ) : (
-          <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50 p-5">
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border-2 border-slate-300 border-dashed bg-slate-50 p-5">
             <div>
               <h2 className="font-semibold">Appraise this deal</h2>
-              <p className="mt-0.5 max-w-xl text-sm text-muted-foreground">
+              <p className="mt-0.5 max-w-xl text-muted-foreground text-sm">
                 Run the valuation to see market value, our offer, the discount,
                 confidence, sold comps, yield, EPC, tenure, council tax &amp;
                 flood band — the full read on whether this is worth acting on
@@ -702,10 +711,10 @@ const LeadDetailPage = async ({
             an assumed-size refurb as fact. */}
         {avmFull?.pointEstimatePence && avmFull.refurbAssumedFloorArea ? (
           <div className="mt-4 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm">
-            <span className="font-semibold">⚠ Floor area not verified.</span>{' '}
-            No EPC size matched this property, so the refurb uses a default area
-            — treat the refurb and ROI below as indicative until the real size
-            is confirmed.
+            <span className="font-semibold">⚠ Floor area not verified.</span> No
+            EPC size matched this property, so the refurb uses a default area —
+            treat the refurb and ROI below as indicative until the real size is
+            confirmed.
           </div>
         ) : null}
         {avmFull?.pointEstimatePence ? (
@@ -731,10 +740,10 @@ const LeadDetailPage = async ({
             fallback path has price/date only. */}
         {avmFull?.comparables && avmFull.comparables.length > 0 ? (
           <div className="mt-4 rounded-xl border bg-card p-5">
-            <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+            <p className="font-mono text-[10px] text-muted-foreground uppercase tracking-[0.18em]">
               Comparables guiding the AVM
             </p>
-            <p className="mt-1 text-xs text-muted-foreground">
+            <p className="mt-1 text-muted-foreground text-xs">
               {avmFull.comparables.length} sold{' '}
               {avmFull.comparables.length === 1 ? 'comp' : 'comps'} behind the{' '}
               {formatGBP(avmFull.pointEstimatePence ?? 0)} market value.
@@ -744,7 +753,7 @@ const LeadDetailPage = async ({
             </p>
             <table className="mt-3 w-full text-sm">
               <thead className="border-b">
-                <tr className="text-left text-[11px] uppercase text-muted-foreground">
+                <tr className="text-left text-[11px] text-muted-foreground uppercase">
                   <th className="py-2 font-medium">Address</th>
                   <th className="py-2 text-right font-medium">Sold</th>
                   <th className="py-2 text-right font-medium">Adj.</th>
@@ -761,7 +770,8 @@ const LeadDetailPage = async ({
                     : c.address
                       ? `https://www.google.com/search?q=${encodeURIComponent(`${c.address} sold price`)}`
                       : null;
-                  const label = c.address ?? c.postcode ?? 'Address withheld (HMLR)';
+                  const label =
+                    c.address ?? c.postcode ?? 'Address withheld (HMLR)';
                   return (
                     <tr key={`${c.address ?? 'comp'}-${c.date}-${i}`}>
                       <td className="py-2 pr-3 text-slate-700">
@@ -781,7 +791,7 @@ const LeadDetailPage = async ({
                       <td className="py-2 pr-3 text-right font-mono tabular-nums">
                         {formatGBP(c.soldPricePence)}
                       </td>
-                      <td className="py-2 pr-3 text-right font-mono tabular-nums text-muted-foreground">
+                      <td className="py-2 pr-3 text-right font-mono text-muted-foreground tabular-nums">
                         {formatGBP(c.adjustedPricePence)}
                       </td>
                       <td className="py-2 pr-3 text-right text-muted-foreground">
@@ -812,7 +822,7 @@ const LeadDetailPage = async ({
           <section className="rounded-2xl border-2 border-slate-900/10 bg-slate-50 p-5">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
-                <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-slate-500">
+                <p className="font-mono text-[10px] text-slate-500 uppercase tracking-[0.22em]">
                   Next step
                 </p>
                 <h2 className="mt-1 font-semibold text-lg">Make contact</h2>
@@ -823,7 +833,7 @@ const LeadDetailPage = async ({
             {/* Direct vendor contact — best case, rarely present on scouted leads */}
             {(lead.contactName || lead.contactPhone || lead.contactEmail) && (
               <div className="mt-4 rounded-xl border border-emerald-300 bg-emerald-50 p-4">
-                <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-emerald-700">
+                <p className="font-mono text-[10px] text-emerald-700 uppercase tracking-[0.22em]">
                   Direct contact on file
                 </p>
                 {lead.contactName && (
@@ -854,7 +864,9 @@ const LeadDetailPage = async ({
             <div className="mt-4 grid gap-3 sm:grid-cols-3">
               {/* 1. Call the listing agent */}
               <div className="rounded-xl border bg-white p-4">
-                <p className="font-medium text-sm">1 · Call the listing agent</p>
+                <p className="font-medium text-sm">
+                  1 · Call the listing agent
+                </p>
                 {snapshot?.agents && snapshot.agents.length > 0 ? (
                   <div className="mt-2 space-y-1 text-sm">
                     <p className="font-medium">{snapshot.agents[0].name}</p>
@@ -876,7 +888,7 @@ const LeadDetailPage = async ({
                     href={resolvedListing.href}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="mt-2 inline-block text-sm text-blue-700 hover:underline"
+                    className="mt-2 inline-block text-blue-700 text-sm hover:underline"
                   >
                     Open the listing to find the agent ↗
                   </a>
@@ -899,7 +911,7 @@ const LeadDetailPage = async ({
                   href={`https://search-property-information.service.gov.uk/?q=${researchAddress}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="mt-2 inline-block text-sm text-blue-700 hover:underline"
+                  className="mt-2 inline-block text-blue-700 text-sm hover:underline"
                 >
                   Search Land Registry ↗
                 </a>
@@ -909,7 +921,7 @@ const LeadDetailPage = async ({
               <div className="rounded-xl border bg-white p-4">
                 <p className="font-medium text-sm">3 · Write to the property</p>
                 <p className="mt-1 text-sm">{preciseAddress ?? lead.address}</p>
-                <p className="font-mono text-xs text-muted-foreground">
+                <p className="font-mono text-muted-foreground text-xs">
                   {lead.postcode}
                 </p>
               </div>
@@ -921,36 +933,69 @@ const LeadDetailPage = async ({
             The founder's question is "should I chase this, and why?".
             Answer it up top: plain rationale + what this lead is + score.
             The full factor breakdown stays lower as supporting detail. */}
-        {(rationale || summary || planningProposal) && (
+        {(rationale || summary || planningProposal || primeOpportunity) && (
           <section className="rounded-2xl border-2 border-slate-200 bg-white p-5">
             <div className="flex items-start justify-between gap-4">
               <div className="min-w-0 flex-1">
-                <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+                <p className="font-mono text-[10px] text-muted-foreground uppercase tracking-[0.18em]">
                   The verdict
                 </p>
                 {rationale && (
-                  <p className="mt-1 text-[15px] font-medium leading-relaxed text-slate-900">
+                  <p className="mt-1 font-medium text-[15px] text-slate-900 leading-relaxed">
                     {rationale}
                   </p>
                 )}
                 {(summary || planningProposal) && (
-                  <p className="mt-2 text-sm leading-relaxed text-slate-600">
+                  <p className="mt-2 text-slate-600 text-sm leading-relaxed">
                     {summary ?? planningProposal}
                   </p>
                 )}
+                {primeOpportunity && (
+                  <div
+                    className={`mt-3 rounded-xl border p-3 ${
+                      primeOpportunity.isOpportunity
+                        ? 'border-emerald-300 bg-emerald-50'
+                        : 'border-slate-200 bg-slate-50'
+                    }`}
+                  >
+                    <p className="font-mono text-[10px] text-muted-foreground uppercase tracking-[0.18em]">
+                      {primeOpportunity.isOpportunity
+                        ? '★ Prime opportunity — the thesis holds'
+                        : 'Prime assessment'}
+                    </p>
+                    <ul className="mt-1.5 space-y-1">
+                      {primeOpportunity.reasons.map((r) => (
+                        <li
+                          key={r}
+                          className="text-slate-800 text-sm leading-snug"
+                        >
+                          {r}
+                        </li>
+                      ))}
+                    </ul>
+                    {typeof primeOpportunity.discountToArea === 'number' &&
+                      !primeOpportunity.isOpportunity &&
+                      primeOpportunity.discountToArea < 0.1 && (
+                        <p className="mt-1.5 text-muted-foreground text-xs">
+                          Priced at or near its street — ticket size without a
+                          margin. The strategy needs both.
+                        </p>
+                      )}
+                  </div>
+                )}
                 {(positiveFactors.length > 0 || negativeFactors.length > 0) && (
-                  <p className="mt-3 text-xs text-muted-foreground">
+                  <p className="mt-3 text-muted-foreground text-xs">
                     Full score breakdown below ↓
                   </p>
                 )}
               </div>
               <div className="shrink-0 text-right">
-                <p className="font-mono font-bold text-3xl tabular-nums leading-none">
+                <p className="font-bold font-mono text-3xl tabular-nums leading-none">
                   {lead.leadScore}
                   <span className="text-base text-muted-foreground">/100</span>
                 </p>
                 <span
-                  className={`mt-2 inline-flex rounded-full border px-2.5 py-0.5 text-xs font-medium ${verdictColors[lead.verdict] || ''}`}
+                  className={`mt-2 inline-flex rounded-full border px-2.5 py-0.5 font-medium text-xs ${verdictColors[lead.verdict] || ''}`}
                 >
                   {lead.verdict}
                 </span>
@@ -969,13 +1014,13 @@ const LeadDetailPage = async ({
                 divergent number from the weaker snapshot valuation. */}
             {snapshot.avm?.estimatePence && !avmFull?.pointEstimatePence && (
               <div className="rounded-xl border bg-card p-5">
-                <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+                <p className="font-mono text-[10px] text-muted-foreground uppercase tracking-[0.18em]">
                   Asking vs market
                 </p>
                 <div className="mt-3 flex flex-wrap items-baseline gap-x-8 gap-y-2">
                   <div>
                     <p className="text-[11px] text-muted-foreground">Asking</p>
-                    <p className="font-mono font-bold text-2xl tabular-nums leading-none">
+                    <p className="font-bold font-mono text-2xl tabular-nums leading-none">
                       {askingPrice ? formatGBP(askingPrice) : '—'}
                     </p>
                   </div>
@@ -983,7 +1028,7 @@ const LeadDetailPage = async ({
                     <p className="text-[11px] text-muted-foreground">
                       Market value (AVM)
                     </p>
-                    <p className="font-mono font-bold text-2xl tabular-nums leading-none">
+                    <p className="font-bold font-mono text-2xl tabular-nums leading-none">
                       {formatGBP(snapshot.avm.estimatePence)}
                     </p>
                     {snapshot.avm.lowPence && snapshot.avm.highPence && (
@@ -999,7 +1044,7 @@ const LeadDetailPage = async ({
                         vs market
                       </p>
                       <p
-                        className={`font-mono font-bold text-2xl tabular-nums leading-none ${
+                        className={`font-bold font-mono text-2xl tabular-nums leading-none ${
                           discountVsMarket >= 15
                             ? 'text-emerald-700'
                             : discountVsMarket >= 5
@@ -1027,7 +1072,7 @@ const LeadDetailPage = async ({
 
             {/* Property facts chips */}
             <div className="rounded-xl border bg-card p-5">
-              <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+              <p className="font-mono text-[10px] text-muted-foreground uppercase tracking-[0.18em]">
                 Property facts
               </p>
               <div className="mt-3 grid gap-3 sm:grid-cols-4">
@@ -1078,8 +1123,8 @@ const LeadDetailPage = async ({
                   </p>
                   {snapshot.councilTax?.averageAnnualBill && (
                     <p className="mt-0.5 text-[11px] text-muted-foreground">
-                      avg £
-                      {Math.round(snapshot.councilTax.averageAnnualBill)}/yr
+                      avg £{Math.round(snapshot.councilTax.averageAnnualBill)}
+                      /yr
                     </p>
                   )}
                 </div>
@@ -1099,7 +1144,7 @@ const LeadDetailPage = async ({
 
             {/* Investment row */}
             <div className="rounded-xl border bg-card p-5">
-              <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+              <p className="font-mono text-[10px] text-muted-foreground uppercase tracking-[0.18em]">
                 Investment lens
               </p>
               <div className="mt-3 grid gap-3 sm:grid-cols-4">
@@ -1141,8 +1186,7 @@ const LeadDetailPage = async ({
                   {snapshot.growth?.fiveYearGrowthPct !== null &&
                     snapshot.growth?.fiveYearGrowthPct !== undefined && (
                       <p className="text-[11px] text-muted-foreground">
-                        5yr:{' '}
-                        {snapshot.growth.fiveYearGrowthPct > 0 ? '+' : ''}
+                        5yr: {snapshot.growth.fiveYearGrowthPct > 0 ? '+' : ''}
                         {snapshot.growth.fiveYearGrowthPct.toFixed(1)}%
                       </p>
                     )}
@@ -1165,23 +1209,22 @@ const LeadDetailPage = async ({
             {snapshot.sold?.transactions &&
               snapshot.sold.transactions.length > 0 && (
                 <div className="rounded-xl border bg-card p-5">
-                  <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+                  <p className="font-mono text-[10px] text-muted-foreground uppercase tracking-[0.18em]">
                     Recent sold comparables
                   </p>
-                  <p className="mt-1 text-xs text-muted-foreground">
+                  <p className="mt-1 text-muted-foreground text-xs">
                     Last {snapshot.sold.transactions.length} transactions in
                     this postcode.
                     {snapshot.sold.averagePricePence && (
                       <>
                         {' '}
-                        Average{' '}
-                        {formatGBP(snapshot.sold.averagePricePence)}.
+                        Average {formatGBP(snapshot.sold.averagePricePence)}.
                       </>
                     )}
                   </p>
                   <table className="mt-3 w-full text-sm">
                     <thead className="border-b">
-                      <tr className="text-left text-[11px] uppercase text-muted-foreground">
+                      <tr className="text-left text-[11px] text-muted-foreground uppercase">
                         <th className="py-2 font-medium">Address</th>
                         <th className="py-2 text-right font-medium">Price</th>
                         <th className="py-2 text-right font-medium">Date</th>
@@ -1189,27 +1232,25 @@ const LeadDetailPage = async ({
                       </tr>
                     </thead>
                     <tbody className="divide-y">
-                      {snapshot.sold.transactions
-                        .slice(0, 8)
-                        .map((t, i) => (
-                          <tr key={`${t.address}-${i}`}>
-                            <td className="py-2 pr-3 text-slate-700">
-                              {t.address}
-                            </td>
-                            <td className="py-2 pr-3 text-right font-mono">
-                              {formatGBP(t.pricePence)}
-                            </td>
-                            <td className="py-2 pr-3 text-right text-muted-foreground">
-                              {new Date(t.date).toLocaleDateString('en-GB', {
-                                month: 'short',
-                                year: 'numeric',
-                              })}
-                            </td>
-                            <td className="py-2 text-right text-xs text-muted-foreground">
-                              {t.propertyType ?? ''}
-                            </td>
-                          </tr>
-                        ))}
+                      {snapshot.sold.transactions.slice(0, 8).map((t, i) => (
+                        <tr key={`${t.address}-${i}`}>
+                          <td className="py-2 pr-3 text-slate-700">
+                            {t.address}
+                          </td>
+                          <td className="py-2 pr-3 text-right font-mono">
+                            {formatGBP(t.pricePence)}
+                          </td>
+                          <td className="py-2 pr-3 text-right text-muted-foreground">
+                            {new Date(t.date).toLocaleDateString('en-GB', {
+                              month: 'short',
+                              year: 'numeric',
+                            })}
+                          </td>
+                          <td className="py-2 text-right text-muted-foreground text-xs">
+                            {t.propertyType ?? ''}
+                          </td>
+                        </tr>
+                      ))}
                     </tbody>
                   </table>
                 </div>
@@ -1218,10 +1259,10 @@ const LeadDetailPage = async ({
             {/* Top agents */}
             {snapshot.agents && snapshot.agents.length > 0 && (
               <div className="rounded-xl border bg-card p-5">
-                <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+                <p className="font-mono text-[10px] text-muted-foreground uppercase tracking-[0.18em]">
                   Top agents in this postcode
                 </p>
-                <p className="mt-1 text-xs text-muted-foreground">
+                <p className="mt-1 text-muted-foreground text-xs">
                   Who's selling the comparable stock — useful for Marketer
                   outreach.
                 </p>
@@ -1234,7 +1275,7 @@ const LeadDetailPage = async ({
                       <div>
                         <span className="font-medium">{a.name}</span>
                         {typeof a.listings === 'number' && (
-                          <span className="ml-2 text-xs text-muted-foreground">
+                          <span className="ml-2 text-muted-foreground text-xs">
                             {a.listings} listing
                             {a.listings === 1 ? '' : 's'}
                           </span>
@@ -1270,10 +1311,10 @@ const LeadDetailPage = async ({
             {hasCoords && (
               <div className="overflow-hidden rounded-xl border bg-card">
                 <div className="border-b p-4">
-                  <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+                  <p className="font-mono text-[10px] text-muted-foreground uppercase tracking-[0.18em]">
                     Location
                   </p>
-                  <p className="mt-1 text-xs text-muted-foreground">
+                  <p className="mt-1 text-muted-foreground text-xs">
                     Visual check — drag the map to look around.
                   </p>
                 </div>
@@ -1297,10 +1338,10 @@ const LeadDetailPage = async ({
         {/* Research links — ALWAYS visible, even when we have a primary listing URL.
             Founders need fast deep-links to verify the property in 1 click. */}
         <div className="rounded-xl border bg-card p-5">
-          <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+          <p className="font-mono text-[10px] text-muted-foreground uppercase tracking-[0.18em]">
             Research this property
           </p>
-          <p className="mt-1 text-xs text-muted-foreground">
+          <p className="mt-1 text-muted-foreground text-xs">
             Quick deep-links to check this address on every major UK source.
           </p>
           <div className="mt-3 flex flex-wrap gap-2">
@@ -1310,10 +1351,12 @@ const LeadDetailPage = async ({
                 href={link.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 font-medium text-slate-700 text-xs transition hover:border-slate-400 hover:bg-slate-50"
               >
                 {link.label}
-                <span aria-hidden className="text-slate-400">↗</span>
+                <span aria-hidden className="text-slate-400">
+                  ↗
+                </span>
               </a>
             ))}
           </div>
@@ -1322,15 +1365,15 @@ const LeadDetailPage = async ({
         {/* Sparse-data CTA — shown when this lead pre-dates the rich-payload upgrade */}
         {isSparseData && (
           <div className="rounded-xl border border-amber-300 bg-amber-50 p-5">
-            <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-amber-800">
+            <p className="font-mono text-[10px] text-amber-800 uppercase tracking-[0.18em]">
               Limited data on this lead
             </p>
-            <p className="mt-2 text-sm text-amber-900">
-              This lead was scouted before the PropertyData enrichment was
-              wired through. We have its address, postcode, and score — but
-              no image, price, summary or score breakdown.
+            <p className="mt-2 text-amber-900 text-sm">
+              This lead was scouted before the PropertyData enrichment was wired
+              through. We have its address, postcode, and score — but no image,
+              price, summary or score breakdown.
             </p>
-            <p className="mt-2 text-sm text-amber-900">
+            <p className="mt-2 text-amber-900 text-sm">
               <strong>To refresh:</strong> hit{' '}
               <a
                 href="/settings/scouting"
@@ -1338,13 +1381,13 @@ const LeadDetailPage = async ({
               >
                 /settings/scouting → Run scout now
               </a>
-              . PropertyData will re-fetch and any matching active listings
-              come back with the full enrichment. Old leads that no longer
-              match active listings will stay sparse.
+              . PropertyData will re-fetch and any matching active listings come
+              back with the full enrichment. Old leads that no longer match
+              active listings will stay sparse.
             </p>
-            <p className="mt-2 text-xs text-amber-800">
-              In the meantime, use the research links above to check
-              Rightmove / Zoopla / Land Registry directly.
+            <p className="mt-2 text-amber-800 text-xs">
+              In the meantime, use the research links above to check Rightmove /
+              Zoopla / Land Registry directly.
             </p>
           </div>
         )}
@@ -1352,14 +1395,14 @@ const LeadDetailPage = async ({
         {/* Score breakdown — supporting detail for the verdict card above */}
         {scoreFactors.length > 0 && (
           <div className="rounded-xl border bg-card p-5">
-            <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+            <p className="font-mono text-[10px] text-muted-foreground uppercase tracking-[0.18em]">
               Score breakdown
             </p>
 
             {/* Positive contributors */}
             {positiveFactors.length > 0 && (
               <div className="mt-4">
-                <p className="text-[11px] font-medium uppercase tracking-wider text-emerald-700">
+                <p className="font-medium text-[11px] text-emerald-700 uppercase tracking-wider">
                   What pushed it up
                 </p>
                 <ul className="mt-2 grid gap-1.5 sm:grid-cols-2">
@@ -1371,7 +1414,7 @@ const LeadDetailPage = async ({
                       <span className="min-w-0 flex-1 truncate text-slate-900">
                         {f.label}
                       </span>
-                      <span className="font-mono text-emerald-800 font-semibold tabular-nums">
+                      <span className="font-mono font-semibold text-emerald-800 tabular-nums">
                         +{f.points}
                       </span>
                     </li>
@@ -1383,7 +1426,7 @@ const LeadDetailPage = async ({
             {/* Negative contributors */}
             {negativeFactors.length > 0 && (
               <div className="mt-4">
-                <p className="text-[11px] font-medium uppercase tracking-wider text-rose-700">
+                <p className="font-medium text-[11px] text-rose-700 uppercase tracking-wider">
                   What pulled it down
                 </p>
                 <ul className="mt-2 grid gap-1.5 sm:grid-cols-2">
@@ -1395,7 +1438,7 @@ const LeadDetailPage = async ({
                       <span className="min-w-0 flex-1 truncate text-slate-900">
                         ⚠ {f.label}
                       </span>
-                      <span className="font-mono text-rose-800 font-semibold tabular-nums">
+                      <span className="font-mono font-semibold text-rose-800 tabular-nums">
                         {f.points}
                       </span>
                     </li>
@@ -1407,7 +1450,7 @@ const LeadDetailPage = async ({
             {/* Leading indicator — the single biggest driver, shown up top. */}
             {leadingIndicator && (
               <div className="mt-4 flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm">
-                <span className="text-[11px] font-medium uppercase tracking-wider text-amber-700">
+                <span className="font-medium text-[11px] text-amber-700 uppercase tracking-wider">
                   Leading indicator
                 </span>
                 <span className="font-medium text-slate-900">
@@ -1423,59 +1466,59 @@ const LeadDetailPage = async ({
             {/* Two-pillar breakdown row. Acquisition + ROI are the pillars;
                 market + risk are modifiers. ROI shows a "provisional" tag until
                 the lead has been appraised (see the two-stage scorer). */}
-            {scoreBreakdown && typeof scoreBreakdown.acquisition === 'number' && (
-              <div className="mt-4 grid grid-cols-4 gap-2 border-t pt-3 text-center text-[11px]">
-                <div>
-                  <p className="text-muted-foreground">Acquisition</p>
-                  <p className="font-mono text-sm font-semibold">
-                    {scoreBreakdown.acquisition}
-                    <span className="text-muted-foreground">/45</span>
-                  </p>
+            {scoreBreakdown &&
+              typeof scoreBreakdown.acquisition === 'number' && (
+                <div className="mt-4 grid grid-cols-4 gap-2 border-t pt-3 text-center text-[11px]">
+                  <div>
+                    <p className="text-muted-foreground">Acquisition</p>
+                    <p className="font-mono font-semibold text-sm">
+                      {scoreBreakdown.acquisition}
+                      <span className="text-muted-foreground">/45</span>
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">
+                      ROI{scoreBreakdown.appraised === false ? '*' : ''}
+                    </p>
+                    <p className="font-mono font-semibold text-sm">
+                      {scoreBreakdown.roi}
+                      <span className="text-muted-foreground">/40</span>
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">Market</p>
+                    <p className="font-mono font-semibold text-sm">
+                      {scoreBreakdown.marketTrend}
+                      <span className="text-muted-foreground">/10</span>
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">Risk</p>
+                    <p
+                      className={`font-mono font-semibold text-sm ${
+                        scoreBreakdown.risk < 0
+                          ? 'text-rose-700'
+                          : scoreBreakdown.risk > 0
+                            ? 'text-emerald-700'
+                            : ''
+                      }`}
+                    >
+                      {scoreBreakdown.risk > 0 ? '+' : ''}
+                      {scoreBreakdown.risk}
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-muted-foreground">
-                    ROI{scoreBreakdown.appraised === false ? '*' : ''}
-                  </p>
-                  <p className="font-mono text-sm font-semibold">
-                    {scoreBreakdown.roi}
-                    <span className="text-muted-foreground">/40</span>
-                  </p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground">Market</p>
-                  <p className="font-mono text-sm font-semibold">
-                    {scoreBreakdown.marketTrend}
-                    <span className="text-muted-foreground">/10</span>
-                  </p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground">Risk</p>
-                  <p
-                    className={`font-mono text-sm font-semibold ${
-                      scoreBreakdown.risk < 0
-                        ? 'text-rose-700'
-                        : scoreBreakdown.risk > 0
-                          ? 'text-emerald-700'
-                          : ''
-                    }`}
-                  >
-                    {scoreBreakdown.risk > 0 ? '+' : ''}
-                    {scoreBreakdown.risk}
-                  </p>
-                </div>
-              </div>
-            )}
+              )}
             {scoreBreakdown?.appraised === false && (
               <p className="mt-2 text-[11px] text-muted-foreground">
-                * ROI is provisional (equity proxy) until the lead is appraised —
-                it becomes the real BMV discount + cash ROI after appraisal.
+                * ROI is provisional (equity proxy) until the lead is appraised
+                — it becomes the real BMV discount + cash ROI after appraisal.
               </p>
             )}
 
             {neutralFactors.length > 0 && (
               <p className="mt-3 text-[11px] text-muted-foreground">
-                Missing inputs:{' '}
-                {neutralFactors.map((f) => f.label).join(' · ')}
+                Missing inputs: {neutralFactors.map((f) => f.label).join(' · ')}
               </p>
             )}
           </div>
@@ -1484,10 +1527,10 @@ const LeadDetailPage = async ({
         {/* Back-compat: surface riskFlags inline for older leads without factors[] */}
         {riskFlags.length > 0 && scoreFactors.length === 0 && (
           <div className="rounded-xl border border-rose-200 bg-rose-50/50 p-5">
-            <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-rose-700">
+            <p className="font-mono text-[10px] text-rose-700 uppercase tracking-[0.18em]">
               Risk flags
             </p>
-            <ul className="mt-3 space-y-1 text-sm text-rose-900">
+            <ul className="mt-3 space-y-1 text-rose-900 text-sm">
               {riskFlags.map((flag) => (
                 <li key={flag} className="flex items-center gap-2">
                   <span aria-hidden>⚠</span>
@@ -1501,36 +1544,36 @@ const LeadDetailPage = async ({
         {/* Planning details */}
         {isPlanning && (
           <div className="rounded-xl border bg-card p-5">
-            <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+            <p className="font-mono text-[10px] text-muted-foreground uppercase tracking-[0.18em]">
               Planning application
             </p>
             <div className="mt-3 grid gap-3 sm:grid-cols-2">
               {planningReference && (
                 <div>
-                  <p className="text-xs text-muted-foreground">Reference</p>
+                  <p className="text-muted-foreground text-xs">Reference</p>
                   <p className="font-mono text-sm">{planningReference}</p>
                 </div>
               )}
               {planningAuthority && (
                 <div>
-                  <p className="text-xs text-muted-foreground">Authority</p>
+                  <p className="text-muted-foreground text-xs">Authority</p>
                   <p className="text-sm">{planningAuthority}</p>
                 </div>
               )}
               {planningStatus && (
                 <div>
-                  <p className="text-xs text-muted-foreground">Status</p>
+                  <p className="text-muted-foreground text-xs">Status</p>
                   <p className="text-sm">{planningStatus}</p>
                 </div>
               )}
               {planningDecision && (
                 <div>
-                  <p className="text-xs text-muted-foreground">Decision</p>
+                  <p className="text-muted-foreground text-xs">Decision</p>
                   <p className="text-sm">
                     {planningDecision}
                     {planningRating && (
                       <span
-                        className={`ml-2 inline-flex rounded-full px-1.5 py-0.5 text-[10px] font-medium ${
+                        className={`ml-2 inline-flex rounded-full px-1.5 py-0.5 font-medium text-[10px] ${
                           planningRating === 'negative'
                             ? 'bg-rose-100 text-rose-800'
                             : planningRating === 'positive'
@@ -1546,7 +1589,7 @@ const LeadDetailPage = async ({
               )}
               {planningReceivedAt && (
                 <div>
-                  <p className="text-xs text-muted-foreground">Received</p>
+                  <p className="text-muted-foreground text-xs">Received</p>
                   <p className="text-sm">
                     {new Date(planningReceivedAt).toLocaleDateString('en-GB')}
                   </p>
@@ -1554,7 +1597,7 @@ const LeadDetailPage = async ({
               )}
               {planningDecidedAt && (
                 <div>
-                  <p className="text-xs text-muted-foreground">Decided</p>
+                  <p className="text-muted-foreground text-xs">Decided</p>
                   <p className="text-sm">
                     {new Date(planningDecidedAt).toLocaleDateString('en-GB')}
                   </p>
@@ -1567,31 +1610,31 @@ const LeadDetailPage = async ({
         {/* HMO details */}
         {isHmo && (
           <div className="rounded-xl border bg-card p-5">
-            <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+            <p className="font-mono text-[10px] text-muted-foreground uppercase tracking-[0.18em]">
               HMO licence
             </p>
             <div className="mt-3 grid gap-3 sm:grid-cols-2">
               {hmoCouncil && (
                 <div>
-                  <p className="text-xs text-muted-foreground">Council</p>
+                  <p className="text-muted-foreground text-xs">Council</p>
                   <p className="text-sm">{hmoCouncil}</p>
                 </div>
               )}
               {hmoLicenceType && (
                 <div>
-                  <p className="text-xs text-muted-foreground">Licence type</p>
+                  <p className="text-muted-foreground text-xs">Licence type</p>
                   <p className="text-sm">{hmoLicenceType}</p>
                 </div>
               )}
               {hmoLicenceExpiry && (
                 <div>
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-muted-foreground text-xs">
                     Licence expires
                   </p>
                   <p className="text-sm">
                     {hmoLicenceExpiry}
                     {hmoLicenceExpiringSoon && (
-                      <span className="ml-2 inline-flex rounded-full bg-rose-100 px-1.5 py-0.5 text-[10px] font-medium text-rose-800">
+                      <span className="ml-2 inline-flex rounded-full bg-rose-100 px-1.5 py-0.5 font-medium text-[10px] text-rose-800">
                         within 12 months
                       </span>
                     )}
@@ -1606,19 +1649,19 @@ const LeadDetailPage = async ({
             "Make contact" block above, so only render here once converted. */}
         {lead.status === 'converted' &&
           (lead.contactName || lead.contactEmail || lead.contactPhone) && (
-          <div className="rounded-xl border bg-card p-5">
-            <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-              Contact
-            </p>
-            <div className="mt-2 space-y-1 text-sm">
-              {lead.contactName && (
-                <p className="font-medium">{lead.contactName}</p>
-              )}
-              {lead.contactEmail && <p>{lead.contactEmail}</p>}
-              {lead.contactPhone && <p>{lead.contactPhone}</p>}
+            <div className="rounded-xl border bg-card p-5">
+              <p className="font-mono text-[10px] text-muted-foreground uppercase tracking-[0.18em]">
+                Contact
+              </p>
+              <div className="mt-2 space-y-1 text-sm">
+                {lead.contactName && (
+                  <p className="font-medium">{lead.contactName}</p>
+                )}
+                {lead.contactEmail && <p>{lead.contactEmail}</p>}
+                {lead.contactPhone && <p>{lead.contactPhone}</p>}
+              </div>
             </div>
-          </div>
-        )}
+          )}
 
         {/* Scorer calibration — deliberately separate from the triage
             buttons above. Stars here rate how well the SCORER did (feeds
@@ -1663,8 +1706,10 @@ const LeadDetailPage = async ({
               ? {
                   rating: existingFeedback.rating,
                   notes: existingFeedback.notes,
-                  overrides:
-                    existingFeedback.overrides as Record<string, unknown> | null,
+                  overrides: existingFeedback.overrides as Record<
+                    string,
+                    unknown
+                  > | null,
                 }
               : null
           }
@@ -1672,10 +1717,10 @@ const LeadDetailPage = async ({
 
         {/* Calendly */}
         <div className="rounded-xl border bg-card p-5">
-          <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+          <p className="font-mono text-[10px] text-muted-foreground uppercase tracking-[0.18em]">
             Book initial call
           </p>
-          <p className="mt-2 text-xs text-muted-foreground">
+          <p className="mt-2 text-muted-foreground text-xs">
             Send this link to the vendor or agent. Bookings update the deal
             timeline automatically.
           </p>
@@ -1686,7 +1731,7 @@ const LeadDetailPage = async ({
 
         {/* Metadata (compact, low-priority info) */}
         <details className="rounded-xl border bg-card p-5">
-          <summary className="cursor-pointer font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+          <summary className="cursor-pointer font-mono text-[10px] text-muted-foreground uppercase tracking-[0.18em]">
             Metadata
           </summary>
           <div className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
@@ -1706,7 +1751,9 @@ const LeadDetailPage = async ({
             </div>
             <div>
               <span className="text-muted-foreground">Created: </span>
-              <span>{new Date(lead.createdAt).toLocaleDateString('en-GB')}</span>
+              <span>
+                {new Date(lead.createdAt).toLocaleDateString('en-GB')}
+              </span>
             </div>
             {lead.sourceTrail && (
               <div className="sm:col-span-2">

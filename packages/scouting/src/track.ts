@@ -351,3 +351,41 @@ export function assessPrimeOpportunity(input: {
 
   return { discountToArea, isRefurbCandidate, isOpportunity, reasons };
 }
+
+/**
+ * Should this lead carry an opportunity assessment, and what is it?
+ *
+ * The thin gate the pipeline calls once per lead. `assessPrimeOpportunity`
+ * is the thesis; this decides WHO gets assessed:
+ *
+ * - `prime`  — always. Prime membership already implies the geography (or a
+ *              value strong enough to clear the floor with no postcode).
+ * - `block`  — only inside a prime district. A whole-building refurb in
+ *              Muswell Hill is the strategy at larger scale; a block in a
+ *              volume town belongs to the investor feed.
+ * - `volume` — never. A £300k flat on a £1.4M street is a flat.
+ *
+ * Returns null when no assessment applies, so callers can stamp the payload
+ * conditionally without re-encoding these rules.
+ */
+export function primeOpportunityForTrack(input: {
+  track: DealTrackValue;
+  postcode?: string | null;
+  valuePence?: number | null;
+  areaAvgPence?: number | null;
+  listingType?: string | null;
+  text?: string | null;
+}): PrimeOpportunity | null {
+  const assess =
+    input.track === 'prime' ||
+    (input.track === 'block' && isPrimeDistrict(input.postcode));
+  if (!assess) {
+    return null;
+  }
+  return assessPrimeOpportunity({
+    valuePence: input.valuePence,
+    areaAvgPence: input.areaAvgPence,
+    listingType: input.listingType,
+    text: input.text,
+  });
+}
