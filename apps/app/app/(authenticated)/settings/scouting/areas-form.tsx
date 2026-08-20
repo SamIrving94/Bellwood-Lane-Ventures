@@ -1,21 +1,21 @@
 'use client';
 
 import { useState, useTransition } from 'react';
+import { AreaTypeahead } from './area-typeahead';
 import {
-  addArea,
-  addAreaFromSuggestion,
-  clearAllLeads,
-  removeArea,
-  reProbeArea,
-  setAreaTrack,
-  triggerScoutNow,
-  widenArea,
   type Area,
   type AreaLeadStats,
   type AreaTrack,
   type Suggestion,
+  addArea,
+  addAreaFromSuggestion,
+  clearAllLeads,
+  reProbeArea,
+  removeArea,
+  setAreaTrack,
+  triggerScoutNow,
+  widenArea,
 } from './areas-actions';
-import { AreaTypeahead } from './area-typeahead';
 
 type Props = {
   initial: Area[];
@@ -75,8 +75,7 @@ function Sparkline({
     })
     .join(' ');
   const last = values[values.length - 1] ?? 0;
-  const stroke =
-    last === 0 ? '#cbd5e1' : last < 5 ? '#f59e0b' : '#10b981';
+  const stroke = last === 0 ? '#cbd5e1' : last < 5 ? '#f59e0b' : '#10b981';
 
   return (
     <svg
@@ -128,7 +127,7 @@ function AreaRow({
         <div className="flex flex-wrap items-baseline gap-x-2">
           <span className="font-semibold text-slate-900">{a.label}</span>
           {isPrime && (
-            <span className="rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-800">
+            <span className="rounded-full bg-amber-100 px-1.5 py-0.5 font-medium text-[10px] text-amber-800">
               ★ Prime
             </span>
           )}
@@ -136,9 +135,12 @@ function AreaRow({
             {a.district} · seed {a.seedPostcode} · {a.radiusMiles}mi
           </span>
         </div>
-        <div className="mt-0.5 text-[12px] text-muted-foreground">
+        <div
+          className="mt-0.5 text-[12px] text-muted-foreground"
+          title={error ?? undefined}
+        >
           {error
-            ? `Error: ${error.slice(0, 80)}`
+            ? `Error: ${error.slice(0, 160)}`
             : `${count} listing${count === 1 ? '' : 's'}${checked ? ` · checked ${formatRelative(checked)}` : ''}`}
         </div>
         <LeadBreakdown stats={stats} />
@@ -154,7 +156,7 @@ function AreaRow({
               ? 'Scanned every day. Click to move back into the volume rotation.'
               : 'Click to scan this area every day, regardless of rotation.'
           }
-          className={`rounded-lg border px-3 py-1 text-xs font-medium transition disabled:opacity-50 ${
+          className={`rounded-lg border px-3 py-1 font-medium text-xs transition disabled:opacity-50 ${
             isPrime
               ? 'border-amber-300 bg-amber-50 text-amber-800 hover:bg-amber-100'
               : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-50'
@@ -162,12 +164,12 @@ function AreaRow({
         >
           {isPrime ? '★ Prime' : 'Make prime'}
         </button>
-        {!error && a.radiusMiles < 10 && (
+        {a.radiusMiles < 10 && (
           <button
             type="button"
             onClick={() => onWiden(a.id)}
             disabled={pendingAction}
-            className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-1 text-xs font-medium text-amber-900 transition hover:bg-amber-100 disabled:opacity-50"
+            className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-1 font-medium text-amber-900 text-xs transition hover:bg-amber-100 disabled:opacity-50"
           >
             Widen +1.5mi
           </button>
@@ -176,7 +178,7 @@ function AreaRow({
           type="button"
           onClick={() => onReProbe(a.id)}
           disabled={pendingAction}
-          className="rounded-lg border border-slate-300 bg-white px-3 py-1 text-xs font-medium text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
+          className="rounded-lg border border-slate-300 bg-white px-3 py-1 font-medium text-slate-700 text-xs transition hover:bg-slate-50 disabled:opacity-50"
           title="Re-check this area"
         >
           ↻
@@ -204,7 +206,7 @@ function LeadBreakdown({ stats }: { stats: AreaLeadStats | undefined }) {
         {total7d} lead{total7d === 1 ? '' : 's'} in last 7d
       </span>
       {strong7d > 0 && (
-        <span className="ml-1 rounded-full bg-emerald-100 px-1.5 py-0.5 text-[10px] font-medium text-emerald-900">
+        <span className="ml-1 rounded-full bg-emerald-100 px-1.5 py-0.5 font-medium text-[10px] text-emerald-900">
           {strong7d} STRONG
         </span>
       )}
@@ -241,8 +243,7 @@ export function AreasForm({ initial, leadStats }: Props) {
 
   function commitAdd(picked?: Suggestion) {
     const tempId = `tmp_${Date.now()}`;
-    const optimisticLabel =
-      picked?.label || input.trim() || 'Adding area…';
+    const optimisticLabel = picked?.label || input.trim() || 'Adding area…';
     setPendingRows((cur) => [...cur, { tempId, label: optimisticLabel }]);
     setInput('');
 
@@ -254,7 +255,7 @@ export function AreasForm({ initial, leadStats }: Props) {
               seedPostcode: picked.seedPostcode,
               district: picked.district,
             },
-            addTrack,
+            addTrack
           )
         : await addArea(optimisticLabel, addTrack);
 
@@ -263,14 +264,27 @@ export function AreasForm({ initial, leadStats }: Props) {
       if (r.ok) {
         setAreas((cur) => [...cur, r.area]);
         const c = r.area.lastProbe?.listingCount ?? 0;
-        const primeNote = r.area.track === 'prime' ? ' · scanned every day' : '';
-        showToast({
-          kind: c > 0 ? 'success' : 'info',
-          message:
-            c > 0
-              ? `✓ ${r.area.label} added — ${c} listings found${primeNote}.`
-              : `${r.area.label} added${primeNote}. No listings yet — try widening the radius.`,
-        });
+        const probeError = r.area.lastProbe?.error ?? null;
+        const primeNote =
+          r.area.track === 'prime' ? ' · scanned every day' : '';
+        // Three genuinely different outcomes, three different messages. The
+        // old code folded "the probe FAILED" into "no listings yet — try
+        // widening the radius", which is how a dead seed postcode once spent
+        // days on this page disguised as an empty area.
+        if (probeError) {
+          showToast({
+            kind: 'error',
+            message: `${r.area.label} added, but the first check failed: ${probeError} Use "Re-check" to retry.`,
+          });
+        } else {
+          showToast({
+            kind: c > 0 ? 'success' : 'info',
+            message:
+              c > 0
+                ? `✓ ${r.area.label} added — ${c} listings found${primeNote}.`
+                : `${r.area.label} added${primeNote}. No listings yet — try widening the radius.`,
+          });
+        }
       } else {
         showToast({ kind: 'error', message: r.error });
       }
@@ -285,7 +299,7 @@ export function AreasForm({ initial, leadStats }: Props) {
   function handleToggleTrack(area: Area) {
     const next: AreaTrack = area.track === 'prime' ? 'volume' : 'prime';
     setAreas((cur) =>
-      cur.map((a) => (a.id === area.id ? { ...a, track: next } : a)),
+      cur.map((a) => (a.id === area.id ? { ...a, track: next } : a))
     );
     startAction(async () => {
       const r = await setAreaTrack(area.id, next);
@@ -300,9 +314,7 @@ export function AreasForm({ initial, leadStats }: Props) {
         });
       } else {
         // Revert optimistic flip on failure.
-        setAreas((cur) =>
-          cur.map((a) => (a.id === area.id ? area : a)),
-        );
+        setAreas((cur) => cur.map((a) => (a.id === area.id ? area : a)));
         showToast({ kind: 'error', message: r.error });
       }
     });
@@ -331,7 +343,7 @@ export function AreasForm({ initial, leadStats }: Props) {
         message: `Removed ${area.label}.`,
         undo,
       },
-      6000,
+      6000
     );
 
     startAction(async () => {
@@ -364,17 +376,27 @@ export function AreasForm({ initial, leadStats }: Props) {
       if (r.ok) {
         setAreas((cur) => cur.map((a) => (a.id === id ? r.area : a)));
         const c = r.area.lastProbe?.listingCount ?? 0;
-        showToast({
-          kind: 'info',
-          message: `Re-checked ${r.area.label} — ${c} listings.`,
-        });
+        const stillFailing = r.area.lastProbe?.error ?? null;
+        showToast(
+          stillFailing
+            ? {
+                kind: 'error',
+                message: `${r.area.label} is still failing: ${stillFailing}`,
+              }
+            : {
+                kind: 'info',
+                message: `Re-checked ${r.area.label} — ${c} listings.`,
+              }
+        );
+      } else {
+        showToast({ kind: 'error', message: r.error });
       }
     });
   }
 
   function handleClearAll() {
     const confirm = window.confirm(
-      'Delete ALL scouted leads from the database?\n\nThis wipes every ScoutLead row + their feedback. Use this when the schema has been upgraded and existing leads are sparse. After clearing, click "Run scout now" to repopulate.\n\nThis cannot be undone.',
+      'Delete ALL scouted leads from the database?\n\nThis wipes every ScoutLead row + their feedback. Use this when the schema has been upgraded and existing leads are sparse. After clearing, click "Run scout now" to repopulate.\n\nThis cannot be undone.'
     );
     if (!confirm) return;
     showToast(null, 0);
@@ -386,7 +408,7 @@ export function AreasForm({ initial, leadStats }: Props) {
             kind: 'success',
             message: `✓ Cleared ${r.deletedLeads} lead${r.deletedLeads === 1 ? '' : 's'} (${r.deletedFeedback} feedback rows). Click 'Run scout now' to repopulate.`,
           },
-          10000,
+          10000
         );
       } else {
         showToast({
@@ -419,7 +441,7 @@ export function AreasForm({ initial, leadStats }: Props) {
                 ? `✓ Scout complete — ${found} leads (${strong} STRONG, ${high} scored ≥70). View them on Today →`
                 : `Scout complete. No new leads this run.`,
           },
-          8000,
+          8000
         );
       } else {
         showToast({ kind: 'error', message: r.error ?? 'Scout failed.' });
@@ -429,7 +451,7 @@ export function AreasForm({ initial, leadStats }: Props) {
 
   const totalListings = areas.reduce(
     (s, a) => s + (a.lastProbe?.listingCount ?? 0),
-    0,
+    0
   );
   const primeAreas = areas.filter((a) => a.track === 'prime');
   const volumeAreas = areas.filter((a) => a.track !== 'prime');
@@ -438,7 +460,7 @@ export function AreasForm({ initial, leadStats }: Props) {
     <div className="space-y-6">
       {/* Add row */}
       <div className="rounded-2xl border bg-card p-6">
-        <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
+        <p className="font-mono text-[10px] text-muted-foreground uppercase tracking-[0.22em]">
           Where do you buy?
         </p>
         <h2 className="mt-1 font-semibold text-xl tracking-tight">
@@ -460,7 +482,7 @@ export function AreasForm({ initial, leadStats }: Props) {
             type="button"
             onClick={handleAdd}
             disabled={pendingAdd || !input.trim()}
-            className="rounded-xl bg-slate-900 px-6 py-3 text-sm font-medium text-white transition hover:bg-slate-800 disabled:opacity-50"
+            className="rounded-xl bg-slate-900 px-6 py-3 font-medium text-sm text-white transition hover:bg-slate-800 disabled:opacity-50"
           >
             + Add area
           </button>
@@ -470,7 +492,7 @@ export function AreasForm({ initial, leadStats }: Props) {
           <button
             type="button"
             onClick={() => setAddTrack('volume')}
-            className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+            className={`rounded-full px-3 py-1 font-medium text-xs transition-colors ${
               addTrack === 'volume'
                 ? 'bg-slate-900 text-white'
                 : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
@@ -482,7 +504,7 @@ export function AreasForm({ initial, leadStats }: Props) {
             type="button"
             onClick={() => setAddTrack('prime')}
             title="Scanned every day, not subject to the 6-area rotation — for scarce, high-value patches worth checking daily."
-            className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+            className={`rounded-full px-3 py-1 font-medium text-xs transition-colors ${
               addTrack === 'prime'
                 ? 'bg-amber-500 text-white'
                 : 'bg-amber-50 text-amber-700 hover:bg-amber-100'
@@ -509,7 +531,7 @@ export function AreasForm({ initial, leadStats }: Props) {
             <button
               type="button"
               onClick={toast.undo}
-              className="rounded-lg border border-current/30 bg-white/40 px-3 py-1 text-xs font-medium hover:bg-white"
+              className="rounded-lg border border-current/30 bg-white/40 px-3 py-1 font-medium text-xs hover:bg-white"
             >
               Undo
             </button>
@@ -521,7 +543,7 @@ export function AreasForm({ initial, leadStats }: Props) {
       <div className="rounded-2xl border bg-card p-6">
         <div className="flex items-center justify-between">
           <div>
-            <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
+            <p className="font-mono text-[10px] text-muted-foreground uppercase tracking-[0.22em]">
               Your areas
             </p>
             <h2 className="mt-1 font-semibold text-xl tracking-tight">
@@ -535,7 +557,7 @@ export function AreasForm({ initial, leadStats }: Props) {
               type="button"
               onClick={handleClearAll}
               disabled={pendingScout}
-              className="rounded-xl border border-rose-300 bg-white px-4 py-2.5 text-xs font-medium text-rose-700 transition hover:bg-rose-50 disabled:opacity-50"
+              className="rounded-xl border border-rose-300 bg-white px-4 py-2.5 font-medium text-rose-700 text-xs transition hover:bg-rose-50 disabled:opacity-50"
               title="Wipe every scouted lead from the database. Use before a fresh scout when the schema has changed."
             >
               Clear all leads
@@ -545,7 +567,7 @@ export function AreasForm({ initial, leadStats }: Props) {
                 type="button"
                 onClick={handleScout}
                 disabled={pendingScout}
-                className="rounded-xl border border-slate-300 bg-white px-5 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
+                className="rounded-xl border border-slate-300 bg-white px-5 py-2.5 font-medium text-slate-700 text-sm transition hover:bg-slate-50 disabled:opacity-50"
               >
                 {pendingScout ? 'Scouting…' : 'Run scout now'}
               </button>
@@ -554,7 +576,7 @@ export function AreasForm({ initial, leadStats }: Props) {
         </div>
 
         {areas.length === 0 && pendingRows.length === 0 ? (
-          <p className="mt-6 rounded-xl border border-dashed border-slate-300 bg-slate-50 p-6 text-center text-muted-foreground text-sm">
+          <p className="mt-6 rounded-xl border border-slate-300 border-dashed bg-slate-50 p-6 text-center text-muted-foreground text-sm">
             Add your first area above. Most founders start with 3&ndash;5
             cities. Try &ldquo;Manchester&rdquo;, &ldquo;Stockport&rdquo;,
             &ldquo;Leeds&rdquo;.
@@ -563,7 +585,7 @@ export function AreasForm({ initial, leadStats }: Props) {
           <>
             {primeAreas.length > 0 && (
               <>
-                <p className="mt-5 font-mono text-[10px] uppercase tracking-[0.18em] text-amber-700">
+                <p className="mt-5 font-mono text-[10px] text-amber-700 uppercase tracking-[0.18em]">
                   ★ Prime focus — scanned every day
                 </p>
                 <ul className="mt-2 divide-y divide-slate-200 rounded-xl border border-amber-200">
@@ -586,7 +608,7 @@ export function AreasForm({ initial, leadStats }: Props) {
             {(volumeAreas.length > 0 || pendingRows.length > 0) && (
               <>
                 {primeAreas.length > 0 && (
-                  <p className="mt-5 font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+                  <p className="mt-5 font-mono text-[10px] text-muted-foreground uppercase tracking-[0.18em]">
                     Volume rotation — 6 areas/day
                   </p>
                 )}
@@ -635,7 +657,7 @@ export function AreasForm({ initial, leadStats }: Props) {
               minute: '2-digit',
               timeZone: 'Europe/London',
               timeZoneName: 'short',
-            },
+            }
           )}{' '}
           (UK time). High-scoring leads land on the Today page.
         </p>

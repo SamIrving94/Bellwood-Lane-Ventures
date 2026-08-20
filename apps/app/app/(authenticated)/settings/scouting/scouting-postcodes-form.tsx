@@ -26,7 +26,10 @@ export function ScoutingPostcodesForm({ initialPostcodes }: Props) {
   const handleAdd = () => {
     if (!input.trim()) return;
     // Allow comma or space-separated entry
-    const parts = input.split(/[,\s]+/).map((p) => p.trim().toUpperCase()).filter(Boolean);
+    const parts = input
+      .split(/[,\s]+/)
+      .map((p) => p.trim().toUpperCase())
+      .filter(Boolean);
     setPostcodes((cur) => Array.from(new Set([...cur, ...parts])));
     setInput('');
   };
@@ -92,7 +95,9 @@ export function ScoutingPostcodesForm({ initialPostcodes }: Props) {
       const result = await diagnoseSourcedProperties(pc);
       setStatus({
         kind: 'diag',
-        message: result.summary ?? (result.error ? `Error: ${result.error}` : 'No summary'),
+        message:
+          result.summary ??
+          (result.error ? `Error: ${result.error}` : 'No summary'),
         detail: result,
       });
     });
@@ -103,7 +108,9 @@ export function ScoutingPostcodesForm({ initialPostcodes }: Props) {
       {/* Pills of current postcodes */}
       <div>
         <div className="mb-2 flex items-center justify-between">
-          <p className="text-sm font-medium">Active postcodes ({postcodes.length})</p>
+          <p className="font-medium text-sm">
+            Active postcodes ({postcodes.length})
+          </p>
           {postcodes.length > 0 && (
             <button
               type="button"
@@ -115,7 +122,7 @@ export function ScoutingPostcodesForm({ initialPostcodes }: Props) {
           )}
         </div>
         {postcodes.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-6 text-center text-muted-foreground text-sm">
+          <div className="rounded-xl border border-slate-300 border-dashed bg-slate-50 p-6 text-center text-muted-foreground text-sm">
             No postcodes set. Add one or more below.
           </div>
         ) : (
@@ -158,7 +165,7 @@ export function ScoutingPostcodesForm({ initialPostcodes }: Props) {
         <button
           type="button"
           onClick={handleAdd}
-          className="rounded-xl border border-slate-300 bg-white px-5 py-2.5 text-sm font-medium hover:bg-slate-50"
+          className="rounded-xl border border-slate-300 bg-white px-5 py-2.5 font-medium text-sm hover:bg-slate-50"
         >
           Add
         </button>
@@ -170,16 +177,18 @@ export function ScoutingPostcodesForm({ initialPostcodes }: Props) {
           type="button"
           onClick={() => postcodes[0] && handleDiagnose(postcodes[0])}
           disabled={diagnosing || running || saving || postcodes.length === 0}
-          className="rounded-xl border border-slate-300 bg-white px-5 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
+          className="rounded-xl border border-slate-300 bg-white px-5 py-2.5 font-medium text-slate-700 text-sm transition hover:bg-slate-50 disabled:opacity-50"
           title="Hits PropertyData for the first postcode and shows the raw response"
         >
-          {diagnosing ? 'Testing…' : `Test ${postcodes[0] ?? 'first'} on PropertyData`}
+          {diagnosing
+            ? 'Testing…'
+            : `Test ${postcodes[0] ?? 'first'} on PropertyData`}
         </button>
         <button
           type="button"
           onClick={handleRunNow}
           disabled={running || saving}
-          className="rounded-xl border border-slate-300 bg-white px-5 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
+          className="rounded-xl border border-slate-300 bg-white px-5 py-2.5 font-medium text-slate-700 text-sm transition hover:bg-slate-50 disabled:opacity-50"
         >
           {running ? 'Running scout…' : 'Run scout now'}
         </button>
@@ -187,7 +196,7 @@ export function ScoutingPostcodesForm({ initialPostcodes }: Props) {
           type="button"
           onClick={handleSave}
           disabled={saving || running}
-          className="rounded-xl bg-slate-900 px-5 py-2.5 text-sm font-medium text-white transition hover:bg-slate-800 disabled:opacity-50"
+          className="rounded-xl bg-slate-900 px-5 py-2.5 font-medium text-sm text-white transition hover:bg-slate-800 disabled:opacity-50"
         >
           {saving ? 'Saving…' : 'Save changes'}
         </button>

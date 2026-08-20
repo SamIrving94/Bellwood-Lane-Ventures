@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { searchAreaSuggestions, type Suggestion } from './areas-actions';
+import { type Suggestion, searchAreaSuggestions } from './areas-actions';
 
 type Props = {
   value: string;
@@ -112,7 +112,7 @@ export function AreaTypeahead({
       {open && (suggestions.length > 0 || loading) && (
         <div className="absolute z-30 mt-1 w-full overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg">
           {loading && suggestions.length === 0 && (
-            <p className="px-4 py-3 text-xs text-muted-foreground">
+            <p className="px-4 py-3 text-muted-foreground text-xs">
               Searching…
             </p>
           )}
@@ -137,14 +137,14 @@ export function AreaTypeahead({
                 </span>
               </span>
               {s.source === 'builtin' && (
-                <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] uppercase tracking-wider text-slate-600">
+                <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] text-slate-600 uppercase tracking-wider">
                   popular
                 </span>
               )}
             </button>
           ))}
           {!loading && suggestions.length === 0 && value.trim().length >= 2 && (
-            <p className="px-4 py-3 text-xs text-muted-foreground">
+            <p className="px-4 py-3 text-muted-foreground text-xs">
               No suggestions. Try a full postcode like &ldquo;M14 5LL&rdquo;.
             </p>
           )}

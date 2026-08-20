@@ -4,8 +4,8 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { Header } from '../../components/header';
-import { AreasForm } from './areas-form';
 import { getAreaLeadStats, getAreas } from './areas-actions';
+import { AreasForm } from './areas-form';
 
 export const metadata: Metadata = {
   title: 'Scouting · Settings — Kept',
@@ -40,7 +40,7 @@ export default async function ScoutingSettingsPage() {
       />
       <main className="mx-auto w-full max-w-3xl space-y-8 p-6">
         <div>
-          <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
+          <p className="font-mono text-[10px] text-muted-foreground uppercase tracking-[0.22em]">
             Settings · Scouting
           </p>
           <h1 className="mt-1 font-semibold text-2xl tracking-tight">
@@ -48,9 +48,9 @@ export default async function ScoutingSettingsPage() {
           </h1>
           <p className="mt-2 max-w-2xl text-muted-foreground text-sm">
             Tell the platform which UK areas to look for distressed property
-            leads in. Early each morning (UK time) we pull probate, repos,
-            BMV, auction and stale-listing data from PropertyData for each
-            area, score the results, and surface high-scoring leads on Today.
+            leads in. Early each morning (UK time) we pull probate, repos, BMV,
+            auction and stale-listing data from PropertyData for each area,
+            score the results, and surface high-scoring leads on Today.
           </p>
         </div>
 
@@ -58,7 +58,7 @@ export default async function ScoutingSettingsPage() {
 
         {/* Recent run snapshot */}
         <div className="rounded-2xl border bg-card p-5">
-          <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
+          <p className="font-mono text-[10px] text-muted-foreground uppercase tracking-[0.22em]">
             Last 7 days
           </p>
           <dl className="mt-3 grid grid-cols-2 gap-4 text-sm">
@@ -73,7 +73,7 @@ export default async function ScoutingSettingsPage() {
                   <>
                     {lastRun.createdAt.toLocaleString('en-GB')}
                     <br />
-                    <span className="text-muted-foreground text-[12px]">
+                    <span className="text-[12px] text-muted-foreground">
                       {lastRun.summary}
                     </span>
                   </>

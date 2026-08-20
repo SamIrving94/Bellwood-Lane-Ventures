@@ -154,6 +154,16 @@ Run a task for one workspace with a filter, e.g.
 - **Safety rails (do not break these):** vendor emails are always held for
   founder review (`OutreachHold`); CEO escalation fires for offers <60% of AVM;
   SLA breaches are deduplicated so they don't spawn duplicate `FounderAction`s.
+- **Never fabricate identifiers and hope downstream accepts them.** Resolve
+  them, or fail loudly at the moment of input. The SW3 incident (Aug 2026):
+  the area resolver guessed `"SW3 1AA"` for an unknown district, PropertyData
+  rejected it with 422, and the failure surfaced days later as a truncated
+  row error. `outwardCode`'s doc-comment states the principle: returning null
+  is better than guessing.
+- **When adding a new domain (geography, source, list type), trace the whole
+  path it flows through** — classifier, resolver, probe, cron — not just the
+  layer being edited. SW3 happened because the prime-track work edited the
+  classifier and the seed script but never opened the area resolver.
 - **Public promises — live site copy is the source of truth.** The promise is:
   same-day response → we view every property → confirmed written offer we
   _aim_ to send within 24–48 hours of viewing, locked 72 hours → completion in
