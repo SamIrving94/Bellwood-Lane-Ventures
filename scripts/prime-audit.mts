@@ -24,6 +24,7 @@
  */
 
 import { PrismaClient } from '../packages/database/generated/client/index.js';
+import { outwardCode } from '../packages/scouting/src/track.js';
 
 const db = new PrismaClient();
 
@@ -96,13 +97,13 @@ async function main() {
   const districts = new Map<string, number>();
   let london = 0;
   for (const r of rows) {
-    const out = (r.postcode ?? '')
-      .toUpperCase()
-      .replace(/\s+/g, '')
-      .match(/^([A-Z]{1,2}\d{1,2}[A-Z]?)/);
+    // outwardCode, not a prefix regex: "LS6 2AB" stripped of its space reads
+    // as district "LS62A" under a greedy prefix match. The tested helper
+    // anchors on the full postcode shape and returns null over guessing.
+    const out = outwardCode(r.postcode);
     if (!out) continue;
-    districts.set(out[1], (districts.get(out[1]) ?? 0) + 1);
-    if (LONDON.test(out[1])) london++;
+    districts.set(out, (districts.get(out) ?? 0) + 1);
+    if (LONDON.test(out)) london++;
   }
   console.log('\nGeography');
   console.log(
