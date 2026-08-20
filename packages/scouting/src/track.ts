@@ -196,10 +196,36 @@ export function outwardCode(
   return outwardOnly ? outwardOnly[1] : null;
 }
 
-/** True when the postcode sits in a district we run the prime strategy in. */
-export function isPrimeDistrict(postcode: string | null | undefined): boolean {
+/**
+ * True when the postcode sits in a district we run the prime strategy in.
+ *
+ * `extraDistricts` is the founder's own geography: districts they have
+ * marked as prime-focus areas in Settings -> Scouting. The built-in London
+ * list is the default hypothesis; the founder's explicit choice EXTENDS it
+ * and is never overruled by it. (Before this, marking DA12 as a prime area
+ * scanned it daily while the classifier quietly filed every DA12 lead as
+ * volume — the founder said "prime" and the code said no.)
+ */
+export function isPrimeDistrict(
+  postcode: string | null | undefined,
+  extraDistricts?: ReadonlySet<string>
+): boolean {
   const out = outwardCode(postcode);
-  return out !== null && PRIME_DISTRICT_SET.has(out);
+  if (out === null) {
+    return false;
+  }
+  return PRIME_DISTRICT_SET.has(out) || (extraDistricts?.has(out) ?? false);
+}
+
+/** Normalise founder-supplied district codes into a comparable set. */
+export function toDistrictSet(
+  districts: ReadonlyArray<string> | null | undefined
+): ReadonlySet<string> {
+  return new Set(
+    (districts ?? [])
+      .map((d) => d.toUpperCase().replace(WHITESPACE, ''))
+      .filter((d) => OUTWARD_ONLY.test(d))
+  );
 }
 
 export function classifyTrack(input: {
@@ -217,6 +243,8 @@ export function classifyTrack(input: {
    * average is worse than scoring against nothing.
    */
   areaAvgPence?: number | null;
+  /** Founder-marked prime districts (see isPrimeDistrict). */
+  primeDistricts?: ReadonlySet<string>;
 }): DealTrackValue {
   const haystack = [input.text ?? '', input.propertyType ?? ''].join(' ');
   if (isBlockText(haystack)) {
@@ -236,7 +264,11 @@ export function classifyTrack(input: {
   // quietly binned — callers that never had a postcode to give (the auctions
   // route) keep their old behaviour exactly.
   const district = outwardCode(input.postcode);
-  if (district !== null && !PRIME_DISTRICT_SET.has(district)) {
+  if (
+    district !== null &&
+    !PRIME_DISTRICT_SET.has(district) &&
+    !(input.primeDistricts?.has(district) ?? false)
+  ) {
     return 'volume';
   }
 
@@ -350,4 +382,45 @@ export function assessPrimeOpportunity(input: {
   }
 
   return { discountToArea, isRefurbCandidate, isOpportunity, reasons };
+}
+
+/**
+ * Should this lead carry an opportunity assessment, and what is it?
+ *
+ * The thin gate the pipeline calls once per lead. `assessPrimeOpportunity`
+ * is the thesis; this decides WHO gets assessed:
+ *
+ * - `prime`  — always. Prime membership already implies the geography (or a
+ *              value strong enough to clear the floor with no postcode).
+ * - `block`  — only inside a prime district. A whole-building refurb in
+ *              Muswell Hill is the strategy at larger scale; a block in a
+ *              volume town belongs to the investor feed.
+ * - `volume` — never. A £300k flat on a £1.4M street is a flat.
+ *
+ * Returns null when no assessment applies, so callers can stamp the payload
+ * conditionally without re-encoding these rules.
+ */
+export function primeOpportunityForTrack(input: {
+  track: DealTrackValue;
+  postcode?: string | null;
+  valuePence?: number | null;
+  areaAvgPence?: number | null;
+  listingType?: string | null;
+  text?: string | null;
+  /** Founder-marked prime districts (see isPrimeDistrict). */
+  primeDistricts?: ReadonlySet<string>;
+}): PrimeOpportunity | null {
+  const assess =
+    input.track === 'prime' ||
+    (input.track === 'block' &&
+      isPrimeDistrict(input.postcode, input.primeDistricts));
+  if (!assess) {
+    return null;
+  }
+  return assessPrimeOpportunity({
+    valuePence: input.valuePence,
+    areaAvgPence: input.areaAvgPence,
+    listingType: input.listingType,
+    text: input.text,
+  });
 }

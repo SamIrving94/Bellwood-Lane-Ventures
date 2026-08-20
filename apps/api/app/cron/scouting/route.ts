@@ -1,7 +1,6 @@
 import { env } from '@/env';
-import { mergeAreaProbes } from '../_lib/merge-area-probes';
-import { selfOrigin } from '../_lib/self-origin';
-import { database, Prisma } from '@repo/database';
+import { Prisma, database } from '@repo/database';
+import { getPropertySnapshot } from '@repo/property-data/src/propertydata';
 import {
   dedupeDealbreakerRules,
   mergeScorerConfig,
@@ -9,9 +8,9 @@ import {
   screenDealbreakers,
   summariseSourceHealth,
 } from '@repo/scouting';
-import { getPropertySnapshot } from '@repo/property-data/src/propertydata';
 import { NextResponse, after } from 'next/server';
 import { recordCronHeartbeat } from '../_lib/heartbeat';
+import { mergeAreaProbes } from '../_lib/merge-area-probes';
 import {
   type ScoutRunStats,
   buildDryStreakActionCopy,
@@ -20,6 +19,7 @@ import {
   dryStreakThreshold,
   shouldAlertDryStreak,
 } from '../_lib/scout-freshness';
+import { selfOrigin } from '../_lib/self-origin';
 
 // Snapshot enrichment is slow (~27s per unique postcode). Allow more time
 // than the default 60s — bumps to Vercel Pro plan cap.
@@ -62,6 +62,7 @@ export const POST = async (request: Request) => {
   // Raw area objects + the ids we scanned this run — used to advance rotation.
   let areasRaw: Record<string, unknown>[] | null = null;
   let selectedAreaIds: string[] = [];
+  let primeDistricts: string[] = [];
   // How many areas are actually IN the rotation queue (i.e. survived parsing —
   // an area with no seedPostcode is dropped and never scanned). Null on the
   // legacy path, which doesn't rotate at all. The dry-run alert below divides
@@ -75,7 +76,7 @@ export const POST = async (request: Request) => {
     });
     if (areasSetting && Array.isArray(areasSetting.value)) {
       areasRaw = (areasSetting.value as unknown[]).filter(
-        (r): r is Record<string, unknown> => !!r && typeof r === 'object',
+        (r): r is Record<string, unknown> => !!r && typeof r === 'object'
       );
       const parsed = areasRaw.flatMap((a) => {
         const seedPostcode =
@@ -90,12 +91,23 @@ export const POST = async (request: Request) => {
         const lp = a.lastProbe as { checkedAt?: unknown } | null | undefined;
         const lastProbeAt =
           lp && typeof lp.checkedAt === 'string'
-            ? (Number.isFinite(Date.parse(lp.checkedAt))
-                ? Date.parse(lp.checkedAt)
-                : 0)
+            ? Number.isFinite(Date.parse(lp.checkedAt))
+              ? Date.parse(lp.checkedAt)
+              : 0
             : 0;
         if (!seedPostcode) return [];
-        return [{ id, seedPostcode, radiusMiles, label, lastProbeAt, isPrime }];
+        const district = typeof a.district === 'string' ? a.district : null;
+        return [
+          {
+            id,
+            seedPostcode,
+            radiusMiles,
+            label,
+            lastProbeAt,
+            isPrime,
+            district,
+          },
+        ];
       });
 
       // Prime-focus areas are scanned on EVERY run — scarce, high-value stock
@@ -117,6 +129,13 @@ export const POST = async (request: Request) => {
         radiusMiles: a.radiusMiles,
       }));
       selectedAreaIds = selected.map((a) => a.id);
+      // The founder's prime geography, from ALL prime-marked areas (not just
+      // this run's batch): the classifier honours it as an extension of the
+      // built-in district list. An explicit founder choice never loses to a
+      // hard-coded default.
+      primeDistricts = primeAreas
+        .map((a) => a.district)
+        .filter((d): d is string => typeof d === 'string');
       // Deliberately DO NOT pass bare districts as sourcedPropertyPostcodes —
       // PropertyData rejects districts on /sourced-properties yet they still
       // incur the expensive serial sleep loops. Companies-House district
@@ -137,7 +156,7 @@ export const POST = async (request: Request) => {
       });
       if (districtsRow && Array.isArray(districtsRow.value)) {
         sourcedPropertyPostcodes = (districtsRow.value as unknown[]).filter(
-          (v): v is string => typeof v === 'string' && v.trim().length > 0,
+          (v): v is string => typeof v === 'string' && v.trim().length > 0
         );
       }
       const seedsRow = await database.setting.findUnique({
@@ -167,7 +186,7 @@ export const POST = async (request: Request) => {
     scanSeeds = scanSeeds.slice(0, MAX_SEEDS_PER_RUN);
     sourcedPropertyPostcodes = sourcedPropertyPostcodes.slice(
       0,
-      MAX_SEEDS_PER_RUN,
+      MAX_SEEDS_PER_RUN
     );
   }
 
@@ -213,6 +232,7 @@ export const POST = async (request: Request) => {
 
   const result = await runScoutingPipeline({
     limit: 30,
+    primeDistricts,
     // `minScore: 30` removed: it compared a pre-appraisal total that can never
     // include the 40-point ROI pillar against a post-appraisal band, so it
     // gated on whether HMLR had price-paid data. The pipeline now uses
@@ -237,10 +257,7 @@ export const POST = async (request: Request) => {
   // judgement. Violators are parked as 'passed' with the rule + evidence
   // recorded (visible in the Passed tab, reversible), so they never draw
   // appraisal spend. Best-effort: any failure means no leads are flagged.
-  const dealbreakerFlags = new Map<
-    number,
-    { rule: string; reason: string }
-  >();
+  const dealbreakerFlags = new Map<number, { rule: string; reason: string }>();
   try {
     const recentFeedback = await database.founderFeedback.findMany({
       where: {
@@ -256,16 +273,20 @@ export const POST = async (request: Request) => {
         const insights = (f.overrides as Record<string, unknown> | null)
           ?._insights as { dealbreakers?: unknown } | undefined;
         return Array.isArray(insights?.dealbreakers)
-          ? insights.dealbreakers.filter((d): d is string => typeof d === 'string')
+          ? insights.dealbreakers.filter(
+              (d): d is string => typeof d === 'string'
+            )
           : [];
-      }),
+      })
     );
     if (rules.length > 0) {
       // Only screen leads worth money downstream — the ones the appraisal
       // crons will pick up.
       const candidates = result.leads
         .map((lead, index) => ({ lead, index }))
-        .filter(({ lead }) => lead.verdict === 'STRONG' || lead.verdict === 'VIABLE');
+        .filter(
+          ({ lead }) => lead.verdict === 'STRONG' || lead.verdict === 'VIABLE'
+        );
       const hits = await screenDealbreakers(
         rules,
         candidates.map(({ lead, index }) => {
@@ -282,7 +303,7 @@ export const POST = async (request: Request) => {
             listingType:
               typeof pd.listingType === 'string' ? pd.listingType : null,
           };
-        }),
+        })
       );
       for (const [ref, hit] of hits) {
         dealbreakerFlags.set(Number(ref), {
@@ -435,7 +456,7 @@ export const POST = async (request: Request) => {
     const reviewSample = result.leads
       .map(
         (l, i) =>
-          `${i}:${l.address.slice(0, 40)}, ${l.postcode} — ${l.leadScore}/${l.verdict}`,
+          `${i}:${l.address.slice(0, 40)}, ${l.postcode} — ${l.leadScore}/${l.verdict}`
       )
       .slice(0, 10);
     const highLeadIds = highScoreLeads
@@ -704,7 +725,7 @@ export const POST = async (request: Request) => {
   try {
     const streakThreshold = dryStreakThreshold(
       rotationAreaCount,
-      MAX_SEEDS_PER_RUN,
+      MAX_SEEDS_PER_RUN
     );
     const thisRun: ScoutRunStats = {
       qualified: result.leads.length,
@@ -732,7 +753,7 @@ export const POST = async (request: Request) => {
         // score them as a non-dry run so an old log can't fabricate a streak.
         typeof p.persisted === 'number' && typeof p.total === 'number'
           ? { qualified: p.total, persisted: p.persisted }
-          : { qualified: 0, persisted: 0 },
+          : { qualified: 0, persisted: 0 }
       )
       .slice(0, streakThreshold - 1);
 
@@ -864,7 +885,9 @@ export const POST = async (request: Request) => {
                   ? 'bungalow'
                   : undefined;
         const bedrooms =
-          typeof pd?.bedrooms === 'number' ? (pd.bedrooms as number) : undefined;
+          typeof pd?.bedrooms === 'number'
+            ? (pd.bedrooms as number)
+            : undefined;
         snap = await getPropertySnapshot({
           postcode: lead.postcode,
           address: lead.address,
@@ -878,7 +901,7 @@ export const POST = async (request: Request) => {
         if (snap.degraded) {
           degradedSnapshots++;
           console.warn(
-            `[cron/scouting] snapshot for ${lead.postcode} is degraded — ${Object.keys(snap.errors).join(', ')} unavailable`,
+            `[cron/scouting] snapshot for ${lead.postcode} is degraded — ${Object.keys(snap.errors).join(', ')} unavailable`
           );
         }
       }
@@ -897,7 +920,7 @@ export const POST = async (request: Request) => {
       console.warn(
         '[cron/scouting] snapshot enrichment failed',
         lead.postcode,
-        err,
+        err
       );
     }
   }

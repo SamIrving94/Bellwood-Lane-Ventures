@@ -55,7 +55,12 @@ import {
   buildSourceHealth,
   summariseSourceHealth,
 } from './source-health';
-import { classifyTrack, isBlockText } from './track';
+import {
+  classifyTrack,
+  isBlockText,
+  primeOpportunityForTrack,
+  toDistrictSet,
+} from './track';
 
 /**
  * Hard ceiling on the deduped candidate pool carried into ranking.
@@ -196,6 +201,7 @@ export { enrichRationaleWithLlm } from './rationale-llm';
 export {
   assessPrimeOpportunity,
   classifyTrack,
+  toDistrictSet,
   isBlockText,
   isPrimeDistrict,
   LONDON_PRIME_DISTRICTS,
@@ -277,6 +283,14 @@ export interface ScoutingPipelineOptions {
    * founder can retune the gate from the EvalConfig table without a deploy.
    */
   sourcingThreshold?: number;
+  /**
+   * Districts the founder has marked as prime-focus areas. EXTENDS the
+   * built-in LONDON_PRIME_DISTRICTS geography: an explicit founder choice is
+   * never overruled by the default list. Without this, marking DA12 as a
+   * prime area scanned it daily while the classifier filed every DA12 lead
+   * as volume.
+   */
+  primeDistricts?: string[];
   /** Whether to include raw payload in output. Default: true. */
   includeRawPayload?: boolean;
   /**
@@ -441,6 +455,7 @@ export async function runScoutingPipeline(
     minScore = 0,
     includeRawPayload = true,
     sourcedPropertyPostcodes = [],
+    primeDistricts = [],
     scanSeeds = [],
     shortLeaseSeeds,
     scanShortLeases = false,
@@ -508,6 +523,8 @@ export async function runScoutingPipeline(
   }
 
   // Combine legacy districts (best-effort) + new scan seeds (proper).
+  const founderPrimeDistricts = toDistrictSet(primeDistricts);
+
   type SeedCall = { label: string; postcode: string; radiusMiles?: number };
   const allSeeds: SeedCall[] = [
     ...sourcedPropertyPostcodes.map((pc) => ({ label: pc, postcode: pc })),
@@ -1406,6 +1423,7 @@ export async function runScoutingPipeline(
       const pd = (enrichedRaw?.propertyData ?? null) as {
         summary?: string | null;
         propertyType?: string | null;
+        listingType?: string | null;
       } | null;
       // The area average is what lets a lead with NO value of its own reach
       // the prime book — which is every probate notice, every receivership
@@ -1424,7 +1442,27 @@ export async function runScoutingPipeline(
         propertyType: pd?.propertyType ?? null,
         postcode: lead.postcode,
         areaAvgPence,
+        primeDistricts: founderPrimeDistricts,
       });
+
+      // The thesis, not just the ticket size. classifyTrack says "this is
+      // prime stock"; this says whether there is MONEY in it — priced below
+      // its street AND carrying the condition that explains why. Stamped
+      // onto rawPayload so the dashboard shows the evidence verbatim, and
+      // null for volume leads (a cheap flat on an expensive street is a
+      // flat). A human still makes the call — this is Steps, not Thoughts.
+      const primeOpportunity = primeOpportunityForTrack({
+        track,
+        postcode: lead.postcode,
+        valuePence: lead.estateValuePence,
+        areaAvgPence,
+        listingType: pd?.listingType ?? null,
+        text: `${lead.address} ${pd?.summary ?? ''}`,
+        primeDistricts: founderPrimeDistricts,
+      });
+      if (primeOpportunity) {
+        enrichedRaw = { ...(enrichedRaw ?? {}), primeOpportunity };
+      }
 
       const scoutLead: ScoutLead = {
         runDate,

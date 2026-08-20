@@ -26,6 +26,32 @@ export type WhatsNewEntry = {
 /** Newest first. The popup shows index 0. */
 export const WHATS_NEW: WhatsNewEntry[] = [
   {
+    id: '2026-08-21-prime-scout-thesis',
+    date: '2026-08-21',
+    emoji: '🎯',
+    title: 'The prime scout now spots the money, not just the price tag',
+    intro:
+      'Prime leads are judged on the actual strategy: priced below their own street AND needing the work that explains why. And your prime areas now mean it.',
+    bullets: [
+      {
+        emoji: '⭐',
+        text: 'Leads that fit the thesis wear a "Prime opportunity · N% under street" badge, with the evidence spelled out on the lead page.',
+      },
+      {
+        emoji: '🗺️',
+        text: 'Mark ANY area as prime and the classifier honours it — your geography extends the built-in London list, never loses to it.',
+      },
+      {
+        emoji: '🌆',
+        text: 'Ten London prime districts seeded and scanning daily: Battersea, Balham, Tooting, Wandsworth, Clapham, Streatham, Fulham, East Dulwich, Dulwich Village and Herne Hill.',
+      },
+      {
+        emoji: '🔧',
+        text: 'Five areas were silently scanning dead postcodes (SW3, S17, M19, M20, SK5) — all repaired, so tomorrow morning is the first fully-working scout run in a while.',
+      },
+    ],
+  },
+  {
     id: '2026-08-04-receiverships-and-allsop',
     date: '2026-08-04',
     emoji: '🕵️',
@@ -43,7 +69,7 @@ export const WHATS_NEW: WhatsNewEntry[] = [
       },
       {
         emoji: '⚖️',
-        text: 'Receivership deals get one extra legal check: **validate the receiver\'s appointment** before exchange — an invalid one can void the sale.',
+        text: "Receivership deals get one extra legal check: **validate the receiver's appointment** before exchange — an invalid one can void the sale.",
       },
       {
         emoji: '📚',
@@ -113,7 +139,7 @@ export const WHATS_NEW: WhatsNewEntry[] = [
       },
       {
         emoji: '📋',
-        text: '**Ant: a proposal awaits you in Strategy** — go Farringdon-first (Orbital\'s AI-native law firm) for conveyancing. Read it, pick the backup firm, decide who makes the call.',
+        text: "**Ant: a proposal awaits you in Strategy** — go Farringdon-first (Orbital's AI-native law firm) for conveyancing. Read it, pick the backup firm, decide who makes the call.",
       },
     ],
     cta: { label: 'Open the field network', href: '/network' },

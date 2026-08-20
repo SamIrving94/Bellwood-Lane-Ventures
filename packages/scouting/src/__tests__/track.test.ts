@@ -5,6 +5,8 @@ import {
   classifyTrack,
   isBlockText,
   outwardCode,
+  primeOpportunityForTrack,
+  toDistrictSet,
 } from '../track';
 
 describe('classifyTrack', () => {
@@ -218,5 +220,96 @@ describe('assessPrimeOpportunity', () => {
     expect(r.discountToArea).toBeNull();
     expect(r.isOpportunity).toBe(false);
     expect(r.reasons.join(' ')).toMatch(/not measurable/i);
+  });
+});
+
+describe('primeOpportunityForTrack — who gets the thesis applied', () => {
+  it('assesses every prime lead, and finds the opportunity when it is there', () => {
+    const r = primeOpportunityForTrack({
+      track: 'prime',
+      postcode: 'SE22 9EL',
+      valuePence: 800_000_00,
+      areaAvgPence: 1_100_000_00,
+      listingType: 'unmodernised-properties',
+    });
+    expect(r?.isOpportunity).toBe(true);
+  });
+
+  it('never assesses volume — a cheap flat on an expensive street is a flat', () => {
+    expect(
+      primeOpportunityForTrack({
+        track: 'volume',
+        postcode: 'N10 3SH',
+        valuePence: 300_000_00,
+        areaAvgPence: 1_400_000_00,
+      })
+    ).toBeNull();
+  });
+
+  it('assesses a block inside a prime district, not outside one', () => {
+    const base = {
+      track: 'block' as const,
+      valuePence: 1_200_000_00,
+      areaAvgPence: 1_600_000_00,
+      listingType: 'unmodernised-properties',
+    };
+    expect(
+      primeOpportunityForTrack({ ...base, postcode: 'E8 3DR' })
+    ).not.toBeNull();
+    expect(
+      primeOpportunityForTrack({ ...base, postcode: 'SK7 2AB' })
+    ).toBeNull();
+  });
+});
+
+describe('founder-marked prime districts extend the geography', () => {
+  it('promotes a high-value lead in a founder district the built-in list lacks', () => {
+    // The DA12 case: the founder marks Gravesend as a prime area. Before
+    // this, the scout scanned it daily while the classifier filed every
+    // lead as volume — the founder said "prime" and the code said no.
+    const founder = toDistrictSet(['DA12']);
+    expect(
+      classifyTrack({
+        valuePence: 750_000_00,
+        postcode: 'DA12 1AA',
+        primeDistricts: founder,
+      })
+    ).toBe('prime');
+    // Same lead without the founder's choice: volume, as before.
+    expect(
+      classifyTrack({ valuePence: 750_000_00, postcode: 'DA12 1AA' })
+    ).toBe('volume');
+  });
+
+  it('lets the street fallback work inside a founder district too', () => {
+    const founder = toDistrictSet(['SE13']);
+    expect(
+      classifyTrack({
+        valuePence: null,
+        postcode: 'SE13 5EY',
+        areaAvgPence: 800_000_00,
+        primeDistricts: founder,
+      })
+    ).toBe('prime');
+  });
+
+  it('assesses the opportunity for a block in a founder district', () => {
+    const founder = toDistrictSet(['DA12']);
+    const r = primeOpportunityForTrack({
+      track: 'block',
+      postcode: 'DA12 1AA',
+      valuePence: 900_000_00,
+      areaAvgPence: 1_300_000_00,
+      listingType: 'unmodernised-properties',
+      primeDistricts: founder,
+    });
+    expect(r?.isOpportunity).toBe(true);
+  });
+
+  it('toDistrictSet normalises case and spacing, and drops garbage', () => {
+    const set = toDistrictSet([' da12 ', 'se13', 'not a district', '']);
+    expect(set.has('DA12')).toBe(true);
+    expect(set.has('SE13')).toBe(true);
+    expect(set.size).toBe(2);
   });
 });
