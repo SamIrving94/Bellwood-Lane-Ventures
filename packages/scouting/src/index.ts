@@ -59,6 +59,7 @@ import {
   classifyTrack,
   isBlockText,
   primeOpportunityForTrack,
+  toDistrictSet,
 } from './track';
 
 /**
@@ -200,6 +201,7 @@ export { enrichRationaleWithLlm } from './rationale-llm';
 export {
   assessPrimeOpportunity,
   classifyTrack,
+  toDistrictSet,
   isBlockText,
   isPrimeDistrict,
   LONDON_PRIME_DISTRICTS,
@@ -281,6 +283,14 @@ export interface ScoutingPipelineOptions {
    * founder can retune the gate from the EvalConfig table without a deploy.
    */
   sourcingThreshold?: number;
+  /**
+   * Districts the founder has marked as prime-focus areas. EXTENDS the
+   * built-in LONDON_PRIME_DISTRICTS geography: an explicit founder choice is
+   * never overruled by the default list. Without this, marking DA12 as a
+   * prime area scanned it daily while the classifier filed every DA12 lead
+   * as volume.
+   */
+  primeDistricts?: string[];
   /** Whether to include raw payload in output. Default: true. */
   includeRawPayload?: boolean;
   /**
@@ -445,6 +455,7 @@ export async function runScoutingPipeline(
     minScore = 0,
     includeRawPayload = true,
     sourcedPropertyPostcodes = [],
+    primeDistricts = [],
     scanSeeds = [],
     shortLeaseSeeds,
     scanShortLeases = false,
@@ -512,6 +523,8 @@ export async function runScoutingPipeline(
   }
 
   // Combine legacy districts (best-effort) + new scan seeds (proper).
+  const founderPrimeDistricts = toDistrictSet(primeDistricts);
+
   type SeedCall = { label: string; postcode: string; radiusMiles?: number };
   const allSeeds: SeedCall[] = [
     ...sourcedPropertyPostcodes.map((pc) => ({ label: pc, postcode: pc })),
@@ -1429,6 +1442,7 @@ export async function runScoutingPipeline(
         propertyType: pd?.propertyType ?? null,
         postcode: lead.postcode,
         areaAvgPence,
+        primeDistricts: founderPrimeDistricts,
       });
 
       // The thesis, not just the ticket size. classifyTrack says "this is
@@ -1444,6 +1458,7 @@ export async function runScoutingPipeline(
         areaAvgPence,
         listingType: pd?.listingType ?? null,
         text: `${lead.address} ${pd?.summary ?? ''}`,
+        primeDistricts: founderPrimeDistricts,
       });
       if (primeOpportunity) {
         enrichedRaw = { ...(enrichedRaw ?? {}), primeOpportunity };

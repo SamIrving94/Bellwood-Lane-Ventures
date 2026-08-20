@@ -1,6 +1,6 @@
 # The Prime Scout: how it works, how to run it, how to tune it
 
-_Last verified against the code: 2026-08-20._
+_Last verified against the code: 2026-08-21._
 
 The prime book is a **London refurb-arbitrage play**: buy a period house
 below what its own street sells for, refurbish, sell into a deep
@@ -49,7 +49,13 @@ Both halves are load-bearing:
 - An unreadable postcode **never demotes**: a false `volume` silently
   buries a £1M opportunity; a false `prime` costs one founder glance.
 
-## 4. The district list
+## 4. The district list (and who wins when you disagree with it)
+
+**The founder's geography wins.** Any area marked ★ Prime in Settings →
+Scouting EXTENDS the built-in list: the cron passes those districts into the
+classifier, so marking DA12 prime means DA12 leads can classify prime, with
+the same £700k/street-average rules applied there. The built-in list is the
+default hypothesis, never a veto.
 
 `LONDON_PRIME_DISTRICTS` in `track.ts` holds 33 tier-1 districts chosen for
 **housing stock, not prestige**: zone 2–3 Victorian/Edwardian terrace belts
