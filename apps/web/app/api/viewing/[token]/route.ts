@@ -129,7 +129,7 @@ export async function POST(
           : null,
         report.redFlags ? `Red flags: ${report.redFlags}` : null,
         `Vendor: ${report.vendorMotivation}.`,
-        'Review the report, then confirm or adjust the offer within the 24-48h promise.',
+        'Review the report, then confirm or adjust the offer within the two-working-day promise.',
       ]
         .filter(Boolean)
         .join(' '),

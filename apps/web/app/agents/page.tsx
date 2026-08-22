@@ -207,7 +207,7 @@ function SampleOfferDocument() {
         </p>
       </div>
       <p className="mt-3 border-stone-300/60 border-t border-dashed pt-3 text-[10px] text-stone-500 leading-relaxed [font-family:var(--font-courier)]">
-        This offer is legally binding upon Kept for 72 hours from issue.
+        This offer is binding upon Kept for a week from issue.
       </p>
     </div>
   );
@@ -289,8 +289,8 @@ export default function AgentsPage() {
                 Buyer pulled out, mortgage refused, survey down-valued, chain
                 broken. We&rsquo;re the replacement buyer agents call before
                 they relist, not after weeks of trying. Send the address, we
-                view the property, and we aim to make an offer within 24 to
-                48 hours of viewing.
+                view the property, and we confirm an offer in writing within
+                two working days of viewing.
               </p>
               <div className="mt-8 flex flex-wrap items-center gap-x-7 gap-y-4">
                 <Button href="#refer">Send the address</Button>
@@ -560,8 +560,8 @@ export default function AgentsPage() {
               {
                 n: '04',
                 t: 'Confirmed offer in writing',
-                sla: 'We aim for 24–48 hours after viewing',
-                d: 'After viewing, we issue our confirmed purchase price in writing. This is the price we complete at. We share the survey notes that informed it. Locked for 72 hours so your client can take advice.',
+                sla: 'Within two working days of viewing',
+                d: 'After viewing, we issue our confirmed purchase price in writing. This is the price we complete at. We share the survey notes that informed it. Held for a week so your client can take advice.',
               },
               {
                 n: '05',
@@ -672,8 +672,7 @@ export default function AgentsPage() {
           <p className="mt-5 max-w-2xl text-[15px] text-stone-600 leading-relaxed">
             Five fields. An indicative figure appears as soon as you submit,
             pulled from HM Land Registry comps. We then view the property and
-            aim to make a confirmed, signed offer within 24 to 48 hours of
-            viewing.
+            confirm a signed offer within two working days of viewing.
           </p>
           <div className="mt-10">
             <AgentQuickForm />

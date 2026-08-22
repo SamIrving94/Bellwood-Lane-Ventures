@@ -89,7 +89,7 @@ export default function PartnerBriefPage() {
           {[
             {
               t: '1. Indicative offer, fast',
-              b: 'Submit the property details and receive an indicative offer range based on comparable sales and PropertyData. We aim to make a confirmed offer within 24–48 hours of viewing the property.',
+              b: 'Submit the property details and receive an indicative offer range based on comparable sales and PropertyData. We confirm an offer in writing within two working days of viewing the property.',
             },
             {
               t: '2. No price cuts',
@@ -147,8 +147,8 @@ export default function PartnerBriefPage() {
             by email, WhatsApp, or via our indicative offer tool.
           </li>
           <li>
-            <strong>2.</strong> We send you the indicative offer, and we aim to
-            confirm the price within 24–48 hours of viewing.
+            <strong>2.</strong> We send you the indicative offer, and we
+            confirm the price in writing within two working days of viewing.
           </li>
           <li>
             <strong>3.</strong> You present the offer to your seller using our

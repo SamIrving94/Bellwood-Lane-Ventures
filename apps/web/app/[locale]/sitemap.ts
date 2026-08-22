@@ -10,7 +10,11 @@ const base = new URL(
 
 const sitemap = async (): Promise<MetadataRoute.Sitemap> => [
   { url: new URL('/sell', base).href, lastModified: new Date() },
+  { url: new URL('/about', base).href, lastModified: new Date() },
   { url: new URL('/probate', base).href, lastModified: new Date() },
+  { url: new URL('/chain-break', base).href, lastModified: new Date() },
+  { url: new URL('/separation', base).href, lastModified: new Date() },
+  { url: new URL('/relocation', base).href, lastModified: new Date() },
   { url: new URL('/agents', base).href, lastModified: new Date() },
   { url: new URL('/save-the-sale', base).href, lastModified: new Date() },
   {

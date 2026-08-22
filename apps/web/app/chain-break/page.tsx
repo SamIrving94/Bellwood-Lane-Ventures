@@ -1,12 +1,14 @@
-import { permanentRedirect } from 'next/navigation';
+import { SituationLanding } from '@/components/situation-landing';
+import type { Metadata } from 'next';
 
-/**
- * /chain-break is preserved as a memorable URL but the canonical landing
- * is /save-the-sale, which covers the broader set of fall-through triggers
- * (mortgage refusal + survey down-valuations together account for 51% of
- * UK fall-throughs vs. chain breaks at 13%). Permanent (308) so any link
- * equity and printed collateral follow the canonical page.
- */
-export default function ChainBreakRedirect() {
-  permanentRedirect('/save-the-sale');
+export const revalidate = 300;
+
+export const metadata: Metadata = {
+  title: 'Your buyer pulled out. The chain doesn’t have to break · Kept',
+  description:
+    'When a buyer pulls out weeks from the finish, we step in: cash, no chain behind us, an offer in writing within two working days of viewing, and completion in as little as two weeks.',
+};
+
+export default function ChainBreakPage() {
+  return <SituationLanding situationKey="chain-break" />;
 }

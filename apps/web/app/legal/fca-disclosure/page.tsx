@@ -109,17 +109,15 @@ const SECTIONS: Array<{
   {
     id: 'contract',
     eyebrow: 'The offer itself',
-    title: 'What "legally binding" means here.',
+    title: 'What "binding" means here.',
     body: (
       <>
         <p>
           Our <em>confirmed</em> offers (issued in writing after a physical
-          viewing) are legally binding upon us for 72 hours from the issue
-          time-stamp. Our <em>indicative</em> offers (issued before viewing,
-          based on public data and comparables) are our honest starting point —
-          a price we intend to confirm at, subject only to viewing and the three
-          documented exceptions. During the 72-hour confirmed window, we may not
-          withdraw without cause.
+          viewing) are binding upon us for seven days from the issue
+          time-stamp. During that week, we may not withdraw without cause. We
+          do not issue indicative offers: no figure reaches you before we have
+          viewed the property.
         </p>
         <p>
           The offer is <em>not</em> binding upon you until you sign

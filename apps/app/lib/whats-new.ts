@@ -26,6 +26,32 @@ export type WhatsNewEntry = {
 /** Newest first. The popup shows index 0. */
 export const WHATS_NEW: WhatsNewEntry[] = [
   {
+    id: '2026-08-22-homepage-v3-situation-pages',
+    date: '2026-08-22',
+    emoji: '🏡',
+    title: 'The new homepage is live, and every reason to sell has its own page',
+    intro:
+      'The signed-off design is in production: new hero with the threshold photo and wax seal, the four-step offer form, and a landing page for each seller situation.',
+    bullets: [
+      {
+        emoji: '✨',
+        text: 'Homepage rebuilt end to end: "Selling your property shouldn\'t be painful. We make sure it isn\'t." with the promise, the honest sections and the 7-question FAQ.',
+      },
+      {
+        emoji: '🧭',
+        text: 'Four situation pages: /probate, /chain-break, /separation and /relocation, each with its own intake form. /about ("Kept\'s story") is live too.',
+      },
+      {
+        emoji: '🤝',
+        text: 'The promise is now: offer in writing within TWO WORKING DAYS of viewing, binding upon Kept for a WEEK. Every page, email and the backend lock all say the same thing.',
+      },
+      {
+        emoji: '🧹',
+        text: '"Legally binding", "indicative" and the old 24-48 hour wording are gone from every vendor-facing surface.',
+      },
+    ],
+  },
+  {
     id: '2026-08-21-prime-scout-thesis',
     date: '2026-08-21',
     emoji: '🎯',

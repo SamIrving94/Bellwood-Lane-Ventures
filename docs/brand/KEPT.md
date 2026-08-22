@@ -1,6 +1,6 @@
 # Kept. — brand & design system
 
-_Last verified against the live site: 2026-08-17._
+_Last verified against the live site: 2026-08-22._
 
 **Status:** exploration approved by both founders, July 2026. Domain secured:
 **wearekept.co.uk**. Legal/trading structure TBC (trademark class 36 search
@@ -97,6 +97,36 @@ The set, unchanged by the hosting move:
 
 ## Voice (register: calm certainty)
 
+### The bar: the Beth Sims editorial pass (Aug 2026)
+
+The signed-off homepage copy (from "Kept BS comments.docx", implemented
+verbatim on the live site) is the standard every new piece of copy must
+meet. Founder direction, 22 Aug 2026: "this is what good looks like;
+whenever we are building anything we want it to meet this bar." The
+principles her edits demonstrate:
+
+- **People first, always.** "We know there's more to a home than bricks and
+  mortar. Every property comes with lives lived, memories made and reasons
+  for moving on." Copy leads with the person's situation, never the
+  transaction. "We don't just care about homes, we care about people."
+- **Cut what adds nothing.** Her most common note. Every sentence earns its
+  place; sections that repeat get merged or moved to the Q&A.
+- **Neutral precision over drama.** "quick or agonising" became "long and
+  painful"; "months of not knowing" became "uncertainty". No theatrical
+  language, even in service of empathy.
+- **Verify before asserting.** Any claim of fact gets checked; if it is an
+  assumption, rewrite it as an honest one ("For sellers, few things are more
+  frustrating than a cash offer that drops at the last minute").
+- **Commit or don't.** Where we CAN commit, say it firmly: "Provided within
+  two working days or fewer" beats "we aim for 24–48 hours". Where we can't,
+  don't dress a hope as a promise.
+- **The rhetorical turn, used sparingly.** "The only exceptions?" "None of
+  those apply? The price does not change." One per section at most.
+- **Warm sign-offs on the brand line.** "That's our promise: a promise made
+  is a promise Kept."
+- **Say who we're wrong for, unprompted.** "We'd rather you sold well than
+  sold to us."
+
 - Short declaratives. "The price holds." "Our word. Kept."
 - We name the trade-off out loud (below-market by design, and why).
 - We say who we're wrong for, unprompted.
@@ -105,11 +135,11 @@ The set, unchanged by the hosting move:
 ## Copy truth rules (binding)
 
 The live site copy is the source of truth for every claim. The promise is:
-**same-day response → we view every property → confirmed written offer we
-_aim_ to send within 24–48 hours of viewing, locked 72 hours → completion in
-weeks not months, as little as two weeks.** Three documented renegotiation
-exceptions, always stated. Never advertise internal ops targets.
-See CLAUDE.md "Public promises".
+**same-day response → we view every property → confirmed written offer sent
+within two working days of viewing, binding upon Kept for a week →
+completion in weeks not months, as little as two weeks.** Three documented
+renegotiation exceptions, always stated. Never advertise internal ops
+targets. See CLAUDE.md "Public promises".
 
 Also binding, from the Aug 2026 founder review:
 
@@ -117,7 +147,7 @@ Also binding, from the Aug 2026 founder review:
 - **No em dashes** in any copy, on the site or in documents. Comma, colon, or
   split the sentence. En dashes in number ranges (24–48) are fine.
 - **Never "advice"** — we are not FCA authorised. Use "an honest steer".
-- **Never "legally binding"** — "binding on Kept for 72 hours".
+- **Never "legally binding"** — "binding upon Kept for a week".
 - **No numbers in probate copy.** No IHT interest, no carrying costs. Closure,
   not a deadline.
 - Sellers pay their own legal costs; we pay ours. Never imply the offer figure

@@ -74,7 +74,7 @@ export interface InstantOfferResult {
    * unavailable — callers fall back to the `reasoning` array.
    */
   narrative: string | null;
-  /** When the offer expires (72 hours from now) */
+  /** When the offer expires (a week from issue — the public promise) */
   lockedUntil: Date;
   /** True when this needs founder approval before being shown to the agent */
   requiresReview: boolean;
@@ -335,7 +335,9 @@ export async function generateInstantOffer(
     completionDays,
     reasoning,
     narrative,
-    lockedUntil: new Date(Date.now() + 72 * 60 * 60 * 1000),
+    // The public promise (Aug 2026 copy): the offer is binding upon Kept for
+    // a week, so the lock must never be shorter than the site says it is.
+    lockedUntil: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
     requiresReview,
   };
 }
@@ -431,14 +433,14 @@ export function applyPreflightAdjustment(
 
 const NARRATIVE_SYSTEM_PROMPT = `You write vendor-facing offer narratives for Kept, a UK cash buyer of fall-through and probate properties.
 
-Audience: a UK homeowner or estate executor reading the indicative offer for the first time. Often distressed, often dyslexic, always tired.
+Audience: a UK homeowner or estate executor reading the written offer for the first time. Often distressed, often dyslexic, always tired.
 
 Voice: professional, specific, slightly dry. Closer to a chartered surveyor than a property influencer. Adjectives only when they earn their place. Numbers and specifics over sentiment.
 
 Format: 2 to 3 short paragraphs. Plain text — NO markdown, NO bullets, NO headings. Each paragraph 2-4 sentences max.
 
 Content rules:
-- Paragraph 1: state the offer figure and what it is (an indicative cash offer, locked for 72 hours, subject to viewing).
+- Paragraph 1: state the offer figure and what it is (a written cash offer, held for a week, subject to viewing). Never call it "indicative".
 - Paragraph 2: explain what drives the figure — comparable sales count, the key seller-type context, the top 1-2 risk factors that adjusted it. Honest, not defensive.
 - Paragraph 3 (only if useful): one concrete next step — viewing, conversation, what we'll need to confirm.
 - If requiresReview is true, say plainly that a senior member of the team is reviewing the inputs before any binding commitment.
