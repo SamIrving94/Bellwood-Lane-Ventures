@@ -18,6 +18,10 @@
     "test": {
       "dependsOn": ["^test"]
     },
+    "@repo/database#build": {
+      "dependsOn": ["^build", "test"],
+      "cache": false
+    },
     "analyze": {
       "dependsOn": ["^analyze"]
     },
