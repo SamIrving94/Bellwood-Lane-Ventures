@@ -119,6 +119,14 @@ Marketer, Liaison) and their onboarding prompts are documented in
 - Browse data: `apps/studio` (`prisma studio`).
 - **Gotcha:** use `pnpm exec prisma` from inside `packages/database/` — a
   globally installed Prisma CLI may not match this schema.
+- **Gotcha — never cache platform-specific codegen.** Turbo's cache hash
+  ignores the OS, and the remote cache is shared between dev machines and
+  Vercel. On 22 Aug 2026 a Windows-built Prisma client was replayed into all
+  three production deploys and every DB call 500'd
+  (PrismaClientInitializationError: no rhel engine). Guards now in place:
+  `binaryTargets = ["native", "rhel-openssl-3.0.x"]` in the schema (every
+  generated client carries the Linux engine) and `@repo/database#build` is
+  `cache: false` in turbo.json. Don't remove either.
 
 ## Common commands (run from repo root)
 

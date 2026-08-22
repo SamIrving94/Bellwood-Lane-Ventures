@@ -32,6 +32,10 @@ nextConfig.outputFileTracingExcludes = {
     '**/__tests__/**',
     '**/*.test.*',
     '**/*.spec.*',
+    // The Prisma client is generated with both native and rhel binary
+    // targets (see packages/database/prisma/schema.prisma); the lambda only
+    // ever needs the rhel engine.
+    '**/query_engine-windows.dll.node',
   ],
 };
 

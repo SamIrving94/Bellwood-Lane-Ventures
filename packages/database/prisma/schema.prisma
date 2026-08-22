@@ -5,6 +5,15 @@ generator client {
   provider        = "prisma-client-js"
   previewFeatures = ["driverAdapters"]
   output          = "../generated/client"
+  // "native" for wherever generate runs (Windows dev machines included) PLUS
+  // the Vercel lambda runtime. Both engines ship in every generated client,
+  // so a client generated on one platform still works on the other. This is
+  // load-bearing: on 22 Aug 2026 the Turbo remote cache replayed a
+  // Windows-built generated client into all three Vercel deploys (turbo's
+  // hash ignores the platform) and every DB call in production failed with
+  // PrismaClientInitializationError. See also turbo.json, which no longer
+  // caches this package's build for the same reason.
+  binaryTargets   = ["native", "rhel-openssl-3.0.x"]
 }
 
 datasource db {
