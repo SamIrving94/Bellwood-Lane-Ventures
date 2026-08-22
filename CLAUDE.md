@@ -173,6 +173,13 @@ Run a task for one workspace with a filter, e.g.
   (60-second figures, 4-hour signed offers) in vendor-facing, agent-facing,
   or marketing copy — internal ops targets may be faster but are never
   advertised. If docs and the live site disagree, the live site wins.
+- **Tone of voice — the Beth Sims bar** (founder direction, 22 Aug 2026).
+  The signed-off homepage copy is the standard all new copy must meet: people
+  first, cut what adds nothing, neutral precision over drama, verify claims
+  before asserting them, commit firmly or not at all, and say who we're wrong
+  for unprompted. The full principles live in `docs/brand/KEPT.md` § Voice —
+  read them before writing any vendor-facing, agent-facing, or marketing
+  copy.
 - **No indicative offers, and no figure on screen** (founder decision, Aug
   2026). We never put a price in front of a seller before viewing, and no
   generated figure is displayed at all — offers are reviewed by a person and

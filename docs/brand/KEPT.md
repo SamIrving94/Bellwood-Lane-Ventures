@@ -97,6 +97,36 @@ The set, unchanged by the hosting move:
 
 ## Voice (register: calm certainty)
 
+### The bar: the Beth Sims editorial pass (Aug 2026)
+
+The signed-off homepage copy (from "Kept BS comments.docx", implemented
+verbatim on the live site) is the standard every new piece of copy must
+meet. Founder direction, 22 Aug 2026: "this is what good looks like;
+whenever we are building anything we want it to meet this bar." The
+principles her edits demonstrate:
+
+- **People first, always.** "We know there's more to a home than bricks and
+  mortar. Every property comes with lives lived, memories made and reasons
+  for moving on." Copy leads with the person's situation, never the
+  transaction. "We don't just care about homes, we care about people."
+- **Cut what adds nothing.** Her most common note. Every sentence earns its
+  place; sections that repeat get merged or moved to the Q&A.
+- **Neutral precision over drama.** "quick or agonising" became "long and
+  painful"; "months of not knowing" became "uncertainty". No theatrical
+  language, even in service of empathy.
+- **Verify before asserting.** Any claim of fact gets checked; if it is an
+  assumption, rewrite it as an honest one ("For sellers, few things are more
+  frustrating than a cash offer that drops at the last minute").
+- **Commit or don't.** Where we CAN commit, say it firmly: "Provided within
+  two working days or fewer" beats "we aim for 24–48 hours". Where we can't,
+  don't dress a hope as a promise.
+- **The rhetorical turn, used sparingly.** "The only exceptions?" "None of
+  those apply? The price does not change." One per section at most.
+- **Warm sign-offs on the brand line.** "That's our promise: a promise made
+  is a promise Kept."
+- **Say who we're wrong for, unprompted.** "We'd rather you sold well than
+  sold to us."
+
 - Short declaratives. "The price holds." "Our word. Kept."
 - We name the trade-off out loud (below-market by design, and why).
 - We say who we're wrong for, unprompted.

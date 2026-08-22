@@ -3,11 +3,13 @@
 import { useState } from 'react';
 
 /**
- * The homepage offer form — four short steps, per the Aug 2026 design
- * handoff. Steps 1–2 (address, name/phone) are the handoff's design; steps
- * 3–4 complete the journey the labels promise ("One of four…"), collecting
- * the minimum the existing /api/quote contract requires: property type,
- * situation, and the email the written offer is sent to.
+ * The homepage offer form — five short steps. The Aug 2026 handoff designed
+ * the first two; the founder then asked (22 Aug) that the form keep
+ * capturing everything the old chat flow captured for pricing, so the AVM
+ * and the triage see the same inputs as before: property type, bedrooms,
+ * condition, timeline, situation, optional asking price and notes, and the
+ * contact details last. Every step is one screen of taps; nothing except
+ * address, property type, situation, name and email is required.
  *
  * No figure is ever shown on screen (founder decision, Aug 2026): the quote
  * engine still runs and stores its result, but the seller sees an
@@ -22,6 +24,30 @@ const PROPERTY_TYPES = [
   { label: 'Other', value: 'other' },
 ] as const;
 
+const BEDROOMS = [
+  { label: '1', value: 1 },
+  { label: '2', value: 2 },
+  { label: '3', value: 3 },
+  { label: '4', value: 4 },
+  { label: '5+', value: 5 },
+] as const;
+
+/** Condition on the same 1–10 scale the AVM has always consumed. */
+const CONDITIONS = [
+  { label: 'Excellent', value: 9 },
+  { label: 'Good', value: 7 },
+  { label: 'Liveable but dated', value: 5 },
+  { label: 'Needs work', value: 4 },
+  { label: 'Needs full renovation', value: 2 },
+] as const;
+
+const TIMELINES = [
+  { label: 'As soon as possible', value: 14 },
+  { label: 'One to two months', value: 45 },
+  { label: 'Three months or more', value: 90 },
+  { label: 'No fixed timeline', value: 0 },
+] as const;
+
 const SITUATIONS = [
   { label: 'Probate', value: 'probate' },
   { label: 'My buyer pulled out', value: 'chain_break' },
@@ -33,11 +59,18 @@ const SITUATIONS = [
 /** UK postcode anywhere in the address line — a plausible-postcode gate, per
  *  the handoff ("require a plausible UK postcode before advancing"). */
 const POSTCODE_RE = /([A-Z]{1,2}\d{1,2}[A-Z]?)\s*(\d[A-Z]{2})/i;
+const EMAIL_RE = /^\S+@\S+\.\S+$/;
+const NON_DIGITS_RE = /[^0-9]/g;
 
 const INPUT =
   'min-w-0 flex-1 rounded-[2px] border border-[#D9D0BC] bg-cream px-4 py-3.5 text-[16px] text-forest outline-none transition focus:border-leaf focus:shadow-[0_0_0_3px_rgba(46,125,91,0.15)]';
 const PILL =
   'inline-flex shrink-0 cursor-pointer items-center gap-2.5 whitespace-nowrap rounded-full bg-leaf px-7 py-3.5 font-semibold text-[15px] text-white transition hover:bg-leaf-dark disabled:cursor-not-allowed disabled:opacity-60';
+const CHIP =
+  'cursor-pointer rounded-full border px-4 py-2.5 text-[14px] transition';
+const CHIP_OFF =
+  'border-[#D9D0BC] bg-cream text-forest hover:border-leaf hover:bg-white';
+const CHIP_ON = 'border-leaf bg-leaf text-white';
 
 function StepLabel({ children }: { children: React.ReactNode }) {
   return (
@@ -47,16 +80,39 @@ function StepLabel({ children }: { children: React.ReactNode }) {
   );
 }
 
-type Step = 'address' | 'contact' | 'property' | 'situation' | 'done';
+function BackLink({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      className="cursor-pointer text-[13px] text-leaf underline underline-offset-[3px]"
+      onClick={onClick}
+      type="button"
+    >
+      Back
+    </button>
+  );
+}
+
+type Step =
+  | 'address'
+  | 'property'
+  | 'condition'
+  | 'situation'
+  | 'contact'
+  | 'done';
 
 export function OfferForm() {
   const [step, setStep] = useState<Step>('address');
   const [address, setAddress] = useState('');
-  const [name, setName] = useState('');
-  const [phone, setPhone] = useState('');
   const [propertyType, setPropertyType] = useState('');
+  const [bedrooms, setBedrooms] = useState<number | null>(null);
+  const [condition, setCondition] = useState<number | null>(null);
+  const [urgencyDays, setUrgencyDays] = useState<number | null>(null);
   const [situation, setSituation] = useState('');
   const [situationLabel, setSituationLabel] = useState('');
+  const [askingPrice, setAskingPrice] = useState('');
+  const [notes, setNotes] = useState('');
+  const [name, setName] = useState('');
+  const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
@@ -66,6 +122,7 @@ export function OfferForm() {
     setError(null);
     const m = address.match(POSTCODE_RE);
     const postcode = m ? `${m[1]} ${m[2]}`.toUpperCase() : '';
+    const askingDigits = askingPrice.replace(NON_DIGITS_RE, '');
     try {
       const res = await fetch('/api/quote', {
         method: 'POST',
@@ -74,11 +131,18 @@ export function OfferForm() {
           address,
           postcode,
           propertyType,
+          bedrooms: bedrooms ?? undefined,
+          condition: condition ?? undefined,
+          urgencyDays: urgencyDays || undefined,
           role: 'seller',
           situation,
           contactName: name,
           contactEmail: email,
           contactPhone: phone || undefined,
+          askingPricePence: askingDigits
+            ? Number(askingDigits) * 100
+            : undefined,
+          notes: notes.trim() || undefined,
           triggerLabel: situationLabel || undefined,
           submissionSource: 'homepage_offer_form',
         }),
@@ -99,8 +163,8 @@ export function OfferForm() {
   if (step === 'done') {
     return (
       <div
-        id="offer"
         className="scroll-mt-24 rounded-[2px] border border-leaf/40 bg-white p-6"
+        id="offer"
       >
         <StepLabel>Enquiry received</StepLabel>
         <p className="font-semibold font-serif text-[20px] text-forest">
@@ -118,24 +182,23 @@ export function OfferForm() {
 
   return (
     <div
-      id="offer"
       className="scroll-mt-24 rounded-[2px] border border-hair bg-white px-6 pt-5.5 pb-5"
+      id="offer"
     >
       {step === 'address' && (
         <div>
-          <StepLabel>One of four · start with the address</StepLabel>
+          <StepLabel>One of five · start with the address</StepLabel>
           <div className="flex flex-wrap gap-3">
             <input
-              type="text"
-              value={address}
-              onChange={(e) => setAddress(e.target.value)}
-              placeholder="House number and postcode"
               aria-label="House number and postcode"
               className={INPUT}
+              onChange={(e) => setAddress(e.target.value)}
+              placeholder="House number and postcode"
               style={{ minWidth: 210 }}
+              type="text"
+              value={address}
             />
             <button
-              type="button"
               className={PILL}
               onClick={() => {
                 if (!POSTCODE_RE.test(address)) {
@@ -145,117 +208,134 @@ export function OfferForm() {
                   return;
                 }
                 setError(null);
-                setStep('contact');
-              }}
-            >
-              Continue <span aria-hidden>→</span>
-            </button>
-          </div>
-          <p className="mt-3.5 text-[13px] text-stone-600 leading-normal">
-            Three questions after this. No figure until we&rsquo;ve stood in the
-            house.
-          </p>
-        </div>
-      )}
-
-      {step === 'contact' && (
-        <div>
-          <StepLabel>Two of four · where can we reach you?</StepLabel>
-          <div className="flex flex-wrap gap-3">
-            <input
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Your name"
-              aria-label="Your name"
-              className={INPUT}
-              style={{ minWidth: 140 }}
-            />
-            <input
-              type="tel"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              placeholder="Phone"
-              aria-label="Phone"
-              className={INPUT}
-              style={{ minWidth: 140 }}
-            />
-            <button
-              type="button"
-              className={PILL}
-              onClick={() => {
-                if (!name.trim()) {
-                  setError('A name helps us know who to ask for.');
-                  return;
-                }
-                setError(null);
                 setStep('property');
               }}
+              type="button"
             >
               Continue <span aria-hidden>→</span>
             </button>
           </div>
           <p className="mt-3.5 text-[13px] text-stone-600 leading-normal">
-            A real person reads it. Same-day response, Monday to Friday.{' '}
-            <button
-              type="button"
-              onClick={() => setStep('address')}
-              className="cursor-pointer text-[13px] text-leaf underline underline-offset-[3px]"
-            >
-              Back
-            </button>
+            Four quick questions after this. No figure until we&rsquo;ve stood
+            in the house.
           </p>
         </div>
       )}
 
       {step === 'property' && (
         <div>
-          <StepLabel>Three of four · what kind of property?</StepLabel>
+          <StepLabel>Two of five · what kind of property?</StepLabel>
           <div className="flex flex-wrap gap-2">
             {PROPERTY_TYPES.map((t) => (
               <button
+                aria-pressed={propertyType === t.value}
+                className={`${CHIP} ${propertyType === t.value ? CHIP_ON : CHIP_OFF}`}
                 key={t.label}
+                onClick={() => setPropertyType(t.value)}
                 type="button"
-                onClick={() => {
-                  setPropertyType(t.value);
-                  setStep('situation');
-                }}
-                className="cursor-pointer rounded-full border border-[#D9D0BC] bg-cream px-4 py-2.5 text-[14px] text-forest transition hover:border-leaf hover:bg-white"
               >
                 {t.label}
               </button>
             ))}
           </div>
-          <p className="mt-3.5 text-[13px] text-stone-600 leading-normal">
-            <button
-              type="button"
-              onClick={() => setStep('contact')}
-              className="cursor-pointer text-[13px] text-leaf underline underline-offset-[3px]"
-            >
-              Back
-            </button>
+          <p className="mt-4 mb-2 text-[13px] text-stone-600">
+            How many bedrooms?
           </p>
+          <div className="flex flex-wrap gap-2">
+            {BEDROOMS.map((b) => (
+              <button
+                aria-pressed={bedrooms === b.value}
+                className={`${CHIP} ${bedrooms === b.value ? CHIP_ON : CHIP_OFF}`}
+                key={b.label}
+                onClick={() => setBedrooms(b.value)}
+                type="button"
+              >
+                {b.label}
+              </button>
+            ))}
+          </div>
+          <div className="mt-4 flex items-center gap-4">
+            <button
+              className={PILL}
+              onClick={() => {
+                if (!propertyType) {
+                  setError('Pick the type that fits best.');
+                  return;
+                }
+                setError(null);
+                setStep('condition');
+              }}
+              type="button"
+            >
+              Continue <span aria-hidden>→</span>
+            </button>
+            <BackLink onClick={() => setStep('address')} />
+          </div>
+        </div>
+      )}
+
+      {step === 'condition' && (
+        <div>
+          <StepLabel>Three of five · condition and timing</StepLabel>
+          <div className="flex flex-wrap gap-2">
+            {CONDITIONS.map((c) => (
+              <button
+                aria-pressed={condition === c.value}
+                className={`${CHIP} ${condition === c.value ? CHIP_ON : CHIP_OFF}`}
+                key={c.label}
+                onClick={() => setCondition(c.value)}
+                type="button"
+              >
+                {c.label}
+              </button>
+            ))}
+          </div>
+          <p className="mt-4 mb-2 text-[13px] text-stone-600">
+            How quickly does this need to move?
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {TIMELINES.map((t) => (
+              <button
+                aria-pressed={urgencyDays === t.value}
+                className={`${CHIP} ${urgencyDays === t.value ? CHIP_ON : CHIP_OFF}`}
+                key={t.label}
+                onClick={() => setUrgencyDays(t.value)}
+                type="button"
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
+          <div className="mt-4 flex items-center gap-4">
+            <button
+              className={PILL}
+              onClick={() => {
+                setError(null);
+                setStep('situation');
+              }}
+              type="button"
+            >
+              Continue <span aria-hidden>→</span>
+            </button>
+            <BackLink onClick={() => setStep('property')} />
+          </div>
         </div>
       )}
 
       {step === 'situation' && (
         <div>
-          <StepLabel>Four of four · why are you selling?</StepLabel>
+          <StepLabel>Four of five · why are you selling?</StepLabel>
           <div className="flex flex-wrap gap-2">
             {SITUATIONS.map((s) => (
               <button
+                aria-pressed={situationLabel === s.label}
+                className={`${CHIP} ${situationLabel === s.label ? CHIP_ON : CHIP_OFF}`}
                 key={s.label}
-                type="button"
                 onClick={() => {
                   setSituation(s.value);
                   setSituationLabel(s.label);
                 }}
-                aria-pressed={situationLabel === s.label}
-                className={`cursor-pointer rounded-full border px-4 py-2.5 text-[14px] transition ${
-                  situationLabel === s.label
-                    ? 'border-leaf bg-leaf text-white'
-                    : 'border-[#D9D0BC] bg-cream text-forest hover:border-leaf hover:bg-white'
-                }`}
+                type="button"
               >
                 {s.label}
               </button>
@@ -263,46 +343,102 @@ export function OfferForm() {
           </div>
           <div className="mt-4 flex flex-wrap gap-3">
             <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="Email — where the written offer goes"
-              aria-label="Email address"
+              aria-label="Asking price, if it is on the market (optional)"
               className={INPUT}
+              onChange={(e) => setAskingPrice(e.target.value)}
+              placeholder="Asking price, if it’s on the market (optional)"
               style={{ minWidth: 220 }}
+              type="text"
+              value={askingPrice}
             />
+          </div>
+          <textarea
+            aria-label="Anything we should know? (optional)"
+            className={`${INPUT} mt-3 w-full resize-none`}
+            onChange={(e) => setNotes(e.target.value)}
+            placeholder="Anything we should know? (optional)"
+            rows={2}
+            value={notes}
+          />
+          <div className="mt-3 flex items-center gap-4">
             <button
-              type="button"
               className={PILL}
-              disabled={sending}
               onClick={() => {
                 if (!situation) {
                   setError('Pick the reason that fits best.');
                   return;
                 }
-                if (!/^\S+@\S+\.\S+$/.test(email)) {
+                setError(null);
+                setStep('contact');
+              }}
+              type="button"
+            >
+              Continue <span aria-hidden>→</span>
+            </button>
+            <BackLink onClick={() => setStep('condition')} />
+          </div>
+        </div>
+      )}
+
+      {step === 'contact' && (
+        <div>
+          <StepLabel>Five of five · where can we reach you?</StepLabel>
+          <div className="flex flex-wrap gap-3">
+            <input
+              aria-label="Your name"
+              className={INPUT}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Your name"
+              style={{ minWidth: 140 }}
+              type="text"
+              value={name}
+            />
+            <input
+              aria-label="Phone"
+              className={INPUT}
+              onChange={(e) => setPhone(e.target.value)}
+              placeholder="Phone"
+              style={{ minWidth: 140 }}
+              type="tel"
+              value={phone}
+            />
+          </div>
+          <div className="mt-3 flex flex-wrap gap-3">
+            <input
+              aria-label="Email address"
+              className={INPUT}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="Email, where the written offer goes"
+              style={{ minWidth: 220 }}
+              type="email"
+              value={email}
+            />
+            <button
+              className={PILL}
+              disabled={sending}
+              onClick={() => {
+                if (!name.trim()) {
+                  setError('A name helps us know who to ask for.');
+                  return;
+                }
+                if (!EMAIL_RE.test(email)) {
                   setError(
                     'The written offer arrives by email, so we need a working address.'
                   );
                   return;
                 }
                 setError(null);
-                void submit();
+                submit();
               }}
+              type="button"
             >
               {sending ? 'Sending…' : 'Send to Kept'} <span aria-hidden>→</span>
             </button>
           </div>
           <p className="mt-3.5 text-[13px] text-stone-600 leading-normal">
-            We only use these to get back to you. Your details are never sold or
-            passed to anyone else.{' '}
-            <button
-              type="button"
-              onClick={() => setStep('property')}
-              className="cursor-pointer text-[13px] text-leaf underline underline-offset-[3px]"
-            >
-              Back
-            </button>
+            A real person reads it. Same-day response, Monday to Friday. We only
+            use these to get back to you; your details are never sold or passed
+            to anyone else. <BackLink onClick={() => setStep('situation')} />
           </p>
         </div>
       )}
