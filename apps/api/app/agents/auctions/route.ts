@@ -1,7 +1,7 @@
-import { database, Prisma } from '@repo/database';
-import { classifyTrack } from '@repo/scouting';
+import { Prisma, database } from '@repo/database';
+import { classifyAuctionTrack, toDistrictSet } from '@repo/scouting';
 import { NextResponse } from 'next/server';
-import { validateAgentAuth, unauthorizedResponse } from '../_lib/auth';
+import { unauthorizedResponse, validateAgentAuth } from '../_lib/auth';
 
 // Auction scraper pushes upcoming auction lots into the platform
 // Upserts AuctionLots + logs AgentEvent + creates FounderAction when a lot
@@ -54,17 +54,46 @@ export const POST = async (request: Request) => {
     );
   }
 
+  // The founder's prime geography (Settings → Scouting): lots guided just
+  // under the £700k floor inside these districts still classify prime,
+  // because auction guides are teaser floors and hammer lands 10–40% over.
+  // Best-effort — an unreadable setting only costs the in-district headroom.
+  let primeDistricts: ReadonlySet<string> = new Set();
+  try {
+    const areasSetting = await database.setting.findUnique({
+      where: { key: 'scouting.areas' },
+    });
+    if (areasSetting && Array.isArray(areasSetting.value)) {
+      primeDistricts = toDistrictSet(
+        (areasSetting.value as unknown[]).flatMap((raw) => {
+          if (!raw || typeof raw !== 'object') return [];
+          const a = raw as { track?: unknown; district?: unknown };
+          return a.track === 'prime' && typeof a.district === 'string'
+            ? [a.district]
+            : [];
+        })
+      );
+    }
+  } catch (err) {
+    console.warn('[agents/auctions] failed to read prime districts', err);
+  }
+
   // Upsert each lot keyed by (sourceHouse, sourceLotRef)
   let createdCount = 0;
   let updatedCount = 0;
   const trackByRef = new Map<string, 'volume' | 'prime' | 'block'>();
   for (const lot of lots) {
     // Two-track classification from the advertised words + guide price:
-    // block/portfolio language wins, then £700k+ guide = prime.
-    const track = classifyTrack({
-      valuePence: lot.guidePriceMaxPence ?? lot.guidePriceMinPence,
+    // block/portfolio language wins, then £700k+ guide = prime anywhere,
+    // then a near-floor guide inside a prime district (guides are floors,
+    // not values — see classifyAuctionTrack).
+    const track = classifyAuctionTrack({
+      guidePriceMinPence: lot.guidePriceMinPence,
+      guidePriceMaxPence: lot.guidePriceMaxPence,
       text: `${lot.address} ${lot.summary ?? ''}`,
       propertyType: lot.propertyType,
+      postcode: lot.postcode,
+      primeDistricts,
     });
     trackByRef.set(`${lot.sourceHouse}:${lot.sourceLotRef}`, track);
     const data = {
@@ -171,7 +200,7 @@ export const POST = async (request: Request) => {
         type: 'review_leads',
         priority: 'high',
         title: `${primeLots.length} prime/block auction lot${primeLots.length === 1 ? '' : 's'} — own-book candidates`,
-        description: `Auction scan surfaced ${blockCount} block/portfolio lot${blockCount === 1 ? '' : 's'} and ${primeLots.length - blockCount} £700k+ guide lot${primeLots.length - blockCount === 1 ? '' : 's'}. Principal-track candidates — review before the sale date. ${sample}`,
+        description: `Auction scan surfaced ${blockCount} block/portfolio lot${blockCount === 1 ? '' : 's'} and ${primeLots.length - blockCount} prime-guide lot${primeLots.length - blockCount === 1 ? '' : 's'} (£700k+ anywhere, or near-floor guides inside a prime district — auction guides run low). Principal-track candidates — review before the sale date. ${sample}`,
         agent: 'scout',
         agentEventId: event.id,
         metadata: {

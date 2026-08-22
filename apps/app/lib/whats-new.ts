@@ -26,10 +26,42 @@ export type WhatsNewEntry = {
 /** Newest first. The popup shows index 0. */
 export const WHATS_NEW: WhatsNewEntry[] = [
   {
+    id: '2026-08-22-prime-gold-dust-capture',
+    date: '2026-08-22',
+    emoji: '💎',
+    title: 'Prime gold dust can no longer slip through the net',
+    intro:
+      'Prime and block leads now ride OUTSIDE every daily limit and queue — captured the moment they appear, appraised first, and no ticket size is ever "too big".',
+    bullets: [
+      {
+        emoji: '🛡️',
+        text: 'Guaranteed capture: prime/block candidates (and probate notices in your prime areas) can no longer be squeezed out of the daily shortlist by volume leads.',
+      },
+      {
+        emoji: '💷',
+        text: 'The discount IS the deal: a house priced well under its own prime street — the deepest-margin case — now classifies as prime instead of hiding in volume.',
+      },
+      {
+        emoji: '🔨',
+        text: 'Auction guides are read as floors: near-£700k guides inside a prime area now flag as prime BEFORE the sale, and your marked prime areas count.',
+      },
+      {
+        emoji: '⚡',
+        text: 'Prime leads jump the appraisal queue (AVM and deep appraisal) — numbers ready the same day, not when the volume queue drains.',
+      },
+      {
+        emoji: '🔍',
+        text: 'Prime areas scan three extra distress lists: chain-free, cash-only and poor-EPC — the classic executor / stuck-owner / needs-work signals.',
+      },
+    ],
+    cta: { label: 'See your leads', href: '/pipeline?tab=leads' },
+  },
+  {
     id: '2026-08-22-homepage-v3-situation-pages',
     date: '2026-08-22',
     emoji: '🏡',
-    title: 'The new homepage is live, and every reason to sell has its own page',
+    title:
+      'The new homepage is live, and every reason to sell has its own page',
     intro:
       'The signed-off design is in production: new hero with the threshold photo and wax seal, the four-step offer form, and a landing page for each seller situation.',
     bullets: [

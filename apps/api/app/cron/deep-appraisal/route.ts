@@ -1,8 +1,8 @@
 import { env } from '@/env';
-import { recordCronHeartbeat } from '../_lib/heartbeat';
-import { database, Prisma } from '@repo/database';
-import { runDeepAppraisal, type DeepAppraisal } from '@repo/valuation';
+import { database } from '@repo/database';
+import { type DeepAppraisal, runDeepAppraisal } from '@repo/valuation';
 import { NextResponse } from 'next/server';
+import { recordCronHeartbeat } from '../_lib/heartbeat';
 
 // Pipeline takes ~15-25s per appraisal (HMLR + EPC + HPI + LLM). Allow
 // generous headroom for the per-run batch.
@@ -21,7 +21,10 @@ export const maxDuration = 800;
  *   - Recommendation, pre-action checklist, confidence, escalations
  *
  * Selection logic per run:
- *   1. STRONG ScoutLeads from last 24h that don't have an appraisal yet
+ *   1. ScoutLeads from last 24h without an appraisal: every prime/block
+ *      lead (their volume-scorer verdict understates them by construction,
+ *      so verdict is not a gate on those tracks — same rule as
+ *      /cron/lead-appraise), then STRONG volume leads
  *   2. AuctionLots within the next 14 days that don't have an appraisal yet
  *
  * Cap: MAX_APPRAISALS_PER_RUN — guards spend (~£0.06 per appraisal at
@@ -48,24 +51,32 @@ async function handle(request: Request) {
   const auctionHorizon = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);
 
   // ── Candidate selection ─────────────────────────────────────────────
-  const [strongLeads, upcomingLots] = await Promise.all([
+  const [leadCandidates, upcomingLots] = await Promise.all([
     database.scoutLead.findMany({
       where: {
-        verdict: 'STRONG',
         createdAt: { gte: since },
         // Passed leads are out — the founder's rejects, plus anything the
         // scout parked on a recorded dealbreaker. Deep appraisal is the most
         // expensive step in the pipeline; don't spend it on a lead already
         // ruled out.
         status: { not: 'passed' },
+        // Volume leads must have earned STRONG. Prime/block leads qualify
+        // regardless of verdict: the volume scorer is structurally hostile
+        // to them, and gating the deepest (most decision-grade) appraisal
+        // on that verdict meant prime stock never received one — the exact
+        // partial-edit failure the SW3 incident warns about.
+        OR: [{ verdict: 'STRONG' }, { track: { in: ['prime', 'block'] } }],
       },
       orderBy: { leadScore: 'desc' },
-      take: MAX_APPRAISALS_PER_RUN,
+      // Over-fetch so prime/block leads survive even when a busy day
+      // produces more STRONG volume leads than the per-run cap.
+      take: MAX_APPRAISALS_PER_RUN * 2,
       select: {
         id: true,
         address: true,
         postcode: true,
         leadType: true,
+        track: true,
         estimatedEquityPence: true,
         rawPayload: true,
       },
@@ -90,14 +101,20 @@ async function handle(request: Request) {
     }),
   ]);
 
-  // Build a unified candidate list (interleave by leverage — STRONG leads
-  // first, then auctions). Cap total at the per-run guard.
+  // Build a unified candidate list by leverage: prime/block leads first
+  // (scarce, time-sensitive, and their leadScore understates them), then
+  // STRONG volume leads, then auctions. Sort is stable, so within each group
+  // the leadScore-desc DB order holds. Cap total at the per-run guard.
+  const rankedLeads = [...leadCandidates].sort(
+    (a, b) => (a.track !== 'volume' ? 0 : 1) - (b.track !== 'volume' ? 0 : 1)
+  );
+
   type Candidate =
-    | { kind: 'lead'; lead: (typeof strongLeads)[number] }
+    | { kind: 'lead'; lead: (typeof leadCandidates)[number] }
     | { kind: 'auction'; lot: (typeof upcomingLots)[number] };
 
   const candidates: Candidate[] = [
-    ...strongLeads.map((lead) => ({ kind: 'lead' as const, lead })),
+    ...rankedLeads.map((lead) => ({ kind: 'lead' as const, lead })),
     ...upcomingLots.map((lot) => ({ kind: 'auction' as const, lot })),
   ].slice(0, MAX_APPRAISALS_PER_RUN);
 
@@ -137,9 +154,13 @@ async function handle(request: Request) {
         address: lead.address,
         postcode: lead.postcode,
         propertyTypeHint:
-          typeof pd?.propertyType === 'string' ? (pd.propertyType as string) : undefined,
+          typeof pd?.propertyType === 'string'
+            ? (pd.propertyType as string)
+            : undefined,
         bedroomsHint:
-          typeof pd?.bedrooms === 'number' ? (pd.bedrooms as number) : undefined,
+          typeof pd?.bedrooms === 'number'
+            ? (pd.bedrooms as number)
+            : undefined,
         refurbishmentNotes:
           typeof pd?.summary === 'string' ? (pd.summary as string) : undefined,
         isAuction: false,
@@ -148,7 +169,8 @@ async function handle(request: Request) {
           if (t.includes('probate')) return 'probate';
           if (t.includes('chain')) return 'chain_break';
           if (t.includes('repos')) return 'repossession';
-          if (t.includes('short_lease') || t.includes('lease')) return 'short_lease';
+          if (t.includes('short_lease') || t.includes('lease'))
+            return 'short_lease';
           return 'standard';
         })(),
         estateValuePence: lead.estimatedEquityPence ?? undefined,
@@ -218,10 +240,8 @@ async function handle(request: Request) {
               listingUrl: listingUrl ?? null,
               appraisal,
               link:
-                cand.kind === 'lead'
-                  ? `/leads/${cand.lead.id}`
-                  : `/appraisals`,
-            }),
+                cand.kind === 'lead' ? `/leads/${cand.lead.id}` : `/appraisals`,
+            })
           ),
         },
       });
@@ -246,7 +266,9 @@ async function handle(request: Request) {
           produced,
           skippedDuplicate,
           failed,
-          strongLeadsConsidered: strongLeads.length,
+          leadsConsidered: leadCandidates.length,
+          primeLeadsConsidered: rankedLeads.filter((l) => l.track !== 'volume')
+            .length,
           auctionLotsConsidered: upcomingLots.length,
         },
       },

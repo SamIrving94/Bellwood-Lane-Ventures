@@ -19,6 +19,7 @@ import {
 import { getPricePaid } from '@repo/property-data/src/hmlr';
 import { getHousepriceIndex } from '@repo/property-data/src/hmlr-hpi';
 import {
+  SOURCED_LIST_TYPES,
   getAccountCredits,
   getDemographics,
   getEpcByPostcode,
@@ -58,6 +59,7 @@ import {
 import {
   classifyTrack,
   isBlockText,
+  isPotentialPrimeCapture,
   primeOpportunityForTrack,
   toDistrictSet,
 } from './track';
@@ -107,6 +109,87 @@ export function shortlistCutoff(
   }
 
   return { keepCount, tiesKept: keepCount - base };
+}
+
+export interface ShortlistSelection {
+  /** Aligned with the ranked input: true = keep (enrich + score) this one. */
+  keep: boolean[];
+  /** Prime/block capture candidates kept outside the volume competition. */
+  guaranteedKept: number;
+  /** Capture candidates dropped by the runaway guard — should be 0. */
+  guaranteedDropped: number;
+  /** Volume candidates kept via ranked competition (includes tie overflow). */
+  rankedKept: number;
+  tiesKept: number;
+  /** Score of the last volume candidate kept / best one dropped (logging). */
+  cutoffScore: number | undefined;
+  bestDroppedScore: number | undefined;
+  tieBandTruncated: boolean;
+}
+
+/**
+ * Choose which ranked candidates to spend enrichment credits on.
+ *
+ * Two doors in:
+ *
+ * - **Capture** (`guaranteed`): prime/block candidates — identified from free
+ *   signals by `isPotentialPrimeCapture` — are kept WITHOUT competing for the
+ *   volume slots. The provisional scorer is the volume scorer, and it is
+ *   structurally blind to ticket size; letting scarce prime stock fight £180k
+ *   terraces for slots is how a £2M house gets ranked out unseen. Capture is
+ *   bounded at `limit` EXTRA places purely as a runaway guard (a pathological
+ *   seed config, not a real day); hitting it is loudly reported so the cap
+ *   can never truncate in silence.
+ * - **Competition**: everything else goes through `shortlistCutoff` exactly
+ *   as before — top `limit` by provisional score, ties at the cutoff kept.
+ *
+ * `entries` must be sorted by provisional score, descending. Pure and
+ * exported so the pipeline and its tests share one implementation.
+ */
+export function selectShortlist(
+  entries: ReadonlyArray<{ provisionalScore: number; guaranteed: boolean }>,
+  limit: number
+): ShortlistSelection {
+  const keep: boolean[] = new Array(entries.length).fill(false);
+  const guaranteedCap = limit;
+  let guaranteedKept = 0;
+  let guaranteedDropped = 0;
+  const volume: Array<{ index: number; score: number }> = [];
+
+  entries.forEach((entry, i) => {
+    if (entry.guaranteed) {
+      // Sorted input ⇒ if the guard ever bites, it keeps the best-scoring
+      // capture candidates and drops the weakest.
+      if (guaranteedKept < guaranteedCap) {
+        keep[i] = true;
+        guaranteedKept++;
+      } else {
+        guaranteedDropped++;
+      }
+    } else {
+      volume.push({ index: i, score: entry.provisionalScore });
+    }
+  });
+
+  const volumeScores = volume.map((v) => v.score);
+  const { keepCount, tiesKept } = shortlistCutoff(volumeScores, limit);
+  for (const v of volume.slice(0, keepCount)) {
+    keep[v.index] = true;
+  }
+
+  const cutoffScore = keepCount > 0 ? volumeScores[keepCount - 1] : undefined;
+  const bestDroppedScore = volumeScores[keepCount];
+  return {
+    keep,
+    guaranteedKept,
+    guaranteedDropped,
+    rankedKept: keepCount,
+    tiesKept,
+    cutoffScore,
+    bestDroppedScore,
+    tieBandTruncated:
+      bestDroppedScore !== undefined && bestDroppedScore === cutoffScore,
+  };
 }
 
 /** Return the most-frequent value in an array (first wins on tie). */
@@ -200,13 +283,17 @@ export { sanitisePayload, auditProtectedFields } from './rbac';
 export { enrichRationaleWithLlm } from './rationale-llm';
 export {
   assessPrimeOpportunity,
+  AUCTION_GUIDE_HEADROOM,
+  classifyAuctionTrack,
   classifyTrack,
   toDistrictSet,
   isBlockText,
+  isPotentialPrimeCapture,
   isPrimeDistrict,
   LONDON_PRIME_DISTRICTS,
   MIN_MEANINGFUL_DISCOUNT,
   outwardCode,
+  PRIME_DISCOUNT_MIN_RATIO,
   PRIME_MIN_VALUE_PENCE,
   type DealTrackValue,
   type PrimeOpportunity,
@@ -302,9 +389,18 @@ export interface ScoutingPipelineOptions {
   /**
    * Scan seeds for PropertyData /sourced-properties. Each seed is a
    * full UK postcode (e.g. "M14 5LL") plus a radius in miles. The cron
-   * fires one /sourced-properties call per seed.
+   * fires one /sourced-properties call per seed. `isPrime` marks a seed
+   * the founder tracks as prime — those scan a WIDER set of distress
+   * lists (chain-free, cash-only, poor-EPC) because in prime districts
+   * they are the classic executor / stuck-owner / needs-work signals the
+   * prime book hunts for.
    */
-  scanSeeds?: Array<{ label?: string; postcode: string; radiusMiles: number }>;
+  scanSeeds?: Array<{
+    label?: string;
+    postcode: string;
+    radiusMiles: number;
+    isPrime?: boolean;
+  }>;
   /**
    * Full UK postcodes to scan for short-lease leads (PropertyData /freeholds).
    * When omitted, the postcodes from `scanSeeds` are reused. Pass an explicit
@@ -385,6 +481,11 @@ export interface ScoutingPipelineResult {
     afterDedupe: number;
     /** Candidates dropped by the cap — ranked out, never enriched. */
     droppedByCap: number;
+    /**
+     * Prime/block capture candidates guaranteed a shortlist slot outside the
+     * volume competition — the leads the per-run limit does NOT apply to.
+     */
+    primeGuaranteed: number;
     /**
      * Extra candidates kept because they tied with the cutoff score. Cutting
      * mid-tie is arbitrary, so the shortlist extends past `limit` (bounded)
@@ -525,15 +626,34 @@ export async function runScoutingPipeline(
   // Combine legacy districts (best-effort) + new scan seeds (proper).
   const founderPrimeDistricts = toDistrictSet(primeDistricts);
 
-  type SeedCall = { label: string; postcode: string; radiusMiles?: number };
+  type SeedCall = {
+    label: string;
+    postcode: string;
+    radiusMiles?: number;
+    isPrime?: boolean;
+  };
   const allSeeds: SeedCall[] = [
     ...sourcedPropertyPostcodes.map((pc) => ({ label: pc, postcode: pc })),
     ...scanSeeds.map((s) => ({
       label: s.label ?? s.postcode,
       postcode: s.postcode,
       radiusMiles: s.radiusMiles,
+      isPrime: s.isPrime === true,
     })),
   ];
+
+  // Prime seeds scan every distress list except the two covered by dedicated
+  // scouts (auction lots by @repo/auctions, short leases by the short-lease
+  // scout). The three lists this adds over the volume default — chain-free,
+  // cash-buyers-only, poor-EPC — are the classic prime-district signals:
+  // executor sales sit chain-free, unmortgageable wrecks go cash-only, and
+  // poor-EPC is one of the three condition badges the prime-opportunity
+  // thesis (see track.ts REFURB_LISTING_TYPES) keys on — a badge that could
+  // otherwise never arrive, because the default list doesn't request it.
+  // Cost: ~3 extra credits + ~8s per prime seed per run, each call cached 24h.
+  const PRIME_SEED_LISTS = SOURCED_LIST_TYPES.filter(
+    (t) => t !== 'auction-properties' && t !== 'short-lease-properties'
+  );
 
   // Postcode districts our scan seeds cover — used to keep Companies House
   // sources (charges/insolvency + dissolved) inside our patch.
@@ -681,6 +801,7 @@ export async function runScoutingPipeline(
       try {
         const properties = await getSourcedPropertiesMulti(seed.postcode, {
           radiusMiles: seed.radiusMiles,
+          ...(seed.isPrime ? { lists: PRIME_SEED_LISTS } : {}),
         });
         seedOutcomes.push({
           label: seed.label,
@@ -1150,47 +1271,73 @@ export async function runScoutingPipeline(
   // enrich are now the most promising in the pool rather than the first ones
   // off the wire. Same scorer, so ranking can't drift from final scoring.
   const ranked = candidates
-    .map((grant) => ({
-      grant,
-      provisionalScore: scoreLead(
-        {
-          ...baseFromProbateLead(grant),
-          contactName: null,
-          contactPhone: null,
-          contactEmail: null,
-          enrichmentTier: 3 as const,
-          sourceTrail: grant.source,
-        },
-        null, // no price-paid lookup — costs credits, deferred to the shortlist
-        null, // no HPI lookup — same
-        signalsByRef.get(grant.probateRef),
-        scorerConfig
-      ).total,
-    }))
+    .map((grant) => {
+      // Free-signal capture check — see isPotentialPrimeCapture. This must
+      // run BEFORE the cap, not after enrichment: the provisional scorer is
+      // the volume scorer, and prime stock loses that competition precisely
+      // because nothing in it credits ticket size. Text/type come from the
+      // listing payload when present (sourced leads); notice-only leads
+      // (probate, receivership, charges) are judged on postcode + value.
+      const pd = (
+        grant as {
+          propertyData?: {
+            summary?: string | null;
+            propertyType?: string | null;
+          };
+        }
+      ).propertyData;
+      return {
+        grant,
+        guaranteed: isPotentialPrimeCapture({
+          valuePence: grant.estateValuePence,
+          text: `${grant.address} ${pd?.summary ?? ''}`,
+          propertyType: pd?.propertyType ?? null,
+          postcode: grant.postcode,
+          primeDistricts: founderPrimeDistricts,
+        }),
+        provisionalScore: scoreLead(
+          {
+            ...baseFromProbateLead(grant),
+            contactName: null,
+            contactPhone: null,
+            contactEmail: null,
+            enrichmentTier: 3 as const,
+            sourceTrail: grant.source,
+          },
+          null, // no price-paid lookup — costs credits, deferred to the shortlist
+          null, // no HPI lookup — same
+          signalsByRef.get(grant.probateRef),
+          scorerConfig
+        ).total,
+      };
+    })
     // Stable sort: equal-scoring candidates keep their original source order.
     .sort((a, b) => b.provisionalScore - a.provisionalScore);
 
-  // Keep ties at the cutoff rather than cutting mid-tie — see shortlistCutoff.
-  const { keepCount, tiesKept } = shortlistCutoff(
-    ranked.map((r) => r.provisionalScore),
-    limit
-  );
-  const cutoffScore = ranked[limit - 1]?.provisionalScore;
-
-  const rawGrants = ranked.slice(0, keepCount).map((r) => r.grant);
+  // Two doors in: prime/block capture candidates are kept OUTSIDE the volume
+  // competition (the per-run limit does not apply to them — scarce stock is
+  // captured first and judged after enrichment); everything else competes for
+  // `limit` slots with ties at the cutoff kept. See selectShortlist.
+  const selection = selectShortlist(ranked, limit);
+  const rawGrants = ranked
+    .filter((_, i) => selection.keep[i])
+    .map((r) => r.grant);
   const droppedByCap = ranked.length - rawGrants.length;
-  // True when the tie band itself was cut — the overflow cap bit, so the
-  // arbitrary-cut problem is still present, just further down. Worth saying.
-  const tieBandTruncated =
-    droppedByCap > 0 && ranked[keepCount]?.provisionalScore === cutoffScore;
+  const { tiesKept, tieBandTruncated } = selection;
+
+  if (selection.guaranteedDropped > 0) {
+    // The runaway guard bit. This should never happen on a real day — it
+    // means more prime-capture candidates than the entire volume limit.
+    console.warn(
+      `[scouting] PRIME CAPTURE TRUNCATED: ${selection.guaranteedDropped} prime/block capture candidates dropped by the runaway guard (${selection.guaranteedKept} kept). Review seed config — this cap must never bite in normal operation.`
+    );
+  }
 
   if (droppedByCap > 0) {
     // Never let a cap truncate silently — a run that discards most of what it
     // found should say so, and say what the cut cost.
-    const cutoff = ranked[rawGrants.length - 1]?.provisionalScore ?? 0;
-    const bestDropped = ranked[rawGrants.length]?.provisionalScore ?? 0;
     console.info(
-      `[scouting] shortlist: kept ${rawGrants.length}/${ranked.length} by provisional score (cutoff ${cutoff}, best dropped ${bestDropped}, ties kept ${tiesKept}${tieBandTruncated ? ', TIE BAND TRUNCATED at overflow cap' : ''}); ${droppedByCap} not enriched`
+      `[scouting] shortlist: kept ${rawGrants.length}/${ranked.length} (${selection.guaranteedKept} prime-captured outside the limit, ${selection.rankedKept} by provisional score; cutoff ${selection.cutoffScore ?? 0}, best dropped ${selection.bestDroppedScore ?? 0}, ties kept ${tiesKept}${tieBandTruncated ? ', TIE BAND TRUNCATED at overflow cap' : ''}); ${droppedByCap} not enriched`
     );
   }
 
@@ -1572,6 +1719,7 @@ export async function runScoutingPipeline(
       candidatePool: candidates.length,
       afterDedupe: rawGrants.length,
       droppedByCap,
+      primeGuaranteed: selection.guaranteedKept,
       tiesKept,
       postcodesScanned: allSeeds.length,
     },

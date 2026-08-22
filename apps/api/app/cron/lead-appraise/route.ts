@@ -2,6 +2,7 @@ import { env } from '@/env';
 import { screenPropertyCondition } from '@repo/auctions';
 import { type Prisma, database } from '@repo/database';
 import { getPropertySnapshot } from '@repo/property-data/src/propertydata';
+import { type ScoreFactor, type Verdict, combineScore } from '@repo/scouting';
 import {
   type ConditionLevel,
   appraiseDealFromAvm,
@@ -11,7 +12,6 @@ import {
   mergeValuationConfig,
   runAVM,
 } from '@repo/valuation';
-import { type ScoreFactor, type Verdict, combineScore } from '@repo/scouting';
 import { NextResponse } from 'next/server';
 import { recordCronHeartbeat } from '../_lib/heartbeat';
 
@@ -75,21 +75,37 @@ export const POST = async (request: Request) => {
   // generous batch ordered by score and filter in code to those not yet
   // appraised (avmFull absent), since Prisma can't easily query JSON-key
   // absence.
-  const candidates = await database.scoutLead.findMany({
-    where: {
-      status: { in: ['new', 'shortlisted', 'watching'] },
-      // Volume leads must have earned STRONG/VIABLE; prime and block leads
-      // are appraised regardless — the volume scorer is structurally hostile
-      // to them (relative equity bands, 5-bed damping), so verdict is not a
-      // meaningful gate on those tracks.
-      OR: [
-        { verdict: { in: ['STRONG', 'VIABLE'] } },
-        { track: { in: ['prime', 'block'] } },
-      ],
-    },
-    orderBy: { leadScore: 'desc' },
-    take: 60,
-  });
+  //
+  // Prime/block leads are fetched SEPARATELY and put at the FRONT of the
+  // queue. Two reasons, both learned the hard way: (1) the volume scorer is
+  // structurally hostile to them, so a single score-ordered window let a
+  // backlog of STRONG volume leads push every prime lead outside the take
+  // and it never got appraised at all; (2) prime stock is scarce and founder
+  // decisions on it are time-sensitive — its numbers must be ready the same
+  // day it is sourced, not whenever the volume queue drains.
+  const [primeCandidates, volumeCandidates] = await Promise.all([
+    database.scoutLead.findMany({
+      where: {
+        status: { in: ['new', 'shortlisted', 'watching'] },
+        track: { in: ['prime', 'block'] },
+      },
+      orderBy: { leadScore: 'desc' },
+      take: 30,
+    }),
+    database.scoutLead.findMany({
+      where: {
+        status: { in: ['new', 'shortlisted', 'watching'] },
+        track: 'volume',
+        // Volume leads must have earned STRONG/VIABLE; prime and block are
+        // appraised regardless — verdict is not a meaningful gate on those
+        // tracks (see above).
+        verdict: { in: ['STRONG', 'VIABLE'] },
+      },
+      orderBy: { leadScore: 'desc' },
+      take: 60,
+    }),
+  ]);
+  const candidates = [...primeCandidates, ...volumeCandidates];
 
   const pending = candidates.filter((lead) => {
     const raw = (lead.rawPayload ?? {}) as Record<string, unknown>;
@@ -144,7 +160,9 @@ export const POST = async (request: Request) => {
       // Prefer a precise (house-numbered) address when the listing gave one —
       // it lets the AVM match the exact EPC floor-area record for this house.
       const preciseAddress =
-        typeof pd?.preciseAddress === 'string' ? (pd.preciseAddress as string) : null;
+        typeof pd?.preciseAddress === 'string'
+          ? (pd.preciseAddress as string)
+          : null;
       const avm = await runAVM({
         postcode: lead.postcode,
         propertyType: avmPropertyType as never,
@@ -213,7 +231,7 @@ export const POST = async (request: Request) => {
           perSqm: valuationConfig.refurbPerSqm,
           flagCost: valuationConfig.refurbFlagCosts,
           defaultFloorAreaSqm: valuationConfig.defaultFloorAreaSqm,
-        },
+        }
       );
       avmFull.refurbEstimatePence = refurb.totalPence;
       avmFull.refurbLines = refurb.lines;
@@ -259,7 +277,8 @@ export const POST = async (request: Request) => {
               avmConfidence:
                 (avmFull.confidenceLevel as 'high' | 'medium' | 'low' | null) ??
                 null,
-              comparableCount: (avmFull.comparableCount as number | null) ?? null,
+              comparableCount:
+                (avmFull.comparableCount as number | null) ?? null,
               // 5+ beds ⇒ likely HMO/multi-let: a house AVM can't value it.
               // Except on the prime track — a 6-bed prime house is exactly
               // what that track exists for, and damping its ROI to zero
@@ -273,7 +292,7 @@ export const POST = async (request: Request) => {
               hasCriticalData: true,
               marketTrendLabel: lead.marketTrend ?? 'unknown',
               riskFlags: (raw.riskFlags as string[] | undefined) ?? [],
-            },
+            }
           );
           raw.scoreFactors = combined.factors;
           raw.rationale = combined.rationale;
@@ -290,7 +309,11 @@ export const POST = async (request: Request) => {
           scoreUpdate.verdict = combined.verdict;
         }
       } catch (err) {
-        console.warn('[cron/lead-appraise] stage-2 scoring failed', lead.id, err);
+        console.warn(
+          '[cron/lead-appraise] stage-2 scoring failed',
+          lead.id,
+          err
+        );
       }
 
       await database.scoutLead.update({
