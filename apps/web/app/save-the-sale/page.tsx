@@ -7,11 +7,11 @@ import { AgentQuickForm } from '../agents/components/agent-quick-form';
 export const metadata: Metadata = {
   title: 'Sale fallen through? · Kept',
   description:
-    'Buyer pulled out, mortgage refused, survey down-valued or chain broken? An indicative cash figure on screen, fast. We aim to make a signed offer within 24–48 hours of viewing. For UK estate agents.',
+    'Buyer pulled out, mortgage refused, survey down-valued or chain broken? An indicative cash figure on screen, fast. We make a signed offer within two working days of viewing. For UK estate agents.',
   openGraph: {
     title: 'Sale fallen through? · Kept',
     description:
-      'A cash figure on screen fast, and we aim to make a signed offer within 24–48 hours of viewing. For UK estate agents whose sale just collapsed.',
+      'A cash figure on screen fast, and we make a signed offer within two working days of viewing. For UK estate agents whose sale just collapsed.',
     type: 'website',
   },
 };
@@ -63,8 +63,8 @@ export default async function SaveTheSalePage({
             <p className="mt-7 max-w-md text-lg text-stone-600 leading-relaxed">
               Buyer pulled out, mortgage refused, survey down-valued, chain
               broken. Whatever&rsquo;s collapsed, we step in with an indicative
-              figure on screen, fast (drawn from HM Land Registry comps), and we
-              aim to make a signed offer within 24&ndash;48 hours of viewing the
+              figure on screen, fast (drawn from HM Land Registry comps), and
+              we make a signed offer within two working days of viewing the
               property.
             </p>
             <ul className="mt-8 space-y-3 text-[14px] text-stone-700">

@@ -585,7 +585,7 @@ export async function POST(request: Request) {
             '',
             `Indicative cash offer: £${offerGbp}.`,
             '',
-            'This is our honest starting point, based on comparable sales and public records. We need to view the property before we can confirm. We aim to send the confirmed price in writing within 24 to 48 hours of the viewing, and that is the price we complete at.',
+            'This is our honest starting point, based on comparable sales and public records. We need to view the property before we can confirm. We send the confirmed price in writing within two working days of the viewing, and that is the price we complete at.',
             '',
             'The price can only change for three reasons, all documented in writing:',
             '  1. A structural survey reveals a material defect not visible or disclosed at viewing.',

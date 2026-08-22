@@ -24,9 +24,9 @@ Three audiences, one chain:
    leases, problem properties. They value **speed, certainty, empathy** over
    squeezing the top price.
 2. **Introducers** — estate agents & solicitors sitting on a **collapsed sale**.
-   We respond same-day with an indicative figure, view fast, and put a
-   confirmed written offer on the table within 24–48 hours of viewing — so
-   they rescue a dead instruction and keep their fee.
+   We respond same-day, view fast, and put a confirmed written offer on the
+   table within two working days of viewing — so they rescue a dead
+   instruction and keep their fee.
 3. **Capital** — investor syndicate who fund the deals we choose not to buy
    ourselves, for a sourcing fee.
 
@@ -102,9 +102,9 @@ sourcing fee lets volume grow faster than our balance sheet.
 *Bet 1. Does the wedge actually pull?*
 - **KR2.1** **[3]** friendly agents live on `/save-the-sale`.
 - **KR2.2** **[10]** real fall-through submissions received.
-- **KR2.3** **≥90%** of submissions get a same-day indicative response and a
-  confirmed written offer **within 24–48 hours of viewing** (the public
-  promise; internal ops may target faster, but we never advertise faster).
+- **KR2.3** **≥90%** of submissions get a same-day response and a confirmed
+  written offer **within two working days of viewing** (the public promise;
+  internal ops may target faster, but we never advertise faster).
 - **KR2.4** **[1]** completion (or agreed offer) from the channel.
 
 ### O3 — Make the weekly pipeline review effortless
@@ -161,6 +161,10 @@ Saying no protects the bets.
 
 ## Changelog
 
+- **2026-08-22** — Promise updated with the signed-off homepage copy: the
+  confirmed written offer is sent within two working days of viewing and is
+  binding upon Kept for a week (backend `lockedUntil` matches). "Indicative"
+  removed from vendor-facing language.
 - **2026-07-24** — Promise language aligned with the rewritten live-site copy
   (the source of truth): view-first, same-day indicative, confirmed offer
   24–48h after viewing, completion in weeks not months. Vision softened to

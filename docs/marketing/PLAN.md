@@ -1,6 +1,6 @@
 # Bellwood Lane — Marketing Plan
 
-_Last verified against the live site: 2026-08-17._
+_Last verified against the live site: 2026-08-22._
 
 **Status:** May 2026 (v1).
 **Audience:** CEO, Marketer, Liaison, Designer, Counsel.
@@ -44,7 +44,7 @@ reads as confidence. This rule shapes every piece of marketing.
 | "Get cash today!" | "Some questions about how this works" |
 | "We buy any house" | "Here's what we won't buy" |
 | Stock smiling families | Anonymised real transactions |
-| Countdown-timer urgency | The 72-hour offer lock is enough |
+| Countdown-timer urgency | The one-week offer lock is enough |
 | "UK's most trusted" | "We're a small UK firm. Here are our credentials." |
 | Jargon | Plain English |
 

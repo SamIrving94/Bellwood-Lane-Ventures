@@ -1,6 +1,6 @@
 # Kept. — brand & design system
 
-_Last verified against the live site: 2026-08-17._
+_Last verified against the live site: 2026-08-22._
 
 **Status:** exploration approved by both founders, July 2026. Domain secured:
 **wearekept.co.uk**. Legal/trading structure TBC (trademark class 36 search
@@ -105,11 +105,11 @@ The set, unchanged by the hosting move:
 ## Copy truth rules (binding)
 
 The live site copy is the source of truth for every claim. The promise is:
-**same-day response → we view every property → confirmed written offer we
-_aim_ to send within 24–48 hours of viewing, locked 72 hours → completion in
-weeks not months, as little as two weeks.** Three documented renegotiation
-exceptions, always stated. Never advertise internal ops targets.
-See CLAUDE.md "Public promises".
+**same-day response → we view every property → confirmed written offer sent
+within two working days of viewing, binding upon Kept for a week →
+completion in weeks not months, as little as two weeks.** Three documented
+renegotiation exceptions, always stated. Never advertise internal ops
+targets. See CLAUDE.md "Public promises".
 
 Also binding, from the Aug 2026 founder review:
 
@@ -117,7 +117,7 @@ Also binding, from the Aug 2026 founder review:
 - **No em dashes** in any copy, on the site or in documents. Comma, colon, or
   split the sentence. En dashes in number ranges (24–48) are fine.
 - **Never "advice"** — we are not FCA authorised. Use "an honest steer".
-- **Never "legally binding"** — "binding on Kept for 72 hours".
+- **Never "legally binding"** — "binding upon Kept for a week".
 - **No numbers in probate copy.** No IHT interest, no carrying costs. Closure,
   not a deadline.
 - Sellers pay their own legal costs; we pay ours. Never imply the offer figure

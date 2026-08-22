@@ -219,8 +219,8 @@ function EnquiryReceived() {
         </p>
         <p>
           We do not put a price on a home we have not stood in. Once we have
-          viewed it, we aim to send our offer in writing within 24 to 48 hours,
-          held for 72 hours, with no obligation on you at all.
+          viewed it, we send our offer in writing within two working days,
+          held for a week, with no obligation on you at all.
         </p>
       </div>
     </div>

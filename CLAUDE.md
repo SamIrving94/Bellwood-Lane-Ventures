@@ -165,12 +165,14 @@ Run a task for one workspace with a filter, e.g.
   layer being edited. SW3 happened because the prime-track work edited the
   classifier and the seed script but never opened the area resolver.
 - **Public promises — live site copy is the source of truth.** The promise is:
-  same-day response → we view every property → confirmed written offer we
-  _aim_ to send within 24–48 hours of viewing, locked 72 hours → completion in
-  weeks not months, as little as two weeks. Never state faster SLAs (60-second
-  figures, 4-hour signed offers) in vendor-facing, agent-facing, or marketing
-  copy — internal ops targets may be faster but are never advertised. If docs
-  and the live site disagree, the live site wins.
+  same-day response → we view every property → confirmed written offer sent
+  within two working days of viewing, binding upon Kept for a week →
+  completion in weeks not months, as little as two weeks. (Updated with the
+  signed-off Aug 2026 homepage copy; the backend `lockedUntil` in
+  `packages/instant-offer` matches the week.) Never state faster SLAs
+  (60-second figures, 4-hour signed offers) in vendor-facing, agent-facing,
+  or marketing copy — internal ops targets may be faster but are never
+  advertised. If docs and the live site disagree, the live site wins.
 - **No indicative offers, and no figure on screen** (founder decision, Aug
   2026). We never put a price in front of a seller before viewing, and no
   generated figure is displayed at all — offers are reviewed by a person and

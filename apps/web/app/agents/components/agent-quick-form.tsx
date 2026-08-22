@@ -278,7 +278,7 @@ export function AgentQuickForm({
         <p className="text-stone-500 text-xs">
           Indicative offer on screen, fast.
           <br />
-          We aim to confirm a price in writing within 24–48 hours of viewing.
+          We confirm a price in writing within two working days of viewing.
         </p>
         <button
           type="submit"
@@ -362,15 +362,15 @@ function SuccessView({
             <p className="font-serif text-[13px] text-stone-400">
               Locked
             </p>
-            <p className="mt-1 text-stone-700">72 hours from now</p>
+            <p className="mt-1 text-stone-700">A week from now</p>
           </div>
         </div>
         <p className="mt-6 rounded-xl bg-soft px-5 py-4 text-[13px] text-stone-700 leading-relaxed">
           This is the indicative figure from our AVM (HM Land Registry comps,
           last 24 months, adjusted for HPI). We'll be in touch to arrange a
-          viewing, and we aim to send the confirmed price in writing to{' '}
-          <strong>{vendorEmail}</strong> within 24–48 hours of the viewing. The
-          price we confirm is the price we complete at.
+          viewing, and we send the confirmed price in writing to{' '}
+          <strong>{vendorEmail}</strong> within two working days of the
+          viewing. The price we confirm is the price we complete at.
         </p>
       </div>
 
