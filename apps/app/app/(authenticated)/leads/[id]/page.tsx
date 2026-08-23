@@ -8,6 +8,7 @@ import { FeedbackPanel } from '../../components/feedback-panel';
 import { Header } from '../../components/header';
 import { TriageButtons } from '../../components/triage-buttons';
 import { CalendlyButton } from './calendly-button';
+import { ConnectionsPanel } from './connections-panel';
 import { ConvertButton } from './convert-button';
 import { DealModelPanel } from './deal-model-panel';
 import { EnrichLeadButton } from './enrich-button';
@@ -1713,6 +1714,13 @@ const LeadDetailPage = async ({
                 }
               : null
           }
+        />
+
+        {/* Cross-source connections (entity-graph overlay, read-only) */}
+        <ConnectionsPanel
+          address={lead.address}
+          postcode={lead.postcode}
+          rawPayload={raw}
         />
 
         {/* Calendly */}

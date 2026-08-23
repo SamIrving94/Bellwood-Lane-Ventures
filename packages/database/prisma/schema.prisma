@@ -965,6 +965,67 @@ model Setting {
 }
 
 // ---------------------------------------------------------------------------
+// Entity graph — cross-source connection overlay (read-only enrichment layer)
+// ---------------------------------------------------------------------------
+// The scouting pipeline dedupes leads by address only, so the same
+// decision-maker appearing across sources (a company with charges on three
+// properties, the lender behind two receiverships) is invisible to the flat
+// ScoutLead table. These two models record entities (companies, properties,
+// people) and the observed relationships between them, keyed DETERMINISTICALLY
+// (company number, normalised address key) — never by fuzzy name-matching.
+//
+// This layer is deliberately read-only downstream: it feeds a "Connections"
+// panel on the lead detail page and NEVER changes scoring or gating. Whether
+// it earns a role in scoring is decided later, from measured hit-rates
+// (rawPayload.graphContext on stream-created leads), not upfront.
+
+model GraphEntity {
+  id   String @id @default(cuid())
+  kind String // 'company' | 'property' | 'person'
+
+  // Deterministic identity: company number for companies, the
+  // address-normalise key (houseNo|street|postcode) for properties, a
+  // source-scoped identifier for people. One row per real-world entity.
+  canonicalKey String
+  name         String
+  metadata     Json?
+
+  edgesFrom GraphEdge[] @relation("GraphEdgeFrom")
+  edgesTo   GraphEdge[] @relation("GraphEdgeTo")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([kind, canonicalKey])
+  @@index([canonicalKey])
+}
+
+model GraphEdge {
+  id     String      @id @default(cuid())
+  fromId String
+  from   GraphEntity @relation("GraphEdgeFrom", fields: [fromId], references: [id], onDelete: Cascade)
+  toId   String
+  to     GraphEntity @relation("GraphEdgeTo", fields: [toId], references: [id], onDelete: Cascade)
+
+  kind String // 'charge_over' | 'insolvency' | 'lender_of' | 'appointed_over'
+
+  // Every edge carries auditable provenance: sourceRef is the stable id of
+  // the observation (charge id, notice id) and part of the dedup key, so
+  // re-processing the same event can never double-write; sourceTrail is the
+  // human-readable chain shown in the UI.
+  sourceRef   String
+  sourceTrail String
+  observedAt  DateTime
+  metadata    Json?
+
+  createdAt DateTime @default(now())
+
+  @@unique([fromId, toId, kind, sourceRef])
+  @@index([fromId])
+  @@index([toId])
+}
+
+// ---------------------------------------------------------------------------
 // LlmCallLog — per-call telemetry for every Claude (or future) LLM call
 // ---------------------------------------------------------------------------
 // Captures: which feature called it, which model was used, token spend,

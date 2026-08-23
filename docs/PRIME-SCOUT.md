@@ -1,6 +1,15 @@
 # The Prime Scout: how it works, how to run it, how to tune it
 
-_Last verified against the code: 2026-08-22._
+_Last verified against the code: 2026-08-23._
+
+> **Fast path (Aug 2026):** `/cron/ch-stream` drains the Companies House
+> Streaming API every 30 minutes for fresh charges/insolvencies on
+> property-SIC companies across ALL configured areas (prime and volume) —
+> lender-pressure leads land in minutes instead of the daily poll's ~24h.
+> Same scorer, same gate, same prime classification; the daily cron remains
+> the backstop. It also feeds the read-only entity graph behind the lead
+> page's Connections panel. Needs `CH_STREAM_KEY` (a separate Companies
+> House streaming registration) on bellwood-api.
 
 The prime book is a **London refurb-arbitrage play**: buy a period house
 below what its own street sells for, refurbish, sell into a deep
