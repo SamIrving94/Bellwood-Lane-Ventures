@@ -20,7 +20,8 @@ export type CronName =
   | 'pipeline-summary'
   | 'sla-alerts'
   | 'legal-chaser'
-  | 'deep-appraisal';
+  | 'deep-appraisal'
+  | 'ch-stream';
 
 // Max age (hours) between successful runs before the watchdog alerts. Tuned to
 // the documented daily schedules with head-room for timezone/retry jitter.
@@ -35,6 +36,9 @@ export const CRON_MAX_STALENESS_HOURS: Record<CronName, number> = {
   // gap, so the alert window must clear a full weekend.
   'legal-chaser': 80,
   'deep-appraisal': 28,
+  // Every-30-min schedule; heartbeats fire even on not-configured skips, so
+  // a few hours of silence really does mean the drain has stopped running.
+  'ch-stream': 3,
 };
 
 export type CronHeartbeat = {

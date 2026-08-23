@@ -421,7 +421,7 @@ export const POST = async (request: Request) => {
           achievablePoints: breakdown.achievablePoints,
         },
         ...(graphContext ? { graphContext } : {}),
-      } as Prisma.InputJsonValue,
+      } as unknown as Prisma.InputJsonValue,
     });
   }
 
@@ -510,7 +510,9 @@ export const POST = async (request: Request) => {
             restarted:
               chargesDrain.restartedFromLiveTail ||
               insolvencyDrain.restartedFromLiveTail,
-            errors: [chargesDrain.error, insolvencyDrain.error].filter(Boolean),
+            errors: [chargesDrain.error, insolvencyDrain.error].filter(
+              (e): e is string => typeof e === 'string'
+            ),
           },
         },
       });
