@@ -59,6 +59,38 @@ export type DealTrackValue = 'volume' | 'prime' | 'block';
 export const PRIME_MIN_VALUE_PENCE = 700_000_00;
 
 /**
+ * Floor for the DISCOUNTED-prime path, as a fraction of the area average.
+ *
+ * The £700k floor tests the lead's own asking price — but the deeper the
+ * discount, the LOWER that price, so the very best prime deals are the ones
+ * most likely to fall under the floor and be filed as volume. A derelict
+ * house on a £1.4M street asking £600k is not "below prime" — it is the
+ * entire refurb-arbitrage thesis with the margin already visible.
+ *
+ * So inside a prime-street context (area average ≥ the floor) a below-floor
+ * price still classifies prime when it is at least this fraction of the
+ * street average. 0.4 separates the two populations cleanly: a shell of a
+ * house trades around 40–70% of its street; a FLAT on that street trades
+ * around 20–35% of it. Backed up by the flat-language check below, since
+ * ticket size alone cannot always tell a wreck from a two-bed conversion.
+ *
+ * Ceiling-wise there is deliberately NO upper bound anywhere in this file:
+ * cornerstone investors back the prime book deal-by-deal, so a bigger number
+ * is never a reason to drop a lead (founder direction, Aug 2026).
+ */
+export const PRIME_DISCOUNT_MIN_RATIO = 0.4;
+
+/**
+ * Auction guide prices are marketing floors, not valuations — hammer prices
+ * routinely land 10–40% over guide. Inside a prime district a lot guided at
+ * ≥ 70% of the prime floor is therefore likely prime stock at the fall of
+ * the gavel, and worth the founder glance BEFORE the sale, when it can still
+ * be bought. Outside prime districts the plain ≥ floor test keeps its
+ * existing nationwide behaviour.
+ */
+export const AUCTION_GUIDE_HEADROOM = 0.7;
+
+/**
  * London districts where the buy-under-market → refurb → sell strategy works.
  *
  * Chosen for HOUSING STOCK, not prestige. What the strategy needs is a wide,
@@ -164,6 +196,16 @@ const OUTWARD_ONLY = /^([A-Z]{1,2}\d{1,2}[A-Z]?)$/;
  */
 const REFURB_TEXT =
   /\b(?:un-?modernised|unimproved|(?:needs?|requires?|requiring|in need of)\s+(?:full\s+|complete\s+|total\s+)?(?:modernisation|modernising|updating|renovation|renovating|refurbishment|repair)|renovation project|refurbishment project|doer[-\s]upper)\b/i;
+
+/**
+ * Single-flat language, for the discounted-prime path only. A below-floor
+ * price on a prime street is either a house in a state (the thesis) or an
+ * ordinary flat (not the thesis), and price ratio alone cannot always split
+ * them — a large conversion flat and a wrecked cottage can cost the same.
+ * Word-boundary matched; checked AFTER the block pattern, so "block of
+ * flats" never reaches this test.
+ */
+const FLAT_TEXT = /\b(?:flats?|apartments?|maisonettes?|studio)\b/i;
 
 /** True when listing text reads as a whole block / portfolio, not one home. */
 export function isBlockText(text: string | null | undefined): boolean {
@@ -289,6 +331,72 @@ export function classifyTrack(input: {
     return 'prime';
   }
 
+  // Has a value, but BELOW the floor — the discounted-prime path. The deeper
+  // the discount the lower the asking price, so a flat ≥£700k test buries
+  // precisely the deals with the most margin in them. On a prime street
+  // (average ≥ the floor), a price that is still house-shaped (≥ 40% of the
+  // street, and not flat language) is prime stock priced like a project —
+  // the gold-dust case this classifier exists to catch.
+  if (
+    typeof input.valuePence === 'number' &&
+    input.valuePence > 0 &&
+    typeof input.areaAvgPence === 'number' &&
+    input.areaAvgPence >= PRIME_MIN_VALUE_PENCE &&
+    input.valuePence >= input.areaAvgPence * PRIME_DISCOUNT_MIN_RATIO &&
+    !FLAT_TEXT.test(haystack)
+  ) {
+    return 'prime';
+  }
+
+  return 'volume';
+}
+
+/**
+ * Track classification for an AUCTION lot, from its guide price.
+ *
+ * Differs from `classifyTrack` in two deliberate ways:
+ *
+ * 1. **No geographic demotion.** An auction catalogue is already a curated
+ *    distress channel, and lots are scarce — a £700k+ guide anywhere in the
+ *    country keeps its long-standing prime badge (a false prime costs one
+ *    founder glance; a false volume buries a deal that sells at a fixed
+ *    date whether we saw it or not).
+ * 2. **Guides are floors, not values.** Auction guides are set low to fill
+ *    the room; hammer routinely lands 10–40% over. Inside a prime district
+ *    (built-in or founder-marked) a non-flat lot guided at ≥ 70% of the
+ *    prime floor is treated as prime, because that is what it will most
+ *    likely be by the fall of the gavel — and the whole point is to catch
+ *    it EARLY, while it can still be bought before the room does.
+ */
+export function classifyAuctionTrack(input: {
+  guidePriceMinPence?: number | null;
+  guidePriceMaxPence?: number | null;
+  /** Lot title/summary/address text, concatenated is fine. */
+  text?: string | null;
+  propertyType?: string | null;
+  postcode?: string | null;
+  /** Founder-marked prime districts (see isPrimeDistrict). */
+  primeDistricts?: ReadonlySet<string>;
+}): DealTrackValue {
+  const haystack = [input.text ?? '', input.propertyType ?? ''].join(' ');
+  if (isBlockText(haystack)) {
+    return 'block';
+  }
+
+  const guide = input.guidePriceMaxPence ?? input.guidePriceMinPence;
+  if (typeof guide !== 'number' || guide <= 0) {
+    return 'volume';
+  }
+  if (guide >= PRIME_MIN_VALUE_PENCE) {
+    return 'prime';
+  }
+  if (
+    isPrimeDistrict(input.postcode, input.primeDistricts) &&
+    guide >= PRIME_MIN_VALUE_PENCE * AUCTION_GUIDE_HEADROOM &&
+    !FLAT_TEXT.test(haystack)
+  ) {
+    return 'prime';
+  }
   return 'volume';
 }
 
@@ -400,6 +508,69 @@ export function assessPrimeOpportunity(input: {
  * Returns null when no assessment applies, so callers can stamp the payload
  * conditionally without re-encoding these rules.
  */
+/**
+ * Should this candidate be GUARANTEED a shortlist slot at sourcing time,
+ * before any paid enrichment?
+ *
+ * The shortlist ranks candidates with the volume scorer — a scorer that is
+ * structurally hostile to prime stock (relative equity bands, no credit for
+ * ticket size) — and the track classification that would exempt a prime lead
+ * from the gate only runs AFTER the shortlist, once the HMLR area average
+ * has been fetched. So on a busy day a £2M unmodernised house could be
+ * ranked out by £180k terraces before anything knew it was prime. This
+ * predicate closes that gap using only signals that are already free:
+ *
+ * - Anything that classifies prime/block on its own value + text — a £700k+
+ *   listing, a block anywhere.
+ * - A candidate with NO value of its own inside a prime district (built-in
+ *   or founder-marked). That is every probate notice, receivership and
+ *   Companies-House charge in the prime patch — provable as prime only
+ *   after the area-average lookup, which it must survive long enough to get.
+ * - A VALUED candidate in a prime district whose price is house-shaped
+ *   (≥ 40% of the prime floor, not flat language) but below the floor —
+ *   the discounted-prime cohort, provable only against the street average.
+ *
+ * Guaranteed candidates do not compete for the volume shortlist's slots and
+ * are never dropped by its cap — capture first, judge after enrichment.
+ * The false-positive cost is one lead's enrichment spend; the false-negative
+ * cost is silently burying the exact stock the prime book exists to buy.
+ */
+export function isPotentialPrimeCapture(input: {
+  valuePence?: number | null;
+  text?: string | null;
+  propertyType?: string | null;
+  postcode?: string | null;
+  primeDistricts?: ReadonlySet<string>;
+}): boolean {
+  const freeTrack = classifyTrack({
+    valuePence: input.valuePence,
+    text: input.text,
+    propertyType: input.propertyType,
+    postcode: input.postcode,
+    // Deliberately no area average at shortlist time — it costs credits.
+    areaAvgPence: null,
+    primeDistricts: input.primeDistricts,
+  });
+  if (freeTrack !== 'volume') {
+    return true;
+  }
+  if (!isPrimeDistrict(input.postcode, input.primeDistricts)) {
+    return false;
+  }
+  // In a prime district. No value → potential prime (the probate cohort).
+  if (input.valuePence === null || input.valuePence === undefined) {
+    return true;
+  }
+  // Valued below the floor → potential discounted prime, unless the price or
+  // the text says "flat". Mirrors classifyTrack's discounted-prime path with
+  // the floor itself standing in for the street average we don't yet have.
+  const haystack = [input.text ?? '', input.propertyType ?? ''].join(' ');
+  return (
+    input.valuePence >= PRIME_MIN_VALUE_PENCE * PRIME_DISCOUNT_MIN_RATIO &&
+    !FLAT_TEXT.test(haystack)
+  );
+}
+
 export function primeOpportunityForTrack(input: {
   track: DealTrackValue;
   postcode?: string | null;

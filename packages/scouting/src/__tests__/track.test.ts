@@ -1,9 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import {
+  AUCTION_GUIDE_HEADROOM,
+  PRIME_DISCOUNT_MIN_RATIO,
   PRIME_MIN_VALUE_PENCE,
   assessPrimeOpportunity,
+  classifyAuctionTrack,
   classifyTrack,
   isBlockText,
+  isPotentialPrimeCapture,
   outwardCode,
   primeOpportunityForTrack,
   toDistrictSet,
@@ -149,6 +153,212 @@ describe('classifyTrack — the street stands in for a missing value', () => {
         text: 'Freehold block of 6 flats',
       })
     ).toBe('block');
+  });
+});
+
+describe('classifyTrack — the discounted-prime path', () => {
+  it('promotes a below-floor house priced like a project on a prime street', () => {
+    // The gold-dust case: the deeper the discount, the LOWER the asking
+    // price — so a flat £700k floor buries exactly the deals with the most
+    // margin. £600k on a £1.4M street is the refurb-arbitrage thesis with
+    // the margin already visible, not a below-prime lead.
+    expect(
+      classifyTrack({
+        valuePence: 600_000_00,
+        postcode: 'N10 3SH',
+        areaAvgPence: 1_400_000_00,
+        text: '22 Fortis Green — in need of full modernisation',
+      })
+    ).toBe('prime');
+  });
+
+  it('still files a cheap flat on that street as volume', () => {
+    // Ratio: £580k is 41% of £1.4M — above PRIME_DISCOUNT_MIN_RATIO — so
+    // only the flat language keeps this out of the prime book.
+    expect(
+      classifyTrack({
+        valuePence: 580_000_00,
+        postcode: 'N10 3SH',
+        areaAvgPence: 1_400_000_00,
+        text: 'Flat 4, 22 Fortis Green',
+      })
+    ).toBe('volume');
+    expect(
+      classifyTrack({
+        valuePence: 580_000_00,
+        postcode: 'N10 3SH',
+        areaAvgPence: 1_400_000_00,
+        propertyType: 'apartment',
+      })
+    ).toBe('volume');
+  });
+
+  it('keeps the ratio floor: a price too far below the street is not a house', () => {
+    // £300k on a £1.4M street (21%) stays volume — the pinned flat case.
+    expect(
+      classifyTrack({
+        valuePence: Math.round(1_400_000_00 * PRIME_DISCOUNT_MIN_RATIO) - 100,
+        postcode: 'N10 3SH',
+        areaAvgPence: 1_400_000_00,
+      })
+    ).toBe('volume');
+  });
+
+  it('needs a prime street — an ordinary street does not promote a discount', () => {
+    expect(
+      classifyTrack({
+        valuePence: 300_000_00,
+        postcode: 'SE15 4TT',
+        areaAvgPence: 500_000_00,
+      })
+    ).toBe('volume');
+  });
+
+  it('never fires outside the prime geography', () => {
+    // Same numbers in Stockport: no refurb thesis there, stays volume.
+    expect(
+      classifyTrack({
+        valuePence: 600_000_00,
+        postcode: 'SK7 2AB',
+        areaAvgPence: 1_400_000_00,
+      })
+    ).toBe('volume');
+  });
+});
+
+describe('classifyAuctionTrack — guides are floors, not values', () => {
+  it('keeps the nationwide £700k+ prime badge with no geographic demotion', () => {
+    // An auction catalogue is a curated distress channel; a £750k guide in
+    // Leeds still deserves the founder glance before the sale date.
+    expect(
+      classifyAuctionTrack({
+        guidePriceMaxPence: 750_000_00,
+        postcode: 'LS5 3AB',
+        text: '14 Abbey View',
+      })
+    ).toBe('prime');
+  });
+
+  it('promotes a near-floor guide inside a prime district', () => {
+    // Guides run 10–40% under hammer. £550k guided in Battersea is prime
+    // stock at the fall of the gavel — catch it while it can still be bought.
+    const guide = Math.ceil(PRIME_MIN_VALUE_PENCE * AUCTION_GUIDE_HEADROOM);
+    expect(
+      classifyAuctionTrack({
+        guidePriceMinPence: guide,
+        postcode: 'SW11 3AB',
+        text: '9 Lavender Hill',
+      })
+    ).toBe('prime');
+  });
+
+  it('does not extend the headroom outside prime districts', () => {
+    expect(
+      classifyAuctionTrack({
+        guidePriceMinPence: 550_000_00,
+        postcode: 'M40 9QR',
+        text: '14 Alder Road',
+      })
+    ).toBe('volume');
+  });
+
+  it('does not extend the headroom to flats, and block language still wins', () => {
+    expect(
+      classifyAuctionTrack({
+        guidePriceMinPence: 550_000_00,
+        postcode: 'SW11 3AB',
+        propertyType: 'flat',
+      })
+    ).toBe('volume');
+    expect(
+      classifyAuctionTrack({
+        guidePriceMinPence: 300_000_00,
+        postcode: 'M40 9QR',
+        text: 'Freehold block of 6 flats',
+      })
+    ).toBe('block');
+  });
+
+  it('honours founder-marked prime districts for the headroom', () => {
+    const founder = toDistrictSet(['DA12']);
+    expect(
+      classifyAuctionTrack({
+        guidePriceMinPence: 550_000_00,
+        postcode: 'DA12 1AA',
+        primeDistricts: founder,
+      })
+    ).toBe('prime');
+  });
+
+  it('a lot with no guide at all is volume, not a guess', () => {
+    expect(
+      classifyAuctionTrack({ postcode: 'SW11 3AB', text: '9 Lavender Hill' })
+    ).toBe('volume');
+  });
+});
+
+describe('isPotentialPrimeCapture — guaranteed shortlist slots', () => {
+  it('captures anything already prime/block on free signals', () => {
+    expect(
+      isPotentialPrimeCapture({ valuePence: 900_000_00, postcode: 'SW11 3AB' })
+    ).toBe(true);
+    expect(
+      isPotentialPrimeCapture({
+        valuePence: 250_000_00,
+        postcode: 'M40 9QR',
+        text: 'Block of 6 flats',
+      })
+    ).toBe(true);
+  });
+
+  it('captures a valueless notice in a prime district — the probate cohort', () => {
+    // Provable as prime only after the HMLR area-average lookup, which runs
+    // AFTER the shortlist — so it must be captured to survive that long.
+    expect(
+      isPotentialPrimeCapture({ valuePence: null, postcode: 'N10 3SH' })
+    ).toBe(true);
+    expect(
+      isPotentialPrimeCapture({ valuePence: null, postcode: 'SK7 2AB' })
+    ).toBe(false);
+  });
+
+  it('captures a house-shaped below-floor price in a prime district', () => {
+    expect(
+      isPotentialPrimeCapture({
+        valuePence: 550_000_00,
+        postcode: 'SE22 8HP',
+        text: '14 Melbourne Grove — requires modernisation',
+      })
+    ).toBe(true);
+    // But not a flat, and not a price below even the discounted floor.
+    expect(
+      isPotentialPrimeCapture({
+        valuePence: 550_000_00,
+        postcode: 'SE22 8HP',
+        propertyType: 'flat',
+      })
+    ).toBe(false);
+    expect(
+      isPotentialPrimeCapture({
+        valuePence: 150_000_00,
+        postcode: 'SE22 8HP',
+      })
+    ).toBe(false);
+  });
+
+  it('honours founder-marked districts, and stays out of everything else', () => {
+    const founder = toDistrictSet(['DA12']);
+    expect(
+      isPotentialPrimeCapture({
+        valuePence: null,
+        postcode: 'DA12 1AA',
+        primeDistricts: founder,
+      })
+    ).toBe(true);
+    // An ordinary volume listing in a volume town is never captured.
+    expect(
+      isPotentialPrimeCapture({ valuePence: 180_000_00, postcode: 'M14 6NW' })
+    ).toBe(false);
   });
 });
 

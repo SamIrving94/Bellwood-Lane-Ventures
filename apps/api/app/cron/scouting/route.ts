@@ -56,7 +56,12 @@ export const POST = async (request: Request) => {
   // this rotation and are scanned every run instead — see below.
   const MAX_SEEDS_PER_RUN = 6;
 
-  type ScanSeed = { label?: string; postcode: string; radiusMiles: number };
+  type ScanSeed = {
+    label?: string;
+    postcode: string;
+    radiusMiles: number;
+    isPrime?: boolean;
+  };
   let scanSeeds: ScanSeed[] = [];
   let sourcedPropertyPostcodes: string[] = [];
   // Raw area objects + the ids we scanned this run — used to advance rotation.
@@ -127,6 +132,10 @@ export const POST = async (request: Request) => {
         label: a.label,
         postcode: a.seedPostcode,
         radiusMiles: a.radiusMiles,
+        // Prime seeds scan a wider distress-list set (chain-free, cash-only,
+        // poor-EPC) — the executor/stuck-owner/needs-work signals the prime
+        // book hunts. See runScoutingPipeline's PRIME_SEED_LISTS.
+        isPrime: a.isPrime,
       }));
       selectedAreaIds = selected.map((a) => a.id);
       // The founder's prime geography, from ALL prime-marked areas (not just
@@ -431,6 +440,9 @@ export const POST = async (request: Request) => {
           // here means the scan is finding far more than it can appraise.
           candidatePool: result.sources.candidatePool,
           droppedByCap: result.sources.droppedByCap,
+          // Prime/block capture candidates shortlisted OUTSIDE the volume
+          // limit — trendable evidence the capture door is actually firing.
+          primeGuaranteed: result.sources.primeGuaranteed,
         },
       },
     });
@@ -536,7 +548,7 @@ export const POST = async (request: Request) => {
           priority: 'high',
           status: 'pending',
           title: `${primeLeads.length} prime/block lead${primeLeads.length === 1 ? '' : 's'} found — own-book candidates`,
-          description: `Scout surfaced ${primeCount} prime (£700k+) and ${blockCount} block/portfolio lead${blockCount === 1 ? '' : 's'} today. These are principal-track candidates for the Kept book (architect refurb / multi-unit), not the investor feed — the volume scorer does not gate them, so read each one. ${sample}`,
+          description: `Scout surfaced ${primeCount} prime (£700k+ value, or priced-under-a-prime-street) and ${blockCount} block/portfolio lead${blockCount === 1 ? '' : 's'} today. These are principal-track candidates for the Kept book (architect refurb / multi-unit), not the investor feed — the volume scorer does not gate them, so read each one. ${sample}`,
           metadata: {
             source: 'cron_scouting',
             track: 'prime_block',

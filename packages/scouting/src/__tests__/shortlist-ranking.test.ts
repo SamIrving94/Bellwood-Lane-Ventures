@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { baseFromProbateLead } from '../enrichment';
-import { shortlistCutoff } from '../index';
+import { selectShortlist, shortlistCutoff } from '../index';
 import type { ProbateLead } from '../probate-data';
 import { scoreLead } from '../scorer';
 import { DEFAULT_SCORER_CONFIG } from '../scorer-config';
@@ -180,5 +180,94 @@ describe('shortlist tie handling', () => {
   it('handles an entirely tied pool below the limit', () => {
     const { kept } = shortlist([35, 35, 35], 10);
     expect(kept).toBe(3);
+  });
+});
+
+/**
+ * Prime capture at the shortlist.
+ *
+ * The provisional ranking uses the VOLUME scorer, which credits nothing about
+ * ticket size — so on a busy day a £2M unmodernised house lost the slot race
+ * to £180k terraces and was dropped before anything classified it prime. The
+ * capture door keeps prime/block candidates outside that competition: they do
+ * not consume volume slots, and the volume shortlist is unchanged by their
+ * presence. Cornerstone-investor backing means the per-run limit is
+ * deliberately NOT applied to prime stock (founder direction, Aug 2026).
+ */
+describe('selectShortlist — prime capture outside the volume competition', () => {
+  const entry = (provisionalScore: number, guaranteed = false) => ({
+    provisionalScore,
+    guaranteed,
+  });
+
+  it('keeps a low-scoring capture candidate a plain cut would drop', () => {
+    // 5 volume leads outscore the prime one; limit 3. Ranked order (desc).
+    const entries = [
+      entry(90),
+      entry(80),
+      entry(70),
+      entry(60),
+      entry(50),
+      entry(12, true), // the £2M house the volume scorer cannot see
+    ];
+    const s = selectShortlist(entries, 3);
+    expect(s.keep).toEqual([true, true, true, false, false, true]);
+    expect(s.guaranteedKept).toBe(1);
+    expect(s.rankedKept).toBe(3);
+  });
+
+  it('does not let capture candidates consume volume slots', () => {
+    // Two captures at the TOP of the ranking must not shrink the volume cut.
+    const entries = [
+      entry(95, true),
+      entry(90, true),
+      entry(80),
+      entry(70),
+      entry(60),
+      entry(50),
+    ];
+    const s = selectShortlist(entries, 3);
+    // Volume competition still keeps its full three: 80, 70, 60.
+    expect(s.keep).toEqual([true, true, true, true, true, false]);
+    expect(s.guaranteedKept).toBe(2);
+    expect(s.rankedKept).toBe(3);
+  });
+
+  it('keeps volume ties at the cutoff exactly as before', () => {
+    const entries = [
+      entry(90),
+      entry(35),
+      entry(35),
+      entry(35),
+      entry(10, true),
+    ];
+    const s = selectShortlist(entries, 2);
+    // 90 + the cutoff 35 + one tied 35 (overflow capped at ceil(2/2)=1),
+    // plus the capture riding outside the competition entirely.
+    expect(s.keep).toEqual([true, true, true, false, true]);
+    expect(s.tiesKept).toBe(1);
+    expect(s.tieBandTruncated).toBe(true);
+  });
+
+  it('bounds capture at the runaway guard and reports the truncation', () => {
+    // Pathological: more capture candidates than the entire limit. Sorted
+    // input means the best-scoring captures survive the guard.
+    const entries = Array.from({ length: 8 }, (_, i) => entry(80 - i, true));
+    const s = selectShortlist(entries, 3);
+    expect(s.guaranteedKept).toBe(3);
+    expect(s.guaranteedDropped).toBe(5);
+    expect(s.keep.slice(0, 3)).toEqual([true, true, true]);
+    expect(s.keep.slice(3)).toEqual([false, false, false, false, false]);
+  });
+
+  it('degrades to plain shortlistCutoff when nothing is guaranteed', () => {
+    const scores = [90, 80, 70, 60, 35, 35, 35, 35, 35, 10];
+    const s = selectShortlist(
+      scores.map((v) => entry(v)),
+      6
+    );
+    expect(s.keep.filter(Boolean).length).toBe(9); // ties come along
+    expect(s.tiesKept).toBe(3);
+    expect(s.guaranteedKept).toBe(0);
   });
 });

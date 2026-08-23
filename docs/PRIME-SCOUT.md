@@ -1,6 +1,6 @@
 # The Prime Scout: how it works, how to run it, how to tune it
 
-_Last verified against the code: 2026-08-21._
+_Last verified against the code: 2026-08-22._
 
 The prime book is a **London refurb-arbitrage play**: buy a period house
 below what its own street sells for, refurbish, sell into a deep
@@ -32,10 +32,13 @@ Both halves are load-bearing:
 
 | Stage | Where | What it does |
 |:--|:--|:--|
-| **Areas** | Settings → Scouting (`areas-actions.ts`) | Founder adds districts. Any real UK district resolves dynamically (postcodes.io); fakes are rejected at input by name. `track: 'prime'` areas are scanned **every run**, outside the 6-a-day volume rotation |
-| **Classify** | `packages/scouting/src/track.ts` → `classifyTrack` | `prime` when: inside a prime district AND (own value ≥ £700k, OR no value of its own and the **HMLR street average** ≥ £700k). The street fallback is what lets probate reach prime; every Gazette notice carries `estateValuePence: null` |
+| **Areas** | Settings → Scouting (`areas-actions.ts`) | Founder adds districts. Any real UK district resolves dynamically (postcodes.io); fakes are rejected at input by name. `track: 'prime'` areas are scanned **every run**, outside the 6-a-day volume rotation — and scan **three extra distress lists** (chain-free, cash-only, poor-EPC: the executor / stuck-owner / needs-work signals) |
+| **Capture** | `index.ts` → `isPotentialPrimeCapture` + `selectShortlist` | Prime/block candidates (and any valueless notice or house-shaped below-floor price in a prime district) are **guaranteed shortlist slots outside the volume limit** — the volume scorer can never rank them out before classification. Cornerstone-investor backing means no per-run limit applies to prime (founder direction, Aug 2026) |
+| **Classify** | `packages/scouting/src/track.ts` → `classifyTrack` | `prime` when, inside a prime district: own value ≥ £700k, OR no value of its own and the **HMLR street average** ≥ £700k, OR — the discounted-prime path — own value below the floor but ≥ 40% of a £700k+ street average and not flat-shaped. The street fallback is what lets probate reach prime; the discount path is what lets the deepest-margin deals (whose asking price is LOW precisely because they are gold dust) reach it |
 | **Assess** | `track.ts` → `assessPrimeOpportunity`, wired via `primeOpportunityForTrack` | Computes the thesis: `discountToArea` vs the street, condition from the PropertyData badge or listing text, `isOpportunity` when both hold. Stamped onto `rawPayload.primeOpportunity` |
 | **Gate** | `scorer-config.ts` | Prime and block **bypass** the sourcing threshold. A human decides |
+| **Appraise** | `cron/lead-appraise`, `cron/deep-appraisal` | Prime/block leads are fetched separately and **jump both appraisal queues** regardless of verdict — numbers ready the same day they are sourced, never behind the volume backlog |
+| **Auctions** | `track.ts` → `classifyAuctionTrack`, `/agents/auctions` | Guides are floors, not values: £700k+ guide = prime **anywhere** (no geographic demotion — the catalogue is already a distress channel), and inside a prime district a non-flat lot guided ≥ 70% of the floor is prime too. Founder-marked districts count |
 | **Surface** | `/leads`, `/pipeline`, lead detail | Badge upgrades to **"★ Prime opportunity · N% under street"** when the thesis holds; the detail page shows the evidence verbatim in the verdict card |
 
 ## 3. Who can be prime (and who structurally cannot)
@@ -87,8 +90,10 @@ pnpm tsx scripts/prime-audit.mts
 ## 6. Credit maths (why you start with --limit=10)
 
 Prime areas are scanned **every run and are not capped** (the volume pool is
-sliced to `MAX_SEEDS_PER_RUN = 6`). Each seed costs ~3 PropertyData credits
-per run across the seven list types.
+sliced to `MAX_SEEDS_PER_RUN = 6`). A volume seed sweeps seven list types;
+a prime seed sweeps **ten** (adds chain-free, cash-only, poor-EPC), so
+budget roughly ~40% more credits per prime seed than the table below —
+each call is cached 24h, so repeat probes inside a day are free.
 
 | Prime areas | Extra credits per run | Per month (daily run) |
 |--:|--:|--:|
@@ -109,8 +114,14 @@ or a slower prime rotation, never silence.
    that are really pricing wobble.
 3. **`PRIME_MIN_VALUE_PENCE`** (£700k). The ticket floor. Calibrated for
    the London exit; do not lower it to make prime "fire more". That is
-   what `isOpportunity` is for.
-4. **Condition language.** `REFURB_TEXT` in `track.ts`. Extend when real
+   what `isOpportunity` is for. There is deliberately **no ceiling**
+   anywhere: cornerstone investors back prime deal-by-deal, so a bigger
+   number is never a reason to drop a lead.
+4. **`PRIME_DISCOUNT_MIN_RATIO`** (0.40) and **`AUCTION_GUIDE_HEADROOM`**
+   (0.70), both in `track.ts`. The first separates a discounted house from
+   a flat on the same street; the second reflects how far under hammer
+   auction guides sit. Widen with evidence, not hope.
+5. **Condition language.** `REFURB_TEXT` in `track.ts`. Extend when real
    listings use phrasing it misses; every alternative is anchored, grouped,
    and tested.
 
@@ -137,3 +148,12 @@ or a slower prime rotation, never silence.
   #80 but never called by the pipeline; the scout knew what was prime but
   not whether there was money in it. Wired in the commit that added this
   document.
+- **The capture gap (22 Aug 2026):** the shortlist ranked candidates with
+  the volume scorer BEFORE track classification ran, so on a busy day a
+  prime lead could be ranked out by volume terraces and never classified at
+  all; the deepest-discount deals classified volume because their (low)
+  asking price sat under the £700k floor; auction guides were read as
+  values; and prime leads queued behind STRONG volume leads for both
+  appraisal crons — deep appraisal never saw them at all. All four fixed in
+  the prime-gold-dust-capture change: capture door at the shortlist,
+  discounted-prime path, guide headroom, prime-first appraisal queues.
