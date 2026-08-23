@@ -26,6 +26,29 @@ export type WhatsNewEntry = {
 /** Newest first. The popup shows index 0. */
 export const WHATS_NEW: WhatsNewEntry[] = [
   {
+    id: '2026-08-23-ch-stream-and-connections',
+    date: '2026-08-23',
+    emoji: '⚡',
+    title: 'Lender trouble now surfaces in minutes, not tomorrow',
+    intro:
+      'The scout now listens to the Companies House live stream — fresh charges and insolvencies on property companies in your patch land as leads within the half-hour. Plus: leads now show what we already know around them.',
+    bullets: [
+      {
+        emoji: '📡',
+        text: 'Live stream, every 30 minutes: a new charge or insolvency on a property company in your areas becomes a lead the same morning it is filed — the old daily check stays on as the safety net.',
+      },
+      {
+        emoji: '🚨',
+        text: 'Fresh catches get their own high-priority card — the office-holder clock is running, so you hear about it first.',
+      },
+      {
+        emoji: '🕸️',
+        text: 'New Connections panel on lead pages: the company behind a lead, its lender, and the OTHER properties it holds charges over — links no address list could show. Review-only; it never changes a score.',
+      },
+    ],
+    cta: { label: 'See your leads', href: '/pipeline?tab=leads' },
+  },
+  {
     id: '2026-08-22-prime-gold-dust-capture',
     date: '2026-08-22',
     emoji: '💎',

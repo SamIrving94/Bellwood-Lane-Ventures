@@ -9,6 +9,7 @@ import {
   summariseSourceHealth,
 } from '@repo/scouting';
 import { NextResponse, after } from 'next/server';
+import { recordChargeObservation } from '../_lib/entity-graph';
 import { recordCronHeartbeat } from '../_lib/heartbeat';
 import { mergeAreaProbes } from '../_lib/merge-area-probes';
 import {
@@ -354,6 +355,49 @@ export const POST = async (request: Request) => {
     createdCount = written.count;
   }
 
+  // ── Feed the entity graph (best-effort, read-only overlay) ───────────
+  // Company-flavoured sources (receiverships, CH charges/insolvency) carry
+  // deterministic company numbers — record company↔property↔lender edges so
+  // the lead detail page's Connections panel can surface cross-source links
+  // the address-only dedup can't see. A failure here (including the graph
+  // tables not yet existing) never affects the leads persisted above.
+  let graphWrites = 0;
+  for (const lead of result.leads) {
+    const raw = (lead.rawPayload ?? {}) as Record<string, unknown>;
+    const signal = (raw.receivershipSignal ??
+      raw.chargeSignal ??
+      raw.insolvencySignal) as
+      | {
+          companyNumber?: string | null;
+          companyName?: string | null;
+          lender?: string | null;
+          noticeId?: string | null;
+          chargeRef?: string | null;
+        }
+      | undefined;
+    if (!signal?.companyNumber) continue;
+    try {
+      await recordChargeObservation({
+        companyNumber: signal.companyNumber,
+        companyName: signal.companyName ?? signal.companyNumber,
+        address: lead.address,
+        postcode: lead.postcode,
+        lender: signal.lender ?? null,
+        kind:
+          raw.insolvencySignal || raw.receivershipSignal
+            ? 'insolvency'
+            : 'charge_over',
+        sourceRef: `scout:${signal.noticeId ?? signal.chargeRef ?? lead.address}`,
+        sourceTrail: lead.sourceTrail ?? lead.source,
+        observedAt: result.runDate,
+      });
+      graphWrites++;
+    } catch (err) {
+      console.warn('[cron/scouting] graph write failed', err);
+      break; // tables likely absent — don't warn once per lead
+    }
+  }
+
   // ── Advance area rotation + write back what the run learned ─────────
   // Because we select oldest-probed-first, stamping checkedAt pushes scanned
   // areas to the back of the queue — full coverage over
@@ -443,6 +487,8 @@ export const POST = async (request: Request) => {
           // Prime/block capture candidates shortlisted OUTSIDE the volume
           // limit — trendable evidence the capture door is actually firing.
           primeGuaranteed: result.sources.primeGuaranteed,
+          // Entity-graph edges recorded this run (overlay trial telemetry).
+          graphWrites,
         },
       },
     });

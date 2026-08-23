@@ -235,6 +235,27 @@ export type {
   ChDistressScoutResult,
   ChDistressScoutOptions,
 } from './companies-house-charges';
+export {
+  companyNumberFromResourceUri,
+  drainCompaniesHouseStream,
+  fetchCompanyCharges,
+  fetchCompanyProfile,
+  filterToDistricts,
+  isPropertyCompany,
+  leadTypeForInsolvencyCase,
+  minePropertiesFromParticulars,
+  parseChargeItem,
+  parseStreamLine,
+  PROPERTY_SIC_CODES,
+} from './ch-stream';
+export type {
+  ChChargeItem,
+  ChCompanyProfile,
+  ChStreamEvent,
+  ChStreamName,
+  MinedProperty,
+  StreamDrainResult,
+} from './ch-stream';
 export { fetchReceivershipLeads } from './receiverships';
 export type {
   ReceivershipRawLead,

@@ -73,6 +73,10 @@
       "schedule": "*/30 * * * *"
     },
     {
+      "path": "/cron/ch-stream",
+      "schedule": "*/30 * * * *"
+    },
+    {
       "path": "/cron/quote-ops",
       "schedule": "*/30 * * * *"
     },
