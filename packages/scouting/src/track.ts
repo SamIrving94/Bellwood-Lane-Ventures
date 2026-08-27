@@ -81,6 +81,28 @@ export const PRIME_MIN_VALUE_PENCE = 700_000_00;
 export const PRIME_DISCOUNT_MIN_RATIO = 0.4;
 
 /**
+ * The CAPTURE-TIME stand-in for the ratio above, used only by
+ * `isPotentialPrimeCapture` when a below-floor price must be judged BEFORE
+ * the street average exists (shortlist time, no HMLR lookup yet).
+ *
+ * Deliberately much tighter than PRIME_DISCOUNT_MIN_RATIO (founder
+ * direction, 27 Aug 2026: "be tighter on prime, much tighter"). The 0.4
+ * ratio is calibrated against a REAL street average (≥ £700k proven); at
+ * capture time the only anchor is the £700k floor itself, and 0.4 of THAT
+ * (£280k) guaranteed a slot to nearly every house-shaped listing in a prime
+ * district — 232 "prime" captures in one day, the runaway guard truncating
+ * daily, and the enrichment bill for 30 of them every run. At 0.75 (£525k)
+ * the guessed cohort is plausibly-prime only.
+ *
+ * What this does NOT change: real prime (≥ £700k own value), blocks, and
+ * valueless notices in prime districts (the probate cohort) capture exactly
+ * as before — and a £300k–£525k listing is not LOST, it competes for the
+ * volume shortlist and still classifies discounted-prime after enrichment
+ * against its real street average.
+ */
+export const PRIME_CAPTURE_VALUE_MIN_RATIO = 0.75;
+
+/**
  * Auction guide prices are marketing floors, not valuations — hammer prices
  * routinely land 10–40% over guide. Inside a prime district a lot guided at
  * ≥ 70% of the prime floor is therefore likely prime stock at the fall of
@@ -562,11 +584,13 @@ export function isPotentialPrimeCapture(input: {
     return true;
   }
   // Valued below the floor → potential discounted prime, unless the price or
-  // the text says "flat". Mirrors classifyTrack's discounted-prime path with
-  // the floor itself standing in for the street average we don't yet have.
+  // the text says "flat". Mirrors classifyTrack's discounted-prime path, but
+  // with a MUCH tighter ratio: the floor stands in for the street average we
+  // don't yet have, and guessing generously here is what flooded capture —
+  // see PRIME_CAPTURE_VALUE_MIN_RATIO.
   const haystack = [input.text ?? '', input.propertyType ?? ''].join(' ');
   return (
-    input.valuePence >= PRIME_MIN_VALUE_PENCE * PRIME_DISCOUNT_MIN_RATIO &&
+    input.valuePence >= PRIME_MIN_VALUE_PENCE * PRIME_CAPTURE_VALUE_MIN_RATIO &&
     !FLAT_TEXT.test(haystack)
   );
 }
