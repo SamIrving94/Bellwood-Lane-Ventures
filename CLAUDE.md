@@ -94,10 +94,12 @@ This is the most important custom surface. Two families of route handlers:
   `PAPERCLIP_API_KEY` is accepted as a legacy alias only.
 
 **Cron endpoints** — `apps/api/app/cron/<name>/route.ts`. Triggered on a schedule
-(Vercel cron). Examples: `scouting`, `pipeline-appraise`, `pipeline-outreach`,
+(Vercel cron). Examples: `pipeline-appraise`, `pipeline-outreach`,
 `pipeline-summary`, `sla-alerts`, `auction-scan`, `marketer-daily/weekly/monthly`,
 `event-poller`, `deep-appraisal`, `agent-prospecting`, `quote-ops`, `keep-alive`,
-`weekly-patterns`.
+`weekly-patterns`. **Exception:** `scouting` has NO schedule (founder decision,
+27 Aug 2026) — it is founder-triggered from Settings → Scouting ("Run scout
+now") to control PropertyData spend; same route, same CRON_SECRET auth.
 - **Auth:** `Authorization: Bearer <CRON_SECRET>` (checked inline in each route).
 - Long-running routes set `export const maxDuration = 300;` (Vercel Pro cap).
 

@@ -60,6 +60,14 @@ export function ScoutingPostcodesForm({ initialPostcodes }: Props) {
     startRunning(async () => {
       setStatus({ kind: 'idle' });
       const result = await triggerScoutingCron();
+      if (result.success && result.started) {
+        setStatus({
+          kind: 'cron',
+          message:
+            'Scout is running. A full sweep takes up to 10–13 minutes — new leads land on the Leads page and the review card appears in Actions when it finishes. No need to stay on this page.',
+        });
+        return;
+      }
       if (result.success && result.result) {
         const r = result.result as {
           fetched?: number;
@@ -68,7 +76,11 @@ export function ScoutingPostcodesForm({ initialPostcodes }: Props) {
           strongLeads?: number;
           sources?: Record<string, number>;
           sourceErrors?: Record<string, string>;
+          truncatedByDeadline?: string[];
         };
+        const truncBit = r.truncatedByDeadline?.length
+          ? ` Ran out of time for: ${r.truncatedByDeadline.join(', ')} — leads kept, some with less detail.`
+          : '';
         const errBits = r.sourceErrors
           ? Object.entries(r.sourceErrors)
               .filter(([, v]) => v)
@@ -80,7 +92,7 @@ export function ScoutingPostcodesForm({ initialPostcodes }: Props) {
           : '';
         setStatus({
           kind: 'cron',
-          message: `Run complete. Fetched ${r.fetched ?? 0}, qualified ${r.qualified ?? 0}, ${r.highScoreLeads ?? 0} scored ≥70. ${srcBits}${errBits ? ' Errors: ' + errBits : ''}`,
+          message: `Run complete. Fetched ${r.fetched ?? 0}, qualified ${r.qualified ?? 0}, ${r.highScoreLeads ?? 0} scored ≥70. ${srcBits}${truncBit}${errBits ? ' Errors: ' + errBits : ''}`,
           detail: r,
         });
       } else {

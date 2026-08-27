@@ -467,6 +467,23 @@ export interface ScoutingPipelineOptions {
    * sourced-properties still run.
    */
   skipSlowSources?: boolean;
+  /**
+   * Hard wall-clock deadline (epoch ms) for the PAID enrichment phases.
+   * When the clock passes it, the pipeline stops starting new PropertyData /
+   * HMLR work (short-lease scan, planning/HMO loops, per-postcode
+   * enrichment, per-lead comparable lookups) and finishes with whatever it
+   * already has — so the caller ALWAYS gets leads back to persist.
+   *
+   * Why this exists: scoring polish is optional, the day's leads are not.
+   * From 24–27 Aug 2026 the daily run outgrew the 800s function budget
+   * (prime seeds → 935 listings → 60-lead shortlist → rate-limited
+   * enrichment) and was killed by the platform BEFORE persistence, so four
+   * days of leads evaporated with a 504 and no heartbeat. A truncated run
+   * reports what it skipped via `truncatedByDeadline`.
+   *
+   * Undefined = no deadline (previous behaviour).
+   */
+  deadlineMs?: number;
 }
 
 export interface ScoutingPipelineResult {
@@ -550,6 +567,12 @@ export interface ScoutingPipelineResult {
    * lead count.
    */
   sourceHealth: SourceHealthEntry[];
+  /**
+   * Paid phases skipped because the run hit `deadlineMs`. Empty on a full
+   * run. Non-empty means the leads are real but some carry less enrichment
+   * polish than usual — never a reason to distrust the leads themselves.
+   */
+  truncatedByDeadline: string[];
   /** Contact-enrichment tier distribution + hit-rate for this run. */
   enrichment: EnrichmentSummary;
 }
@@ -586,7 +609,22 @@ export async function runScoutingPipeline(
     evalConfigVersion = null,
     enrichRationaleLlm = false,
     skipSlowSources = false,
+    deadlineMs,
   } = options;
+
+  // Deadline guard — see ScoutingPipelineOptions.deadlineMs. Records WHICH
+  // phase was cut (once per phase) so the caller can surface a truthful
+  // "run truncated" note instead of a silent quality drop.
+  const truncatedByDeadline: string[] = [];
+  const pastDeadline = (phase: string): boolean => {
+    if (deadlineMs === undefined || Date.now() < deadlineMs) {
+      return false;
+    }
+    if (!truncatedByDeadline.includes(phase)) {
+      truncatedByDeadline.push(phase);
+    }
+    return true;
+  };
 
   // ── Sourcing gate ────────────────────────────────────────────────────
   // The keep/drop decision is made on the NORMALISED pre-appraisal score
@@ -977,7 +1015,11 @@ export async function runScoutingPipeline(
 
   // ── /planning-applications — serial after sourced ───────────────────
   const planningGrants: RawGrant[] = [];
-  for (let i = 0; !skipSlowSources && i < allSeeds.length; i++) {
+  for (
+    let i = 0;
+    !skipSlowSources && i < allSeeds.length && !pastDeadline('planning');
+    i++
+  ) {
     const seed = allSeeds[i]!;
     // First iteration: wait long enough for the sourced phase's rate-limit
     // window to clear (PropertyData allows 4 calls / 10s).
@@ -1025,7 +1067,11 @@ export async function runScoutingPipeline(
 
   // ── /national-hmo-register — serial after planning ──────────────────
   const hmoGrants: RawGrant[] = [];
-  for (let i = 0; !skipSlowSources && i < allSeeds.length; i++) {
+  for (
+    let i = 0;
+    !skipSlowSources && i < allSeeds.length && !pastDeadline('hmo');
+    i++
+  ) {
     const seed = allSeeds[i]!;
     await sleep(i === 0 ? 11000 : 2700);
     try {
@@ -1146,6 +1192,10 @@ export async function runScoutingPipeline(
       allSeeds.map((s) => ({ label: s.label, postcode: s.postcode }));
     const collected: ShortLeaseGrant[] = [];
     for (let i = 0; i < leaseSeeds.length; i++) {
+      // The short-lease scan is the first paid loop the deadline can cut:
+      // one throttled /freeholds call per seed adds up across 18 seeds, and
+      // these are supplementary leads — never worth losing the run over.
+      if (pastDeadline('shortLease')) break;
       // Space calls to respect the 4-calls/10s PropertyData limit (mirrors the
       // planning/HMO loops).
       if (i > 0) await sleep(2700);
@@ -1431,6 +1481,10 @@ export async function runScoutingPipeline(
   };
 
   for (const pc of uniquePostcodes) {
+    // The heaviest phase: ~4 rate-limited PropertyData calls per unique
+    // postcode. Past the deadline, remaining postcodes score without risk /
+    // demographic colour — leads still land, factors say less.
+    if (pastDeadline('postcodeEnrichment')) break;
     try {
       const [demo, flood, epcs, tenures] = await Promise.all([
         getDemographics(pc).catch((e) => {
@@ -1504,10 +1558,15 @@ export async function runScoutingPipeline(
   // Step 4 — Score leads (fan-out postcode lookups)
   const scored = await Promise.all(
     enriched.map(async (lead) => {
-      const [pricePaid, hpi] = await Promise.all([
-        getPricePaid(lead.postcode).catch(() => null),
-        getHousepriceIndex(lead.postcode).catch(() => null),
-      ]);
+      // Comparable lookups are cached per postcode, but a cold cache across
+      // many areas still costs real time — past the deadline, score without
+      // them (the sourcing gate normalises for missing comparables).
+      const [pricePaid, hpi] = pastDeadline('comparableLookups')
+        ? [null, null]
+        : await Promise.all([
+            getPricePaid(lead.postcode).catch(() => null),
+            getHousepriceIndex(lead.postcode).catch(() => null),
+          ]);
 
       const baseSignals = signalsByRef.get(lead.probateRef) ?? {};
       const pc = enrichmentByPostcode.get(lead.postcode);
@@ -1557,7 +1616,12 @@ export async function runScoutingPipeline(
       // Opt-in LLM rationale on STRONG leads only. Side-effect-safe: returns
       // null on missing key / call failure, in which case the deterministic
       // `rationale` field above is the surface the UI renders.
-      if (enrichRationaleLlm && breakdown.verdict === 'STRONG' && enrichedRaw) {
+      if (
+        enrichRationaleLlm &&
+        breakdown.verdict === 'STRONG' &&
+        enrichedRaw &&
+        !pastDeadline('rationaleLlm')
+      ) {
         const llmRationale = await enrichRationaleWithLlm(breakdown, {
           address: lead.address,
           postcode: lead.postcode,
@@ -1573,7 +1637,11 @@ export async function runScoutingPipeline(
       // score. Best-effort + real-data-only (returns confidence 'none' when
       // it can't pin a sale) so it never blocks or fabricates. HMLR is cached
       // per postcode inside the matcher, so many leads in one area = one call.
-      if (lead.leadType === 'probate' && enrichedRaw) {
+      if (
+        lead.leadType === 'probate' &&
+        enrichedRaw &&
+        !pastDeadline('probateSaleMatch')
+      ) {
         try {
           const probateMatch = await matchProbateAddressToSale({
             address: lead.address,
@@ -1719,6 +1787,14 @@ export async function runScoutingPipeline(
   const healthSummary = summariseSourceHealth(sourceHealth);
   console.info(`[scouting] source health: ${healthSummary.headline}`);
 
+  if (truncatedByDeadline.length > 0) {
+    // Loud, but not fatal: the whole point of the deadline is that the run
+    // still RETURNS and the caller still persists every lead below.
+    console.warn(
+      `[scouting] DEADLINE HIT — skipped paid phases: ${truncatedByDeadline.join(', ')}. Leads are kept; some carry less enrichment than usual.`
+    );
+  }
+
   return {
     runDate,
     fetched: rawGrants.length,
@@ -1747,6 +1823,7 @@ export async function runScoutingPipeline(
     seedOutcomes,
     sourceErrors,
     sourceHealth,
+    truncatedByDeadline,
     enrichment: enrichmentSummary,
   };
 }
