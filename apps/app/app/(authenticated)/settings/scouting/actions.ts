@@ -231,6 +231,18 @@ export async function triggerScoutingCron(): Promise<{
   if (!cronSecret)
     return { success: false, error: 'CRON_SECRET not configured' };
 
+  // Founder ask (27 Aug 2026): a manual scout run should refresh EVERYTHING,
+  // so kick the Companies House stream drain alongside it. Fire-and-forget:
+  // it has its own 30-min schedule as the backstop, its API is free, and a
+  // failure here must never block the scout itself.
+  fetch('https://bellwood-api.vercel.app/cron/ch-stream', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${cronSecret}` },
+    signal: AbortSignal.timeout(10_000),
+  }).catch(() => {
+    // Covered by the next scheduled drain.
+  });
+
   try {
     // The scout is the founder's on-demand run now (no daily schedule) and a
     // full run can take several minutes on the api side. This server action
