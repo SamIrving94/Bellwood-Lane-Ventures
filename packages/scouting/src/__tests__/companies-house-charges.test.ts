@@ -152,7 +152,7 @@ describe('mapInsolvencyToLead', () => {
 
     expect(lead).not.toBeNull();
     expect(lead!.source).toBe('companies_house_insolvency');
-    expect(lead!.leadTypeHint).toBe('distressed_sale');
+    expect(lead!.leadTypeHint).toBe('insolvency');
     expect(lead!.postcode).toBe('M14 5LL');
     expect(lead!.grantDate).toBe('2026-07-18');
     expect(lead!.probateRef).toBe('chi-12345678-MzAxNTY3ODkw');

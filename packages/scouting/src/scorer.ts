@@ -18,14 +18,17 @@
  * Every contribution is captured as a Factor so the UI can render the full
  * "why this score" breakdown verbatim, and the single biggest factor is exposed
  * as the leading indicator. Contact quality is NOT scored (a strong deal with no
- * phone number is still strong); the old "hot probate window" recency bonus is
- * gone (unreliable proxy for motivation).
+ * phone number is still strong). The old "hot probate window" recency bonus is
+ * gone (fresher ≠ hotter); in its place the statutory-timeline propensity
+ * factor (see propensity.ts) credits leads whose legal clock says the vendor
+ * can actually transact now — additive-only, so it never gates capture.
  */
 
 import type { Hpi } from '@repo/property-data/src/hmlr-hpi';
 import type { PricePaid } from '@repo/property-data/src/hmlr';
 import { isSyntheticPricePaid } from '@repo/property-data/src/hmlr';
 import type { EnrichedLead } from './enrichment';
+import { propensityForLeadType } from './propensity';
 import {
   DEFAULT_SCORER_CONFIG,
   type EquityBand,
@@ -197,6 +200,21 @@ function scoreAcquisition(
     ? (LISTING_TYPE_LABELS[signals.listingType] ?? leadTypeLabel(typeKey))
     : leadTypeLabel(typeKey);
   add(factors, niceTypeLabel, typePoints, 'acquisition');
+
+  // Statutory-timeline propensity (founder research, Aug 2026): where the
+  // lead type runs on a legal clock (probate grant window, insolvency
+  // proposal deadline, receivership), credit being IN the window. Additive-
+  // only by design — a freshly-noticed probate lead earns 0 here and scores
+  // exactly what it scored before this factor existed, so a low early
+  // propensity can never push a lead under the sourcing gate; capture stays
+  // at t=0, the curve only times attention. The 0-point phase is still shown
+  // (neutral) so the founder sees WHY a fresh notice isn't boosted.
+  const prop = propensityForLeadType(typeKey, lead.daysSinceGrant, config);
+  if (prop.hasCurve) {
+    const pts = Math.round(prop.value * config.propensityMax);
+    const label = `${prop.label} (day ${Math.max(0, lead.daysSinceGrant)})`;
+    add(factors, label, pts, 'acquisition', pts > 0 ? 'positive' : 'neutral');
+  }
 
   // Days on market — the longer it sits, the more motivated the seller.
   if (typeof signals?.daysOnMarket === 'number' && signals.daysOnMarket > 0) {

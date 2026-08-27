@@ -277,8 +277,15 @@ export type {
 export {
   DEFAULT_SCORER_CONFIG,
   mergeScorerConfig,
+  type PropensityBreakpoint,
   type ScorerConfig,
 } from './scorer-config';
+export {
+  isEnteringHighPropensityWindow,
+  propensityForLeadType,
+  recommendedTouchSchedule,
+} from './propensity';
+export type { PropensityResult, TouchScheduleStep } from './propensity';
 export { sanitisePayload, auditProtectedFields } from './rbac';
 export { enrichRationaleWithLlm } from './rationale-llm';
 export {

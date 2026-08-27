@@ -26,6 +26,37 @@ export type WhatsNewEntry = {
 /** Newest first. The popup shows index 0. */
 export const WHATS_NEW: WhatsNewEntry[] = [
   {
+    id: '2026-08-23-propensity-curves',
+    date: '2026-08-23',
+    emoji: '⏳',
+    title: 'The scout now knows WHEN a seller can actually sell',
+    intro:
+      'Every probate, insolvency and receivership lead now runs on its real statutory clock. Captured on day one as always — but chased when the law says they can transact, not when they look freshest.',
+    bullets: [
+      {
+        emoji: '📜',
+        text: 'Probate flipped the right way up: a fresh Gazette notice is now COLD (no Grant = the executor legally cannot sell). The heat arrives weeks 8–16, in the Grant of Probate window.',
+      },
+      {
+        emoji: '🔔',
+        text: 'Old leads come back on their own: one weekly Action Centre card — "N probate leads entering the grant window this week" — resurfaces leads captured weeks ago at exactly the right moment.',
+      },
+      {
+        emoji: '🏛️',
+        text: 'Insolvency has two hot spots: week 3 (strategy forms) and week 8 (the statutory proposal deadline). Receiverships are hottest on day one — the receiver must sell, fast.',
+      },
+      {
+        emoji: '💬',
+        text: 'Marketer briefs now carry the timing: soft intro at notice, direct approach in the grant window. Every draft still waits for your approval — nothing sends itself.',
+      },
+      {
+        emoji: '🎛️',
+        text: 'Every curve is tunable from the scorer config (no deploy), and each conversion logs its day-since-signal — so the curves get honest against OUR deals, not just the statute book.',
+      },
+    ],
+    cta: { label: 'See your leads', href: '/pipeline?tab=leads' },
+  },
+  {
     id: '2026-08-22-prime-gold-dust-capture',
     date: '2026-08-22',
     emoji: '💎',

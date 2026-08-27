@@ -2,7 +2,14 @@ import { env } from '@/env';
 import { screenPropertyCondition } from '@repo/auctions';
 import { type Prisma, database } from '@repo/database';
 import { getPropertySnapshot } from '@repo/property-data/src/propertydata';
-import { type ScoreFactor, type Verdict, combineScore } from '@repo/scouting';
+import {
+  type ScoreFactor,
+  type ScorerConfig,
+  type Verdict,
+  combineScore,
+  isEnteringHighPropensityWindow,
+  mergeScorerConfig,
+} from '@repo/scouting';
 import {
   type ConditionLevel,
   appraiseDealFromAvm,
@@ -49,6 +56,145 @@ function normalisePropertyType(raw: unknown): PropertyType | undefined {
     return 'flat';
   if (lower.includes('bungalow')) return 'bungalow';
   return undefined;
+}
+
+// ---------------------------------------------------------------------------
+// Propensity-window resurfacing
+// ---------------------------------------------------------------------------
+
+/**
+ * Days since a lead's t=0 signal (Gazette notice / insolvency filing /
+ * receiver appointment), TODAY. The signal date lives in rawPayload only:
+ * prefer the ISO `grantDate` every source stamps; fall back to the captured
+ * `daysSinceGrant` aged forward by the row's own age. Null when neither
+ * exists — a lead with no signal date has no clock to read.
+ */
+function daysSinceSignalFor(lead: {
+  createdAt: Date;
+  rawPayload: unknown;
+}): number | null {
+  const raw = (lead.rawPayload ?? {}) as Record<string, unknown>;
+  if (typeof raw.grantDate === 'string') {
+    const ms = new Date(raw.grantDate).getTime();
+    if (Number.isFinite(ms)) {
+      return Math.max(0, Math.floor((Date.now() - ms) / 86_400_000));
+    }
+  }
+  if (typeof raw.daysSinceGrant === 'number') {
+    const rowAgeDays = Math.max(
+      0,
+      Math.floor((Date.now() - lead.createdAt.getTime()) / 86_400_000)
+    );
+    return Math.max(0, raw.daysSinceGrant) + rowAgeDays;
+  }
+  return null;
+}
+
+/** Founder-facing window name per lead type (Beth Sims: plain, precise). */
+function windowName(leadType: string): string {
+  if (leadType.startsWith('probate')) return 'the grant window';
+  if (leadType === 'insolvency') return 'the statutory proposal window';
+  return 'their high-propensity window';
+}
+
+/**
+ * The resurfacing mechanism for leads captured weeks ago: find live leads
+ * whose statutory clock crossed into the high-propensity window within the
+ * last 7 days (probate leads entering the Grant of Probate window, insolvency
+ * leads hitting the proposal deadline) and raise ONE deduped FounderAction
+ * per lead type per week. Capture happened at t=0 as always — this is the
+ * moment the timeline says those leads deserve attention again.
+ *
+ * DB-only (no credits), best-effort: a failure here never blocks appraisals.
+ */
+async function resurfacePropensityWindows(
+  scorerConfig: ScorerConfig
+): Promise<{ entering: number; actions: number }> {
+  const curveTypes = Object.keys(scorerConfig.propensityCurves);
+  if (curveTypes.length === 0) return { entering: 0, actions: 0 };
+
+  // Live, unconverted leads young enough for any curve to still move
+  // (18 months comfortably covers every default curve's active range).
+  const leads = await database.scoutLead.findMany({
+    where: {
+      status: { in: ['new', 'shortlisted', 'watching'] },
+      convertedDealId: null,
+      leadType: { in: curveTypes },
+      createdAt: { gte: new Date(Date.now() - 548 * 86_400_000) },
+    },
+    select: {
+      id: true,
+      address: true,
+      postcode: true,
+      leadType: true,
+      leadScore: true,
+      createdAt: true,
+      rawPayload: true,
+    },
+  });
+
+  const enteringByType = new Map<string, typeof leads>();
+  for (const lead of leads) {
+    const days = daysSinceSignalFor(lead);
+    if (days === null) continue;
+    if (isEnteringHighPropensityWindow(lead.leadType, days, 7, scorerConfig)) {
+      const group = enteringByType.get(lead.leadType) ?? [];
+      group.push(lead);
+      enteringByType.set(lead.leadType, group);
+    }
+  }
+
+  // One action per lead type, deduped per ISO week (Monday-keyed) so the
+  // daily run refreshes the same card as more leads cross during the week
+  // instead of stacking a new one every morning.
+  const monday = new Date();
+  monday.setUTCHours(0, 0, 0, 0);
+  monday.setUTCDate(monday.getUTCDate() - ((monday.getUTCDay() + 6) % 7));
+  const weekBucket = monday.toISOString().slice(0, 10);
+
+  let actions = 0;
+  let entering = 0;
+  for (const [leadType, group] of enteringByType) {
+    entering += group.length;
+    const n = group.length;
+    const plural = n === 1 ? 'lead' : 'leads';
+    const typeLabel = leadType.replace(/_/g, ' ');
+    const title = `${n} ${typeLabel} ${plural} entering ${windowName(leadType)} this week`;
+    const description = leadType.startsWith('probate')
+      ? `Captured at notice and held while the executor couldn't sell. The statutory timeline now puts ${n === 1 ? 'this estate' : 'these estates'} in the Grant of Probate window — they can transact. Review and queue outreach drafts (drafts stay held for your approval).`
+      : `The statutory timeline puts ${n === 1 ? 'this lead' : 'these leads'} in ${windowName(leadType)} — the point where disposal decisions get made. Review and queue outreach drafts (drafts stay held for your approval).`;
+    const dedupKey = `propensity-window:${leadType}:${weekBucket}`;
+    const actionData = {
+      type: 'golden_window' as const,
+      priority: 'high' as const,
+      agent: 'scout' as const,
+      title,
+      description,
+      metadata: JSON.parse(
+        JSON.stringify({
+          source: 'cron_lead-appraise',
+          leadType,
+          weekBucket,
+          leadCount: n,
+          leadIds: group.slice(0, 20).map((l) => l.id),
+          leadSample: group
+            .slice(0, 3)
+            .map((l) => `${l.address}, ${l.postcode}`),
+          link: '/pipeline?tab=leads',
+        })
+      ) as Prisma.InputJsonValue,
+    };
+    await database.founderAction.upsert({
+      where: { dedupKey },
+      create: { ...actionData, status: 'pending', dedupKey },
+      // No `status` in update: as more leads cross during the week the card's
+      // count refreshes, but a card the founder already dismissed or completed
+      // stays that way — the cron must not resurrect it every morning.
+      update: actionData,
+    });
+    actions++;
+  }
+  return { entering, actions };
 }
 
 // Mirror the manual appraise action's seller-type resolver so the cron AVM and
@@ -331,8 +477,30 @@ export const POST = async (request: Request) => {
     }
   }
 
+  // ── Propensity-window pass — resurface leads whose statutory clock just
+  // opened (see resurfacePropensityWindows). Uses the same founder-tunable
+  // lead_scoring EvalConfig as the scouting cron so retuned curve breakpoints
+  // take effect here without a deploy. Best-effort: never blocks appraisals.
+  let propensity = { entering: 0, actions: 0 };
+  try {
+    let scorerConfig = mergeScorerConfig(null);
+    const activeScoring = await database.evalConfig.findFirst({
+      where: { evalType: 'lead_scoring', activatedAt: { not: null } },
+      orderBy: { version: 'desc' },
+      select: { config: true },
+    });
+    if (activeScoring) {
+      scorerConfig = mergeScorerConfig(activeScoring.config);
+    }
+    propensity = await resurfacePropensityWindows(scorerConfig);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    errors.push(`propensity-pass: ${msg.slice(0, 120)}`);
+    console.warn('[cron/lead-appraise] propensity-window pass failed', err);
+  }
+
   await recordCronHeartbeat('lead-appraise', {
-    note: `appraised ${appraised}/${pending.length}`,
+    note: `appraised ${appraised}/${pending.length}; propensity: ${propensity.entering} entering window`,
   });
 
   return NextResponse.json({
@@ -340,6 +508,7 @@ export const POST = async (request: Request) => {
     candidates: candidates.length,
     pending: pending.length,
     appraised,
+    propensity,
     errors,
   });
 };

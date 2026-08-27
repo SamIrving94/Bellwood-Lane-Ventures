@@ -20,8 +20,11 @@
  * Contact quality is deliberately NOT scored — a strong deal with no phone
  * number yet is still a strong deal; contact readiness is surfaced separately.
  *
- * The golden/"hot probate window" recency bonus has been removed: grant-date
- * recency was an unreliable proxy for motivation.
+ * The old golden/"hot probate window" recency bonus (fresher = hotter) was
+ * removed as an unreliable proxy. Its successor is `propensityCurves`: per-
+ * lead-type curves anchored on the UK statutory timelines (founder research,
+ * Aug 2026), which say the OPPOSITE for probate — a fresh notice is a seller
+ * who legally cannot sell yet; the window opens weeks 8–16 later.
  *
  * TWO THRESHOLDS, TWO JOBS. `verdictThresholds` band a COMPLETE score and are
  * only meaningful once the ROI pillar is real (post-appraisal). The scouting
@@ -38,6 +41,22 @@ export interface EquityBand {
   /** Inclusive lower bound on the metric. */
   minRatio: number;
   points: number;
+  label: string;
+}
+
+/**
+ * One breakpoint on a per-lead-type propensity curve. Curves are evaluated by
+ * `propensityForLeadType` (propensity.ts): linear interpolation between
+ * breakpoints, first/last value held beyond the ends, and the `label` of the
+ * latest breakpoint at-or-before the day is the phase the founder sees
+ * ("Entering the grant window").
+ */
+export interface PropensityBreakpoint {
+  /** Days since the lead's t=0 signal (Gazette notice / insolvency filing / receiver appointment). */
+  day: number;
+  /** Propensity to transact, 0–1. Scaled by `propensityMax` into acquisition points. */
+  value: number;
+  /** Founder-facing phase label — shown verbatim as the score-factor "why". */
   label: string;
 }
 
@@ -78,6 +97,31 @@ export interface ScorerConfig {
   /** Short-lease marriage-value motivation (base + urgency-scaled). */
   marriageValueBase: number;
   marriageValueUrgencyMax: number;
+
+  /**
+   * Statutory-timeline propensity curves (founder research, Aug 2026), keyed
+   * by leadType. These time ATTENTION and OUTREACH — never capture: the
+   * factor they feed is additive-only (0 points at low propensity), so a
+   * freshly-noticed lead scores exactly what it scored before curves existed
+   * and can never be pushed under the sourcing gate for being early.
+   *
+   * t=0 anchors: probate = Gazette s.27 notice date; insolvency = the
+   * appointment/filing date; receivership = the appointment notice date.
+   *
+   * CALIBRATION CAVEAT (probate): a s.27 notice may be placed before OR
+   * after the Grant of Probate, so "weeks 8–16 after notice" is a
+   * statutory-timeline prior, not a measured fact about our leads. Verify
+   * the shape against our own daysSinceSignal-at-conversion data (logged on
+   * lead→deal conversion) before trusting it hard.
+   */
+  propensityCurves: Record<string, PropensityBreakpoint[]>;
+  /** Acquisition points at propensity 1.0 (moderate — below leadType credit). */
+  propensityMax: number;
+  /**
+   * Propensity at/above which a lead counts as IN its high-propensity window
+   * — the line the resurfacing cron watches for leads crossing upward.
+   */
+  propensityHighThreshold: number;
 
   // ── Pillar 2: ROI / deal quality (applied at appraisal) ───────────────
   /** BMV discount bands: (1 - offer/AVM) as a %, high → low. */
@@ -152,6 +196,13 @@ export const DEFAULT_SCORER_CONFIG: ScorerConfig = {
     receivership: 19,
     repossession: 18,
     distressed_sale: 18,
+    // Companies House insolvency/administration filing. Split out from
+    // `distressed_sale` (same weight, so no score change) because it runs on
+    // a statutory clock — the Insolvency Act proposal deadline and 12-month
+    // cap — which the propensity curve below keys on. Quick-sale listings,
+    // which still map to `distressed_sale`, have no such clock and their
+    // `daysSinceGrant` is really days-on-market.
+    insolvency: 18,
     mortgage_default: 16,
     divorce: 14,
     lease_expiry: 14,
@@ -187,6 +238,86 @@ export const DEFAULT_SCORER_CONFIG: ScorerConfig = {
   commercialPenalty: -12,
   marriageValueBase: 10,
   marriageValueUrgencyMax: 8,
+
+  // Statutory-timeline propensity curves (founder research, Aug 2026).
+  // Values are 0–1; days are since the lead-type's t=0 signal. Linear
+  // interpolation between rows; the label of the latest row at-or-before the
+  // day is the phase shown to the founder.
+  propensityCurves: {
+    // t=0 = Gazette s.27 notice. Weeks 0–6 the executor has no legal
+    // authority to sell (no Grant yet); the Grant typically lands weeks
+    // 8–16 after notice; estates realise through months 6–9, then decay.
+    // See the calibration caveat on the interface — the notice/Grant
+    // ordering is unverified against our own conversions.
+    probate: [
+      { day: 0, value: 0.05, label: 'Pre-grant — executor cannot yet sell' },
+      { day: 42, value: 0.1, label: 'Pre-grant — executor cannot yet sell' },
+      { day: 56, value: 0.45, label: 'Entering the grant window' },
+      { day: 112, value: 1, label: 'Grant window — estate can now sell' },
+      { day: 180, value: 0.95, label: 'Estate realisation plateau' },
+      { day: 270, value: 0.8, label: 'Estate realisation plateau' },
+      { day: 365, value: 0.4, label: 'Cooling — estate likely resolved' },
+      { day: 540, value: 0.15, label: 'Cold — estate long resolved' },
+    ],
+    // Letters of administration follow the same grant machinery (the grant
+    // of letters replaces the grant of probate). Separate key so it can be
+    // tuned apart if intestate estates prove to move differently.
+    probate_admin: [
+      {
+        day: 0,
+        value: 0.05,
+        label: 'Pre-grant — administrator not yet appointed',
+      },
+      {
+        day: 42,
+        value: 0.1,
+        label: 'Pre-grant — administrator not yet appointed',
+      },
+      { day: 56, value: 0.45, label: 'Entering the grant window' },
+      { day: 112, value: 1, label: 'Grant window — estate can now sell' },
+      { day: 180, value: 0.95, label: 'Estate realisation plateau' },
+      { day: 270, value: 0.8, label: 'Estate realisation plateau' },
+      { day: 365, value: 0.4, label: 'Cooling — estate likely resolved' },
+      { day: 540, value: 0.15, label: 'Cold — estate long resolved' },
+    ],
+    // t=0 = appointment/filing. Two peaks: ~week 3 (strategy forms once the
+    // moratorium settles) and week 8 (the Insolvency Act statutory proposal
+    // deadline — disposal decisions get made to hit it). Administration is
+    // capped at 12 months, so propensity tails off toward day 365.
+    insolvency: [
+      { day: 0, value: 0.25, label: 'Moratorium — administrator taking stock' },
+      { day: 21, value: 0.8, label: 'Post-moratorium strategy window' },
+      { day: 35, value: 0.5, label: 'Between statutory milestones' },
+      {
+        day: 56,
+        value: 1,
+        label: 'Statutory proposals due — disposals decided now',
+      },
+      { day: 90, value: 0.6, label: 'Proposals filed — execution phase' },
+      { day: 180, value: 0.45, label: 'Mid-administration' },
+      { day: 300, value: 0.35, label: 'Approaching the 12-month cap' },
+      { day: 365, value: 0.2, label: 'Administration expired or extended' },
+    ],
+    // LPA (Law of Property Act 1925) receivers carry NO statutory clock —
+    // researched Aug 2026: powers come from ss.101–109 plus the mortgage
+    // deed, with no statutory sale deadline. In practice receivers push for
+    // fast cash sales (typically 3–6 months appointment-to-sale), so the
+    // curve is monotone decay from appointment: hottest immediately, stale
+    // receiverships are likely under offer or stalled.
+    receivership: [
+      { day: 0, value: 1, label: 'Receiver appointed — mandated to sell' },
+      { day: 90, value: 0.85, label: 'Receiver actively disposing' },
+      { day: 180, value: 0.55, label: 'Late receivership' },
+      {
+        day: 270,
+        value: 0.3,
+        label: 'Long receivership — likely stalled or under offer',
+      },
+      { day: 365, value: 0.15, label: 'Cold receivership' },
+    ],
+  },
+  propensityMax: 8,
+  propensityHighThreshold: 0.75,
 
   // Pillar 2 — ROI / deal quality
   bmvBands: [
@@ -267,6 +398,47 @@ function mergeBands(raw: unknown, base: EquityBand[]): EquityBand[] {
 }
 
 /**
+ * Merge an untrusted propensity-curve map over the defaults. Per-curve
+ * all-or-nothing: a curve row must be a non-empty array of valid breakpoints
+ * (finite day ≥ 0, finite value clamped to 0–1) or the default for that lead
+ * type survives — a half-valid curve is worse than the researched one.
+ * Breakpoints are re-sorted by day so a hand-edited EvalConfig row can't
+ * make interpolation run backwards. New lead-type keys are accepted.
+ */
+function mergePropensityCurves(
+  raw: unknown,
+  base: Record<string, PropensityBreakpoint[]>,
+): Record<string, PropensityBreakpoint[]> {
+  const out: Record<string, PropensityBreakpoint[]> = { ...base };
+  if (!isRecord(raw)) return out;
+  for (const [key, value] of Object.entries(raw)) {
+    if (!Array.isArray(value) || value.length === 0) continue;
+    const parsed: PropensityBreakpoint[] = [];
+    let valid = true;
+    for (const bp of value) {
+      if (
+        !isRecord(bp) ||
+        typeof bp.day !== 'number' ||
+        !Number.isFinite(bp.day) ||
+        bp.day < 0 ||
+        typeof bp.value !== 'number' ||
+        !Number.isFinite(bp.value)
+      ) {
+        valid = false;
+        break;
+      }
+      parsed.push({
+        day: bp.day,
+        value: Math.max(0, Math.min(1, bp.value)),
+        label: typeof bp.label === 'string' ? bp.label : 'Propensity window',
+      });
+    }
+    if (valid) out[key] = parsed.sort((a, b) => a.day - b.day);
+  }
+  return out;
+}
+
+/**
  * Deep-merge a partial (untrusted) config over DEFAULT_SCORER_CONFIG. Every
  * field is read defensively so a malformed DB config degrades to defaults
  * rather than throwing.
@@ -301,6 +473,15 @@ export function mergeScorerConfig(raw: unknown): ScorerConfig {
     marriageValueUrgencyMax: num(
       raw.marriageValueUrgencyMax,
       d.marriageValueUrgencyMax,
+    ),
+    propensityCurves: mergePropensityCurves(
+      raw.propensityCurves,
+      d.propensityCurves,
+    ),
+    propensityMax: num(raw.propensityMax, d.propensityMax),
+    propensityHighThreshold: num(
+      raw.propensityHighThreshold,
+      d.propensityHighThreshold,
     ),
     bmvBands: mergeBands(raw.bmvBands, d.bmvBands),
     roiBands: mergeBands(raw.roiBands, d.roiBands),

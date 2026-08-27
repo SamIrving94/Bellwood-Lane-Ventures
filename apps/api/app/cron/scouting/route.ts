@@ -4,6 +4,7 @@ import { getPropertySnapshot } from '@repo/property-data/src/propertydata';
 import {
   dedupeDealbreakerRules,
   mergeScorerConfig,
+  recommendedTouchSchedule,
   runScoutingPipeline,
   screenDealbreakers,
   summariseSourceHealth,
@@ -577,6 +578,15 @@ export const POST = async (request: Request) => {
       // Marketer-facing draft action — high-scoring leads only (outreach is
       // costly + sensitive; we don't draft for borderline leads).
       if (highScoreLeads.length > 0) {
+        // Statutory-timeline touch schedules for the lead types in this
+        // batch (probate: soft intro at notice, direct approach ~weeks
+        // 10–14) — the WHEN for the marketer's drafts. Timing guidance
+        // only: every draft is still held for board approval.
+        const touchSchedules = Object.fromEntries(
+          Array.from(new Set(highScoreLeads.map((l) => l.leadType)))
+            .map((t) => [t, recommendedTouchSchedule(t)] as const)
+            .filter(([, schedule]) => schedule !== null)
+        );
         await database.founderAction.create({
           data: {
             type: 'dispatch_campaign',
@@ -585,13 +595,14 @@ export const POST = async (request: Request) => {
             agent: 'marketer',
             agentEventId: eventId,
             title: `Draft outreach for ${highScoreLeads.length} new high-scoring lead${highScoreLeads.length === 1 ? '' : 's'}`,
-            description: `Scout cron found ${highScoreLeads.length} leads scored ≥ 70 (${strongLeads.length} STRONG). For each, draft a first-touch email to the executor/contact tailored to the lead type (probate / chain break / repos / problem property). Hold all drafts for board approval. Top examples: ${highLeadIds.slice(0, 3).join(' | ')}.`,
+            description: `Scout cron found ${highScoreLeads.length} leads scored ≥ 70 (${strongLeads.length} STRONG). For each, draft a first-touch email to the executor/contact tailored to the lead type (probate / chain break / repos / problem property), timed to the touch schedule in this action's metadata where the lead type has one. Hold all drafts for board approval. Top examples: ${highLeadIds.slice(0, 3).join(' | ')}.`,
             metadata: {
               source: 'cron_scouting',
               assignedToAgent: 'marketer',
               workflow: 'draft_outreach_for_new_leads',
               leadCount: highScoreLeads.length,
               strongCount: strongLeads.length,
+              touchSchedules,
               runDate: result.runDate.toISOString(),
               link: '/pipeline?tab=leads',
             },

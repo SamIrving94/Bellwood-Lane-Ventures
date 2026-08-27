@@ -124,7 +124,14 @@ export interface ChDistressRawLead {
   source: 'companies_house_charge' | 'companies_house_insolvency';
   daysSinceGrant: number;
   /** Scorer motivation class (see scorer-config leadTypeScores). */
-  leadTypeHint: 'mortgage_default' | 'distressed_sale';
+  /**
+   * 'mortgage_default' for fresh charges; 'insolvency' for insolvency/
+   * administration filings. Insolvency was split out of 'distressed_sale'
+   * (same scorer weight) because a filing starts the Insolvency Act's
+   * statutory clock — the propensity curve keys on the leadType, and the
+   * listing-derived 'distressed_sale' types have no such clock.
+   */
+  leadTypeHint: 'mortgage_default' | 'insolvency';
   /** Charge detail — flows through rawPayload to the UI. */
   chargeSignal?: {
     companyNumber: string;
@@ -458,7 +465,7 @@ export function mapInsolvencyToLead(
     grantType: 'unknown',
     source: 'companies_house_insolvency',
     daysSinceGrant: daysSince(filing.filedOn, asOf),
-    leadTypeHint: 'distressed_sale',
+    leadTypeHint: 'insolvency',
     insolvencySignal: {
       companyNumber: company.companyNumber,
       companyName: company.companyName,

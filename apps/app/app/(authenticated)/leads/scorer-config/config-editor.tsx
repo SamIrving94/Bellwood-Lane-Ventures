@@ -9,6 +9,9 @@ import { saveAndActivateConfig } from '@/app/actions/scorer-config/manage';
 // Plain-English labels for the lead-type weights founders care about.
 const LEAD_TYPE_LABELS: Record<string, string> = {
   probate: 'Probate',
+  probate_admin: 'Letters of administration',
+  receivership: 'Receivership',
+  insolvency: 'Insolvency / administration',
   distressed_sale: 'Distressed sale',
   mortgage_default: 'Mortgage default',
   lease_expiry: 'Lease expiry',

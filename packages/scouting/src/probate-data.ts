@@ -7,10 +7,13 @@
  *
  * Falls back to synthetic data when the live call fails or credentials are absent.
  *
- * Golden Window: leads are hottest at grant date + 0–90 days (estate realisation phase).
+ * Golden Window: derived from the statutory propensity curve (propensity.ts)
+ * — hottest weeks 8–16 after the t=0 signal, NOT at day 0. See
+ * goldenWindowLabel below for the reconciliation history.
  */
 
 import { z } from 'zod';
+import { propensityForLeadType } from './propensity';
 
 const REQUEST_TIMEOUT_MS = 10_000;
 
@@ -48,15 +51,29 @@ export type ProbateLead = z.infer<typeof ProbateLeadSchema>;
 // ---------------------------------------------------------------------------
 
 /**
- * Returns the Golden Window urgency label for a probate grant.
- * Hottest within 90 days; cools significantly after 180 days.
+ * Golden Window urgency label — now derived from the probate propensity
+ * curve (see propensity.ts / ScorerConfig.propensityCurves).
+ *
+ * RECONCILED (Aug 2026): this used to score fresh signals as hot (≤30 days)
+ * — the founder's statutory-timeline research says that is BACKWARDS for
+ * Gazette-noticed probate, where t=0 is the s.27 notice and the executor has
+ * no legal authority to sell for weeks 0–6. Hot is now the grant window
+ * (roughly weeks 8–16 onward), and a fresh notice is cold: capture it, don't
+ * chase it.
+ *
+ * Anchor caveat: HMCTS-sourced leads date from the Grant itself, where day 0
+ * IS sellable — those will under-read early on this label. That is the
+ * conservative direction (capture is unaffected; attention arrives a few
+ * weeks late at worst) and the anchor question is exactly what the
+ * daysSinceSignal-at-conversion logging exists to settle.
  */
 export function goldenWindowLabel(
   daysSinceGrant: number
 ): 'hot' | 'warm' | 'cool' | 'cold' {
-  if (daysSinceGrant <= 30) return 'hot';
-  if (daysSinceGrant <= 90) return 'warm';
-  if (daysSinceGrant <= 180) return 'cool';
+  const { value } = propensityForLeadType('probate', daysSinceGrant);
+  if (value >= 0.75) return 'hot';
+  if (value >= 0.45) return 'warm';
+  if (value >= 0.2) return 'cool';
   return 'cold';
 }
 
