@@ -5,10 +5,6 @@
       "schedule": "30 5 * * *"
     },
     {
-      "path": "/cron/scouting",
-      "schedule": "0 7 * * *"
-    },
-    {
       "path": "/cron/lead-appraise",
       "schedule": "50 7 * * *"
     },

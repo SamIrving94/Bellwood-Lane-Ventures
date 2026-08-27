@@ -26,6 +26,37 @@ export type WhatsNewEntry = {
 /** Newest first. The popup shows index 0. */
 export const WHATS_NEW: WhatsNewEntry[] = [
   {
+    id: '2026-08-27-scout-on-demand',
+    date: '2026-08-27',
+    emoji: '🎯',
+    title: 'The scout runs when YOU run it — and never loses a day again',
+    intro:
+      'Two changes: the scout is now on-demand (you trigger it, you control the spend), and a run can never again time out and throw away everything it found.',
+    bullets: [
+      {
+        emoji: '🔧',
+        text: 'Fixed: since Sunday the daily run was timing out and losing ALL its leads — four days of finds evaporated. A run now banks its leads no matter what.',
+      },
+      {
+        emoji: '▶️',
+        text: 'Run it yourself: Settings → Scouting → "Run scout now". A full sweep takes ~10 minutes; leads land on the Leads page and the review card appears in Actions.',
+      },
+      {
+        emoji: '💷',
+        text: 'You control the spend: no more automatic 7am run burning PropertyData credits daily. Run it when you want fresh stock — same-day re-runs are mostly cached, so they cost little.',
+      },
+      {
+        emoji: '⏱️',
+        text: 'If a run does run long, it says so: "ran out of time for X — leads kept, some with less detail" instead of failing silently.',
+      },
+      {
+        emoji: '🤫',
+        text: 'The watchdog no longer nags about the scout being "silent" — quiet days are your choice now, not a fault.',
+      },
+    ],
+    cta: { label: 'Run the scout', href: '/settings/scouting' },
+  },
+  {
     id: '2026-08-23-ch-stream-and-connections',
     date: '2026-08-23',
     emoji: '⚡',

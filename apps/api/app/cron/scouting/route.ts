@@ -27,14 +27,31 @@ import { selfOrigin } from '../_lib/self-origin';
 export const maxDuration = 800;
 
 /**
- * Daily scouting pipeline — runs at 7am.
- * Fetches probate / chain-break / repos leads, enriches, scores, persists.
+ * The scouting pipeline — FOUNDER-TRIGGERED (was daily at 7am).
+ *
+ * The daily schedule was removed on 27 Aug 2026 at the founder's direction:
+ * each run spends real PropertyData credits, and running on demand from
+ * Settings → Scouting ("Run scout now") lets the founder control spend and
+ * review each run properly. The route itself is unchanged — the Vercel cron
+ * entry is gone, the trigger is `triggerScoutingCron` in the dashboard
+ * (Bearer CRON_SECRET, same auth as before).
  *
  * Mirrors the FounderAction creation in /agents/leads so the founder
- * dashboard's Today page surfaces high-scoring leads regardless of
- * whether scouting ran via this cron or via Paperclip's API push.
+ * dashboard's Today page surfaces high-scoring leads regardless of how the
+ * run was triggered.
  */
+
+// The pipeline gets this much wall-clock for its paid phases; the ~3 min
+// left inside maxDuration (800s) covers scoring tails, persistence, probe
+// write-backs and founder-surfacing. From 24–27 Aug 2026 the run outgrew
+// the budget (prime seeds → 935 listings → 60-lead shortlist → rate-limited
+// enrichment), the platform killed it at 800s BEFORE persistence, and four
+// days of leads evaporated as 504s. The deadline makes that impossible:
+// past it the pipeline stops paid enrichment and returns what it has.
+const PIPELINE_BUDGET_MS = 620_000;
+
 export const POST = async (request: Request) => {
+  const startedAtMs = Date.now();
   const authHeader = request.headers.get('authorization');
   if (authHeader !== `Bearer ${env.CRON_SECRET}`) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -258,7 +275,16 @@ export const POST = async (request: Request) => {
     // the function budget so persist + founder-surfacing never ran. Every
     // qualified lead to date came from sourced-properties anyway.
     skipSlowSources: true,
+    // Hard stop for paid enrichment — the pipeline must RETURN in time to
+    // persist. See PIPELINE_BUDGET_MS above.
+    deadlineMs: startedAtMs + PIPELINE_BUDGET_MS,
   });
+
+  if (result.truncatedByDeadline.length > 0) {
+    console.warn(
+      `[cron/scouting] run truncated by deadline (skipped: ${result.truncatedByDeadline.join(', ')}) — leads persisted below as normal`
+    );
+  }
 
   // ── Dealbreaker screen (founder's recorded hard NOs) ─────────────────
   // Rules mined from feedback notes/voice notes (overrides._insights
@@ -553,6 +579,9 @@ export const POST = async (request: Request) => {
           assignedToAgent: 'board',
           leadCount: result.leads.length,
           newLeadCount: createdCount,
+          // Non-empty when the run hit its time budget and skipped some paid
+          // enrichment — the leads are real, some just carry fewer factors.
+          truncatedByDeadline: result.truncatedByDeadline,
           duplicatesSkipped,
           highScoreCount: highScoreLeads.length,
           strongCount: strongLeads.length,
@@ -1019,6 +1048,7 @@ export const POST = async (request: Request) => {
     sources: result.sources,
     sourceErrors: result.sourceErrors,
     sourceHealth: result.sourceHealth,
+    truncatedByDeadline: result.truncatedByDeadline,
     sourceHealthHeadline: healthSummary.headline,
   });
 };

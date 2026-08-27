@@ -25,8 +25,12 @@ export type CronName =
 
 // Max age (hours) between successful runs before the watchdog alerts. Tuned to
 // the documented daily schedules with head-room for timezone/retry jitter.
-export const CRON_MAX_STALENESS_HOURS: Record<CronName, number> = {
-  scouting: 28,
+//
+// Partial on purpose: a cron with NO entry here still records heartbeats but
+// is never watchdogged. `scouting` moved to that category on 27 Aug 2026 —
+// it is founder-triggered now (Settings → Scouting → "Run scout now"), so
+// days of silence is a spend decision, not a failure.
+export const CRON_MAX_STALENESS_HOURS: Partial<Record<CronName, number>> = {
   'lead-appraise': 28,
   'pipeline-appraise': 28,
   'pipeline-outreach': 28,
