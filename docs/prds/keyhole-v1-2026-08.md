@@ -1,8 +1,8 @@
 # PRD: Keyhole — Estate & Property Intelligence Tool (Referral-Sourcing Product)
 
 **Document owner:** Founder
-**Status:** Draft — not yet decided; see `docs/proposals/prime-2m-plus-keyhole-flip.md` for the decision framing
-**Last updated:** August 2026
+**Status:** Approved 29 Aug 2026 (decision 3 of `docs/proposals/prime-2m-plus-keyhole-flip.md`). **Phase 0 MVP shipped the same day:** `/keyhole` on the public web app (unlisted, noindex), single-address lookup → durable report page → print/PDF → opt-in referral to deals@. Open data only (EPC register + HM Land Registry); needs `EPC_API_TOKEN` on the web Vercel project. The condition-adjusted VALUE band is deliberately deferred until `scripts/arbitrage-rank.mts` gives it measured evidence — the shipped report shows condition facts, recorded sales and refurb cost bands, never a figure for the property.
+**Last updated:** 2026-08-29
 **Classification:** Internal — Confidential
 
 > **Provenance:** drafted via external deep research (Aug 2026), filed

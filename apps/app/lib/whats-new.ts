@@ -26,6 +26,36 @@ export type WhatsNewEntry = {
 /** Newest first. The popup shows index 0. */
 export const WHATS_NEW: WhatsNewEntry[] = [
   {
+    id: '2026-08-29-prime-2m-keyhole',
+    date: '2026-08-29',
+    emoji: '🗝️',
+    title: 'The £2M+ trial, a district truth machine, and Keyhole is live',
+    intro:
+      'Three decisions, shipped together: the scout can hunt the super-prime fringe, the district list can finally be MEASURED instead of guessed, and professionals get a free report tool that quietly sends us leads.',
+    bullets: [
+      {
+        emoji: '🏰',
+        text: 'W11 + NW3 fringe trial, one command: seed-london-prime now takes --districts=W11,NW3. There was never a price ceiling in the code, only a scanning gap.',
+      },
+      {
+        emoji: '📏',
+        text: 'New arbitrage-rank script: Land Registry sales matched to EPC certificates, per district, giving real unmodernised vs refurbished £/sqft. The list stops being a hypothesis.',
+      },
+      {
+        emoji: '🗝️',
+        text: 'Keyhole is live at /keyhole (invite-only, unlisted): solicitors, surveyors and wealth managers get a one-page condition-and-value report. Never a valuation, never auto-contact.',
+      },
+      {
+        emoji: '🤝',
+        text: 'Their referrals land in deals@ with the report attached, opt-in only. The first-look playbook for buying agents is in docs/templates.',
+      },
+      {
+        emoji: '🔑',
+        text: 'One env to add: EPC_API_TOKEN on the web project, or Keyhole reports skip the EPC section (honestly, with a note).',
+      },
+    ],
+  },
+  {
     id: '2026-08-27-scout-on-demand',
     date: '2026-08-27',
     emoji: '🎯',

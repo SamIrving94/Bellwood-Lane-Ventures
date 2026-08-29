@@ -316,6 +316,29 @@ model ScoutLead {
   @@index([track])
 }
 
+// Keyhole: the free condition-and-value report for professionals (probate
+// solicitors, surveyors, wealth managers) — docs/prds/keyhole-v1-2026-08.md.
+// One row per generated report. reportJson is the rendered snapshot, so the
+// share link always shows exactly what was generated rather than a silent
+// re-fetch. The referral fields flip only when the professional CHOOSES to
+// send the property to us — opt-in is the product's trust contract.
+model KeyholeReport {
+  id                String    @id @default(cuid())
+  createdAt         DateTime  @default(now())
+  addressLine       String
+  postcode          String
+  email             String?
+  professionalRole  String? // solicitor | surveyor | wealth | care | other
+  reportJson        Json
+  referralRequested Boolean   @default(false)
+  referralNote      String?   @db.Text
+  referredAt        DateTime?
+
+  @@index([createdAt])
+  @@index([postcode])
+  @@index([referralRequested])
+}
+
 model WhatsAppIntake {
   id               String      @id @default(cuid())
   source           String // "bridge" | "paste" | "share_sheet" | "email"

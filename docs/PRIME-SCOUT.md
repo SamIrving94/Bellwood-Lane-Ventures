@@ -1,6 +1,6 @@
 # The Prime Scout: how it works, how to run it, how to tune it
 
-_Last verified against the code: 2026-08-23._
+_Last verified against the code: 2026-08-29._
 
 > **Fast path (Aug 2026):** `/cron/ch-stream` drains the Companies House
 > Streaming API every 30 minutes for fresh charges/insolvencies on
@@ -92,8 +92,22 @@ pnpm tsx scripts/prime-audit.mts
 pnpm tsx scripts/seed-london-prime.mts --limit=10
 pnpm tsx scripts/seed-london-prime.mts --write --limit=10
 
+# 2b. The super-prime FRINGE trial (founder decision, 29 Aug 2026): scan
+#     W11 + NW3 only — explicitly named districts seed regardless of tier.
+#     Optionality, not conviction: the Aug 2026 deep research SUPPORTED the
+#     super-prime exclusion; this scans the two most house-shaped fringe
+#     districts so the founder glance decides deal-by-deal. ~2 extra prime
+#     seeds per run (~40% more credits each than a volume seed).
+pnpm tsx scripts/seed-london-prime.mts --write --districts=W11,NW3
+
 # 3. After the next cron run, re-audit to measure the difference.
 pnpm tsx scripts/prime-audit.mts
+
+# 4. Rank districts by MEASURED refurb arbitrage (LR sold prices × EPC
+#    condition, matched by address). Read-only, free APIs; needs
+#    EPC_API_TOKEN in .env. This is the evidence the district list has
+#    been waiting for — see §4's "hypothesis, not a finding" warning.
+pnpm tsx --env-file=.env scripts/arbitrage-rank.mts --districts=SE22,W11,NW3
 ```
 
 ## 6. Credit maths (why you start with --limit=10)

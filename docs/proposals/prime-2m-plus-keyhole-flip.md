@@ -179,3 +179,26 @@ referrals, then decide.
    model as the next engineering block?
 3. **Keyhole Phase 0:** greenlight the thin MVP + 5–8 founder-led
    pilots, and start the buying-agent first-look list now?
+
+---
+
+## Decisions taken — all three approved, 29 Aug 2026
+
+Founder: "yes do all three." Shipped the same day:
+
+1. **Fringe trial:** `seed-london-prime.mts` gained `--districts=` for
+   surgical seeding. Run from a machine with the `.env`:
+   `pnpm tsx scripts/seed-london-prime.mts --write --districts=W11,NW3`
+   (dry-run first without `--write`).
+2. **Keystone build:** `scripts/arbitrage-rank.mts` + the matched-pairs
+   engine in `@repo/property-data` (`arbitrage.ts`, EPC search additions),
+   70 tests green. Needs `EPC_API_TOKEN` in `.env`; SPARQL side is
+   keyless. Precision-first matching; districts below 5 matched sales per
+   side report "insufficient" rather than ranking.
+3. **Keyhole Phase 0:** shipped at `/keyhole` (unlisted, noindex) — see
+   the PRD's status line for what is in and what is deferred. The
+   buying-agent first-look playbook is
+   `docs/templates/buying-agent-first-look.md`. Next founder actions:
+   add `EPC_API_TOKEN` to the web Vercel project, run `pnpm migrate`
+   against prod to create the `KeyholeReport` table, pick the 5–8 pilot
+   professionals, and start the first-look list.
