@@ -6,6 +6,51 @@ the scout, the AVM, or any PropertyData call.
 
 ---
 
+## 2026-08-29 — Keyhole shipped with its premise un-challenged (process, not prod)
+
+**What broke.** Nothing in production — the framing. Keyhole Phase 0 was
+designed, approved and BUILT in one day as a "free tool that quietly routes
+leads to us". The founder's own legal research, run hours after the ship,
+showed the core loop was mis-aimed: executors carry personal liability
+(devastavit) for under-selling, so a tool that reads as a nudge toward a
+cash buyer is precisely what its risk-averse audience must reject. The
+pitch, CTA and PRD were pivoted the same day (written offer as EVIDENCE
+for the decision file). No pilot ever saw the wrong version.
+
+**Why it slipped through.**
+
+- The thread was already in our hands. The PRD's own risk list said
+  "professionals are skeptical of anything that looks like a sales funnel
+  disguised as a tool" and flagged SRA/RICS conflicts — and the assistant
+  filed those as bullets to mitigate instead of pulling the thread before
+  writing code.
+- "Yes, do all three" was treated as the LAST checkpoint rather than the
+  trigger for one more question. Momentum beat interrogation.
+- The uncertainty that WAS flagged (referral volume unproven, kill-gate
+  set) was about scale, not mechanism. The kill-gate would have measured a
+  mis-aimed product failing slowly instead of catching the aim.
+
+**Why the cost stayed low (keep these mitigations).**
+
+- Everything shipped dark: noindex, closed pilot, zero outreach. The wrong
+  pitch never reached a professional.
+- The build itself was framing-neutral (public data, no valuation, opt-in
+  panel) — the pivot cost was copy and docs, not code.
+
+**Rules (do not repeat).**
+
+- **Challenge before building.** On anything strategy-shaped (new product,
+  new audience, new channel), founder approval triggers ONE more message
+  before code: the strongest case against, the assumption that kills it,
+  and who hates this and why. Build on the second yes. It costs one
+  message, not a week.
+- **Interrogate the mechanism, not just the volume.** "Will enough people
+  use it" is a different question from "does the value loop survive
+  contact with this audience's incentives and duties". Ask both.
+- **Strategy builds ship dark until the premise survives one real user.**
+  Noindex, no outreach, no announcements beyond the founders. This rule
+  is what made this incident cheap; it is not optional next time.
+
 ## 2026-07-17 — Scout produced 0 leads (self-inflicted)
 
 **What broke.** The daily scout returned 0 leads on 2026-07-17. Two regressions,
