@@ -85,12 +85,44 @@ feed.
 6. **The kill-gate** — pilot is 5–8 warm professionals; **1 referred lead +
    1 completed deal in 12 weeks or we stop**. Agree the bar?
 
+## Update, same day: Keyhole reframed twice — and got stronger
+
+Sam's legal research corrected the framing before any pilot saw it.
+
+- **The problem:** executors carry PERSONAL liability (devastavit) for
+  selling under best achievable price. A tool that nudges toward a cash
+  buyer trips exactly that alarm. Referral fees to surveyors must be
+  disclosed in writing anyway.
+- **The fix:** Keyhole sells **defence of the decision**, not leads. The
+  file that justifies whatever route the estate takes. Our binding
+  written offer becomes **evidence they can request** for that file. CTA
+  re-pointed the same day: "request a written offer", never "send us the
+  property".
+- **Pushed further:** two bigger valuation-free pains found — the **IHT
+  funding catch-22** (tax due in 6 months, cash frozen, house unsellable
+  pre-grant) and **vacant-property liability** (insurance lapses at day
+  30–60, executors personally exposed). Keyhole becomes module one of a
+  **probate property shelf**: vacancy guard → IHT map → decision file.
+  Tree + sequencing: \`docs/proposals/keyhole-probate-shelf-tree.md\`.
+
+Three more things to decide, on top of the six above:
+
+7. **Agree the shelf framing** — trust-first, referral-late?
+8. **Next module** — vacancy guard (recommended: sharpest liability
+   motivator, most reuse, weekly touchpoints) or the IHT map?
+9. **The integrity firewall** — professionals' case data is never our
+   scouting feed. Sign it off as written?
+
+Also: the compliance opinion scope now covers the FCA perimeter (no
+credit broking, no insurance arranging — signpost and illustrate only).
+
 ## Sam's four switch-on actions (already listed for him)
 
 EPC token on the web project · \`pnpm migrate\` · seed W11+NW3 · pick the
 pilot professionals.
 
 *Full detail: \`docs/proposals/prime-2m-plus-keyhole-flip.md\`,
+\`docs/proposals/keyhole-probate-shelf-tree.md\`,
 \`docs/prds/keyhole-v1-2026-08.md\`, research in \`docs/research/\`, code in
 PR #94.*
 `.trim(),

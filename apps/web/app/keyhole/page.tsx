@@ -24,7 +24,7 @@ export const metadata: Metadata = {
 const AUDIENCES = [
   {
     title: 'Probate and private-client solicitors',
-    body: 'Give executors a same-day, defensible view of an estate property’s condition and the street’s recorded sales, without waiting on three agent opinions.',
+    body: 'Evidence for the estate’s decision file: condition on the record, the street’s recorded sales, and a dated written cash position to weigh the open-market route against.',
   },
   {
     title: 'Surveyors',
@@ -89,9 +89,10 @@ export default function KeyholePage() {
                 <strong className="text-forest">
                   No listing, no obligation.
                 </strong>{' '}
-                Nothing is marketed and nobody is contacted. If a fast, certain
-                sale ever matters, there is one clearly labelled, opt-in way to
-                ask us, and it is never the default.
+                Nothing is marketed and nobody is contacted. If the estate wants
+                a dated cash position for its decision file, there is one
+                clearly labelled, opt-in way to request a written offer from us,
+                and it is never the default.
               </li>
             </ul>
 

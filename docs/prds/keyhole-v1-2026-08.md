@@ -1,7 +1,7 @@
 # PRD: Keyhole — Estate & Property Intelligence Tool (Referral-Sourcing Product)
 
 **Document owner:** Founder
-**Status:** Approved 29 Aug 2026 (decision 3 of `docs/proposals/prime-2m-plus-keyhole-flip.md`). **Phase 0 MVP shipped the same day:** `/keyhole` on the public web app (unlisted, noindex), single-address lookup → durable report page → print/PDF → opt-in referral to deals@. Open data only (EPC register + HM Land Registry); needs `EPC_API_TOKEN` on the web Vercel project. The condition-adjusted VALUE band is deliberately deferred until `scripts/arbitrage-rank.mts` gives it measured evidence — the shipped report shows condition facts, recorded sales and refurb cost bands, never a figure for the property.
+**Status:** Approved 29 Aug 2026 (decision 3 of `docs/proposals/prime-2m-plus-keyhole-flip.md`). **Phase 0 MVP shipped the same day**, then **REFRAMED the same day** by founder legal research — read §0 before anything else. `/keyhole` on the public web app (unlisted, noindex), single-address lookup → durable report page → print/PDF → opt-in request for a written offer, landing in deals@. Open data only (EPC register + HM Land Registry); needs `EPC_API_TOKEN` on the web Vercel project. The condition-adjusted VALUE band is deliberately deferred until `scripts/arbitrage-rank.mts` gives it measured evidence — the shipped report shows condition facts, recorded sales and refurb cost bands, never a figure for the property.
 **Last updated:** 2026-08-29
 **Classification:** Internal — Confidential
 
@@ -20,6 +20,71 @@
 >    draft ("can typically complete in 2 weeks") was corrected below to the
 >    signed-off promise wording: "can complete in **as little as** two
 >    weeks". Never state faster SLAs than the live site.
+
+## 0. The pivot (29 Aug 2026): a justification generator, not a lead tool
+
+Founder legal research (filed:
+`docs/research/executor-duty-keyhole-pivot-2026-08.md`) corrected this
+PRD's core framing the day Phase 0 shipped. Where a section below
+conflicts with this one, **this section wins**.
+
+**The problem with the original framing.** Executors carry personal
+liability (devastavit) for selling below the best price reasonably
+achievable. A free tool whose value loop reads "nudge the solicitor
+toward a cash buyer" trips exactly the risk sensor of the risk-averse
+audience it needs, however good the UX. RICS also requires written
+disclosure of referral fees — the panel was never a quiet backdoor.
+
+**The reframe.** Guidance accepts that a LOWER offer from a reliable
+cash buyer who completes quickly CAN be the best price reasonably
+achievable once chain risk and holding costs are counted. So the product
+is the **best-value decision file**: the report that helps an executor
+and their solicitor DEFEND whatever route they choose — to
+beneficiaries, and if needed to a court. Useful on every estate,
+referral or not. That is real neutrality, not performed neutrality.
+
+**Why Kept still wins without steering.** Our promise chain — view every
+property, confirmed written offer within two working days of viewing,
+**binding upon Kept for a week** — is exactly the dated, documentable
+cash position such a file wants. An executor can request it purely as
+evidence. Some convert. The CTA is therefore "**request a written offer
+for the decision file**", never "send us the property". (Shipped copy
+re-pointed the same day.)
+
+**What this changes in the plan:**
+
+1. **V1.1 evidence features** (next build, in priority order):
+   - **Holding-cost context**: what an empty estate property costs per
+     month (insurance, empty-property council-tax premium, utilities,
+     upkeep) over a typical open-market timeline — editable inputs,
+     sourced defaults, dated.
+   - **Net-proceeds comparator**: the professional enters ANY offers
+     they hold (open-market and cash, ours or anyone's); the tool shows
+     net-vs-net over time. User-entered figures only — we never generate
+     a figure, so the no-figure rule holds and the tool stays
+     buyer-agnostic.
+   - **Decision-record export**: a one-page structure for the file —
+     valuations obtained, offers considered, risks weighed, rationale —
+     printable alongside the report.
+   - **Fall-through / chain-risk context**: only with verified, dated
+     sources; ships behind the compliance check below.
+2. **Success metrics** gain: decision files completed per professional,
+   and written offers requested as evidence (a request is a success even
+   when the estate sells elsewhere).
+3. **Compliance opinion scope extended** (still gates Phase 2): SRA/RICS
+   referral rules AND every legal claim the justification pack makes
+   (devastavit framing, best-price doctrine, holding-cost assertions).
+   No legal claim appears in product copy before that opinion — the
+   sources behind this pivot are mixed-authority web research.
+4. **Pilot pitch** changes to: "help your executor clients evidence the
+   best-value decision, whichever route they take."
+
+**Pushed further the same day:** the founder's second research pass found
+two bigger, valuation-free pains — the IHT funding catch-22 and
+vacant-property liability. Keyhole becomes the first module of a
+**probate property shelf**; the tree, sequencing (vacancy guard first)
+and the integrity firewall live in
+`docs/proposals/keyhole-probate-shelf-tree.md`.
 
 ## 1. Product Name (working title)
 

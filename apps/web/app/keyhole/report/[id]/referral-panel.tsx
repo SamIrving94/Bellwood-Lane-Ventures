@@ -3,12 +3,18 @@
 import { useState } from 'react';
 
 /**
- * The one opt-in moment in Keyhole. Clearly ours, clearly optional, and the
- * copy holds the public promise exactly (same-day response, we view every
- * property, confirmed written offer within two working days of viewing,
- * binding upon Kept for a week, completion in as little as two weeks) and
- * names the trade-off and who we are wrong for. Print-hidden: the printed
- * report stays a neutral document for the client file.
+ * The one opt-in moment in Keyhole, framed per the 29 Aug pivot (PRD §0):
+ * we offer a WRITTEN OFFER AS EVIDENCE for the estate's best-value
+ * decision file — never "send us the property". Executors carry personal
+ * liability for under-selling, so a nudge toward a cash sale is exactly
+ * what this audience must reject; a dated, binding cash position they can
+ * weigh against the open-market route is something the file wants
+ * whichever way the estate decides. Copy holds the public promise exactly
+ * (same-day response, we view every property, confirmed written offer
+ * within two working days of viewing, binding upon Kept for a week,
+ * completion in as little as two weeks), names the trade-off, and says who
+ * we are wrong for. Print-hidden: the printed report stays a neutral
+ * document for the client file.
  */
 
 const PILL =
@@ -74,7 +80,7 @@ export function ReferralPanel({
         Optional, and clearly ours
       </p>
       <h2 className="mt-2 font-semibold font-serif text-[20px] text-forest">
-        If a fast, certain sale matters here
+        A written offer, for the decision file
       </h2>
       <p className="mt-2 max-w-[62ch] text-[14px] text-body leading-[1.65]">
         Kept buys property directly, with cash. We respond the same day, we view
@@ -84,9 +90,11 @@ export function ReferralPanel({
         that is the trade for speed and certainty, and we say so up front.
       </p>
       <p className="mt-2 max-w-[62ch] text-[14px] text-body leading-[1.65]">
-        If there is time to market the property properly, an estate agent will
-        usually get a better price. We&apos;d rather your client sold well than
-        sold to us.
+        You can request that offer purely as evidence: a dated cash position for
+        the decision file, to weigh against the open-market route. If there is
+        time to market the property properly, an estate agent will usually get a
+        better price, and the file is stronger for showing both. We&apos;d
+        rather your client sold well than sold to us.
       </p>
 
       {done ? (
@@ -134,7 +142,7 @@ export function ReferralPanel({
               onClick={send}
               type="button"
             >
-              {busy ? 'Sending…' : 'Send this property to Kept'}
+              {busy ? 'Sending…' : 'Request a written offer'}
             </button>
             <button
               className="cursor-pointer text-[13.5px] text-body underline underline-offset-[3px]"
@@ -151,7 +159,7 @@ export function ReferralPanel({
           onClick={() => setOpen(true)}
           type="button"
         >
-          Send this property to Kept
+          Request a written offer
         </button>
       )}
       <p className="mt-3 text-[12px] text-stone-500 leading-[1.5]">
