@@ -24,6 +24,7 @@ docs/architecture/marketer-internal.md.)
 | [`agent-partner-research-2026-04.md`](./agent-partner-research-2026-04.md) | Becoming UK Estate Agents' #1 Cash Buyer Partner — market sizing, pain points, competitor matrix, value-prop ranking, regulatory brief, 14-day GTM | 2026-04 |
 | [`agent-briefing-pack-2026-04.md`](./agent-briefing-pack-2026-04.md) | Complete AI Agent Briefing Pack — operating manual for the Paperclip agent team | 2026-04 |
 | [`prime-sourcing-deep-research-prompt-2026-08.md`](./prime-sourcing-deep-research-prompt-2026-08.md) | Ready-to-paste Perplexity deep-research prompt for finding the best prime stock — validates the district hypothesis, hunts missing channels; includes follow-ups + where results land | 2026-08 |
+| [`prime-sourcing-deep-research-2026-08.md`](./prime-sourcing-deep-research-2026-08.md) | The report that came back: probate is the only quantified discount (10–25%), the £/sqft arbitrage ranking must be built in-house from Land Registry + EPC, super-prime exclusion supported, 2026 refurb/SDLT/bridging benchmarks | 2026-08 |
 
 ## Add new research
 
