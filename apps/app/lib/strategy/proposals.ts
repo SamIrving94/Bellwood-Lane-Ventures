@@ -25,6 +25,77 @@ export type StrategyProposal = {
 
 export const STRATEGY_PROPOSALS: StrategyProposal[] = [
   {
+    id: '2026-08-prime-2m-keyhole',
+    date: '2026-08-29',
+    title: '£2M+ fringe trial · the district truth machine · Keyhole',
+    reviewer: 'Ant',
+    status: 'for_review',
+    markdown: `
+## What happened (Sam approved, 29 Aug — built and in PR #94)
+
+Deep research on prime sourcing came back. Three decisions came out of it.
+All three are **built**. This is the review, not the request.
+
+## The three things, in one breath each
+
+**1. The £2M+ fringe trial.** There was never a price cap in the code —
+only a scanning gap. **W11 (Notting Hill) and NW3 (Hampstead)** can now be
+seeded with one command. Optionality, not conviction: the research
+SUPPORTED our super-prime exclusion (prime London fell 7.5–9% in Q2), so
+we scan and glance, we don't chase. Cost: **~2 extra prime seeds per run**.
+
+**2. The truth machine** (\`scripts/arbitrage-rank.mts\`). Our 33-district
+list was a hypothesis. This measures it: every house sale (Land Registry)
+matched to its EPC certificate, split **unmodernised (band F/G) vs
+refurbished (A–C)**, median **£/sqft each side, per district**. The gap is
+the arbitrage. Strict matching, minimum 5 sales per side or it says
+"insufficient". Nobody publishes this data; now we make it ourselves.
+
+**3. Keyhole** (\`/keyhole\`, unlisted). Free one-page report for probate
+solicitors, surveyors and wealth managers: EPC condition, the street's
+recorded sales, refurb cost bands. **Never a valuation, never
+auto-contact.** One opt-in button sends the property to deals@. The flip:
+instead of paying for professional referrals, we give the network a tool
+they want, and the leads are the byproduct. Buying agents (Domus Holmes
+tier) get **first look at our refurbished exits** — never our distress
+feed.
+
+## Why this is worth Ant's attention
+
+- **Probate is the only quantified discount** in the research: 10–25%
+  below market, 85–90% of asking accepted. Everything else is "not found".
+  Keyhole aims squarely at the probate professionals.
+- The truth machine ends district debates. Next tier changes come from
+  **measured spreads**, not instinct.
+
+## What Ant needs to decide / sanity-check
+
+1. ✅ / ❌ **The fringe trial itself** — comfortable scanning W11 + NW3 at
+   ~40% more credits per prime seed?
+2. **SDLT structure before the first £2M+ buy** — flat 15% corporate SDLT
+   vs developer/trader relief is up to **~£300k on a £2M deal**. Which
+   accountant, and when?
+3. **Bridging** — who arranges the sub-60% LTV line (0.55–0.75%/month vs
+   0.95–1.5% moves whole-deal margin)?
+4. **Keyhole compliance gate** — free pilot needs nothing, but **no
+   referral fees to solicitors/surveyors until an SRA/RICS opinion** is in.
+   Agreed as a hard gate?
+5. **deals@wearekept.co.uk** — Keyhole referrals land there. Does that
+   mailbox exist and get read?
+6. **The kill-gate** — pilot is 5–8 warm professionals; **1 referred lead +
+   1 completed deal in 12 weeks or we stop**. Agree the bar?
+
+## Sam's four switch-on actions (already listed for him)
+
+EPC token on the web project · \`pnpm migrate\` · seed W11+NW3 · pick the
+pilot professionals.
+
+*Full detail: \`docs/proposals/prime-2m-plus-keyhole-flip.md\`,
+\`docs/prds/keyhole-v1-2026-08.md\`, research in \`docs/research/\`, code in
+PR #94.*
+`.trim(),
+  },
+  {
     id: '2026-08-two-track-model',
     date: '2026-08-04',
     title: 'Two revenue streams: Volume sourcing + Prime principal',
