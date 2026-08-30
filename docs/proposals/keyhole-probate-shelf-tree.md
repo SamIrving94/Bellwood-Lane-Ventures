@@ -114,9 +114,77 @@ this kills the entire strategy — trust IS the product.
 - No referral fees to regulated professionals before SRA/RICS clearance.
 - Never a valuation, never our figure on screen. Unchanged, load-bearing.
 
+## Added 29 Aug (evening): channels beyond probate, and the barbell
+
+The founder's follow-up research widened the map. Probate had crowded out
+three other doors, and the right mechanism differs by price band.
+
+**The barbell:**
+
+| Band | Who actually handles it | Mechanism |
+|:--|:--|:--|
+| £700k–£1.5M | Local high-street probate firms IN our hunting-list postcodes (the ~450+ small London practices), not City desks. A live competitor ("Probate Purchasers", Highgate) validates the local-referral play | Keyhole + the shelf. Tools fit this audience |
+| £1.5M–£10M | Tier 1 private client (Boodle Hatfield, Farrer, Withers tier), family offices and their advisers, divorce/family solicitors, LPA receiver panels | Relationship, not software. Family-office advisers broker introductions as their core job |
+
+**Three more doors, graded:**
+
+- **Divorce / family solicitors** — different practice area, different
+  network, and a court-order trigger date. Relationship channel (we
+  dropped divorce for AUTOMATION in the Aug research; that call stands —
+  this is coffee, not code).
+- **Receiver panels** — seek pre-approved-buyer status with the specialist
+  LPA firms, ahead of marketing. LEGAL CAUTION: receivers DO owe an
+  equitable duty to obtain a proper price at the time of sale (Silven);
+  what they do not owe is patience. The pitch is "certainty on the day
+  you choose to sell", never "no duty, sell cheap".
+- **Family offices** — calmest sellers, biggest tickets, zero tooling.
+  Goes on the first-look relationship motion, asymmetry rule unchanged.
+
+**"Ways in" before the market, graded:**
+
+1. **Grant-stage trigger** ✅ the best idea in the batch: "IHT421 issued /
+   grant received" is the moment a property becomes administratively
+   sellable, weeks before an agent is instructed. This is the IHT-map
+   module's killer feature — their own timeline IS the trigger.
+2. **Funding the IHT gap for first-look rights** ❌ as designed. A
+   lender-buyer whose facility ties to "sells to us" recreates devastavit
+   in its sharpest form, sits on the FCA lending perimeter, and burns the
+   shelf's neutrality. Compliant version only: signpost independent
+   probate lenders, no fee, no tie, nothing more without counsel.
+3. **Stopped-application alerts** ⚠️ real pain (43% of held cases) but no
+   public per-case API — a true alert service means holding their case
+   data. Light version instead: a "common stops and how to pre-empt
+   them" checklist inside the shelf.
+
+**Probate-delay context worth keeping** (founder research, verify before
+quoting): the registry mean is down to weeks but London runs slowest; the
+18-month+ tail grew ~155% since 2020/21; the real chokepoint is HMRC IHT
+clearance before application; and the post-grant property sale is itself
+an acknowledged 2–3 month delay layer — exactly where a two-week
+completion has leverage the FIRM feels (unbillable chase time, client
+blame), not just the family.
+
+## Open question for the founders: the prime floor
+
+The founder wrote "prime is £1.5M plus, up to £10M". Flagged, not built
+(challenge-before-building rule): **"up to £10M" is already true** — the
+classifier has no ceiling by design. But raising the FLOOR from £700k to
+£1.5M would demote nearly every lead the tier-1 refurb-arbitrage book was
+built on (SE22/E17/N8 entry sits £700k–£1.2M). Recommendation: keep the
+£700k floor and name **£1.5M–£10M a tier WITHIN prime** (the cornerstone
+book) with its own badge and channels — and let `arbitrage-rank.mts`
+measure whether the spread survives NW3/W8 prices before conviction.
+Awaiting the second yes.
+
 ## What Ant is being asked
 
 1. Agree the shelf framing (trust-first, referral-late)?
 2. Which module next: **vacancy guard** (recommended) or IHT map?
 3. Sign off the integrity firewall as written?
 4. Extend the compliance opinion scope to the FCA perimeter points?
+5. The barbell: local firms get the tools, the £1.5M–£10M tier gets
+   relationships (family offices, Tier 1 private client, divorce
+   solicitors, receiver panels)?
+6. The prime floor: stays £700k, with £1.5M–£10M as a named cornerstone
+   tier — or does the founder direction mean a true floor change?
+7. Veto confirmed on IHT-gap funding tied to purchase rights?

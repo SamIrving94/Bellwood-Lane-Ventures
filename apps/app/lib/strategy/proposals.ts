@@ -116,6 +116,29 @@ Three more things to decide, on top of the six above:
 Also: the compliance opinion scope now covers the FCA perimeter (no
 credit broking, no insurance arranging — signpost and illustrate only).
 
+## Second update: the barbell, and a flagged buy-box question
+
+Sam's evening research widened the channels past probate. Short version
+(full detail in \`docs/proposals/keyhole-probate-shelf-tree.md\`):
+
+- **£700k–£1.5M** estates are handled by **local high-street probate
+  firms in our own postcodes** — they get the tools.
+- **£1.5M–£10M** goes to **relationships, not software**: family
+  offices, Tier 1 private client, divorce solicitors, LPA receiver
+  panels (pitch = "certainty on the day you choose to sell" — receivers
+  DO owe a proper-price duty, so never "no duty, sell cheap").
+- One idea **vetoed pending counsel**: funding the IHT gap in exchange
+  for first-look rights. A lender-buyer tie is devastavit with a paper
+  trail plus FCA perimeter. Signposting independent lenders only.
+
+10. **The barbell** — agree tools-local, relationships-top-end?
+11. **The prime floor** — Sam wrote "prime is £1.5M+, up to £10M". The
+    £10M half is already true (no ceiling exists in code). Raising the
+    FLOOR would demote the whole tier-1 refurb book (£700k–£1.2M entry).
+    Held for a second yes: recommend £700k floor stays, **£1.5M–£10M
+    becomes a named cornerstone tier** with its own badge and channels.
+12. **The IHT-funding veto** — confirmed?
+
 ## Sam's four switch-on actions (already listed for him)
 
 EPC token on the web project · \`pnpm migrate\` · seed W11+NW3 · pick the
