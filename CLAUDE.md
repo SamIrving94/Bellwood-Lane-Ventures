@@ -240,6 +240,16 @@ Rules:
 
 ## Working in this repo
 
+- **Challenge before building** (founder direction, 29 Aug 2026). On
+  anything strategy-shaped — a new product, audience, or channel — a
+  founder "yes, build it" is the trigger for one more message, not the
+  last checkpoint: state the strongest case AGAINST, the assumption that
+  kills it, and who hates it and why; build on the second yes. Keyhole
+  shipped with its value loop mis-aimed at its audience's fiduciary
+  duties, and the founder had to catch it himself hours later. Strategy
+  builds also ship dark (noindex, no outreach) until the premise survives
+  one real user. Full account: `docs/LEARNINGS.md`, 2026-08-29.
+
 - **Announce shipped features in-app.** When you ship a founder-visible
   feature, add an entry to the TOP of `apps/app/lib/whats-new.ts` (fresh
   `id`, fun copy, one emoji per bullet). The dashboard shows the newest

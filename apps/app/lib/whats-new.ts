@@ -26,6 +26,63 @@ export type WhatsNewEntry = {
 /** Newest first. The popup shows index 0. */
 export const WHATS_NEW: WhatsNewEntry[] = [
   {
+    id: '2026-08-30-launch-board',
+    date: '2026-08-30',
+    emoji: '🚀',
+    title: 'The October launch board is live — one next step each',
+    intro:
+      'No more lists in chat. The Launch page shows Sam, Ant and Claude each ONE green "do this now" card with exact steps and a Done button. Tick it, the next one appears. Both of you see the same live board.',
+    bullets: [
+      {
+        emoji: '✅',
+        text: 'One task at a time: the green card is the only thing to look at. Steps are literal — open this, paste this, click Done.',
+      },
+      {
+        emoji: '📋',
+        text: 'Commands come with a Copy button. No retyping, no hunting through chat history.',
+      },
+      {
+        emoji: '⏳',
+        text: '"Waiting on others" shows why a task is parked — in plain words, no list numbers.',
+      },
+      {
+        emoji: '💼',
+        text: 'The PPC freelancer brief is written, with a starter shortlist and 5 screening questions: docs/marketing/freelancer-brief-ppc.md.',
+      },
+    ],
+    cta: { label: 'Open the launch board', href: '/launch' },
+  },
+  {
+    id: '2026-08-29-prime-2m-keyhole',
+    date: '2026-08-29',
+    emoji: '🗝️',
+    title: 'The £2M+ trial, a district truth machine, and Keyhole is live',
+    intro:
+      'Three decisions, shipped together: the scout can hunt the super-prime fringe, the district list can finally be MEASURED instead of guessed, and professionals get a free report tool that quietly sends us leads.',
+    bullets: [
+      {
+        emoji: '🏰',
+        text: 'W11 + NW3 fringe trial, one command: seed-london-prime now takes --districts=W11,NW3. There was never a price ceiling in the code, only a scanning gap.',
+      },
+      {
+        emoji: '📏',
+        text: 'New arbitrage-rank script: Land Registry sales matched to EPC certificates, per district, giving real unmodernised vs refurbished £/sqft. The list stops being a hypothesis.',
+      },
+      {
+        emoji: '🗝️',
+        text: 'Keyhole is live at /keyhole (invite-only, unlisted): solicitors, surveyors and wealth managers get a one-page condition-and-value report. Never a valuation, never auto-contact.',
+      },
+      {
+        emoji: '🤝',
+        text: 'Their referrals land in deals@ with the report attached, opt-in only. The first-look playbook for buying agents is in docs/templates.',
+      },
+      {
+        emoji: '🔑',
+        text: 'One env to add: EPC_API_TOKEN on the web project, or Keyhole reports skip the EPC section (honestly, with a note).',
+      },
+    ],
+  },
+  {
     id: '2026-08-27-scout-on-demand',
     date: '2026-08-27',
     emoji: '🎯',

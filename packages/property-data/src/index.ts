@@ -38,6 +38,7 @@ import {
 } from './companies-house';
 import { resolveAddress, OsPlaceSchema } from './os-places';
 
+export * from './arbitrage';
 export * from './hmlr';
 export * from './hmlr-hpi';
 export * from './epc';
