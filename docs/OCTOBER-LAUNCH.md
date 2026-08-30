@@ -1,8 +1,12 @@
 # October launch — the outstanding-actions board
 
-_Created 2026-08-30. One month to launch. This is the single list: what is
-outstanding in the codebase, who owns what, and the order. Update it as
-items close — a stale launch board is worse than none._
+_Created 2026-08-30. One month to launch._
+
+> **The LIVE version of this board is the dashboard page `/launch`** —
+> tickable, one next step per person, state shared between founders.
+> This file is the background narrative (the why behind the tasks and
+> the freelancer reasoning); the page is where work gets ticked. If they
+> disagree, the page wins.
 
 **Companion docs:** `docs/marketing/PLAN.md` (the channel plan — still
 sound), `docs/proposals/keyhole-probate-shelf-tree.md` (the shelf),

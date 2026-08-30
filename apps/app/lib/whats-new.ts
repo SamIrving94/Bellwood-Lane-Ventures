@@ -26,6 +26,33 @@ export type WhatsNewEntry = {
 /** Newest first. The popup shows index 0. */
 export const WHATS_NEW: WhatsNewEntry[] = [
   {
+    id: '2026-08-30-launch-board',
+    date: '2026-08-30',
+    emoji: '🚀',
+    title: 'The October launch board is live — one next step each',
+    intro:
+      'No more lists in chat. The Launch page shows Sam, Ant and Claude each ONE green "do this now" card with exact steps and a Done button. Tick it, the next one appears. Both of you see the same live board.',
+    bullets: [
+      {
+        emoji: '✅',
+        text: 'One task at a time: the green card is the only thing to look at. Steps are literal — open this, paste this, click Done.',
+      },
+      {
+        emoji: '📋',
+        text: 'Commands come with a Copy button. No retyping, no hunting through chat history.',
+      },
+      {
+        emoji: '⏳',
+        text: '"Waiting on others" shows why a task is parked — in plain words, no list numbers.',
+      },
+      {
+        emoji: '💼',
+        text: 'The PPC freelancer brief is written, with a starter shortlist and 5 screening questions: docs/marketing/freelancer-brief-ppc.md.',
+      },
+    ],
+    cta: { label: 'Open the launch board', href: '/launch' },
+  },
+  {
     id: '2026-08-29-prime-2m-keyhole',
     date: '2026-08-29',
     emoji: '🗝️',
