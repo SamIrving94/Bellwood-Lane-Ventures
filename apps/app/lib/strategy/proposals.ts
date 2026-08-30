@@ -132,12 +132,17 @@ Sam's evening research widened the channels past probate. Short version
   trail plus FCA perimeter. Signposting independent lenders only.
 
 10. **The barbell** — agree tools-local, relationships-top-end?
-11. **The prime floor** — Sam wrote "prime is £1.5M+, up to £10M". The
-    £10M half is already true (no ceiling exists in code). Raising the
-    FLOOR would demote the whole tier-1 refurb book (£700k–£1.2M entry).
-    Held for a second yes: recommend £700k floor stays, **£1.5M–£10M
-    becomes a named cornerstone tier** with its own badge and channels.
+11. ~~The prime floor~~ **DECIDED (Sam, 29 Aug): floor stays £700k;
+    £1.5M–£10M is the named cornerstone tier** (own badge — queued —
+    and relationship channels). No ceiling change needed: none exists.
 12. **The IHT-funding veto** — confirmed?
+
+Two founder-approved anchors from the same exchange: the receiver/top-end
+pitch line is **"certainty on the day you choose to sell"**, and the
+grant-stage trigger is pursued the CLEAN way (the solicitor's own dates,
+in-tool) — the IHT421 itself is invisible to outsiders and the public
+grant record has no API, so anyone promising postcode-level grant feeds
+is selling either Smee-&-Ford-style commercial data (evaluate) or smoke.
 
 ## Sam's four switch-on actions (already listed for him)
 

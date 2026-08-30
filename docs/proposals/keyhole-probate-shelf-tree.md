@@ -164,17 +164,54 @@ an acknowledged 2–3 month delay layer — exactly where a two-week
 completion has leverage the FIRM feels (unbillable chase time, client
 blame), not just the family.
 
-## Open question for the founders: the prime floor
+## The prime floor — RESOLVED (founder, 29 Aug)
 
-The founder wrote "prime is £1.5M plus, up to £10M". Flagged, not built
-(challenge-before-building rule): **"up to £10M" is already true** — the
-classifier has no ceiling by design. But raising the FLOOR from £700k to
-£1.5M would demote nearly every lead the tier-1 refurb-arbitrage book was
-built on (SE22/E17/N8 entry sits £700k–£1.2M). Recommendation: keep the
-£700k floor and name **£1.5M–£10M a tier WITHIN prime** (the cornerstone
-book) with its own badge and channels — and let `arbitrage-rank.mts`
-measure whether the spread survives NW3/W8 prices before conviction.
-Awaiting the second yes.
+Sam: "yes, don't change the floor." So: **£700k floor stays**, and
+**£1.5M–£10M is the named CORNERSTONE TIER inside prime** — its own badge
+and its own channels (relationships, per the barbell). The classifier
+needs no change for the ceiling: none exists. The tier badge is a small
+build, queued with the next code block rather than rushed. The
+arbitrage model still referees whether the spread survives NW3/W8 prices
+before any buying conviction at that level.
+
+## Finding the grant moment — honest mechanics (added after founder Q)
+
+"How do we find IHT421?" — three routes, in order of cleanliness:
+
+1. **In-tool, consented (the clean one).** The IHT-timeline module asks
+   the solicitor for their own case dates; when THEY mark "grant
+   received", the tool serves the sale-readiness step. The trigger works
+   for them, inside their file — firewall intact.
+2. **Our existing Gazette scan** — the deceased-estates notices we
+   already catch usually run EARLIER than the grant. Relationship starts
+   at the notice; the deal becomes transactable at the grant.
+3. **Commercial grant feeds** (Smee & Ford-style notification services —
+   evaluate and verify before relying on it). Paid channel; a line for
+   the founder list, not an assumption.
+
+What is NOT possible, said plainly: the IHT421 itself is invisible
+(HMRC → executor → registry, never public), and the public Find-a-Will
+record appears ~2 weeks post-grant, searchable only by surname + death
+year — **no API, no postcode browse, not scrapeable by area**.
+
+## Tier 1 private client — what software CAN do up there (corrected)
+
+"Relationships, not software" was overstated. Corrected: **software does
+not OPEN the door at Tier 1; it keeps the door open.**
+
+- **The vacancy guard scales UP** — an empty £5M house is a bigger
+  liability than a £700k terrace. Same tool, higher stakes.
+- **The decision file matters MORE at £5M** — devastavit exposure scales
+  with estate value, and big-estate beneficiaries litigate.
+- **White-label** (their brand in front) — already the PRD's V2 shape.
+- **A counterparty pack** — proof of funds, track record, process letter
+  for their file. Partly exists in the codebase already; assembly, not
+  building.
+- Never build: any sale process we RUN for them. Estate agency is a
+  regulated activity and a conflict — we are the buyer, never the broker.
+
+**Approved pitch line (founder, 29 Aug), for receivers and the top end:
+"Certainty on the day you choose to sell."**
 
 ## What Ant is being asked
 
