@@ -144,6 +144,16 @@ in-tool) — the IHT421 itself is invisible to outsiders and the public
 grant record has no API, so anyone promising postcode-level grant feeds
 is selling either Smee-&-Ford-style commercial data (evaluate) or smoke.
 
+## 🚀 October launch
+
+Target set 30 Aug: **launch in October.** The single action board — who
+owns what, the week plan, and the freelancer recommendation (hire a PPC
+executor for the existing \`PLAN.md\`, never a generalist; professional
+channels stay founder-led) — lives in **\`docs/OCTOBER-LAUNCH.md\`**.
+Decisions #8 (next module), #9 (firewall) and #12 (funding veto) above
+are now launch-blocking, plus one new joint call: does October mean
+go-loud-on-vendors, or professional-first with a small paid test?
+
 ## Sam's four switch-on actions (already listed for him)
 
 EPC token on the web project · \`pnpm migrate\` · seed W11+NW3 · pick the
