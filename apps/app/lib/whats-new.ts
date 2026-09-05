@@ -26,6 +26,28 @@ export type WhatsNewEntry = {
 /** Newest first. The popup shows index 0. */
 export const WHATS_NEW: WhatsNewEntry[] = [
   {
+    id: '2026-09-05-phone-front-door',
+    date: '2026-09-05',
+    emoji: '📱',
+    title: 'The front door now leads with the door on phones',
+    intro:
+      'Open the public site on your phone. The threshold photograph and the seal are on the first screen, where they always were on desktop. The form is one thumb-scroll down, and Get started still jumps straight to it.',
+    bullets: [
+      {
+        emoji: '🚪',
+        text: 'Photo first: on phones the photograph now sits between the headline and the form, instead of a full screen down.',
+      },
+      {
+        emoji: '✂️',
+        text: 'Less crowding: shorter step labels on phones, a tighter header, and the trust marks sit under the photo as a caption.',
+      },
+      {
+        emoji: '🖥️',
+        text: 'Desktop unchanged: same grid, same spacing, same copy. Nothing in the signed-off wording moved.',
+      },
+    ],
+  },
+  {
     id: '2026-08-30-launch-board',
     date: '2026-08-30',
     emoji: '🚀',
