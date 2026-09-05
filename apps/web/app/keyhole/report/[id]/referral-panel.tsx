@@ -93,8 +93,8 @@ export function ReferralPanel({
         You can request that offer purely as evidence: a dated cash position for
         the decision file, to weigh against the open-market route. If there is
         time to market the property properly, an estate agent will usually get a
-        better price, and the file is stronger for showing both. We&apos;d
-        rather your client sold well than sold to us.
+        better price, and the file is stronger for showing both. If that&apos;s
+        your client, we&apos;ll say so.
       </p>
 
       {done ? (

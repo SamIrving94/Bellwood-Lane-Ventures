@@ -476,7 +476,7 @@ export default function SellPage() {
           <p className="mt-4 text-[#44403c] text-[16px] leading-[1.75]">
             If you can wait months for the right buyer, or your property is in
             excellent condition and high demand, get in touch with a local agent
-            first. We&rsquo;d rather you sold well than sold to us.
+            first. If that&rsquo;s you, we&rsquo;ll say so.
           </p>
         </div>
       </section>
