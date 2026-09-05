@@ -103,6 +103,11 @@ does not merge.
 ## The human moves we always make
 
 - A real artifact in the hero (document, photo, named person, live figures).
+- The artifact stays on the first screen on a phone. When a two-column hero
+  collapses, place the grid children explicitly so the photograph or document
+  lands between the headline and the form, never after it. (Sep 2026 mobile
+  review: left to source order, `/sell` opened on a 390px phone as five
+  blocks of type and a form, with the door a full screen down.)
 - Intentional asymmetry. Hairline rules instead of boxes where possible.
 - Real, specific copy with a human voice (the existing `/agents` and `/sell`
   prose is the bar).
@@ -120,6 +125,7 @@ does not merge.
 - [ ] Eyebrows use `<Eyebrow>`, not `uppercase tracking-widest`.
 - [ ] No gradient standing in for an image.
 - [ ] The page leads with something real and specific.
+- [ ] At 390px wide, the first screen still shows that real thing, not only type.
 
 ## Page status
 
@@ -196,5 +202,9 @@ document and seal artifacts, never on gradients.
 - `/sell` hero rebuilt around the signed `OfferLetter` artifact. The faint
   monogram and the type on a flat field hero are gone.
 - `sell/layout.tsx` and `agents/layout.tsx` local font imports removed.
+- Sep 2026: `/sell` re-stacked for phones. The photograph and seal sit
+  between the kicker and the form below `lg`, the step labels have a short
+  form below `sm`, the trust marks caption the photograph on phones, and the
+  header and eyebrow lose some height. Desktop unchanged, copy unchanged.
 - Everything under "needs fixing", "replace", and "shared offenders" is the
   governed backlog. Work through it page by page against this checklist.

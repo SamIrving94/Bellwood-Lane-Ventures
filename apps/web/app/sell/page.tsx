@@ -166,7 +166,7 @@ export default function SellPage() {
     <>
       {/* ————— NAV ————— */}
       <header className="sticky top-0 z-40 border-hair/70 border-b bg-cream/85 backdrop-blur-md">
-        <div className="mx-auto flex max-w-7xl items-center justify-between gap-8 px-6 py-3.5 md:px-10">
+        <div className="mx-auto flex max-w-7xl items-center justify-between gap-8 px-6 py-2.5 md:px-10 md:py-3.5">
           <LogoLockup href="/sell" animate />
           <nav className="hidden items-center gap-7 text-[14px] text-stone-600 md:flex">
             {NAV.map((item) => (
@@ -194,14 +194,21 @@ export default function SellPage() {
           on the left; the threshold photograph with the wax seal straddling
           its bottom-left corner on the right. The seal overlap is what stops
           the photograph floating. The earlier offer-document card is removed
-          and must not be reinstated — its points live in the promise section. */}
+          and must not be reinstated — its points live in the promise section.
+
+          Phones (Sep 2026 mobile review): the grid children are placed
+          explicitly so the photograph sits BETWEEN the kicker and the form
+          when the two columns collapse. Left to source order, the text
+          column alone was 730px tall and the photograph, the one real
+          artefact on the page, landed a full screen down. On lg the figure
+          spans both rows of the right column, so desktop is unchanged. */}
       <main className="mx-auto max-w-7xl px-6 md:px-10">
-        <div className="pt-10">
+        <div className="pt-6 md:pt-10">
           <Eyebrow>for UK property sellers</Eyebrow>
         </div>
 
-        <section className="grid grid-cols-1 items-start gap-12 pt-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,0.8fr)] lg:gap-[72px]">
-          <div>
+        <section className="grid grid-cols-1 items-start gap-y-8 pt-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,0.8fr)] lg:gap-x-[72px] lg:gap-y-7">
+          <div className="lg:col-start-1 lg:row-start-1">
             <h1
               className="text-balance font-bold font-serif text-forest leading-[1.02] tracking-[-0.03em]"
               style={{ fontSize: 'clamp(34px, 4vw, 54px)' }}
@@ -222,32 +229,41 @@ export default function SellPage() {
               trust that your written cash offer won&rsquo;t change at the last
               minute.
             </p>
-            <p className="mt-3.5 mb-7 font-serif text-[19px] text-forest">
+            <p className="mt-3.5 font-serif text-[19px] text-forest">
               Every promise, kept.
             </p>
+          </div>
 
+          <figure className="m-0 lg:col-start-2 lg:row-span-2 lg:row-start-1">
+            <div className="relative">
+              <div className="overflow-hidden rounded-[2px] border border-hair">
+                <Image
+                  src="/home/threshold.webp"
+                  alt="An open front door on a wet afternoon, hall light on, a packing box just inside"
+                  width={1100}
+                  height={1375}
+                  priority
+                  sizes="(max-width: 1024px) 100vw, 40vw"
+                  className="block h-[44vh] min-h-[280px] w-full object-cover object-[50%_30%] lg:h-auto lg:max-h-none lg:object-contain"
+                />
+              </div>
+              <Seal className="-bottom-[18px] -left-[18px] lg:-bottom-[30px] lg:-left-[30px] absolute h-[72px] w-[72px] bg-cream shadow-[0_14px_30px_-14px_rgba(36,28,26,0.45)] lg:h-[92px] lg:w-[92px]" />
+            </div>
+            {/* On phones the trust marks caption the photograph, set beside
+                the seal. On lg they sit under the form, as in the handoff. */}
+            <figcaption className="mt-3 pl-[64px] font-serif text-[13px] text-stone-500 leading-[1.6] lg:hidden">
+              Property Redress Scheme &middot; HMRC AML supervised &middot; ICO
+              registered &middot; No fees to you
+            </figcaption>
+          </figure>
+
+          <div className="lg:col-start-1 lg:row-start-2">
             <OfferForm />
-
-            <p className="mt-5 font-serif text-[13px] text-stone-500 leading-[1.6]">
+            <p className="mt-5 hidden font-serif text-[13px] text-stone-500 leading-[1.6] lg:block">
               Property Redress Scheme &middot; HMRC AML supervised &middot; ICO
               registered &middot; No fees to you
             </p>
           </div>
-
-          <figure className="relative m-0">
-            <div className="overflow-hidden rounded-[2px] border border-hair">
-              <Image
-                src="/home/threshold.webp"
-                alt="An open front door on a wet afternoon, hall light on, a packing box just inside"
-                width={1100}
-                height={1375}
-                priority
-                sizes="(max-width: 1024px) 100vw, 40vw"
-                className="block h-auto max-h-[62vh] w-full object-cover object-[50%_30%] lg:max-h-none lg:object-contain"
-              />
-            </div>
-            <Seal className="-bottom-[18px] -left-[18px] lg:-bottom-[30px] lg:-left-[30px] absolute h-[72px] w-[72px] bg-cream shadow-[0_14px_30px_-14px_rgba(36,28,26,0.45)] lg:h-[92px] lg:w-[92px]" />
-          </figure>
         </section>
 
         {/* ————— REASON INDEX ————— */}
