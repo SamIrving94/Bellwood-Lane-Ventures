@@ -26,7 +26,7 @@ export const CalendlyButton = ({ bookingLink }: Props) => {
         <button
           type="button"
           onClick={handleCopy}
-          className="rounded-md bg-secondary px-4 py-2 text-sm font-medium text-secondary-foreground hover:bg-secondary/80"
+          className="rounded-md bg-secondary px-4 py-2 font-medium text-secondary-foreground text-sm hover:bg-secondary/80"
         >
           {copied ? 'Copied!' : 'Send Calendly Link'}
         </button>
@@ -34,12 +34,12 @@ export const CalendlyButton = ({ bookingLink }: Props) => {
           href={bookingLink}
           target="_blank"
           rel="noopener noreferrer"
-          className="text-xs text-muted-foreground hover:underline"
+          className="text-muted-foreground text-xs hover:underline"
         >
           Open link
         </a>
       </div>
-      <p className="break-all text-xs text-muted-foreground">{bookingLink}</p>
+      <p className="break-all text-muted-foreground text-xs">{bookingLink}</p>
     </div>
   );
 };

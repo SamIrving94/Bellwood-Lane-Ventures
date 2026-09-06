@@ -30,7 +30,11 @@ import {
   getTenureByPostcode,
 } from '@repo/property-data/src/propertydata';
 
-import { isSyntheticPricePaid } from '@repo/property-data/src/hmlr';
+import { getEpcData } from '@repo/property-data/src/epc';
+import {
+  isSyntheticPricePaid,
+  realTransactions,
+} from '@repo/property-data/src/hmlr';
 import { normaliseUkAddress } from './address-normalise';
 import { fetchCompaniesHouseDistressLeads } from './companies-house-charges';
 import {
@@ -43,6 +47,7 @@ import {
 import { fetchGazetteProbateNotices } from './gazette';
 import { matchProbateAddressToSale } from './hmlr-match';
 import { leadTypeForListing } from './lead-type';
+import { assessModernisation } from './modernisation';
 import { fetchPlanningConsentLeads } from './planning-consents';
 import { fetchProbateGrants } from './probate-data';
 import { enrichRationaleWithLlm } from './rationale-llm';
@@ -59,6 +64,7 @@ import {
 import {
   classifyTrack,
   isBlockText,
+  isCornerstoneValue,
   isPotentialPrimeCapture,
   primeOpportunityForTrack,
   toDistrictSet,
@@ -307,6 +313,8 @@ export {
   AUCTION_GUIDE_HEADROOM,
   classifyAuctionTrack,
   classifyTrack,
+  CORNERSTONE_MIN_VALUE_PENCE,
+  isCornerstoneValue,
   toDistrictSet,
   isBlockText,
   isPotentialPrimeCapture,
@@ -320,6 +328,13 @@ export {
   type DealTrackValue,
   type PrimeOpportunity,
 } from './track';
+export {
+  assessModernisation,
+  MODERNISATION_MAX_POINTS,
+  MODERNISATION_RIPE_POINTS,
+  type ModernisationAssessment,
+  type ModernisationInput,
+} from './modernisation';
 export { dedupeDealbreakerRules, screenDealbreakers } from './dealbreakers';
 export type { DealbreakerCandidate, DealbreakerHit } from './dealbreakers';
 export {
@@ -1562,14 +1577,42 @@ export async function runScoutingPipeline(
       // Comparable lookups are cached per postcode, but a cold cache across
       // many areas still costs real time — past the deadline, score without
       // them (the sourcing gate normalises for missing comparables).
-      const [pricePaid, hpi] = pastDeadline('comparableLookups')
-        ? [null, null]
+      // The property's OWN EPC rides alongside the comparables: it is the
+      // free register (not PropertyData credits), carries the evidence the
+      // modernisation assessor runs on (band, assessment date, heating),
+      // and degrades to `unavailable` — never invented — without a token.
+      const [pricePaid, hpi, ownEpc] = pastDeadline('comparableLookups')
+        ? [null, null, null]
         : await Promise.all([
             getPricePaid(lead.postcode).catch(() => null),
             getHousepriceIndex(lead.postcode).catch(() => null),
+            getEpcData(lead.postcode, lead.address).catch(() => null),
           ]);
 
       const baseSignals = signalsByRef.get(lead.probateRef) ?? {};
+
+      // Ripe for modernisation — "focus on what has NOT been refurbished"
+      // (founder direction, 30 Aug 2026). Positive evidence only: the
+      // property's own certificate, dated heating, long tenure (real HMLR
+      // rows — a synthetic sale proves nothing), and the listing's own
+      // condition badge. Pre-computed here because the scorer's epcRating
+      // is the POSTCODE average, not this house.
+      const lastRealSaleDate =
+        pricePaid && !isSyntheticPricePaid(pricePaid)
+          ? ([...realTransactions(pricePaid.transactions)].sort((a, b) =>
+              b.date.localeCompare(a.date)
+            )[0]?.date ?? null)
+          : null;
+      const propertyEpc =
+        ownEpc && ownEpc.source !== 'unavailable' ? ownEpc : null;
+      const modernisation = assessModernisation({
+        epcRating: propertyEpc?.epcRating ?? null,
+        epcInspectionDate: propertyEpc?.inspectionDate ?? null,
+        heatingType: propertyEpc?.heatingType ?? null,
+        lastSaleDate: lastRealSaleDate,
+        listingType: baseSignals.listingType ?? null,
+        text: lead.address,
+      });
       const pc = enrichmentByPostcode.get(lead.postcode);
       const signals = {
         ...baseSignals,
@@ -1583,6 +1626,10 @@ export async function runScoutingPipeline(
         tenure: baseSignals.tenure ?? pc?.tenure ?? null,
         remainingLeaseYears:
           baseSignals.remainingLeaseYears ?? pc?.remainingLeaseYears ?? null,
+        modernisation:
+          modernisation.points > 0
+            ? { points: modernisation.points, reasons: modernisation.reasons }
+            : null,
       };
       const breakdown = scoreLead(lead, pricePaid, hpi, signals, scorerConfig);
 
@@ -1695,10 +1742,42 @@ export async function runScoutingPipeline(
         areaAvgPence,
         listingType: pd?.listingType ?? null,
         text: `${lead.address} ${pd?.summary ?? ''}`,
+        // The property's own certificate — what lets a probate lead (no
+        // badge, no listing text) carry real condition evidence.
+        epcRating: propertyEpc?.epcRating ?? null,
+        epcInspectionDate: propertyEpc?.inspectionDate ?? null,
         primeDistricts: founderPrimeDistricts,
       });
       if (primeOpportunity) {
         enrichedRaw = { ...(enrichedRaw ?? {}), primeOpportunity };
+      }
+
+      // Ripe-for-modernisation evidence + the property's own EPC, verbatim
+      // for the lead page; and the cornerstone tier marker (£1.5M–£10M
+      // inside prime — founder decision 29 Aug: a triage badge, never a
+      // floor change).
+      if (enrichedRaw) {
+        if (modernisation.points > 0) {
+          enrichedRaw = { ...enrichedRaw, modernisation };
+        }
+        if (propertyEpc) {
+          enrichedRaw = {
+            ...enrichedRaw,
+            propertyEpc: {
+              rating: propertyEpc.epcRating,
+              score: propertyEpc.epcScore,
+              inspectionDate: propertyEpc.inspectionDate,
+              heatingType: propertyEpc.heatingType,
+              floorAreaSqm: propertyEpc.floorAreaSqm,
+            },
+          };
+        }
+        if (
+          track === 'prime' &&
+          isCornerstoneValue(lead.estateValuePence, areaAvgPence)
+        ) {
+          enrichedRaw = { ...enrichedRaw, cornerstone: true };
+        }
       }
 
       const scoutLead: ScoutLead = {

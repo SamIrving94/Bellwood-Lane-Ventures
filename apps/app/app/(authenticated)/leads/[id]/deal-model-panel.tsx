@@ -112,12 +112,12 @@ export function DealModelPanel({
   const [showRefurbWorking, setShowRefurbWorking] = useState(false);
   const [premiumPct, setPremiumPct] = useState<string>('0');
   const [targetPct, setTargetPct] = useState<string>(
-    String(Math.round((targetCashRoi ?? 0.2) * 100)),
+    String(Math.round((targetCashRoi ?? 0.2) * 100))
   );
   // Bridge term what-if (co-founder request): default 12 months, adjustable to
   // see the financed picture with an earlier exit.
   const [bridgeMonths, setBridgeMonths] = useState<string>(
-    String(DEFAULT_DEAL_COSTS.finance.holdMonths),
+    String(DEFAULT_DEAL_COSTS.finance.holdMonths)
   );
   // Pre-fill "our offer" with the offer WE'D make (AVM-derived, ~20% below
   // market) — never above market value. Falls back to the asking price capped

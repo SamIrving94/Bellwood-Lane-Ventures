@@ -147,6 +147,19 @@ or a slower prime rotation, never silence.
 5. **Condition language.** `REFURB_TEXT` in `track.ts`. Extend when real
    listings use phrasing it misses; every alternative is anchored, grouped,
    and tested.
+6. **Ripe-for-modernisation weights** (`modernisation.ts`, added 30 Aug
+   2026 — "focus on what has NOT been refurbished"). The scout now fetches
+   each shortlisted lead's OWN EPC (free register, needs `EPC_API_TOKEN`
+   on bellwood-api) and scores positive evidence of an untouched home:
+   band F/G, a lapsed certificate (10y+), dated heating language, and
+   long tenure from real HMLR sales — capped at +8 acquisition points
+   (`MODERNISATION_MAX_POINTS`), badge at ≥5 (`MODERNISATION_RIPE_POINTS`).
+   The same certificate now feeds `assessPrimeOpportunity`, so a probate
+   lead with an F-rated 2013 EPC finally shows a real condition reason
+   instead of "check why". Unknown scores nothing, in either direction —
+   the register's `unavailable` cannot distinguish "no certificate" from
+   "lookup failed". The old −4 Poor-EPC RISK factor stays (it is honest
+   for the risk verdict); the net for F/G evidence is now positive.
 
 ## 8. What "good" looks like
 

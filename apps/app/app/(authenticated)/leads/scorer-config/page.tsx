@@ -58,7 +58,7 @@ const ScorerConfigPage = async () => {
       />
       <main className="mx-auto w-full max-w-3xl space-y-6 p-6">
         <div>
-          <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
+          <p className="font-mono text-[10px] text-muted-foreground uppercase tracking-[0.22em]">
             Leads · Tune scorer
           </p>
           <h1 className="mt-1 font-semibold text-2xl tracking-tight">
@@ -66,7 +66,9 @@ const ScorerConfigPage = async () => {
           </h1>
           <p className="mt-2 max-w-2xl text-muted-foreground text-sm">
             Adjust how the scorer weighs each lead. Changes apply to the{' '}
-            <span className="font-medium text-foreground">next daily scout</span>
+            <span className="font-medium text-foreground">
+              next daily scout
+            </span>
             , not to leads already scored. Every save creates a new version you
             can roll back to in one click — so it&apos;s safe to experiment.
           </p>

@@ -60,7 +60,7 @@ export const LAUNCH_TASKS: LaunchTask[] = [
       'First check the bellwood-api project in Vercel: Settings → Environment Variables. If EPC_API_TOKEN is there, copy its value and skip to step 4.',
       'Otherwise: open get-energy-performance-data.communities.gov.uk and sign in with GOV.UK One Login (create one if needed).',
       'Go to "My account" and copy the API token.',
-      'In Vercel, open the project that serves the public site (apps/web) → Settings → Environment Variables → add EPC_API_TOKEN, paste the value, save for Production and Preview.',
+      'In Vercel, add EPC_API_TOKEN to BOTH projects: the public site (apps/web, for Keyhole) AND bellwood-api (the scout now reads each property’s own certificate to spot unmodernised homes). Settings → Environment Variables, save for Production and Preview.',
       'Also paste it into the .env file at the top of the repo on your laptop, as a line: EPC_API_TOKEN=your-token',
     ],
     href: 'https://get-energy-performance-data.communities.gov.uk/',
