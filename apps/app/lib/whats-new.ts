@@ -26,6 +26,37 @@ export type WhatsNewEntry = {
 /** Newest first. The popup shows index 0. */
 export const WHATS_NEW: WhatsNewEntry[] = [
   {
+    id: '2026-09-06-ripe-for-modernisation',
+    date: '2026-09-06',
+    emoji: '🔧',
+    title: 'The scout now hunts the unmodernised — and badges the big tickets',
+    intro:
+      'Two changes to how leads rank and read: the scout finally rewards houses that have NOT been touched (it used to mark them down), and £1.5M+ prime leads wear their own badge.',
+    bullets: [
+      {
+        emoji: '🔎',
+        text: 'Each shortlisted lead now gets its OWN energy certificate read: an F or G band, a lapsed 10-year-old certificate, back boilers or storage heaters, and decades since the last sale all now ADD points instead of nothing.',
+      },
+      {
+        emoji: '🔧',
+        text: 'A new "Ripe for modernisation" pill on lead cards — hover it to see the evidence verbatim (e.g. "EPC F: heating and insulation untouched · no recorded sale since 1998").',
+      },
+      {
+        emoji: '⭐',
+        text: 'Probate leads finally show real condition proof: an old F-rated certificate now counts as the "why it is cheap" reason instead of "check why".',
+      },
+      {
+        emoji: '◆',
+        text: 'Cornerstone badge: prime leads at £1.5M+ (own value or street average) show ◆ in violet, so the big-ticket book triages first. Floor unchanged — £700k prime stands.',
+      },
+      {
+        emoji: '🔑',
+        text: 'Needs EPC_API_TOKEN on bellwood-api (same key as the web project — the launch board step now covers both). Without it, leads score as before, honestly.',
+      },
+    ],
+    cta: { label: 'See the leads', href: '/leads' },
+  },
+  {
     id: '2026-09-05-two-more-doors',
     date: '2026-09-05',
     emoji: '🚪',

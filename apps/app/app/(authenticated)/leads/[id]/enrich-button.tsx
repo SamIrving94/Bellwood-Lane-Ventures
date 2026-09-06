@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useTransition } from 'react';
 import { enrichLeadById } from '@/app/actions/leads/enrich';
+import { useState, useTransition } from 'react';
 
 export function EnrichLeadButton({
   leadId,
@@ -29,9 +29,7 @@ export function EnrichLeadButton({
   }
 
   if (done) {
-    return (
-      <p className="text-xs text-emerald-700">✓ Enriched — refreshing…</p>
-    );
+    return <p className="text-emerald-700 text-xs">✓ Enriched — refreshing…</p>;
   }
 
   return (
@@ -40,11 +38,11 @@ export function EnrichLeadButton({
         type="button"
         onClick={handle}
         disabled={pending}
-        className="inline-flex items-center gap-1.5 rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-800 disabled:opacity-60"
+        className="inline-flex items-center gap-1.5 rounded-lg bg-slate-900 px-4 py-2 font-medium text-sm text-white transition hover:bg-slate-800 disabled:opacity-60"
       >
         {pending ? 'Appraising… (~25s)' : label}
       </button>
-      {error && <p className="text-xs text-rose-700">{error}</p>}
+      {error && <p className="text-rose-700 text-xs">{error}</p>}
     </div>
   );
 }

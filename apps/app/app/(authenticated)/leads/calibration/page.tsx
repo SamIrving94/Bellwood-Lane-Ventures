@@ -1,14 +1,14 @@
+import {
+  type FeedbackInsights,
+  type InsightTheme,
+  THEME_LABELS,
+} from '@/lib/feedback/insight-schema';
 import { auth } from '@repo/auth/server';
 import { database } from '@repo/database';
+import { buildScorerSuggestions, mergeScorerConfig } from '@repo/scouting';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { buildScorerSuggestions, mergeScorerConfig } from '@repo/scouting';
-import {
-  THEME_LABELS,
-  type FeedbackInsights,
-  type InsightTheme,
-} from '@/lib/feedback/insight-schema';
 import { Header } from '../../components/header';
 import { SuggestionCards } from './suggestion-cards';
 
@@ -65,7 +65,12 @@ const CalibrationPage = async () => {
   // Per-factor stats
   const factorStats = new Map<
     string,
-    { appearances: number; ratingSum: number; highCount: number; lowCount: number }
+    {
+      appearances: number;
+      ratingSum: number;
+      highCount: number;
+      lowCount: number;
+    }
   >();
 
   type ContextSnapshot = {
@@ -136,7 +141,7 @@ const CalibrationPage = async () => {
   // propose specific new values (evidence + Apply button, never automatic).
   const suggestions = buildScorerSuggestions(
     factorRows,
-    mergeScorerConfig(activeConfig?.config ?? null),
+    mergeScorerConfig(activeConfig?.config ?? null)
   );
 
   // ── Taste profile — aggregate the structured insights mined from notes
@@ -192,7 +197,7 @@ const CalibrationPage = async () => {
     }))
     .sort((a, b) => b.mentions - a.mentions);
   const dealbreakerRows = Array.from(dealbreakers.entries()).sort(
-    (a, b) => b[1] - a[1],
+    (a, b) => b[1] - a[1]
   );
 
   return (
@@ -200,17 +205,17 @@ const CalibrationPage = async () => {
       <Header pages={[{ title: 'Leads', url: '/leads' }]} page="Calibration" />
       <main className="mx-auto w-full max-w-5xl space-y-6 p-6">
         <div>
-          <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
+          <p className="font-mono text-[10px] text-muted-foreground uppercase tracking-[0.22em]">
             Leads · Calibration
           </p>
           <h1 className="mt-1 font-semibold text-2xl tracking-tight">
             Scorer calibration
           </h1>
           <p className="mt-2 max-w-2xl text-muted-foreground text-sm">
-            How well the automated lead score matches your judgement, drawn
-            from {feedback.length} rating
-            {feedback.length === 1 ? '' : 's'} in the last 90 days. Use this
-            to spot which scoring factors are pulling the model off-target.
+            How well the automated lead score matches your judgement, drawn from{' '}
+            {feedback.length} rating
+            {feedback.length === 1 ? '' : 's'} in the last 90 days. Use this to
+            spot which scoring factors are pulling the model off-target.
           </p>
           <div className="mt-3 flex flex-wrap items-center gap-3">
             <span className="inline-flex items-center gap-2 rounded-full border bg-card px-3 py-1 text-xs">
@@ -240,22 +245,22 @@ const CalibrationPage = async () => {
         {/* Headline accuracy */}
         <div className="grid gap-3 sm:grid-cols-3">
           <div className="rounded-xl border bg-card p-5">
-            <p className="text-xs uppercase tracking-wider text-muted-foreground">
+            <p className="text-muted-foreground text-xs uppercase tracking-wider">
               Agreement rate
             </p>
-            <p className="mt-2 font-mono font-bold text-3xl tabular-nums">
+            <p className="mt-2 font-bold font-mono text-3xl tabular-nums">
               {agreementPct}%
             </p>
-            <p className="mt-1 text-xs text-muted-foreground">
+            <p className="mt-1 text-muted-foreground text-xs">
               founder rating within 15pts of scorer score
             </p>
           </div>
           <div className="rounded-xl border bg-card p-5">
-            <p className="text-xs uppercase tracking-wider text-muted-foreground">
+            <p className="text-muted-foreground text-xs uppercase tracking-wider">
               Average bias
             </p>
             <p
-              className={`mt-2 font-mono font-bold text-3xl tabular-nums ${
+              className={`mt-2 font-bold font-mono text-3xl tabular-nums ${
                 avgDelta > 5
                   ? 'text-emerald-700'
                   : avgDelta < -5
@@ -266,7 +271,7 @@ const CalibrationPage = async () => {
               {avgDelta > 0 ? '+' : ''}
               {Math.round(avgDelta)}
             </p>
-            <p className="mt-1 text-xs text-muted-foreground">
+            <p className="mt-1 text-muted-foreground text-xs">
               {avgDelta > 5
                 ? 'Scorer is under-rating leads — consider raising key factors.'
                 : avgDelta < -5
@@ -275,7 +280,7 @@ const CalibrationPage = async () => {
             </p>
           </div>
           <div className="rounded-xl border bg-card p-5">
-            <p className="text-xs uppercase tracking-wider text-muted-foreground">
+            <p className="text-muted-foreground text-xs uppercase tracking-wider">
               Disagreement split
             </p>
             <p className="mt-2 text-sm">
@@ -300,28 +305,26 @@ const CalibrationPage = async () => {
         {/* Per-factor bias table */}
         <div className="rounded-xl border bg-card">
           <div className="border-b p-5">
-            <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+            <p className="font-mono text-[10px] text-muted-foreground uppercase tracking-[0.18em]">
               Per-factor bias
             </p>
-            <p className="mt-1 text-sm text-slate-700">
-              For each scoring factor: how often it fires, and how the
-              founder rates leads where it appears. Factors at the top fire
-              most often — they have the biggest impact on the model.
+            <p className="mt-1 text-slate-700 text-sm">
+              For each scoring factor: how often it fires, and how the founder
+              rates leads where it appears. Factors at the top fire most often —
+              they have the biggest impact on the model.
             </p>
           </div>
           {factorRows.length === 0 ? (
-            <div className="p-8 text-center text-sm text-muted-foreground">
-              Not enough feedback yet. Rate ≥3 leads where each factor
-              appears to surface bias signals.
+            <div className="p-8 text-center text-muted-foreground text-sm">
+              Not enough feedback yet. Rate ≥3 leads where each factor appears
+              to surface bias signals.
             </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead className="border-b bg-muted/40">
                   <tr>
-                    <th className="px-4 py-3 text-left font-medium">
-                      Factor
-                    </th>
+                    <th className="px-4 py-3 text-left font-medium">Factor</th>
                     <th className="px-4 py-3 text-right font-medium">
                       Appearances
                     </th>
@@ -382,22 +385,20 @@ const CalibrationPage = async () => {
         {/* Taste profile — mined from notes + voice-note transcripts */}
         <div className="rounded-xl border bg-card">
           <div className="border-b p-5">
-            <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+            <p className="font-mono text-[10px] text-muted-foreground uppercase tracking-[0.18em]">
               Taste profile
             </p>
-            <p className="mt-1 text-sm text-slate-700">
+            <p className="mt-1 text-slate-700 text-sm">
               What you consistently <strong>like</strong> and{' '}
-              <strong>dislike</strong> about properties, mined from your
-              notes and voice notes ({insightCount} note
+              <strong>dislike</strong> about properties, mined from your notes
+              and voice notes ({insightCount} note
               {insightCount === 1 ? '' : 's'} analysed
-              {voiceNoteCount > 0
-                ? `, ${voiceNoteCount} by voice`
-                : ''}
+              {voiceNoteCount > 0 ? `, ${voiceNoteCount} by voice` : ''}
               ). Every note makes this sharper.
             </p>
           </div>
           {themeRows.length === 0 ? (
-            <div className="p-8 text-center text-sm text-muted-foreground">
+            <div className="p-8 text-center text-muted-foreground text-sm">
               No notes analysed yet. Add a note — or tap the mic and say what
               you like or dislike — when rating a lead.
             </div>
@@ -407,9 +408,7 @@ const CalibrationPage = async () => {
                 <thead className="border-b bg-muted/40">
                   <tr>
                     <th className="px-4 py-3 text-left font-medium">Theme</th>
-                    <th className="px-4 py-3 text-right font-medium">
-                      Liked
-                    </th>
+                    <th className="px-4 py-3 text-right font-medium">Liked</th>
                     <th className="px-4 py-3 text-right font-medium">
                       Disliked
                     </th>
@@ -428,7 +427,7 @@ const CalibrationPage = async () => {
                       <td className="px-4 py-3 text-right font-mono text-rose-700">
                         {r.disliked}
                       </td>
-                      <td className="px-4 py-3 text-xs italic text-muted-foreground">
+                      <td className="px-4 py-3 text-muted-foreground text-xs italic">
                         {r.quote ? `“${r.quote}”` : '—'}
                       </td>
                     </tr>
@@ -439,7 +438,7 @@ const CalibrationPage = async () => {
           )}
           {dealbreakerRows.length > 0 && (
             <div className="border-t p-5">
-              <p className="text-xs font-medium uppercase tracking-wider text-rose-700">
+              <p className="font-medium text-rose-700 text-xs uppercase tracking-wider">
                 Dealbreakers
               </p>
               <ul className="mt-2 space-y-1 text-sm">
@@ -449,7 +448,7 @@ const CalibrationPage = async () => {
                     <span>
                       {rule}
                       {count > 1 && (
-                        <span className="ml-1 text-xs text-muted-foreground">
+                        <span className="ml-1 text-muted-foreground text-xs">
                           (said {count}×)
                         </span>
                       )}
@@ -461,16 +460,16 @@ const CalibrationPage = async () => {
           )}
         </div>
 
-        <div className="rounded-xl border border-dashed bg-slate-50 p-5 text-xs text-muted-foreground">
+        <div className="rounded-xl border border-dashed bg-slate-50 p-5 text-muted-foreground text-xs">
           <p className="font-medium text-slate-700">How this works</p>
           <ul className="mt-2 space-y-1">
             <li>
-              · Every time you rate a lead (1–5 stars), we snapshot the
-              scoring factors that were active when it was scored.
+              · Every time you rate a lead (1–5 stars), we snapshot the scoring
+              factors that were active when it was scored.
             </li>
             <li>
-              · The star rating is mapped to a 0–100 implied score for the
-              delta comparison.
+              · The star rating is mapped to a 0–100 implied score for the delta
+              comparison.
             </li>
             <li>
               · A factor is flagged{' '}
@@ -489,8 +488,8 @@ const CalibrationPage = async () => {
                 EvalConfig (lead_scoring)
               </span>{' '}
               version: the daily scout then scores with it and stamps that
-              version on each lead, so the numbers above always reflect the
-              live config.
+              version on each lead, so the numbers above always reflect the live
+              config.
             </li>
           </ul>
         </div>

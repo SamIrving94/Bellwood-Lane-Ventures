@@ -163,6 +163,15 @@ const LeadsPage = async ({
                   ? Math.round(primeOpp.discountToArea * 100)
                   : null,
               primeReasons: primeOpp?.reasons ?? [],
+              // Cornerstone tier (£1.5M+ inside prime) + ripe-for-modernisation
+              // evidence — both stamped by the scout on rawPayload.
+              cornerstone: raw.cornerstone === true,
+              modernisationRipe:
+                (raw.modernisation as { ripe?: boolean } | undefined)?.ripe ===
+                true,
+              modernisationReasons:
+                (raw.modernisation as { reasons?: string[] } | undefined)
+                  ?.reasons ?? [],
             };
           })}
           initialFilter={filter ?? 'new'}

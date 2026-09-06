@@ -1,9 +1,9 @@
 'use client';
 
+import { restoreVersion } from '@/app/actions/scorer-config/manage';
 import { Button } from '@repo/design-system/components/ui/button';
 import { useTransition } from 'react';
 import { toast } from 'sonner';
-import { restoreVersion } from '@/app/actions/scorer-config/manage';
 
 type VersionRow = {
   version: number;
@@ -29,7 +29,7 @@ export function VersionHistory({
         toast.success(`Restored v${version} as v${newVersion}. Now live.`);
       } catch (err) {
         toast.error(
-          err instanceof Error ? err.message : 'Failed to restore version.',
+          err instanceof Error ? err.message : 'Failed to restore version.'
         );
       }
     });

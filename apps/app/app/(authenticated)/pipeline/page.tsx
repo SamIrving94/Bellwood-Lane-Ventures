@@ -206,6 +206,13 @@ async function LeadsTabContent({ filter }: { filter?: string }) {
               ? Math.round(primeOpp.discountToArea * 100)
               : null,
           primeReasons: primeOpp?.reasons ?? [],
+          cornerstone: raw.cornerstone === true,
+          modernisationRipe:
+            (raw.modernisation as { ripe?: boolean } | undefined)?.ripe ===
+            true,
+          modernisationReasons:
+            (raw.modernisation as { reasons?: string[] } | undefined)
+              ?.reasons ?? [],
         };
       })}
       initialFilter={filter ?? 'all'}
