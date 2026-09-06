@@ -44,6 +44,7 @@ import {
   scoreRisk,
 } from './risk-scoring';
 import { type TrendProjection, projectTrend } from './trend-projection';
+import { readUncertainty } from './uncertainty';
 
 // ---------------------------------------------------------------------------
 // Re-exports for consumers
@@ -140,6 +141,20 @@ export {
   mergeValuationConfig,
 } from './valuation-config';
 export type { ValuationConfig } from './valuation-config';
+export {
+  MATERIAL_SHARE_DELTA,
+  MATERIAL_SHIFT_RATIO,
+  MIN_TREND_SAMPLES,
+  compareMedianShift,
+  compareShareShift,
+  median,
+  readUncertainty,
+} from './uncertainty';
+export type {
+  MedianShift,
+  ShareShift,
+  UncertaintyReading,
+} from './uncertainty';
 
 // ---------------------------------------------------------------------------
 // Input type
@@ -202,6 +217,18 @@ export interface AvmResultJson {
   avmHigh: number;
   confidenceLevel: string;
   comparableCount: number;
+  /**
+   * Uncertainty discipline (Zillow lesson): (avmHigh − avmLow) ÷ point
+   * estimate. Recorded on every run so portfolio-level widening is trendable.
+   */
+  intervalWidthRatio: number | null;
+  /** The configured throttle bound this run was judged against. */
+  uncertaintyMaxWidthRatio: number;
+  /**
+   * Interval wider than the bound — a person must re-check the comparables
+   * before any offer, regardless of score. Surfaced, never enforced.
+   */
+  secondCheckRequired: boolean;
   /** The actual sold comps that drove the estimate (address/price/date/dist). */
   comparables: {
     address: string | null;
@@ -353,6 +380,20 @@ export async function runAVM(input: AvmInput): Promise<AvmResultPayload> {
   const bld = riskScore.building;
   const runAt = new Date().toISOString();
 
+  const avmLow = Math.round(
+    baseValuation.pointEstimate * (1 - baseValuation.confidenceInterval)
+  );
+  const avmHigh = Math.round(
+    baseValuation.pointEstimate * (1 + baseValuation.confidenceInterval)
+  );
+  const uncertainty = readUncertainty({
+    pointEstimate: baseValuation.pointEstimate,
+    low: avmLow,
+    high: avmHigh,
+    comparableCount: baseValuation.comparables.length,
+    maxWidthRatio: offerConfig.maxIntervalWidthRatio,
+  });
+
   const resultJson: AvmResultJson = {
     address,
     postcode,
@@ -366,14 +407,13 @@ export async function runAVM(input: AvmInput): Promise<AvmResultPayload> {
     constructionType: bld.constructionType,
 
     avmPointEstimate: baseValuation.pointEstimate,
-    avmLow: Math.round(
-      baseValuation.pointEstimate * (1 - baseValuation.confidenceInterval)
-    ),
-    avmHigh: Math.round(
-      baseValuation.pointEstimate * (1 + baseValuation.confidenceInterval)
-    ),
+    avmLow,
+    avmHigh,
     confidenceLevel: baseValuation.confidenceLevel,
     comparableCount: baseValuation.comparables.length,
+    intervalWidthRatio: uncertainty.intervalWidthRatio,
+    uncertaintyMaxWidthRatio: uncertainty.maxWidthRatio,
+    secondCheckRequired: uncertainty.secondCheckRequired,
     comparables: baseValuation.comparables.map((c) => ({
       address: c.address,
       postcode: c.postcode,

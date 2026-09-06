@@ -1,8 +1,8 @@
 import { env } from '@/env';
-import { recordCronHeartbeat } from '../_lib/heartbeat';
 import { database } from '@repo/database';
 import { mergeOfferConfig, runAVM } from '@repo/valuation';
 import { NextResponse } from 'next/server';
+import { recordCronHeartbeat } from '../_lib/heartbeat';
 
 // Pipeline Stage 2: Auto-appraise top leads (7:15am daily)
 // Finds leads scored >= 70 with no existing AVM, runs valuation, pushes results
@@ -85,7 +85,8 @@ export const POST = async (request: Request) => {
         apartment: 'flat',
         bungalow: 'detached',
       };
-      const avmPropertyType = propertyTypeMap[deal.propertyType.toLowerCase()] ?? 'terraced';
+      const avmPropertyType =
+        propertyTypeMap[deal.propertyType.toLowerCase()] ?? 'terraced';
 
       // Map seller type
       const sellerTypeMap: Record<string, string> = {
@@ -136,11 +137,16 @@ export const POST = async (request: Request) => {
       await database.deal.update({
         where: { id: deal.id },
         data: {
-          estimatedMarketValuePence: Math.round(resultJson.avmPointEstimate * 100),
+          estimatedMarketValuePence: Math.round(
+            resultJson.avmPointEstimate * 100
+          ),
           ourOfferPence: Math.round(resultJson.finalOffer * 100),
           marginPercent,
-          verdict: resultJson.requiresCeoEscalation ? 'THIN' :
-                   resultJson.confidenceLevel === 'high' ? 'STRONG' : 'VIABLE',
+          verdict: resultJson.requiresCeoEscalation
+            ? 'THIN'
+            : resultJson.confidenceLevel === 'high'
+              ? 'STRONG'
+              : 'VIABLE',
         },
       });
 
@@ -154,8 +160,23 @@ export const POST = async (request: Request) => {
       });
 
       // Create FounderAction
-      const actionType = resultJson.requiresCeoEscalation ? 'ceo_escalation' : 'approve_offer';
-      const actionPriority = resultJson.requiresCeoEscalation ? 'critical' : 'medium';
+      const actionType = resultJson.requiresCeoEscalation
+        ? 'ceo_escalation'
+        : 'approve_offer';
+      const actionPriority = resultJson.requiresCeoEscalation
+        ? 'critical'
+        : 'medium';
+
+      // Uncertainty throttle (Zillow lesson): a wide interval means the
+      // valuation needs a second pair of eyes before the offer goes out.
+      // Surfaced on the card — never blocks the offer or changes the score.
+      const secondCheckNote = resultJson.secondCheckRequired
+        ? ` Check this one by hand before the offer goes out — the valuation interval is wider than our bound (${
+            resultJson.intervalWidthRatio !== null
+              ? `${(resultJson.intervalWidthRatio * 100).toFixed(0)}% of the estimate`
+              : 'unmeasurable'
+          }, on ${resultJson.comparableCount} comps).`
+        : '';
 
       await database.founderAction.create({
         data: {
@@ -164,7 +185,7 @@ export const POST = async (request: Request) => {
           title: resultJson.requiresCeoEscalation
             ? `CEO escalation: offer < 60% AVM on ${deal.address}`
             : `Approve offer on ${deal.address} — ${resultJson.finalOffer.toLocaleString('en-GB', { style: 'currency', currency: 'GBP', maximumFractionDigits: 0 })} (margin ${marginPercent !== null ? marginPercent.toFixed(1) : '—'}%)`,
-          description: `Auto-valuation complete. Risk: ${avmResult.riskScore}/100. ${resultJson.preRicsFlags.length > 0 ? `Pre-RICS flags: ${resultJson.preRicsFlags.join(', ')}` : 'No pre-RICS flags.'}`,
+          description: `Auto-valuation complete. Risk: ${avmResult.riskScore}/100. ${resultJson.preRicsFlags.length > 0 ? `Pre-RICS flags: ${resultJson.preRicsFlags.join(', ')}` : 'No pre-RICS flags.'}${secondCheckNote}`,
           agent: 'appraiser',
           dealId: deal.id,
           metadata: {
@@ -173,9 +194,39 @@ export const POST = async (request: Request) => {
             finalOfferPence: Math.round(resultJson.finalOffer * 100),
             marginPercent,
             preRicsFlags: resultJson.preRicsFlags,
+            intervalWidthRatio: resultJson.intervalWidthRatio,
+            secondCheckRequired: resultJson.secondCheckRequired,
           },
         },
       });
+
+      // Trendable uncertainty telemetry for the weekly confidence check.
+      // Best-effort: telemetry must never fail the appraisal.
+      await database.agentEvent
+        .create({
+          data: {
+            agent: 'appraiser',
+            eventType: 'avm_uncertainty',
+            summary: `AVM interval ${
+              resultJson.intervalWidthRatio !== null
+                ? `${(resultJson.intervalWidthRatio * 100).toFixed(1)}% of estimate`
+                : 'unmeasurable'
+            } (${resultJson.comparableCount} comps)${resultJson.secondCheckRequired ? ' — second check required' : ''}`,
+            count: 1,
+            dealId: deal.id,
+            pipelineRunId,
+            payload: {
+              source: 'pipeline-appraise',
+              dealId: deal.id,
+              postcode: deal.postcode,
+              intervalWidthRatio: resultJson.intervalWidthRatio,
+              comparableCount: resultJson.comparableCount,
+              confidenceLevel: resultJson.confidenceLevel,
+              secondCheckRequired: resultJson.secondCheckRequired,
+            },
+          },
+        })
+        .catch(() => undefined);
 
       results.push({
         type: 'deal',

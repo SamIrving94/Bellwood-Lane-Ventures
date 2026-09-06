@@ -27,6 +27,8 @@ type EditableState = {
   discountCapPct: number;
   minMarginPct: number;
   offerValidityDays: number;
+  maxIntervalWidthPct: number;
+  maxDeepIntervalWidthPct: number;
 };
 
 function extract(c: OfferConfig): EditableState {
@@ -41,6 +43,8 @@ function extract(c: OfferConfig): EditableState {
     discountCapPct: toPct(c.totalDiscountCap),
     minMarginPct: toPct(c.minEffectiveMargin),
     offerValidityDays: c.offerValidityDays,
+    maxIntervalWidthPct: toPct(c.maxIntervalWidthRatio),
+    maxDeepIntervalWidthPct: toPct(c.maxDeepIntervalWidthRatio),
   };
 }
 
@@ -135,13 +139,15 @@ export function OfferConfigEditor({
           totalDiscountCap: toFraction(state.discountCapPct),
           minEffectiveMargin: toFraction(state.minMarginPct),
           offerValidityDays: state.offerValidityDays,
+          maxIntervalWidthRatio: toFraction(state.maxIntervalWidthPct),
+          maxDeepIntervalWidthRatio: toFraction(state.maxDeepIntervalWidthPct),
         };
         const { version } = await saveAndActivateOfferConfig(next, description);
         toast.success(`Activated v${version}. Next valuation will use it.`);
         setDescription('');
       } catch (err) {
         toast.error(
-          err instanceof Error ? err.message : 'Failed to save offer policy.',
+          err instanceof Error ? err.message : 'Failed to save offer policy.'
         );
       }
     });
@@ -152,7 +158,9 @@ export function OfferConfigEditor({
       {/* Seller-type acquisition margins */}
       <section className="rounded-xl border bg-card">
         <div className="border-b p-4">
-          <h2 className="font-medium text-sm">Acquisition margin by seller type</h2>
+          <h2 className="font-medium text-sm">
+            Acquisition margin by seller type
+          </h2>
           <p className="mt-0.5 text-muted-foreground text-xs">
             How far below market value (AVM) we buy, before any risk discounts.
             Your rule of thumb is 20–25% below market.
@@ -161,8 +169,7 @@ export function OfferConfigEditor({
         <div className="divide-y px-4">
           {Object.keys(state.sellerTypeMargin)
             .sort(
-              (a, b) =>
-                state.sellerTypeMargin[b]! - state.sellerTypeMargin[a]!,
+              (a, b) => state.sellerTypeMargin[b]! - state.sellerTypeMargin[a]!
             )
             .map((key) => (
               <NumberField
@@ -220,8 +227,39 @@ export function OfferConfigEditor({
             hint="days an issued offer stays live"
             value={state.offerValidityDays}
             liveValue={liveEditable.offerValidityDays}
+            onChange={(n) => setState((s) => ({ ...s, offerValidityDays: n }))}
+          />
+        </div>
+      </section>
+
+      {/* Uncertainty throttle (the Zillow lesson) */}
+      <section className="rounded-xl border bg-card">
+        <div className="border-b p-4">
+          <h2 className="font-medium text-sm">Uncertainty throttle</h2>
+          <p className="mt-0.5 text-muted-foreground text-xs">
+            When a valuation&apos;s price range is wider than this (as % of the
+            estimate), the lead is stamped &quot;second check required&quot; —
+            you re-check the comps by hand before any offer. Nothing is blocked
+            and no score changes.
+          </p>
+        </div>
+        <div className="divide-y px-4">
+          <NumberField
+            label="AVM interval bound"
+            hint="% of estimate — wider than this needs a second check"
+            value={state.maxIntervalWidthPct}
+            liveValue={liveEditable.maxIntervalWidthPct}
             onChange={(n) =>
-              setState((s) => ({ ...s, offerValidityDays: n }))
+              setState((s) => ({ ...s, maxIntervalWidthPct: n }))
+            }
+          />
+          <NumberField
+            label="Deep-appraisal bound"
+            hint="% of ARV — judged on the model's own 80% interval"
+            value={state.maxDeepIntervalWidthPct}
+            liveValue={liveEditable.maxDeepIntervalWidthPct}
+            onChange={(n) =>
+              setState((s) => ({ ...s, maxDeepIntervalWidthPct: n }))
             }
           />
         </div>

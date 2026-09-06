@@ -1,9 +1,11 @@
 'use server';
 
+import { VALUATION_CONFIG_KEY } from '@/app/actions/valuation-config/constants';
 import { screenPropertyCondition } from '@repo/auctions';
 import { isFounder } from '@repo/auth/server';
-import { database, Prisma } from '@repo/database';
+import { type Prisma, database } from '@repo/database';
 import { getPropertySnapshot } from '@repo/property-data/src/propertydata';
+import { type ScoreFactor, type Verdict, combineScore } from '@repo/scouting';
 import {
   type ConditionLevel,
   appraiseDealFromAvm,
@@ -13,8 +15,6 @@ import {
   mergeValuationConfig,
   runAVM,
 } from '@repo/valuation';
-import { type ScoreFactor, type Verdict, combineScore } from '@repo/scouting';
-import { VALUATION_CONFIG_KEY } from '@/app/actions/valuation-config/constants';
 import { revalidatePath } from 'next/cache';
 
 type PropertyType =
@@ -32,7 +32,11 @@ function normalisePropertyType(raw: unknown): PropertyType | undefined {
   if (lower.includes('detached')) return 'detached';
   if (lower.includes('terraced') || lower.includes('terrace'))
     return 'terraced';
-  if (lower.includes('flat') || lower.includes('apartment') || lower.includes('studio'))
+  if (
+    lower.includes('flat') ||
+    lower.includes('apartment') ||
+    lower.includes('studio')
+  )
     return 'flat';
   if (lower.includes('bungalow')) return 'bungalow';
   return undefined;
@@ -84,7 +88,8 @@ export async function enrichLeadById(leadId: string): Promise<{
   // distressed sourced leads frequently have no type, and a typeless lead
   // should still get a usable number, matching generate-offer's behaviour.
   const normalised = normalisePropertyType(pd?.propertyType);
-  const avmPropertyType = normalised === 'bungalow' ? 'detached' : (normalised ?? 'terraced');
+  const avmPropertyType =
+    normalised === 'bungalow' ? 'detached' : (normalised ?? 'terraced');
   const bedrooms =
     typeof pd?.bedrooms === 'number' ? (pd.bedrooms as number) : undefined;
   const avmSellerType = resolveSellerType(lead.leadType);
@@ -93,7 +98,8 @@ export async function enrichLeadById(leadId: string): Promise<{
   const existing = raw.snapshot as { fetchedAt?: string } | undefined;
   const snapshotFresh =
     existing?.fetchedAt &&
-    Date.now() - new Date(existing.fetchedAt).getTime() < 7 * 24 * 60 * 60 * 1000;
+    Date.now() - new Date(existing.fetchedAt).getTime() <
+      7 * 24 * 60 * 60 * 1000;
 
   const snapshot = snapshotFresh
     ? (raw.snapshot as unknown)
@@ -114,11 +120,16 @@ export async function enrichLeadById(leadId: string): Promise<{
   const offerConfig = mergeOfferConfig(activeConfig?.config);
 
   let avmFull: Record<string, unknown> | null = null;
+  // True only when THIS call produced the reading — the failure path below
+  // reuses the previous avmFull, and stale readings must not re-emit telemetry.
+  let avmRanFresh = false;
   try {
     // Prefer a precise (house-numbered) address when the listing gave one —
     // it lets the AVM match the exact EPC floor-area record for this house.
     const preciseAddress =
-      typeof pd?.preciseAddress === 'string' ? (pd.preciseAddress as string) : null;
+      typeof pd?.preciseAddress === 'string'
+        ? (pd.preciseAddress as string)
+        : null;
     const avm = await runAVM({
       postcode: lead.postcode,
       propertyType: avmPropertyType as never,
@@ -142,6 +153,11 @@ export async function enrichLeadById(leadId: string): Promise<{
       comparableCount: r.comparableCount ?? null,
       comparables: r.comparables ?? [],
       requiresReview: Boolean(r.requiresCeoEscalation || r.discountCapped),
+      // Uncertainty throttle (Zillow lesson): wide interval ⇒ a person
+      // re-checks the comps before any offer. Never blocks or re-scores.
+      intervalWidthRatio: r.intervalWidthRatio ?? null,
+      uncertaintyMaxWidthRatio: r.uncertaintyMaxWidthRatio,
+      secondCheckRequired: Boolean(r.secondCheckRequired),
       riskScore: avm.riskScore,
       assumedPropertyType: normalised ? null : avmPropertyType, // flag a guess
       floorAreaSqm: r.floorAreaSqm ?? null,
@@ -151,6 +167,7 @@ export async function enrichLeadById(leadId: string): Promise<{
       hmoLikely: (bedrooms ?? 0) >= 5,
       fetchedAt: new Date().toISOString(),
     };
+    avmRanFresh = true;
   } catch {
     // AVM failure must not block snapshot enrichment — leave avmFull null and
     // keep whatever was there before.
@@ -174,7 +191,7 @@ export async function enrichLeadById(leadId: string): Promise<{
       });
       if (assessment) {
         avmFull.inferredCondition = mapVisualConditionToLevel(
-          assessment.condition,
+          assessment.condition
         );
         avmFull.conditionVisual = assessment.condition;
         avmFull.conditionFlags = assessment.flags;
@@ -202,7 +219,7 @@ export async function enrichLeadById(leadId: string): Promise<{
         perSqm: valuationConfig.refurbPerSqm,
         flagCost: valuationConfig.refurbFlagCosts,
         defaultFloorAreaSqm: valuationConfig.defaultFloorAreaSqm,
-      },
+      }
     );
     avmFull.refurbEstimatePence = refurb.totalPence;
     avmFull.refurbLines = refurb.lines;
@@ -233,8 +250,7 @@ export async function enrichLeadById(leadId: string): Promise<{
       });
       const cashRoiPct = deal.appraisal ? deal.appraisal.cash.roi * 100 : null;
 
-      const baseFactors =
-        (raw.scoreFactors as ScoreFactor[] | undefined) ?? [];
+      const baseFactors = (raw.scoreFactors as ScoreFactor[] | undefined) ?? [];
       if (baseFactors.length > 0) {
         const combined = combineScore(
           baseFactors,
@@ -257,7 +273,7 @@ export async function enrichLeadById(leadId: string): Promise<{
             hasCriticalData: true,
             marketTrendLabel: lead.marketTrend ?? 'unknown',
             riskFlags: (raw.riskFlags as string[] | undefined) ?? [],
-          },
+          }
         );
         raw.scoreFactors = combined.factors;
         raw.rationale = combined.rationale;
@@ -288,6 +304,35 @@ export async function enrichLeadById(leadId: string): Promise<{
     where: { id: leadId },
     data: { ...scoreUpdate, rawPayload: updatedRaw as Prisma.InputJsonValue },
   });
+
+  // Trendable uncertainty telemetry — mirrors the lead-appraise cron so the
+  // weekly-patterns confidence check sees manual appraisals too. Best-effort.
+  if (avmFull && avmRanFresh) {
+    await database.agentEvent
+      .create({
+        data: {
+          agent: 'appraiser',
+          eventType: 'avm_uncertainty',
+          summary: `AVM interval ${
+            typeof avmFull.intervalWidthRatio === 'number'
+              ? `${(avmFull.intervalWidthRatio * 100).toFixed(1)}% of estimate`
+              : 'unmeasurable'
+          } (${avmFull.comparableCount ?? '?'} comps)${avmFull.secondCheckRequired ? ' — second check required' : ''}`,
+          count: 1,
+          payload: {
+            source: 'manual-appraise',
+            leadId,
+            postcode: lead.postcode,
+            intervalWidthRatio:
+              (avmFull.intervalWidthRatio as number | null) ?? null,
+            comparableCount: (avmFull.comparableCount as number | null) ?? null,
+            confidenceLevel: (avmFull.confidenceLevel as string | null) ?? null,
+            secondCheckRequired: Boolean(avmFull.secondCheckRequired),
+          },
+        },
+      })
+      .catch(() => undefined);
+  }
 
   revalidatePath(`/leads/${leadId}`);
   revalidatePath('/leads');

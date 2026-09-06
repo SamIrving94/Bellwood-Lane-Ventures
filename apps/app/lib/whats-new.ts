@@ -26,6 +26,37 @@ export type WhatsNewEntry = {
 /** Newest first. The popup shows index 0. */
 export const WHATS_NEW: WhatsNewEntry[] = [
   {
+    id: '2026-08-23-zillow-uncertainty-discipline',
+    date: '2026-08-23',
+    emoji: '📏',
+    title: 'The AVM now tells you when NOT to trust it',
+    intro:
+      'Zillow lost $500m acting on confident-sounding prices built on thin evidence. Every valuation now measures its own uncertainty — and owns up when it needs a human.',
+    bullets: [
+      {
+        emoji: '📐',
+        text: 'Every appraisal records its **interval width** — how wide the honest price range is vs the headline number — plus the comps behind it.',
+      },
+      {
+        emoji: '🖐️',
+        text: '**Second check required**: leads with a too-wide interval get a clear amber banner — check the sold comps by hand before any offer. Scores and offers are untouched.',
+      },
+      {
+        emoji: '📉',
+        text: 'The Sunday review now watches the **portfolio trend**: if intervals widen materially week-over-week, you get one card saying model confidence is slipping — the Zillow failure mode, caught early.',
+      },
+      {
+        emoji: '🌡️',
+        text: 'Same card watches for a **market shift**: days-on-market or price-drop share jumping week-over-week means the comps behind our numbers aged fast.',
+      },
+      {
+        emoji: '🎛️',
+        text: 'The width bounds are **yours to tune** from the valuation config (avm_confidence) — no code change needed.',
+      },
+    ],
+    cta: { label: 'See your leads', href: '/leads' },
+  },
+  {
     id: '2026-08-22-prime-gold-dust-capture',
     date: '2026-08-22',
     emoji: '💎',

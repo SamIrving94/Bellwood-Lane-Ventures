@@ -361,6 +361,12 @@ const LeadDetailPage = async ({
       distanceMiles: number | null;
     }[];
     requiresReview: boolean;
+    /** Uncertainty throttle (Zillow lesson): (high − low) ÷ point estimate. */
+    intervalWidthRatio?: number | null;
+    /** The configured bound the run was judged against. */
+    uncertaintyMaxWidthRatio?: number | null;
+    /** Interval wider than the bound — re-check comps before any offer. */
+    secondCheckRequired?: boolean | null;
     riskScore: number | null;
     assumedPropertyType: string | null;
     /** Verified internal floor area (m²) + where it came from. */
@@ -677,6 +683,26 @@ const LeadDetailPage = async ({
               <span className="font-semibold">{verdictLabel}</span> —{' '}
               {verdictReason}
             </div>
+
+            {/* Uncertainty throttle (Zillow lesson) — the interval behind this
+                valuation is wider than our bound, so the number needs a second
+                pair of eyes before any offer. Surfaced, never enforced. */}
+            {avmFull.secondCheckRequired && (
+              <div className="mt-3 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm">
+                <span className="font-semibold">
+                  ⚠ Second check required before any offer.
+                </span>{' '}
+                The valuation interval is{' '}
+                {typeof avmFull.intervalWidthRatio === 'number'
+                  ? `${Math.round(avmFull.intervalWidthRatio * 100)}% of the estimate`
+                  : 'unmeasurable'}
+                {typeof avmFull.uncertaintyMaxWidthRatio === 'number'
+                  ? ` (bound ${Math.round(avmFull.uncertaintyMaxWidthRatio * 100)}%)`
+                  : ''}{' '}
+                — usually thin comparables. Check the sold comps by hand,
+                whatever the score says.
+              </div>
+            )}
 
             {avmFull.assumedPropertyType && (
               <p className="mt-2 text-[11px] text-amber-700">

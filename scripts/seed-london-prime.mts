@@ -11,6 +11,8 @@
  *   pnpm tsx scripts/seed-london-prime.mts --write    # actually writes
  *   pnpm tsx scripts/seed-london-prime.mts --write --tier2   # include super-prime
  *   pnpm tsx scripts/seed-london-prime.mts --write --limit=10
+ *   pnpm tsx scripts/seed-london-prime.mts --write --districts=W11,NW3
+ *       # only these districts (must still be in track.ts — never invented)
  *
  * SAFE BY DEFAULT: additive, idempotent, dry-run unless --write. Every seed
  * postcode is resolved LIVE from postcodes.io and verified to sit inside its
@@ -44,6 +46,18 @@ const limitArg = process.argv.find((a) => a.startsWith('--limit='));
 const LIMIT = limitArg
   ? Number(limitArg.split('=')[1])
   : Number.POSITIVE_INFINITY;
+// --districts=W11,NW3 restricts the run to just those district codes. They
+// must still exist in track.ts — this is a filter, never a way to invent an
+// area outside the source of truth (the SW3 lesson). Unknown codes fail loud.
+const districtsArg = process.argv.find((a) => a.startsWith('--districts='));
+const ONLY_DISTRICTS = districtsArg
+  ? new Set(
+      (districtsArg.split('=')[1] ?? '')
+        .split(',')
+        .map((d) => d.trim().toUpperCase())
+        .filter(Boolean)
+    )
+  : null;
 
 type Area = {
   id: string;
@@ -146,9 +160,26 @@ async function resolveSeed(district: string): Promise<string | null> {
 // ── Main ────────────────────────────────────────────────────────────────────
 
 async function main() {
-  const wanted = loadDistricts()
-    .filter((d) => d.tier === 1 || INCLUDE_TIER2)
-    .slice(0, LIMIT);
+  const all = loadDistricts();
+
+  // Explicitly named districts win over the tier gate: naming NW3 IS the
+  // founder opting into that super-prime area, no --tier2 needed. A code not
+  // in track.ts is a hard error — the source of truth is never bypassed.
+  if (ONLY_DISTRICTS) {
+    const known = new Set(all.map((d) => d.district.toUpperCase()));
+    const unknown = [...ONLY_DISTRICTS].filter((d) => !known.has(d));
+    if (unknown.length > 0) {
+      throw new Error(
+        `Unknown district(s) not in track.ts: ${unknown.join(', ')} — add them to LONDON_PRIME_DISTRICTS first.`
+      );
+    }
+  }
+
+  const wanted = (
+    ONLY_DISTRICTS
+      ? all.filter((d) => ONLY_DISTRICTS.has(d.district.toUpperCase()))
+      : all.filter((d) => d.tier === 1 || INCLUDE_TIER2)
+  ).slice(0, LIMIT);
 
   const row = await db.setting.findUnique({ where: { key: 'scouting.areas' } });
   const existing: Area[] = Array.isArray(row?.value)
@@ -161,9 +192,11 @@ async function main() {
   console.log(
     `  of which prime:    ${existing.filter((a) => a.track === 'prime').length}`
   );
-  console.log(
-    `Candidates:          ${wanted.length}${INCLUDE_TIER2 ? ' (incl. tier 2)' : ' (tier 1 only)'}`
-  );
+  let scopeNote = INCLUDE_TIER2 ? ' (incl. tier 2)' : ' (tier 1 only)';
+  if (ONLY_DISTRICTS) {
+    scopeNote = ` (only: ${[...ONLY_DISTRICTS].join(', ')})`;
+  }
+  console.log(`Candidates:          ${wanted.length}${scopeNote}`);
   console.log(`Already present:     ${wanted.length - toAdd.length}`);
   console.log('');
 
