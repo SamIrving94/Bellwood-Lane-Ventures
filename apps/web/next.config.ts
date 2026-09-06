@@ -52,6 +52,21 @@ nextConfig.outputFileTracingExcludes = {
   ],
 };
 
+// The Linux query engine lives OUTSIDE node_modules (custom generator output
+// in packages/database/generated/client), and Next's file tracing does not
+// reliably spot the native binary a bundled chunk loads at runtime from
+// there. The api/app lambdas happened to trace it; web's FIRST database
+// route (Keyhole, 6 Sep 2026) shipped without it and every report 500'd with
+// PrismaClientInitializationError: "could not locate the Query Engine for
+// runtime rhel-openssl-3.0.x". Force-include it for every function — one
+// ~17MB file, comfortably inside the lambda budget. Path is relative to
+// this app's directory, per Vercel's monorepo tracing docs.
+nextConfig.outputFileTracingIncludes = {
+  '*': [
+    '../../packages/database/generated/client/libquery_engine-rhel-openssl-3.0.x.so.node',
+  ],
+};
+
 if (process.env.NODE_ENV === 'production') {
   const redirects: NextConfig['redirects'] = async () => [
     {
