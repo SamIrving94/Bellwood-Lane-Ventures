@@ -3,6 +3,7 @@ import { OfferForm } from '@/components/home/offer-form';
 import type { Metadata } from 'next';
 import Image from 'next/image';
 import Link from 'next/link';
+import type { ReactNode } from 'react';
 
 export const revalidate = 300;
 
@@ -25,6 +26,19 @@ const REASONS = [
   { t: 'My buyer pulled out', s: 'Chain break', href: '/chain-break' },
   { t: 'We’re separating', s: 'Separation', href: '/separation' },
   { t: 'I’m relocating', s: 'Moving away', href: '/relocation' },
+  // Founder direction, 5 Sep 2026: two more doors. Until their own pages
+  // exist (docs/marketing/PLAN.md §3.4 and §3.5) they jump to their card
+  // in "Is Kept for me?" below.
+  {
+    t: 'There’s a problem with the property',
+    s: 'Problem property',
+    href: '#problem-property',
+  },
+  {
+    t: 'I need the money for what’s next',
+    s: 'Your next step',
+    href: '#next-step',
+  },
 ];
 
 const STATS = [
@@ -48,7 +62,15 @@ const STATS = [
   },
 ];
 
-const SITUATIONS = [
+const SITUATIONS: Array<{
+  /** Anchor the reason index jumps to, for the doors without their own page. */
+  id?: string;
+  k: string;
+  t: string;
+  b: string;
+  /** A second, smaller line under the body, so signposts can be real links. */
+  note?: ReactNode;
+}> = [
   {
     k: 'Probate',
     t: 'You’re the executor of an estate',
@@ -68,6 +90,44 @@ const SITUATIONS = [
     k: 'Divorce or separation',
     t: 'You need a clean break',
     b: 'Court-ordered timelines, a joint mortgage to clear, emotional weight. We move quietly and quickly. Solicitors talk to solicitors.',
+  },
+  // Founder direction, 5 Sep 2026. The money card carries the free-debt-
+  // advice signpost the marketing plan requires on any financial-pressure
+  // copy (StepChange, Citizens Advice), as real links on a separate line.
+  {
+    id: 'problem-property',
+    k: 'Problem property',
+    t: 'Something about it is putting buyers or lenders off',
+    b: 'A short lease, cladding, knotweed, subsidence, non-standard construction, a lender that says no. Buyers get as far as the survey and vanish, and a remortgage is out of reach. You do not have to fix it or explain it away. Tell us what it is, we come and see it, and we buy it as it is and carry the risk.',
+  },
+  {
+    id: 'next-step',
+    k: 'Your next step',
+    t: 'You need the money for what comes next',
+    b: 'Care costs, a business, a life that has moved on. A sale on your timeline, with a figure that does not change, lets you plan.',
+    note: (
+      <>
+        If a faster sale would leave you with debt you cannot service, talk to{' '}
+        <a
+          href="https://www.stepchange.org"
+          className="underline decoration-leaf/50 underline-offset-4 hover:decoration-leaf"
+          rel="noopener noreferrer"
+          target="_blank"
+        >
+          StepChange
+        </a>{' '}
+        or{' '}
+        <a
+          href="https://www.citizensadvice.org.uk"
+          className="underline decoration-leaf/50 underline-offset-4 hover:decoration-leaf"
+          rel="noopener noreferrer"
+          target="_blank"
+        >
+          Citizens Advice
+        </a>{' '}
+        first. We will say so too.
+      </>
+    ),
   },
 ];
 
@@ -276,12 +336,15 @@ export default function SellPage() {
                   href={r.href}
                   className="group flex min-h-11 items-baseline gap-3 py-3.5 text-forest transition-colors hover:text-leaf"
                 >
-                  <span className="shrink-0 font-serif text-[18px]">{r.t}</span>
+                  {/* The text may wrap, and the tag hides below sm: the two
+                      Sep 2026 rows are long enough to overflow a 390px column
+                      when both are pinned to one line. */}
+                  <span className="min-w-0 font-serif text-[18px]">{r.t}</span>
                   <span
                     aria-hidden
                     className="mb-[5px] flex-1 border-stone-400/40 border-b border-dotted"
                   />
-                  <span className="shrink-0 text-[10.5px] text-stone-500 uppercase tracking-[0.14em] [font-family:var(--font-courier)]">
+                  <span className="hidden shrink-0 text-[10.5px] text-stone-500 uppercase tracking-[0.14em] [font-family:var(--font-courier)] sm:inline">
                     {r.s}
                   </span>
                   <span aria-hidden className="shrink-0 text-leaf">
@@ -438,7 +501,7 @@ export default function SellPage() {
         </div>
         <div className="grid grid-cols-1 gap-px overflow-hidden rounded-[2px] border border-hair bg-hair md:grid-cols-2">
           {SITUATIONS.map((c) => (
-            <div key={c.k} className="bg-white p-8">
+            <div key={c.k} id={c.id} className="scroll-mt-24 bg-white p-8">
               <p className="m-0 text-[#8B9489] text-[10.5px] uppercase tracking-[0.16em] [font-family:var(--font-courier)]">
                 {c.k}
               </p>
@@ -446,6 +509,11 @@ export default function SellPage() {
               <p className="mt-3 text-[14px] text-stone-600 leading-[1.65]">
                 {c.b}
               </p>
+              {c.note ? (
+                <p className="mt-3 text-[13.5px] text-stone-600 leading-[1.6]">
+                  {c.note}
+                </p>
+              ) : null}
             </div>
           ))}
         </div>
