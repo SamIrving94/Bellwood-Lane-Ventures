@@ -63,6 +63,9 @@ type Lead = {
   primeIsOpportunity: boolean;
   primeDiscountPct: number | null;
   primeReasons: string[];
+  cornerstone: boolean;
+  modernisationRipe: boolean;
+  modernisationReasons: string[];
 };
 
 type Props = {
@@ -619,16 +622,24 @@ function LeadCard({
   const oppTitle =
     lead.primeReasons.length > 0 ? lead.primeReasons.join(' · ') : undefined;
   if (lead.track === 'prime') {
+    // Cornerstone = the £1.5M–£10M tier inside prime (founder decision,
+    // 29 Aug 2026) — bigger ticket, investor-backed deal-by-deal, triaged
+    // first. Same rules otherwise: still prime, still a human decision.
+    const mark = lead.cornerstone ? '◆ Cornerstone' : '★ Prime';
     highlights.push(
       lead.primeIsOpportunity
         ? {
-            label: `★ Prime opportunity${oppSuffix}`,
-            cls: 'border-emerald-400 bg-emerald-200 text-emerald-950',
+            label: `${mark} opportunity${oppSuffix}`,
+            cls: lead.cornerstone
+              ? 'border-violet-400 bg-violet-200 text-violet-950'
+              : 'border-emerald-400 bg-emerald-200 text-emerald-950',
             title: oppTitle,
           }
         : {
-            label: '★ Prime — own book',
-            cls: 'border-emerald-300 bg-emerald-100 text-emerald-900',
+            label: `${mark} — own book`,
+            cls: lead.cornerstone
+              ? 'border-violet-300 bg-violet-100 text-violet-900'
+              : 'border-emerald-300 bg-emerald-100 text-emerald-900',
             title:
               oppTitle ??
               'Prime-district (or high-value) stock: a principal-track candidate for the Kept book, not the investor feed. See packages/scouting/src/track.ts.',
@@ -646,6 +657,19 @@ function LeadCard({
       title:
         oppTitle ??
         'Multi-unit language in the listing — whole block or portfolio. Principal-track candidate; the house AVM does not apply.',
+    });
+  }
+  // The refurb-arbitrage signal itself: real evidence the home has NOT been
+  // touched (own EPC band + certificate age, dated heating, long tenure).
+  // Hover shows the evidence lines verbatim.
+  if (lead.modernisationRipe) {
+    highlights.push({
+      label: '🔧 Ripe for modernisation',
+      cls: 'border-lime-300 bg-lime-100 text-lime-900',
+      title:
+        lead.modernisationReasons.length > 0
+          ? lead.modernisationReasons.join(' · ')
+          : undefined,
     });
   }
   if (lead.discountPercent && lead.discountPercent > 0) {

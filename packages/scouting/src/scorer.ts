@@ -22,9 +22,9 @@
  * gone (unreliable proxy for motivation).
  */
 
-import type { Hpi } from '@repo/property-data/src/hmlr-hpi';
 import type { PricePaid } from '@repo/property-data/src/hmlr';
 import { isSyntheticPricePaid } from '@repo/property-data/src/hmlr';
+import type { Hpi } from '@repo/property-data/src/hmlr-hpi';
 import type { EnrichedLead } from './enrichment';
 import {
   DEFAULT_SCORER_CONFIG,
@@ -35,7 +35,12 @@ import {
 export { DEFAULT_SCORER_CONFIG } from './scorer-config';
 export type { ScorerConfig } from './scorer-config';
 
-export type Verdict = 'STRONG' | 'VIABLE' | 'THIN' | 'PASS' | 'INSUFFICIENT_DATA';
+export type Verdict =
+  | 'STRONG'
+  | 'VIABLE'
+  | 'THIN'
+  | 'PASS'
+  | 'INSUFFICIENT_DATA';
 
 /** The pillar/modifier a factor belongs to. */
 export type ScoreDimension = 'acquisition' | 'roi' | 'marketTrend' | 'risk';
@@ -107,6 +112,12 @@ export interface LeadSignals {
   planningRefusalCount?: number;
   marriageValueLease?: boolean;
   leaseUrgency?: number;
+  /**
+   * Pre-computed ripe-for-modernisation assessment (modernisation.ts),
+   * built from the property's OWN EPC + sale history — deliberately not
+   * derivable from the postcode-level epcRating above.
+   */
+  modernisation?: { points: number; reasons: string[] } | null;
 }
 
 /** ROI inputs from the appraisal (stage 2). */
@@ -137,7 +148,7 @@ function add(
   points: number,
   dimension: ScoreDimension,
   tone?: ScoreFactor['tone'],
-  provisional?: boolean,
+  provisional?: boolean
 ): void {
   if (points === 0 && tone !== 'neutral') return;
   factors.push({ label, points, dimension, tone, provisional });
@@ -145,11 +156,15 @@ function add(
 
 /** First band whose threshold the value clears (bands are high → low). */
 function pickBand(bands: EquityBand[], value: number): EquityBand | null {
-  return bands.find((b) => value >= b.minRatio) ?? bands[bands.length - 1] ?? null;
+  return (
+    bands.find((b) => value >= b.minRatio) ?? bands[bands.length - 1] ?? null
+  );
 }
 
 function sumDimension(factors: ScoreFactor[], dim: ScoreDimension): number {
-  return factors.filter((f) => f.dimension === dim).reduce((s, f) => s + f.points, 0);
+  return factors
+    .filter((f) => f.dimension === dim)
+    .reduce((s, f) => s + f.points, 0);
 }
 
 const LISTING_TYPE_LABELS: Record<string, string> = {
@@ -186,7 +201,7 @@ function scoreAcquisition(
   lead: EnrichedLead,
   signals: LeadSignals | undefined,
   factors: ScoreFactor[],
-  config: ScorerConfig,
+  config: ScorerConfig
 ): number {
   const before = factors.length;
 
@@ -202,7 +217,12 @@ function scoreAcquisition(
   if (typeof signals?.daysOnMarket === 'number' && signals.daysOnMarket > 0) {
     const band = pickBand(config.daysOnMarketBands, signals.daysOnMarket);
     if (band && band.points > 0) {
-      add(factors, `${band.label} (${signals.daysOnMarket}d)`, band.points, 'acquisition');
+      add(
+        factors,
+        `${band.label} (${signals.daysOnMarket}d)`,
+        band.points,
+        'acquisition'
+      );
     }
   }
 
@@ -210,7 +230,12 @@ function scoreAcquisition(
   if (signals?.listingType) {
     const condPts = config.conditionScores[signals.listingType];
     if (condPts && condPts > 0) {
-      add(factors, `${LISTING_TYPE_LABELS[signals.listingType] ?? 'Condition'}`, condPts, 'acquisition');
+      add(
+        factors,
+        `${LISTING_TYPE_LABELS[signals.listingType] ?? 'Condition'}`,
+        condPts,
+        'acquisition'
+      );
     }
   }
 
@@ -218,8 +243,10 @@ function scoreAcquisition(
   if (signals?.velocityScore && signals.velocityScore > 0) {
     let pts = 0;
     if (signals.velocityScore >= 1.0) pts = config.velocityMax;
-    else if (signals.velocityScore >= 0.5) pts = Math.round(config.velocityMax * 0.66);
-    else if (signals.velocityScore >= 0.2) pts = Math.round(config.velocityMax * 0.33);
+    else if (signals.velocityScore >= 0.5)
+      pts = Math.round(config.velocityMax * 0.66);
+    else if (signals.velocityScore >= 0.2)
+      pts = Math.round(config.velocityMax * 0.33);
     else if (signals.velocityScore >= 0.05) pts = 1;
     if (pts > 0) {
       const drops =
@@ -231,9 +258,7 @@ function scoreAcquisition(
   }
 
   // Chain-free / cash-only / repossession distress.
-  if (
-    signals?.listingType && DISTRESS_LISTINGS.has(signals.listingType)
-  ) {
+  if (signals?.listingType && DISTRESS_LISTINGS.has(signals.listingType)) {
     add(factors, 'Distressed sale signal', config.distressBonus, 'acquisition');
   }
 
@@ -242,7 +267,12 @@ function scoreAcquisition(
     add(factors, 'Solicitor identified', config.solicitorBonus, 'acquisition');
   }
   if (lead.grantType === 'letters_of_administration') {
-    add(factors, 'Letters of administration (unplanned)', config.lettersOfAdminBonus, 'acquisition');
+    add(
+      factors,
+      'Letters of administration (unplanned)',
+      config.lettersOfAdminBonus,
+      'acquisition'
+    );
   }
 
   // Non-residential listings are detected at sourcing and badged in the UI,
@@ -250,14 +280,45 @@ function scoreAcquisition(
   // three-bed semi on equal terms and could take a paid shortlist slot. Kept
   // (the founder wants to see them) but pushed down, not filtered out.
   if (signals?.commercial) {
-    add(factors, 'Commercial premises (not a standard residential deal)', config.commercialPenalty, 'acquisition', 'negative');
+    add(
+      factors,
+      'Commercial premises (not a standard residential deal)',
+      config.commercialPenalty,
+      'acquisition',
+      'negative'
+    );
   }
 
   // Short-lease marriage value motivates a sale.
   if (signals?.marriageValueLease) {
     const urgency = Math.min(1, Math.max(0, signals.leaseUrgency ?? 0));
-    const pts = config.marriageValueBase + Math.round(urgency * config.marriageValueUrgencyMax);
-    add(factors, 'Short lease motivates sale (marriage value)', pts, 'acquisition');
+    const pts =
+      config.marriageValueBase +
+      Math.round(urgency * config.marriageValueUrgencyMax);
+    add(
+      factors,
+      'Short lease motivates sale (marriage value)',
+      pts,
+      'acquisition'
+    );
+  }
+
+  // Ripe for modernisation — the refurb-arbitrage thesis as points. The
+  // evidence (own EPC band + certificate age, dated heating, long tenure,
+  // condition badges) is assembled per lead by assessModernisation and
+  // passed in pre-computed, because it needs the property's OWN certificate
+  // while signals.epcRating carries the postcode average. This is what
+  // stops the scout burying exactly the stock the founder buys: the −4
+  // Poor-EPC risk factor above stays honest for the risk verdict, and this
+  // outweighs it when the evidence says the discount is fixable.
+  if (signals?.modernisation && signals.modernisation.points > 0) {
+    add(
+      factors,
+      `Ripe for modernisation — ${signals.modernisation.reasons[0] ?? 'condition evidence'}`,
+      signals.modernisation.points,
+      'acquisition',
+      'positive'
+    );
   }
 
   // Clamp the pillar to its cap.
@@ -295,7 +356,7 @@ function scoreEquityProxy(
   lead: EnrichedLead,
   pricePaid: PricePaid | null,
   factors: ScoreFactor[],
-  config: ScorerConfig,
+  config: ScorerConfig
 ): { points: number; ceiling: number } {
   if (!lead.estateValuePence) return { points: 0, ceiling: 0 };
   const cap = config.dimensionCaps.roi;
@@ -322,8 +383,18 @@ function scoreEquityProxy(
   const ratio = lead.estateValuePence / avgAreaPence;
   const band = pickBand(config.equityBands, ratio);
   const pts = band?.points ?? 1;
-  add(factors, `${band?.label ?? 'Equity vs area'} (ROI pending appraisal)`, pts, 'roi', undefined, true);
-  const bestBand = config.equityBands.reduce((m, b) => Math.max(m, b.points), 0);
+  add(
+    factors,
+    `${band?.label ?? 'Equity vs area'} (ROI pending appraisal)`,
+    pts,
+    'roi',
+    undefined,
+    true
+  );
+  const bestBand = config.equityBands.reduce(
+    (m, b) => Math.max(m, b.points),
+    0
+  );
   return { points: pts, ceiling: Math.min(cap, Math.max(pts, bestBand)) };
 }
 
@@ -333,7 +404,7 @@ function scoreEquityProxy(
  */
 export function scoreDealRoi(
   input: DealRoiInput,
-  config: ScorerConfig = DEFAULT_SCORER_CONFIG,
+  config: ScorerConfig = DEFAULT_SCORER_CONFIG
 ): ScoreFactor[] {
   const factors: ScoreFactor[] = [];
 
@@ -364,27 +435,51 @@ export function scoreDealRoi(
         `Asking ${Math.abs(input.bmvDiscountPct).toFixed(0)}% ABOVE market — no BMV`,
         0,
         'roi',
-        'neutral',
+        'neutral'
       );
     } else {
       const band = pickBand(config.bmvBands, input.bmvDiscountPct);
       if (band && band.points > 0) {
         hadCredit = true;
-        add(factors, `${band.label} (${input.bmvDiscountPct.toFixed(0)}% BMV)`, damp(band.points), 'roi', 'positive');
+        add(
+          factors,
+          `${band.label} (${input.bmvDiscountPct.toFixed(0)}% BMV)`,
+          damp(band.points),
+          'roi',
+          'positive'
+        );
       }
     }
   }
   if (typeof input.cashRoiPct === 'number') {
     if (input.cashRoiPct <= 0) {
       // A loss-making deal earns no ROI credit.
-      add(factors, `Cash ROI ${input.cashRoiPct.toFixed(0)}% — loss, no credit`, 0, 'roi', 'neutral');
+      add(
+        factors,
+        `Cash ROI ${input.cashRoiPct.toFixed(0)}% — loss, no credit`,
+        0,
+        'roi',
+        'neutral'
+      );
     } else {
       const band = pickBand(config.roiBands, input.cashRoiPct);
       if (band && band.points > 0) {
         hadCredit = true;
-        add(factors, `${band.label} (${input.cashRoiPct.toFixed(0)}%)`, damp(band.points), 'roi', 'positive');
+        add(
+          factors,
+          `${band.label} (${input.cashRoiPct.toFixed(0)}%)`,
+          damp(band.points),
+          'roi',
+          'positive'
+        );
       } else {
-        add(factors, `Cash ROI ${input.cashRoiPct.toFixed(0)}% — below hurdle`, 0, 'roi', 'neutral');
+        add(
+          factors,
+          `Cash ROI ${input.cashRoiPct.toFixed(0)}% — below hurdle`,
+          0,
+          'roi',
+          'neutral'
+        );
       }
     }
   }
@@ -409,54 +504,125 @@ export function scoreDealRoi(
 function scoreMarketTrend(
   hpi: Hpi | null,
   factors: ScoreFactor[],
-  config: ScorerConfig,
+  config: ScorerConfig
 ): { score: number; label: string } {
   const mt = config.marketTrend;
   const trend = hpi?.trend ?? null;
-  const map: Record<string, { pts: number; label: string; tone: ScoreFactor['tone'] }> = {
+  const map: Record<
+    string,
+    { pts: number; label: string; tone: ScoreFactor['tone'] }
+  > = {
     rising: { pts: mt.rising, label: 'Rising market', tone: 'positive' },
     stable: { pts: mt.stable, label: 'Stable market', tone: 'neutral' },
-    declining: { pts: mt.declining, label: 'Declining market', tone: 'neutral' },
+    declining: {
+      pts: mt.declining,
+      label: 'Declining market',
+      tone: 'neutral',
+    },
   };
-  const chosen = trend && map[trend] ? map[trend] : { pts: mt.unknown, label: 'Market trend unknown', tone: 'neutral' as const };
-  add(factors, chosen.label, Math.min(config.dimensionCaps.marketTrend, chosen.pts), 'marketTrend', chosen.tone);
-  return { score: Math.min(config.dimensionCaps.marketTrend, chosen.pts), label: trend ?? 'unknown' };
+  const chosen =
+    trend && map[trend]
+      ? map[trend]
+      : {
+          pts: mt.unknown,
+          label: 'Market trend unknown',
+          tone: 'neutral' as const,
+        };
+  add(
+    factors,
+    chosen.label,
+    Math.min(config.dimensionCaps.marketTrend, chosen.pts),
+    'marketTrend',
+    chosen.tone
+  );
+  return {
+    score: Math.min(config.dimensionCaps.marketTrend, chosen.pts),
+    label: trend ?? 'unknown',
+  };
 }
 
 function scoreRisk(
   signals: LeadSignals | undefined,
   factors: ScoreFactor[],
-  config: ScorerConfig,
+  config: ScorerConfig
 ): { score: number; flags: string[] } {
   const flags: string[] = [];
   if (!signals) return { score: 0, flags };
   const before = factors.length;
 
   const flood = (signals.floodRisk ?? '').toLowerCase();
-  if (flood.includes('high')) { add(factors, 'High flood risk', -6, 'risk', 'negative'); flags.push('flood: high'); }
-  else if (flood.includes('medium')) { add(factors, 'Medium flood risk', -3, 'risk', 'negative'); flags.push('flood: medium'); }
-  else if (flood.includes('low')) { add(factors, 'Low flood risk', 1, 'risk', 'positive'); }
+  if (flood.includes('high')) {
+    add(factors, 'High flood risk', -6, 'risk', 'negative');
+    flags.push('flood: high');
+  } else if (flood.includes('medium')) {
+    add(factors, 'Medium flood risk', -3, 'risk', 'negative');
+    flags.push('flood: medium');
+  } else if (flood.includes('low')) {
+    add(factors, 'Low flood risk', 1, 'risk', 'positive');
+  }
 
   const epc = (signals.epcRating ?? '').toUpperCase();
-  if (epc === 'F' || epc === 'G') { add(factors, `Poor EPC (${epc})`, -4, 'risk', 'negative'); flags.push(`EPC ${epc}`); }
-  else if (epc === 'E') { add(factors, 'Below-par EPC (E)', -2, 'risk', 'negative'); flags.push('EPC E'); }
-  else if (epc === 'A' || epc === 'B' || epc === 'C') { add(factors, `Good EPC (${epc})`, 2, 'risk', 'positive'); }
+  if (epc === 'F' || epc === 'G') {
+    add(factors, `Poor EPC (${epc})`, -4, 'risk', 'negative');
+    flags.push(`EPC ${epc}`);
+  } else if (epc === 'E') {
+    add(factors, 'Below-par EPC (E)', -2, 'risk', 'negative');
+    flags.push('EPC E');
+  } else if (epc === 'A' || epc === 'B' || epc === 'C') {
+    add(factors, `Good EPC (${epc})`, 2, 'risk', 'positive');
+  }
 
-  if (signals.tenure === 'leasehold' && typeof signals.remainingLeaseYears === 'number') {
-    if (signals.remainingLeaseYears < 60) { add(factors, `Very short lease (${signals.remainingLeaseYears}y)`, -6, 'risk', 'negative'); flags.push(`lease ${signals.remainingLeaseYears}y`); }
-    else if (signals.remainingLeaseYears < 80) { add(factors, `Short lease (${signals.remainingLeaseYears}y)`, -3, 'risk', 'negative'); flags.push(`lease ${signals.remainingLeaseYears}y`); }
-    else if (signals.remainingLeaseYears > 125) { add(factors, `Long lease (${signals.remainingLeaseYears}y)`, 1, 'risk', 'positive'); }
+  if (
+    signals.tenure === 'leasehold' &&
+    typeof signals.remainingLeaseYears === 'number'
+  ) {
+    if (signals.remainingLeaseYears < 60) {
+      add(
+        factors,
+        `Very short lease (${signals.remainingLeaseYears}y)`,
+        -6,
+        'risk',
+        'negative'
+      );
+      flags.push(`lease ${signals.remainingLeaseYears}y`);
+    } else if (signals.remainingLeaseYears < 80) {
+      add(
+        factors,
+        `Short lease (${signals.remainingLeaseYears}y)`,
+        -3,
+        'risk',
+        'negative'
+      );
+      flags.push(`lease ${signals.remainingLeaseYears}y`);
+    } else if (signals.remainingLeaseYears > 125) {
+      add(
+        factors,
+        `Long lease (${signals.remainingLeaseYears}y)`,
+        1,
+        'risk',
+        'positive'
+      );
+    }
   } else if (signals.tenure === 'freehold') {
     add(factors, 'Freehold', 2, 'risk', 'positive');
   }
 
   if (signals.planningRefusalCount && signals.planningRefusalCount >= 3) {
-    add(factors, `${signals.planningRefusalCount} planning refusals nearby`, -2, 'risk', 'negative');
+    add(
+      factors,
+      `${signals.planningRefusalCount} planning refusals nearby`,
+      -2,
+      'risk',
+      'negative'
+    );
     flags.push(`${signals.planningRefusalCount} planning refusals nearby`);
   }
 
   const raw = factors.slice(before).reduce((s, f) => s + f.points, 0);
-  const clamped = Math.max(config.dimensionCaps.riskMin, Math.min(config.dimensionCaps.riskMax, raw));
+  const clamped = Math.max(
+    config.dimensionCaps.riskMin,
+    Math.min(config.dimensionCaps.riskMax, raw)
+  );
   return { score: clamped, flags };
 }
 
@@ -464,7 +630,11 @@ function scoreRisk(
 // Verdict, leading indicator, rationale
 // ─────────────────────────────────────────────────────────────────────────
 
-function verdictFromScore(total: number, hasCriticalData: boolean, config: ScorerConfig): Verdict {
+function verdictFromScore(
+  total: number,
+  hasCriticalData: boolean,
+  config: ScorerConfig
+): Verdict {
   if (!hasCriticalData) return 'INSUFFICIENT_DATA';
   if (total >= config.verdictThresholds.strong) return 'STRONG';
   if (total >= config.verdictThresholds.viable) return 'VIABLE';
@@ -483,14 +653,22 @@ function buildRationale(
   total: number,
   leading: ScoreFactor | null,
   factors: ScoreFactor[],
-  appraised: boolean,
+  appraised: boolean
 ): string {
   if (verdict === 'INSUFFICIENT_DATA') {
     return 'Insufficient data to score — missing address or postcode.';
   }
   const word =
-    verdict === 'STRONG' ? 'Strong' : verdict === 'VIABLE' ? 'Viable' : verdict === 'THIN' ? 'Thin' : 'Pass';
-  const negatives = factors.filter((f) => f.points < 0).sort((a, b) => a.points - b.points);
+    verdict === 'STRONG'
+      ? 'Strong'
+      : verdict === 'VIABLE'
+        ? 'Viable'
+        : verdict === 'THIN'
+          ? 'Thin'
+          : 'Pass';
+  const negatives = factors
+    .filter((f) => f.points < 0)
+    .sort((a, b) => a.points - b.points);
   let s = `${word} lead (${total}/100)`;
   if (leading) s += ` — leading indicator: ${leading.label.toLowerCase()}`;
   if (negatives[0]) s += `; pulled down by ${negatives[0].label.toLowerCase()}`;
@@ -514,16 +692,31 @@ function assemble(
   riskFlags: string[],
   appraised: boolean,
   config: ScorerConfig,
-  roiCeiling: number,
+  roiCeiling: number
 ): ScoreBreakdown {
-  const acquisition = Math.min(config.dimensionCaps.acquisition, sumDimension(factors, 'acquisition'));
+  const acquisition = Math.min(
+    config.dimensionCaps.acquisition,
+    sumDimension(factors, 'acquisition')
+  );
   const roi = Math.min(config.dimensionCaps.roi, sumDimension(factors, 'roi'));
   const marketTrend = sumDimension(factors, 'marketTrend');
-  const risk = Math.max(config.dimensionCaps.riskMin, Math.min(config.dimensionCaps.riskMax, sumDimension(factors, 'risk')));
-  const total = Math.max(0, Math.min(100, acquisition + roi + marketTrend + risk));
+  const risk = Math.max(
+    config.dimensionCaps.riskMin,
+    Math.min(config.dimensionCaps.riskMax, sumDimension(factors, 'risk'))
+  );
+  const total = Math.max(
+    0,
+    Math.min(100, acquisition + roi + marketTrend + risk)
+  );
   const verdict = verdictFromScore(total, hasCriticalData, config);
   const leadingIndicator = pickLeadingIndicator(factors);
-  const rationale = buildRationale(verdict, total, leadingIndicator, factors, appraised);
+  const rationale = buildRationale(
+    verdict,
+    total,
+    leadingIndicator,
+    factors,
+    appraised
+  );
 
   // Guard the divisor: a pathological config (every cap zeroed) must degrade to
   // "score 0", never to NaN/Infinity leaking into the gate.
@@ -531,16 +724,27 @@ function assemble(
     1,
     config.dimensionCaps.acquisition +
       Math.max(0, roiCeiling) +
-      config.dimensionCaps.marketTrend,
+      config.dimensionCaps.marketTrend
   );
   const sourcingScore = appraised
     ? total
     : Math.max(0, Math.min(100, Math.round((total / achievablePoints) * 100)));
 
   return {
-    acquisition, roi, marketTrend, risk, total, verdict, appraised,
-    sourcingScore, achievablePoints,
-    marketTrendLabel, riskFlags, factors, leadingIndicator, rationale,
+    acquisition,
+    roi,
+    marketTrend,
+    risk,
+    total,
+    verdict,
+    appraised,
+    sourcingScore,
+    achievablePoints,
+    marketTrendLabel,
+    riskFlags,
+    factors,
+    leadingIndicator,
+    rationale,
   };
 }
 
@@ -563,17 +767,30 @@ export function scoreLead(
   pricePaid: PricePaid | null,
   hpi: Hpi | null,
   signals?: LeadSignals,
-  config: ScorerConfig = DEFAULT_SCORER_CONFIG,
+  config: ScorerConfig = DEFAULT_SCORER_CONFIG
 ): ScoreBreakdown {
   const hasCriticalData = Boolean(lead.address && lead.postcode);
   const factors: ScoreFactor[] = [];
 
   scoreAcquisition(lead, signals, factors, config);
-  const { ceiling: roiCeiling } = scoreEquityProxy(lead, pricePaid, factors, config); // provisional ROI
+  const { ceiling: roiCeiling } = scoreEquityProxy(
+    lead,
+    pricePaid,
+    factors,
+    config
+  ); // provisional ROI
   const { label: marketTrendLabel } = scoreMarketTrend(hpi, factors, config);
   const { flags: riskFlags } = scoreRisk(signals, factors, config);
 
-  return assemble(factors, hasCriticalData, marketTrendLabel, riskFlags, false, config, roiCeiling);
+  return assemble(
+    factors,
+    hasCriticalData,
+    marketTrendLabel,
+    riskFlags,
+    false,
+    config,
+    roiCeiling
+  );
 }
 
 /**
@@ -584,8 +801,12 @@ export function scoreLead(
 export function combineScore(
   baseFactors: ScoreFactor[],
   roi: DealRoiInput,
-  opts: { hasCriticalData?: boolean; marketTrendLabel?: string; riskFlags?: string[] } = {},
-  config: ScorerConfig = DEFAULT_SCORER_CONFIG,
+  opts: {
+    hasCriticalData?: boolean;
+    marketTrendLabel?: string;
+    riskFlags?: string[];
+  } = {},
+  config: ScorerConfig = DEFAULT_SCORER_CONFIG
 ): ScoreBreakdown {
   // Remove any prior ROI factors (the provisional proxy or a stale appraisal).
   const kept = baseFactors.filter((f) => f.dimension !== 'roi');
@@ -600,6 +821,6 @@ export function combineScore(
     config,
     // Appraised: the whole ROI pillar was reachable, nothing is structurally
     // blank, so the raw total is already the comparable score.
-    config.dimensionCaps.roi,
+    config.dimensionCaps.roi
   );
 }

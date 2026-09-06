@@ -113,6 +113,28 @@ export const PRIME_CAPTURE_VALUE_MIN_RATIO = 0.75;
 export const AUCTION_GUIDE_HEADROOM = 0.7;
 
 /**
+ * The cornerstone tier INSIDE prime (founder decision, 29 Aug 2026: the
+ * £700k floor stays; £1.5M–£10M is a named tier, not a new floor). Purely
+ * a triage marker — cornerstone leads are still `prime`, still bypass the
+ * gate, still get a human decision. There is still no ceiling anywhere.
+ */
+export const CORNERSTONE_MIN_VALUE_PENCE = 1_500_000_00;
+
+/**
+ * True when a prime lead belongs to the cornerstone tier. A lead with no
+ * value of its own (every probate notice) is judged by its street average,
+ * the same stand-in classifyTrack uses — a valueless notice on a £2M
+ * street is a cornerstone conversation, not a volume one.
+ */
+export function isCornerstoneValue(
+  valuePence: number | null | undefined,
+  areaAvgPence: number | null | undefined
+): boolean {
+  const basis = typeof valuePence === 'number' ? valuePence : areaAvgPence;
+  return typeof basis === 'number' && basis >= CORNERSTONE_MIN_VALUE_PENCE;
+}
+
+/**
  * London districts where the buy-under-market → refurb → sell strategy works.
  *
  * Chosen for HOUSING STOCK, not prestige. What the strategy needs is a wide,
@@ -215,8 +237,10 @@ const OUTWARD_ONLY = /^([A-Z]{1,2}\d{1,2}[A-Z]?)$/;
  * Condition language, for listings whose feed gave us no distress badge.
  * Grouped, so the \b anchors bind every alternative rather than only the
  * first and last — the classic alternation-precedence trap.
+ * Exported so the modernisation assessor scores the SAME language this
+ * classifier recognises — two lists would drift.
  */
-const REFURB_TEXT =
+export const REFURB_TEXT =
   /\b(?:un-?modernised|unimproved|(?:needs?|requires?|requiring|in need of)\s+(?:full\s+|complete\s+|total\s+)?(?:modernisation|modernising|updating|renovation|renovating|refurbishment|repair)|renovation project|refurbishment project|doer[-\s]upper)\b/i;
 
 /**
@@ -465,6 +489,15 @@ export function assessPrimeOpportunity(input: {
   listingType?: string | null;
   /** Any listing text, for condition language the badge missed. */
   text?: string | null;
+  /**
+   * The property's OWN EPC rating, when the register had one. This is what
+   * lets a probate lead — no listing badge, no listing text — carry real
+   * condition evidence: an F or G says the heating and insulation are
+   * untouched, in the register's own hand.
+   */
+  epcRating?: string | null;
+  /** Assessment date of that certificate (ISO-ish), for the reason line. */
+  epcInspectionDate?: string | null;
 }): PrimeOpportunity {
   const reasons: string[] = [];
 
@@ -487,12 +520,20 @@ export function assessPrimeOpportunity(input: {
 
   const badge = input.listingType ?? '';
   const textual = REFURB_TEXT.test(input.text ?? '');
-  const isRefurbCandidate = REFURB_LISTING_TYPES.has(badge) || textual;
-  if (isRefurbCandidate) {
+  const epcBand = input.epcRating?.toUpperCase();
+  const epcEvidence = epcBand === 'F' || epcBand === 'G';
+  const isRefurbCandidate =
+    REFURB_LISTING_TYPES.has(badge) || textual || epcEvidence;
+  if (REFURB_LISTING_TYPES.has(badge)) {
+    reasons.push(`Condition signal: ${badge.replace(/-/g, ' ')}`);
+  } else if (textual) {
     reasons.push(
-      badge && REFURB_LISTING_TYPES.has(badge)
-        ? `Condition signal: ${badge.replace(/-/g, ' ')}`
-        : 'Condition signal: listing text describes an unmodernised property'
+      'Condition signal: listing text describes an unmodernised property'
+    );
+  } else if (epcEvidence) {
+    const year = input.epcInspectionDate?.slice(0, 4);
+    reasons.push(
+      `Condition signal: EPC ${epcBand}${year ? ` (assessed ${year})` : ''} — heating and insulation untouched`
     );
   }
 
@@ -602,6 +643,9 @@ export function primeOpportunityForTrack(input: {
   areaAvgPence?: number | null;
   listingType?: string | null;
   text?: string | null;
+  /** The property's own EPC evidence, when fetched (see assessPrimeOpportunity). */
+  epcRating?: string | null;
+  epcInspectionDate?: string | null;
   /** Founder-marked prime districts (see isPrimeDistrict). */
   primeDistricts?: ReadonlySet<string>;
 }): PrimeOpportunity | null {
@@ -617,5 +661,7 @@ export function primeOpportunityForTrack(input: {
     areaAvgPence: input.areaAvgPence,
     listingType: input.listingType,
     text: input.text,
+    epcRating: input.epcRating,
+    epcInspectionDate: input.epcInspectionDate,
   });
 }

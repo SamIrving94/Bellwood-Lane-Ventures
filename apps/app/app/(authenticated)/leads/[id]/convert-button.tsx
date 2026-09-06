@@ -30,11 +30,11 @@ export const ConvertButton = ({ leadId }: { leadId: string }) => {
         type="button"
         onClick={handleConvert}
         disabled={isPending}
-        className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+        className="rounded-md bg-primary px-4 py-2 font-medium text-primary-foreground text-sm hover:bg-primary/90 disabled:opacity-50"
       >
         {isPending ? 'Converting...' : 'Convert to Deal'}
       </button>
-      {error && <span className="text-xs text-red-600">{error}</span>}
+      {error && <span className="text-red-600 text-xs">{error}</span>}
     </span>
   );
 };

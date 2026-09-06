@@ -1,9 +1,9 @@
 'use client';
 
+import { applyScorerSuggestion } from '@/app/actions/scorer-config/apply-suggestion';
 import type { ScorerSuggestion } from '@repo/scouting';
 import { CheckIcon, TrendingDownIcon, TrendingUpIcon } from 'lucide-react';
 import { useState, useTransition } from 'react';
-import { applyScorerSuggestion } from '@/app/actions/scorer-config/apply-suggestion';
 
 /**
  * One-click scorer tuning. Each card is a specific, evidenced weight change
@@ -47,14 +47,13 @@ export function SuggestionCards({
   return (
     <div className="rounded-xl border bg-card">
       <div className="border-b p-5">
-        <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+        <p className="font-mono text-[10px] text-muted-foreground uppercase tracking-[0.18em]">
           Suggested tweaks
         </p>
-        <p className="mt-1 text-sm text-slate-700">
+        <p className="mt-1 text-slate-700 text-sm">
           Specific weight changes the evidence supports. <strong>Apply</strong>{' '}
-          activates a new scorer version with that one change —
-          tomorrow&apos;s leads score with it. Reverting is one click on the
-          version history.
+          activates a new scorer version with that one change — tomorrow&apos;s
+          leads score with it. Reverting is one click on the version history.
         </p>
       </div>
       <div className="divide-y">
@@ -73,19 +72,19 @@ export function SuggestionCards({
                   <TrendingUpIcon className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
                 )}
                 <div>
-                  <p className="text-sm font-medium">{s.title}</p>
-                  <p className="text-xs text-muted-foreground">{s.evidence}</p>
+                  <p className="font-medium text-sm">{s.title}</p>
+                  <p className="text-muted-foreground text-xs">{s.evidence}</p>
                 </div>
               </div>
               {appliedVersion ? (
-                <span className="flex items-center gap-1 rounded-full bg-emerald-100 px-3 py-1 text-xs font-medium text-emerald-700 dark:bg-emerald-900 dark:text-emerald-400">
+                <span className="flex items-center gap-1 rounded-full bg-emerald-100 px-3 py-1 font-medium text-emerald-700 text-xs dark:bg-emerald-900 dark:text-emerald-400">
                   <CheckIcon className="h-3 w-3" />
                   Applied — live as v{appliedVersion}
                 </span>
               ) : (
                 <button
                   type="button"
-                  className="rounded-full bg-foreground px-4 py-1.5 text-xs font-medium text-background hover:opacity-90 disabled:opacity-50"
+                  className="rounded-full bg-foreground px-4 py-1.5 font-medium text-background text-xs hover:opacity-90 disabled:opacity-50"
                   onClick={() => handleApply(s)}
                   disabled={pendingKey !== null}
                 >
@@ -97,7 +96,7 @@ export function SuggestionCards({
         })}
       </div>
       {error && (
-        <p className="border-t p-4 text-xs text-rose-600 dark:text-rose-400">
+        <p className="border-t p-4 text-rose-600 text-xs dark:text-rose-400">
           {error}
         </p>
       )}

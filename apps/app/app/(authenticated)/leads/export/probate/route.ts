@@ -48,7 +48,7 @@ export async function GET(request: Request) {
     .replace(/\s+/g, '');
   const limit = Math.min(
     5000,
-    Math.max(1, Number(url.searchParams.get('limit') ?? 2000) || 2000),
+    Math.max(1, Number(url.searchParams.get('limit') ?? 2000) || 2000)
   );
 
   const leads = await database.scoutLead.findMany({
@@ -118,7 +118,7 @@ export async function GET(request: Request) {
         r.matchConfidence,
       ]
         .map(csvCell)
-        .join(','),
+        .join(',')
     );
   }
   const csv = lines.join('\r\n');
