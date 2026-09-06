@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { type ReactNode, useState } from 'react';
 
 /**
  * The homepage offer form — five short steps. The Aug 2026 handoff designed
@@ -53,6 +53,11 @@ const SITUATIONS = [
   { label: 'My buyer pulled out', value: 'chain_break' },
   { label: 'Relocating', value: 'relocation' },
   { label: 'Separation', value: 'other' },
+  // Founder direction, 5 Sep 2026: the two new front-door reasons. The
+  // property one is a real intake value; the money one rides on `other`
+  // and is told apart by its trigger label.
+  { label: 'A problem with the property', value: 'problem_property' },
+  { label: 'I need the money for what’s next', value: 'other' },
   { label: 'Something else', value: 'other' },
 ] as const;
 
@@ -72,10 +77,27 @@ const CHIP_OFF =
   'border-[#D9D0BC] bg-cream text-forest hover:border-leaf hover:bg-white';
 const CHIP_ON = 'border-leaf bg-leaf text-white';
 
-function StepLabel({ children }: { children: React.ReactNode }) {
+/** Courier step label. `short` is the phone wording: the full label runs to
+ *  36 tracked characters, which wraps onto two lines inside the 294px card
+ *  at 390px and put a second line of type above the address field on the
+ *  first screen (Sep 2026 mobile review). Below `sm` the short form shows. */
+function StepLabel({
+  children,
+  short,
+}: {
+  children: ReactNode;
+  short?: ReactNode;
+}) {
   return (
     <p className="mb-2.5 text-[#8B9489] text-[10.5px] uppercase tracking-[0.2em] [font-family:var(--font-courier)]">
-      {children}
+      {short ? (
+        <>
+          <span className="sm:hidden">{short}</span>
+          <span className="hidden sm:inline">{children}</span>
+        </>
+      ) : (
+        children
+      )}
     </p>
   );
 }
@@ -187,7 +209,9 @@ export function OfferForm() {
     >
       {step === 'address' && (
         <div>
-          <StepLabel>One of five · start with the address</StepLabel>
+          <StepLabel short="1 of 5 · the address">
+            One of five · start with the address
+          </StepLabel>
           <div className="flex flex-wrap gap-3">
             <input
               aria-label="House number and postcode"
@@ -224,7 +248,9 @@ export function OfferForm() {
 
       {step === 'property' && (
         <div>
-          <StepLabel>Two of five · what kind of property?</StepLabel>
+          <StepLabel short="2 of 5 · the property">
+            Two of five · what kind of property?
+          </StepLabel>
           <div className="flex flex-wrap gap-2">
             {PROPERTY_TYPES.map((t) => (
               <button
@@ -276,7 +302,9 @@ export function OfferForm() {
 
       {step === 'condition' && (
         <div>
-          <StepLabel>Three of five · condition and timing</StepLabel>
+          <StepLabel short="3 of 5 · condition and timing">
+            Three of five · condition and timing
+          </StepLabel>
           <div className="flex flex-wrap gap-2">
             {CONDITIONS.map((c) => (
               <button
@@ -324,7 +352,9 @@ export function OfferForm() {
 
       {step === 'situation' && (
         <div>
-          <StepLabel>Four of five · why are you selling?</StepLabel>
+          <StepLabel short="4 of 5 · why you’re selling">
+            Four of five · why are you selling?
+          </StepLabel>
           <div className="flex flex-wrap gap-2">
             {SITUATIONS.map((s) => (
               <button
@@ -382,7 +412,9 @@ export function OfferForm() {
 
       {step === 'contact' && (
         <div>
-          <StepLabel>Five of five · where can we reach you?</StepLabel>
+          <StepLabel short="5 of 5 · how to reach you">
+            Five of five · where can we reach you?
+          </StepLabel>
           <div className="flex flex-wrap gap-3">
             <input
               aria-label="Your name"

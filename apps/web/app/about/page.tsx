@@ -114,7 +114,7 @@ export default function AboutPage() {
                 published in full
               </Link>
               . If the open market is the better route for you, we&rsquo;ll say
-              so. We&rsquo;d rather you sold well than sold to us.
+              so.
             </p>
           </div>
         </section>

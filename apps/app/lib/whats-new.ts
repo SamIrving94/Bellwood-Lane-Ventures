@@ -26,8 +26,8 @@ export type WhatsNewEntry = {
 /** Newest first. The popup shows index 0. */
 export const WHATS_NEW: WhatsNewEntry[] = [
   {
-    id: '2026-08-30-ripe-for-modernisation',
-    date: '2026-08-30',
+    id: '2026-09-06-ripe-for-modernisation',
+    date: '2026-09-06',
     emoji: '🔧',
     title: 'The scout now hunts the unmodernised — and badges the big tickets',
     intro:
@@ -55,6 +55,50 @@ export const WHATS_NEW: WhatsNewEntry[] = [
       },
     ],
     cta: { label: 'See the leads', href: '/leads' },
+  },
+  {
+    id: '2026-09-05-two-more-doors',
+    date: '2026-09-05',
+    emoji: '🚪',
+    title: 'Two more doors on the front page',
+    intro:
+      'The "why are you selling?" list on /sell now speaks to two more sellers: the property with a problem that buyers or lenders walk away from, and the person who needs the money for what comes next. Each has its own card, and its own answer in the form.',
+    bullets: [
+      {
+        emoji: '🏠',
+        text: 'Problem property: short lease, cladding, knotweed, subsidence, a lender that says no. The form records it as problem_property.',
+      },
+      {
+        emoji: '🧭',
+        text: 'Your next step: the money card links to StepChange and Citizens Advice, as the marketing plan asks. The form records it as other, with its own trigger label.',
+      },
+      {
+        emoji: '📄',
+        text: 'Their own pages are still to build. Counsel reads the money page before any ads point at it.',
+      },
+    ],
+  },
+  {
+    id: '2026-09-05-phone-front-door',
+    date: '2026-09-05',
+    emoji: '📱',
+    title: 'The front door now leads with the door on phones',
+    intro:
+      'Open the public site on your phone. The threshold photograph and the seal are on the first screen, where they always were on desktop. The form is one thumb-scroll down, and Get started still jumps straight to it.',
+    bullets: [
+      {
+        emoji: '🚪',
+        text: 'Photo first: on phones the photograph now sits between the headline and the form, instead of a full screen down.',
+      },
+      {
+        emoji: '✂️',
+        text: 'Less crowding: shorter step labels on phones, a tighter header, and the trust marks sit under the photo as a caption.',
+      },
+      {
+        emoji: '🖥️',
+        text: 'Desktop unchanged: same grid, same spacing, same copy. Nothing in the signed-off wording moved.',
+      },
+    ],
   },
   {
     id: '2026-08-30-launch-board',
