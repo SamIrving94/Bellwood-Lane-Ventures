@@ -84,8 +84,43 @@ export interface ScorerConfig {
   bmvBands: EquityBand[];
   /** Cash-ROI bands: deal-model cash ROI as a %, high → low. */
   roiBands: EquityBand[];
-  /** Fallback equity bands (estate value ÷ area avg) used pre-appraisal. */
-  equityBands: EquityBand[];
+  /**
+   * Two-sided pre-appraisal ROI proxy (replaced the monotonic equity bands,
+   * 6 Sep 2026 — founder: "this is wild"). The old bands scored a lead's
+   * value AGAINST the area average rising: 1.5× the street earned 15 points
+   * while 40% UNDER the street earned 3 — five-to-one the wrong way round
+   * for a business whose whole thesis is buying below the street. Points by
+   * position, all founder-tunable:
+   *
+   *  - ABOVE the area: modest equity credit (real, but no discount thesis).
+   *  - BELOW the area WITH condition evidence (modernisation signal or an
+   *    unmodernised/derelict/poor-EPC badge): the deeper the discount, the
+   *    more points — this is the thesis as a number.
+   *  - BELOW the area with NO evidence: low points and the honest
+   *    "check why" label — an unexplained discount is the pattern that
+   *    hides an unfixable problem (bad plot, railway, short lease).
+   *  - FAR below (under 40% of the street, the classifyTrack house-shape
+   *    floor): a token, whatever the evidence — that price is usually a
+   *    flat or a plot wearing a house's postcode, not comparable stock.
+   */
+  equityProxy: {
+    /** Ratio ≥ 1.2 — clearly above the street. */
+    aboveAreaHigh: number;
+    /** Ratio 1.05–1.2. */
+    aboveArea: number;
+    /** Ratio 0.95–1.05 — parity; the comparable confirms the value. */
+    nearArea: number;
+    /** ≥5% below the street, condition evidence present. */
+    discountEdge: number;
+    /** ≥15% below, evidence present. */
+    discountSolid: number;
+    /** ≥30% below, evidence present — the gold-dust shape. */
+    discountDeep: number;
+    /** ≥5% below with NO condition evidence — the check-why case. */
+    discountNoReason: number;
+    /** Ratio < 0.40 — likely not comparable stock, whatever the evidence. */
+    notComparableFloor: number;
+  };
   equityNoComparable: number;
 
   /**
@@ -96,7 +131,12 @@ export interface ScorerConfig {
   roiConfidenceMultiplier: { high: number; medium: number; low: number };
 
   // ── Modifiers ─────────────────────────────────────────────────────────
-  marketTrend: { rising: number; stable: number; declining: number; unknown: number };
+  marketTrend: {
+    rising: number;
+    stable: number;
+    declining: number;
+    unknown: number;
+  };
 
   /** Total-score thresholds for the verdict bands (evaluated high → low). */
   verdictThresholds: { strong: number; viable: number; thin: number };
@@ -203,14 +243,22 @@ export const DEFAULT_SCORER_CONFIG: ScorerConfig = {
     { minRatio: 10, points: 4, label: 'Cash ROI 10–15%' },
     { minRatio: 0, points: 0, label: 'Cash ROI <10%' },
   ],
-  equityBands: [
-    { minRatio: 1.5, points: 15, label: 'Strong equity (1.5× area average)' },
-    { minRatio: 1.2, points: 12, label: 'Solid equity (1.2× area average)' },
-    { minRatio: 1.0, points: 9, label: 'Equity at area average' },
-    { minRatio: 0.75, points: 6, label: 'Borderline equity (75% of area)' },
-    { minRatio: 0.5, points: 3, label: 'Thin equity (50% of area)' },
-    { minRatio: 0, points: 1, label: 'Low equity vs area average' },
-  ],
+  // The ladder, deliberately: explained discounts (10/12/15) sit ABOVE
+  // parity (9), which sits above premium pricing (6/8) — an at-average
+  // comparable CONFIRMS the value (that 9 also keeps the sourcing-gate
+  // normalisation calibrated, see scorer-sourcing-score.test.ts), while an
+  // above-average asking is unproven premium. Unexplained discounts (3)
+  // and sub-40% prices (2) stay near the floor.
+  equityProxy: {
+    aboveAreaHigh: 8,
+    aboveArea: 6,
+    nearArea: 9,
+    discountEdge: 10,
+    discountSolid: 12,
+    discountDeep: 15,
+    discountNoReason: 3,
+    notComparableFloor: 2,
+  },
   equityNoComparable: 4,
 
   roiConfidenceMultiplier: { high: 1, medium: 0.6, low: 0.3 },
@@ -237,7 +285,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function mergeNumberMap(
   raw: unknown,
-  base: Record<string, number>,
+  base: Record<string, number>
 ): Record<string, number> {
   const out = { ...base };
   if (isRecord(raw)) {
@@ -255,7 +303,7 @@ function mergeBands(raw: unknown, base: EquityBand[]): EquityBand[] {
       (b): b is Record<string, unknown> =>
         isRecord(b) &&
         typeof b.minRatio === 'number' &&
-        typeof b.points === 'number',
+        typeof b.points === 'number'
     )
     .map((b) => ({
       minRatio: b.minRatio as number,
@@ -278,7 +326,9 @@ export function mergeScorerConfig(raw: unknown): ScorerConfig {
   const caps = isRecord(raw.dimensionCaps) ? raw.dimensionCaps : {};
   const mt = isRecord(raw.marketTrend) ? raw.marketTrend : {};
   const vt = isRecord(raw.verdictThresholds) ? raw.verdictThresholds : {};
-  const rcm = isRecord(raw.roiConfidenceMultiplier) ? raw.roiConfidenceMultiplier : {};
+  const rcm = isRecord(raw.roiConfidenceMultiplier)
+    ? raw.roiConfidenceMultiplier
+    : {};
 
   return {
     dimensionCaps: {
@@ -300,11 +350,29 @@ export function mergeScorerConfig(raw: unknown): ScorerConfig {
     marriageValueBase: num(raw.marriageValueBase, d.marriageValueBase),
     marriageValueUrgencyMax: num(
       raw.marriageValueUrgencyMax,
-      d.marriageValueUrgencyMax,
+      d.marriageValueUrgencyMax
     ),
     bmvBands: mergeBands(raw.bmvBands, d.bmvBands),
     roiBands: mergeBands(raw.roiBands, d.roiBands),
-    equityBands: mergeBands(raw.equityBands, d.equityBands),
+    equityProxy: (() => {
+      const ep = isRecord(raw.equityProxy) ? raw.equityProxy : {};
+      return {
+        aboveAreaHigh: num(ep.aboveAreaHigh, d.equityProxy.aboveAreaHigh),
+        aboveArea: num(ep.aboveArea, d.equityProxy.aboveArea),
+        nearArea: num(ep.nearArea, d.equityProxy.nearArea),
+        discountEdge: num(ep.discountEdge, d.equityProxy.discountEdge),
+        discountSolid: num(ep.discountSolid, d.equityProxy.discountSolid),
+        discountDeep: num(ep.discountDeep, d.equityProxy.discountDeep),
+        discountNoReason: num(
+          ep.discountNoReason,
+          d.equityProxy.discountNoReason
+        ),
+        notComparableFloor: num(
+          ep.notComparableFloor,
+          d.equityProxy.notComparableFloor
+        ),
+      };
+    })(),
     equityNoComparable: num(raw.equityNoComparable, d.equityNoComparable),
     roiConfidenceMultiplier: {
       high: num(rcm.high, d.roiConfidenceMultiplier.high),
