@@ -43,3 +43,6 @@ next-env.d.ts
 
 # Sentry
 .sentryclirc
+
+# Build-time copy of the Prisma Linux engine (scripts/copy-prisma-engine.mjs)
+generated/
