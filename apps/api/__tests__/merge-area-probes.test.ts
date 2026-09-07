@@ -5,7 +5,10 @@
  * displaying a failure the cron disproved every single morning.
  */
 import { describe, expect, it } from 'vitest';
-import { mergeAreaProbes } from '../app/cron/_lib/merge-area-probes';
+import {
+  lastScannedAtMs,
+  mergeAreaProbes,
+} from '../app/cron/_lib/merge-area-probes';
 
 const NOW = '2026-08-20T07:00:00.000Z';
 
@@ -100,6 +103,22 @@ describe('mergeAreaProbes', () => {
     });
   });
 
+  it('stamps lastScannedAt on every scanned area, with or without an outcome', () => {
+    const [withOutcome, withoutOutcome, untouched] = mergeAreaProbes(
+      [
+        area(),
+        area({ id: 'area_M20_1', seedPostcode: 'M20 6AB' }),
+        area({ id: 'area_LS17_1', seedPostcode: 'LS17 6BU' }),
+      ],
+      ['area_SW3_1', 'area_M20_1'],
+      [{ label: 'SW3', postcode: 'SW3 3TH', listingCount: 2, error: null }],
+      NOW
+    );
+    expect(withOutcome?.lastScannedAt).toBe(NOW);
+    expect(withoutOutcome?.lastScannedAt).toBe(NOW);
+    expect(untouched).not.toHaveProperty('lastScannedAt');
+  });
+
   it('replaces same-day history rather than duplicating it, capped at 30', () => {
     const hist = Array.from({ length: 30 }, (_, i) => ({
       date: `2026-07-${String(i + 1).padStart(2, '0')}`,
@@ -117,5 +136,44 @@ describe('mergeAreaProbes', () => {
     expect(h.filter((x) => x.date === '2026-08-20')).toEqual([
       { date: '2026-08-20', count: 9 },
     ]);
+  });
+});
+
+/**
+ * The rotation's sort key. The regression: a freshly added area carries an
+ * add-time lastProbe.checkedAt, and sorting on THAT put it at the back of
+ * the 6-a-day rotation — the founder added a patch, clicked "Run scout
+ * now", and the run skipped it.
+ */
+describe('lastScannedAtMs', () => {
+  it('reads the cron stamp', () => {
+    expect(lastScannedAtMs({ lastScannedAt: NOW })).toBe(Date.parse(NOW));
+  });
+
+  it('is 0 when missing or unparseable — never-scanned sorts first', () => {
+    expect(lastScannedAtMs({})).toBe(0);
+    expect(lastScannedAtMs({ lastScannedAt: 'yesterday-ish' })).toBe(0);
+    expect(lastScannedAtMs({ lastScannedAt: 42 })).toBe(0);
+  });
+
+  it('ignores the add-time validation probe: a new area beats a scanned one', () => {
+    const scannedYesterday = area({
+      id: 'area_M20_1',
+      lastScannedAt: '2026-08-19T07:00:00.000Z',
+      lastProbe: {
+        listingCount: 5,
+        checkedAt: '2026-08-19T07:00:00.000Z',
+        error: null,
+      },
+    });
+    const justAdded = area({
+      id: 'area_E18_1',
+      // The dashboard probed it a minute ago — that is NOT a scan.
+      lastProbe: { listingCount: 3, checkedAt: NOW, error: null },
+    });
+    const queue = [scannedYesterday, justAdded].sort(
+      (a, b) => lastScannedAtMs(a) - lastScannedAtMs(b)
+    );
+    expect(queue.map((a) => a.id)).toEqual(['area_E18_1', 'area_M20_1']);
   });
 });
