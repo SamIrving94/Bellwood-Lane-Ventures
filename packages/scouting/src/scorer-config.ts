@@ -84,7 +84,6 @@ export interface ScorerConfig {
   bmvBands: EquityBand[];
   /** Cash-ROI bands: deal-model cash ROI as a %, high → low. */
   roiBands: EquityBand[];
-  /** Fallback equity bands (estate value ÷ area avg) used pre-appraisal. */
   /**
    * Two-sided pre-appraisal ROI proxy (replaced the monotonic equity bands,
    * 6 Sep 2026 — founder: "this is wild"). The old bands scored a lead's
