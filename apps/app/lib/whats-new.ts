@@ -26,6 +26,33 @@ export type WhatsNewEntry = {
 /** Newest first. The popup shows index 0. */
 export const WHATS_NEW: WhatsNewEntry[] = [
   {
+    id: '2026-09-06-equity-proxy-flip',
+    date: '2026-09-06',
+    emoji: '⚖️',
+    title: 'Fixed: the score no longer rewards the OPPOSITE of a discount',
+    intro:
+      'Sam asked "is anything else being marked down that should score up?" — and yes. Before appraisal, a house priced 50% ABOVE its street scored 15 points while one 40% UNDER it scored 3. That is now the right way round.',
+    bullets: [
+      {
+        emoji: '💎',
+        text: 'A discount WITH a condition reason (EPC evidence, unmodernised badge, dated heating) now scores top of the range: the deeper the explained discount, the more points.',
+      },
+      {
+        emoji: '⚠️',
+        text: 'A discount with NO reason keeps the honest treatment: low points and "check why" — an unexplained cheap house usually hides an unfixable problem.',
+      },
+      {
+        emoji: '🚫',
+        text: 'A price under 40% of the street earns a token whatever the evidence — that is usually a flat wearing a house’s postcode.',
+      },
+      {
+        emoji: '🎛️',
+        text: 'All eight weights are founder-tunable in the scorer config. The sourcing-gate calibration is unchanged: 285/285 tests green.',
+      },
+    ],
+    cta: { label: 'See the leads', href: '/leads' },
+  },
+  {
     id: '2026-09-06-ripe-for-modernisation',
     date: '2026-09-06',
     emoji: '🔧',

@@ -352,9 +352,27 @@ function scoreAcquisition(
  * can earn nothing. Measuring all three against the full 40-point ROI cap is
  * exactly the flaw that made the old gate a data-availability lottery.
  */
+/** Condition badges that count as "the discount has a fixable reason". */
+const CONDITION_EVIDENCE_BADGES = new Set([
+  'derelict-properties',
+  'unmodernised-properties',
+  'poor-epc-score',
+]);
+
+/**
+ * Two-sided pre-appraisal ROI proxy. The old monotonic bands scored value
+ * vs area RISING — 1.5× the street earned 15 points while 40% under it
+ * earned 3, five-to-one the wrong way round for a below-the-street buyer.
+ * Now the DISCOUNT side wins when the condition evidence explains it, the
+ * unexplained discount keeps the honest "check why" treatment, and a price
+ * under 40% of the street (classifyTrack's house-shape floor) earns a token
+ * whatever the evidence — that is usually a flat wearing a house's
+ * postcode. Post-appraisal the real BMV/ROI bands replace all of this.
+ */
 function scoreEquityProxy(
   lead: EnrichedLead,
   pricePaid: PricePaid | null,
+  signals: LeadSignals | undefined,
   factors: ScoreFactor[],
   config: ScorerConfig
 ): { points: number; ceiling: number } {
@@ -367,6 +385,12 @@ function scoreEquityProxy(
     pricePaid?.avgPrice && !isSyntheticPricePaid(pricePaid)
       ? pricePaid.avgPrice * 100
       : null;
+  const ep = config.equityProxy;
+  const bestPossible = Math.max(
+    ep.discountDeep,
+    ep.discountSolid,
+    ep.aboveAreaHigh
+  );
   if (!avgAreaPence) {
     // The label states WHICH of the two happened — "no comparable came back"
     // and "the comparable that came back was fabricated" are different facts
@@ -380,22 +404,50 @@ function scoreEquityProxy(
       ceiling: Math.min(cap, config.equityNoComparable),
     };
   }
+
   const ratio = lead.estateValuePence / avgAreaPence;
-  const band = pickBand(config.equityBands, ratio);
-  const pts = band?.points ?? 1;
-  add(
-    factors,
-    `${band?.label ?? 'Equity vs area'} (ROI pending appraisal)`,
-    pts,
-    'roi',
-    undefined,
-    true
+  const discountPct = Math.round((1 - ratio) * 100);
+  const hasConditionEvidence = Boolean(
+    (signals?.modernisation && signals.modernisation.points > 0) ||
+      (signals?.listingType &&
+        CONDITION_EVIDENCE_BADGES.has(signals.listingType))
   );
-  const bestBand = config.equityBands.reduce(
-    (m, b) => Math.max(m, b.points),
-    0
-  );
-  return { points: pts, ceiling: Math.min(cap, Math.max(pts, bestBand)) };
+
+  let pts: number;
+  let label: string;
+  let tone: ScoreFactor['tone'];
+  if (ratio < 0.4) {
+    pts = ep.notComparableFloor;
+    label = `Far below area (${discountPct}%) — may not be comparable stock`;
+    tone = 'neutral';
+  } else if (ratio < 0.95 && hasConditionEvidence) {
+    pts =
+      ratio <= 0.7
+        ? ep.discountDeep
+        : ratio <= 0.85
+          ? ep.discountSolid
+          : ep.discountEdge;
+    label = `Discounted ${discountPct}% vs area, condition explains it`;
+    tone = 'positive';
+  } else if (ratio < 0.95) {
+    pts = ep.discountNoReason;
+    label = `Priced ${discountPct}% below area, no condition reason — check why`;
+    tone = 'neutral';
+  } else if (ratio < 1.05) {
+    pts = ep.nearArea;
+    label = 'Priced at the area average (comparable confirms the value)';
+    tone = 'neutral';
+  } else {
+    pts = ratio >= 1.2 ? ep.aboveAreaHigh : ep.aboveArea;
+    label =
+      ratio >= 1.2
+        ? 'High-value vs area (equity, no discount)'
+        : 'At or above the area average (equity, no discount)';
+    tone = 'neutral';
+  }
+
+  add(factors, `${label} (ROI pending appraisal)`, pts, 'roi', tone, true);
+  return { points: pts, ceiling: Math.min(cap, Math.max(pts, bestPossible)) };
 }
 
 /**
@@ -776,6 +828,7 @@ export function scoreLead(
   const { ceiling: roiCeiling } = scoreEquityProxy(
     lead,
     pricePaid,
+    signals,
     factors,
     config
   ); // provisional ROI
