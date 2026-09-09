@@ -26,6 +26,7 @@ docs/architecture/marketer-internal.md.)
 | [`prime-sourcing-deep-research-prompt-2026-08.md`](./prime-sourcing-deep-research-prompt-2026-08.md) | Ready-to-paste Perplexity deep-research prompt for finding the best prime stock — validates the district hypothesis, hunts missing channels; includes follow-ups + where results land | 2026-08 |
 | [`prime-sourcing-deep-research-2026-08.md`](./prime-sourcing-deep-research-2026-08.md) | The report that came back: probate is the only quantified discount (10–25%), the £/sqft arbitrage ranking must be built in-house from Land Registry + EPC, super-prime exclusion supported, 2026 refurb/SDLT/bridging benchmarks | 2026-08 |
 | [`executor-duty-keyhole-pivot-2026-08.md`](./executor-duty-keyhole-pivot-2026-08.md) | Why Keyhole pivoted the day it shipped: devastavit risk kills a lead-nudge tool; a documented best-value decision file is the product; a binding written offer is the evidence. Mixed-authority sources, verification gated on the compliance opinion | 2026-08 |
+| [`consumer-buyer-agent-2026-09.md`](./consumer-buyer-agent-2026-09.md) | Could Kept become a consumer buyer's-side AI agent? UK + US landscape (Jitty, Keith, HomeFinder, Zillow AI Mode, Modern Realty…), the gap (chase + coordinate, not search), the case against (agent cooperation, listings data, Estate Agents Act, who pays), repo reuse audit (half the plumbing, none of the surface), build list, ship-dark concierge test. Research only — no decision | 2026-09 |
 
 ## Add new research
 
