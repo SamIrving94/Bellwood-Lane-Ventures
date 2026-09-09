@@ -1,6 +1,6 @@
 # Bellwood Lane — Marketing Plan
 
-_Last verified against the live site: 2026-09-05._
+_Last verified against the live site: 2026-09-09._
 
 **Status:** May 2026 (v1).
 **Audience:** CEO, Marketer, Liaison, Designer, Counsel.
@@ -91,12 +91,12 @@ In priority order for Bellwood's economics:
 - **Why:** Highest sensitivity. Done badly = vulture. Done well = trusted.
 - **Channel:** Carefully — Google search with empathetic copy
 - **Landing:** `/sell/distress` — must signpost StepChange, Citizens Advice
-- **Front door (live, Sep 2026):** the `/sell` reason index carries "I need
-  the money for what's next" (tag: your next step). It jumps to its card in
-  "Is Kept for me?", which carries the StepChange and Citizens Advice
-  signpost as links. The form records it as `other` with that trigger label.
-  The dedicated page above is still to build; Counsel reads every word
-  before paid traffic points at either.
+- **Front door (9 Sep 2026):** no money-specific row on `/sell` any more.
+  The founder replaced it with a catch-all, "Something else?" (quickly,
+  quietly, discreetly, a tailored process), which records as `other`. The
+  StepChange and Citizens Advice signpost stays on the won't-buy page and
+  must be on the dedicated page above when it is built; Counsel reads every
+  word before paid traffic points at it.
 - **Content:** **don't run paid here until Counsel has reviewed every word.**
   Reputational damage is permanent.
 
@@ -105,10 +105,11 @@ In priority order for Bellwood's economics:
 - **Why:** Niche, highest margin. Knotweed, short lease, cladding, structural.
 - **Channel:** Long-tail SEO does most of the work
 - **Landing:** `/sell/problem-property`
-- **Front door (live, Sep 2026):** the `/sell` reason index carries "There's
-  a problem with the property" (tag: problem property), jumping to its card
-  in "Is Kept for me?". The form records it as `problem_property`. The
-  dedicated page above is still to build.
+- **Front door (live, 9 Sep 2026):** the `/sell` reason index carries "My
+  property has a problem or needs work" (tag: problem property), jumping to
+  its card in "Is Kept for me?": major refurbishments, structural issues,
+  knotweed. The form records it as `problem_property`. The dedicated page
+  above is still to build.
 - **Content:** frank — what we'll buy, what we won't, typical discount
 
 ---
