@@ -22,6 +22,25 @@ const MAX_RECORDING_MS = 120_000;
 
 type RecorderState = 'idle' | 'recording' | 'transcribing' | 'error';
 
+/**
+ * Turn a failed /api/transcribe response into a message worth showing.
+ * 503 = the server has no OPENAI_API_KEY; the route sends an ops hint naming
+ * the key and Vercel project, so surface it rather than a bare "not
+ * configured" that leaves whoever sees it guessing.
+ */
+const describeFailure = async (res: Response): Promise<string> => {
+  const body = (await res.json().catch(() => null)) as {
+    error?: string;
+    hint?: string;
+  } | null;
+  if (res.status === 503) {
+    return body?.hint
+      ? `Transcription not configured — ${body.hint}`
+      : 'Transcription not configured';
+  }
+  return body?.error ?? 'Transcription failed';
+};
+
 type VoiceNoteRecorderProps = {
   onTranscript: (text: string) => void;
   compact?: boolean;
@@ -57,17 +76,15 @@ export function VoiceNoteRecorder({
       setState('transcribing');
       try {
         const form = new FormData();
-        form.append('file', blob, 'voice-note.webm');
+        // Name must match the bytes: iOS Safari records audio/mp4, not webm.
+        const ext = blob.type.startsWith('audio/mp4') ? 'm4a' : 'webm';
+        form.append('file', blob, `voice-note.${ext}`);
         const res = await fetch('/api/transcribe', {
           method: 'POST',
           body: form,
         });
         if (!res.ok) {
-          throw new Error(
-            res.status === 503
-              ? 'Transcription not configured'
-              : 'Transcription failed'
-          );
+          throw new Error(await describeFailure(res));
         }
         const data = (await res.json()) as { text?: string };
         const text = (data.text ?? '').trim();
@@ -112,10 +129,7 @@ export function VoiceNoteRecorder({
       recorder.start();
       setState('recording');
       setElapsedSec(0);
-      timerRef.current = setInterval(
-        () => setElapsedSec((s) => s + 1),
-        1000
-      );
+      timerRef.current = setInterval(() => setElapsedSec((s) => s + 1), 1000);
       capRef.current = setTimeout(stopRecording, MAX_RECORDING_MS);
     } catch {
       setError('Microphone unavailable — check browser permissions');
