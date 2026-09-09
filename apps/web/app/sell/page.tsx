@@ -608,7 +608,9 @@ export default function SellPage() {
             <span className="font-normal text-leaf">in writing.</span>
           </h2>
           <div>
-            <Button href="#offer">Get my offer</Button>
+            {/* Co-founder note, 9 Sep 2026: the button sends details, it does
+                not get an offer (no figure on screen), so say what it does. */}
+            <Button href="#offer">Send us your details</Button>
             <p className="mt-4 text-[14px] text-stone-600 leading-[1.6]">
               Or, if you&rsquo;re an estate agent with a chain coming apart:{' '}
               <Link
@@ -617,7 +619,7 @@ export default function SellPage() {
               >
                 the partner programme
               </Link>
-              . Fee agreed per deal, in writing.
+              .
             </p>
           </div>
         </div>
