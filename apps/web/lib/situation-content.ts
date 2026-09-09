@@ -201,7 +201,7 @@ export const SITUATION_CONTENT: Record<SituationKey, SituationContent> = {
     honestTitle: 'If you can wait, waiting will pay you more.',
     honestBody:
       'If your onward purchase is safe and you can put the house back on the market for a few more months, the open market will almost certainly get you a better price. Speed is the trade you are paying for with us.',
-    ctaLabel: 'Get my offer',
+    ctaLabel: 'Send us your details',
     mobileNote: 'Same-day response',
   },
   separation: {
@@ -241,7 +241,7 @@ export const SITUATION_CONTENT: Record<SituationKey, SituationContent> = {
     honestTitle: 'If the goal is the highest possible price, say so.',
     honestBody:
       'Our offer is below open-market value by design. If both of you want to maximise every pound and you can live with the wait and the viewings, a good local agent is the better route, and we will tell you that on the phone.',
-    ctaLabel: 'Get my offer',
+    ctaLabel: 'Send us your details',
     mobileNote: 'Solicitor to solicitor',
   },
   relocation: {
@@ -282,7 +282,7 @@ export const SITUATION_CONTENT: Record<SituationKey, SituationContent> = {
     honestTitle: 'A good house in a good street sells itself.',
     honestBody:
       'If the property is in excellent condition and high demand, and your move can absorb a few months of chain risk, a good high-street agent will very likely net you more. That is their wedge, not ours.',
-    ctaLabel: 'Get my offer',
+    ctaLabel: 'Send us your details',
     mobileNote: 'Same-day response',
   },
 };

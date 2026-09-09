@@ -640,7 +640,7 @@ export default function SellPage() {
             </div>
             <nav className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-stone-600">
               <a href="#offer" className="hover:text-brand-deep">
-                Get an offer
+                Send us your details
               </a>
               <Link href="/about" className="hover:text-brand-deep">
                 Kept&rsquo;s story

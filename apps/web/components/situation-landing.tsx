@@ -33,7 +33,7 @@ export function SituationLanding({
               How we price
             </Link>
             <Button href="#offer" className="px-5 py-2 text-sm">
-              Get my offer
+              Send us your details
             </Button>
           </div>
         </div>
