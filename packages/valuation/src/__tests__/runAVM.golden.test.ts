@@ -27,6 +27,11 @@ vi.mock('@repo/property-data', () => ({
   getEpcData: vi.fn(),
   getPropertyDataValuation: vi.fn(),
   getPropertyFloorArea: vi.fn(),
+  // Size pillar dependencies — stubbed to "no rows / no benchmark" so the
+  // golden math stays the pre-size blend. Failing to stub them would leave
+  // the pillar undefined and throw inside the valuation.
+  getFloorAreaRows: vi.fn(),
+  getPricesPerSqf: vi.fn(),
   // Pure provenance filter — keep the REAL implementation. Stubbing it out
   // would let fabricated comps through the very guard we're locking in.
   realTransactions: (txs: Array<{ provenance?: string }>) =>
@@ -48,6 +53,8 @@ const {
   getEpcData,
   getPropertyDataValuation,
   getPropertyFloorArea,
+  getFloorAreaRows,
+  getPricesPerSqf,
   geocodePostcode,
   geocodePostcodes,
   getSoldPrices,
@@ -66,6 +73,8 @@ function applyScenario(scn: {
   vi.mocked(getPropertyDataValuation).mockResolvedValue(scn.externalAvm as never);
   // No verified per-property floor area in the golden scenarios (real-or-null).
   vi.mocked(getPropertyFloorArea).mockResolvedValue(null as never);
+  vi.mocked(getFloorAreaRows).mockResolvedValue([] as never);
+  vi.mocked(getPricesPerSqf).mockResolvedValue(null as never);
   // Disable the distance path for the golden (HMLR fallback) scenarios.
   vi.mocked(geocodePostcode).mockResolvedValue(null as never);
   vi.mocked(geocodePostcodes).mockResolvedValue(new Map() as never);
