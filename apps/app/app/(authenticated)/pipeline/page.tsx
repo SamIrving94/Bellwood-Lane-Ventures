@@ -186,6 +186,13 @@ async function LeadsTabContent({ filter }: { filter?: string }) {
           avmValuePence:
             (avm?.pointEstimatePence as number | undefined) ?? null,
           avmConfidence: (avm?.confidenceLevel as string | undefined) ?? null,
+          // Size fields are shown on the Leads page; the pipeline card does
+          // not render them, so no lookup is spent here.
+          floorAreaSqft: null,
+          floorAreaSource: null,
+          pricePerSqft: (avm?.pricePerSqft as number | undefined) ?? null,
+          areaPerSqft: null,
+          areaPerSqftComps: 0,
           riskFlags: (raw.riskFlags as string[] | undefined) ?? [],
           rationale: (raw.rationale as string | undefined) ?? null,
           topPositiveFactors: (

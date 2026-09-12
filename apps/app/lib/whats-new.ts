@@ -124,6 +124,55 @@ export const WHATS_NEW: WhatsNewEntry[] = [
     cta: { label: 'Open Batch', href: '/batch' },
   },
   {
+    id: '2026-09-12-price-per-square-foot',
+    date: '2026-09-12',
+    emoji: '📐',
+    title: 'Square footage is in — and the AVM now prices by it',
+    intro:
+      'Sam asked why size was not part of the valuation. It is now. Every lead shows its floor area in sqft, and the AVM checks the whole-house comps against what nearby sold homes fetched per square foot.',
+    bullets: [
+      {
+        emoji: '📏',
+        text: "Leads list: **sqft on every card** — EPC-verified when the AVM has matched the house number, the listing's own figure before that, each labelled.",
+      },
+      {
+        emoji: '💷',
+        text: 'Appraised leads show **£/sqft for this house** next to the **nearby sold £/sqft** — sold comps matched to their own EPC floor areas, never a postcode average.',
+      },
+      {
+        emoji: '⚖️',
+        text: "The AVM now has a **size pillar**: rate × this house's sqft carries 25–30% of the blend when 2+ comps match. A house 40% bigger than its street no longer prices like its neighbours.",
+      },
+      {
+        emoji: '🔍',
+        text: 'Lead page: a **£/sqft panel** under the comps — ¼-mile vs ½-mile rates, the size-based value, and how far it sits from the whole-house comps.',
+      },
+    ],
+    cta: { label: 'See the leads', href: '/leads' },
+  },
+  {
+    id: '2026-09-12-two-doors-have-pages',
+    date: '2026-09-12',
+    emoji: '🚪',
+    title: 'The two new doors now open onto their own pages',
+    intro:
+      'Both new reasons on /sell now lead somewhere: a page for the property with a problem or one that needs work, and a page for everyone whose reason is something else. Same template as probate and chain-break, same four steps, same honest version.',
+    bullets: [
+      {
+        emoji: '🏠',
+        text: '/problem-property: what buyers and lenders walk away from, we price and carry. Nothing to fix first, no lender to say no, honest about the price.',
+      },
+      {
+        emoji: '🤫',
+        text: '/your-situation: quickly, quietly, discreetly. No board, no listing, one visit, your date. Its honest version points to StepChange and Citizens Advice.',
+      },
+      {
+        emoji: '📣',
+        text: 'Organic only for now. Counsel reads the your-situation page before any ads point at it, as the marketing plan asks.',
+      },
+    ],
+  },
+  {
     id: '2026-09-06-equity-proxy-flip',
     date: '2026-09-06',
     emoji: '⚖️',

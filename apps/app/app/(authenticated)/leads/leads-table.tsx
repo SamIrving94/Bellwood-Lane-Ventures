@@ -57,6 +57,13 @@ type Lead = {
   appraised: boolean;
   avmValuePence: number | null;
   avmConfidence: string | null;
+  // Size — the founder's "highest indicator". sqft + provenance, £/sqft of
+  // this house at the AVM, and the nearby sold £/sqft it was checked against.
+  floorAreaSqft: number | null;
+  floorAreaSource: 'epc' | 'listing' | 'epc_unverified' | null;
+  pricePerSqft: number | null;
+  areaPerSqft: number | null;
+  areaPerSqftComps: number;
   riskFlags: string[];
   rationale: string | null;
   topPositiveFactors: string[];
@@ -813,6 +820,44 @@ function LeadCard({
                 {typeof lead.bedrooms === 'number' && (
                   <span className="text-muted-foreground">
                     {lead.bedrooms} bed
+                  </span>
+                )}
+                {typeof lead.floorAreaSqft === 'number' && (
+                  <span
+                    className="text-muted-foreground"
+                    title={
+                      lead.floorAreaSource === 'epc'
+                        ? 'EPC floor area, matched to this house number'
+                        : lead.floorAreaSource === 'listing'
+                          ? 'Floor area as the listing states it (not yet EPC-verified)'
+                          : 'EPC floor area from a postcode + address search (not verified to the house number)'
+                    }
+                  >
+                    {lead.floorAreaSqft.toLocaleString('en-GB')} sqft
+                    <span className="ml-1 text-[11px]">
+                      {lead.floorAreaSource === 'epc'
+                        ? '(EPC)'
+                        : lead.floorAreaSource === 'listing'
+                          ? '(listing)'
+                          : '(EPC?)'}
+                    </span>
+                  </span>
+                )}
+                {typeof lead.pricePerSqft === 'number' && (
+                  <span
+                    className="font-medium text-slate-700"
+                    title={
+                      lead.areaPerSqft
+                        ? `AVM £/sqft for this house · nearby sold ${lead.areaPerSqftComps} comps at £${lead.areaPerSqft}/sqft`
+                        : 'AVM £/sqft for this house'
+                    }
+                  >
+                    £{lead.pricePerSqft.toLocaleString('en-GB')}/sqft
+                    {lead.areaPerSqft ? (
+                      <span className="ml-1 font-normal text-[11px] text-muted-foreground">
+                        · area £{lead.areaPerSqft.toLocaleString('en-GB')}
+                      </span>
+                    ) : null}
                   </span>
                 )}
                 {typeof lead.daysOnMarket === 'number' &&

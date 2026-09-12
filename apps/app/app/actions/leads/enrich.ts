@@ -147,6 +147,19 @@ export async function enrichLeadById(leadId: string): Promise<{
       floorAreaSqm: r.floorAreaSqm ?? null,
       floorAreaSource: r.floorAreaSource ?? null,
       resolvedAddress: r.resolvedAddress ?? null,
+      // Size pillar — sqft is the unit the founder reads; £/sqft of this
+      // house at the AVM, plus what nearby sold comps fetched per sqft.
+      floorAreaSqft: r.floorAreaSqft ?? null,
+      pricePerSqft: r.pricePerSqft ?? null,
+      sqftEvidence: r.sqftEvidence
+        ? {
+            ...r.sqftEvidence,
+            sqftEstimatePence:
+              r.sqftEvidence.sqftEstimate != null
+                ? Math.round(r.sqftEvidence.sqftEstimate * 100)
+                : null,
+          }
+        : null,
       // Flag likely HMO/multi-let (5+ beds) — a house AVM under-values these.
       hmoLikely: (bedrooms ?? 0) >= 5,
       fetchedAt: new Date().toISOString(),
