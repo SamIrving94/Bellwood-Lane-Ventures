@@ -368,6 +368,16 @@ export default function SellPage() {
               Months of uncertainty. A fee for the privilege. And a one in three
               chance that after all of it, you are back where you started.
             </p>
+            {/* Founder direction, 12 Sep 2026: the cash-buyer concern comes
+                back into "why we exist". Sourced (footnote 4) so it clears the
+                verify-before-asserting rule that took the unsourced "most
+                cited" version out. */}
+            <p className="mt-4 max-w-[62ch] text-[#44403c] text-[17px] leading-[1.7]">
+              A cash buyer should be the simple way out. Yet when the Office of
+              Fair Trading looked at quick-sale buyers, the price dropping at
+              the last minute was one of the main concerns it found.
+              <sup className="ml-1 text-[11px] text-stone-400">4</sup>
+            </p>
 
             <div className="mt-9 max-w-[66ch] border-hair border-t pt-[30px]">
               <h3
@@ -409,6 +419,12 @@ export default function SellPage() {
               <li>
                 3. Typical UK high-street sole-agency fee range; your agent may
                 charge more or less.
+              </li>
+              <li>
+                4. Office of Fair Trading, quick house sales market study
+                (OFT1499), August 2013. Last-minute price reductions were among
+                the main concerns it raised, and firms later gave undertakings
+                not to reduce an offer without a valid reason.
               </li>
             </ol>
           </div>
