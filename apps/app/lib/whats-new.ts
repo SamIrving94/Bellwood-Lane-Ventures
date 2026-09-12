@@ -26,6 +26,30 @@ export type WhatsNewEntry = {
 /** Newest first. The popup shows index 0. */
 export const WHATS_NEW: WhatsNewEntry[] = [
   {
+    id: '2026-09-12-deep-appraisal-second-opinion',
+    date: '2026-09-12',
+    emoji: '🧠',
+    title:
+      'The full appraisal now argues with the AVM — and you pick the brain',
+    intro:
+      'Sam asked "if we put an LLM over the AVM, would it not make sense for some reasoning to look at it?" Yes. It now does, and the model behind it is yours to choose.',
+    bullets: [
+      {
+        emoji: '⚖️',
+        text: 'Every deep appraisal now gets the **in-house AVM figure** and must **agree or challenge it** — with the evidence. Look for "vs in-house AVM" under ARV.',
+      },
+      {
+        emoji: '🎛️',
+        text: 'Deep appraisal is now a row on **Settings → AI models**. Point it at an **open-weights model via OpenRouter** for a fraction of the cost, no deploy.',
+      },
+      {
+        emoji: '👥',
+        text: 'Use the **shadow model** column to run a challenger silently first. Compare cost and quality on the usage stats before you flip it.',
+      },
+    ],
+    cta: { label: 'Open AI models', href: '/settings/ai' },
+  },
+  {
     id: '2026-09-06-equity-proxy-flip',
     date: '2026-09-06',
     emoji: '⚖️',

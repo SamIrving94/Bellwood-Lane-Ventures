@@ -547,6 +547,10 @@ export interface CallClaudeObjectInput<T> {
   feature?: string;
   /** Per-attempt wall-clock budget in ms. Default 8000. */
   attemptTimeoutMs?: number;
+  /** INTERNAL — shadow-eval calls bypass routing. Do not set manually. */
+  bypassRouting?: boolean;
+  /** INTERNAL — provider prefs threaded to shadow calls. Do not set manually. */
+  providerPrefs?: Record<string, unknown>;
 }
 
 /**
@@ -556,15 +560,19 @@ export interface CallClaudeObjectInput<T> {
  * JSON. Prefer this over callClaudeForJson for anything a cron writes to
  * the database.
  *
- * Same routing, provider fallback, and logging as callClaude. Shadow
- * evals do not run for object calls (text-only for now). Returns null on
- * any failure — callers degrade as usual.
+ * Same routing, provider fallback, logging and shadow evals as callClaude.
+ * The shadow re-runs the same schema on the challenger model, so a
+ * challenger that cannot hold the schema shows up as `__shadow` failures
+ * on the usage page before anyone flips it to primary. Returns null on any
+ * failure — callers degrade as usual.
  */
 export async function callClaudeForObject<T>(
   input: CallClaudeObjectInput<T>,
 ): Promise<T | null> {
   const feature = input.feature ?? 'unknown';
-  const route = await resolveRoute(feature);
+  const route: ModelRoute | null = input.bypassRouting
+    ? null
+    : await resolveRoute(feature);
   const model = route?.model ?? input.model ?? CLAUDE_SONNET;
   const startedAt = Date.now();
 
@@ -582,11 +590,9 @@ export async function callClaudeForObject<T>(
     return result.object;
   };
 
-  const attempts = buildProviderAttempts(
-    model,
-    openRouterProviderPrefs(route),
-    runModel,
-  );
+  const providerPrefs =
+    input.providerPrefs ?? openRouterProviderPrefs(route);
+  const attempts = buildProviderAttempts(model, providerPrefs, runModel);
   if (!attempts) {
     console.warn('[@repo/ai/claude] no API key for routed model — returning null');
     await logSafely({
@@ -618,6 +624,27 @@ export async function callClaudeForObject<T>(
       durationMs,
       success: true,
     });
+
+    // ── Shadow eval, mirroring callClaude: same prompt + schema on the
+    // challenger, logged under `__shadow`, result discarded. Silent on
+    // failure so it can never affect the primary path.
+    if (!input.bypassRouting && route?.shadowModel) {
+      const rate = route.shadowSampleRate ?? 1;
+      if (Math.random() < rate) {
+        try {
+          await callClaudeForObject({
+            ...input,
+            model: route.shadowModel,
+            feature: `${feature}__shadow`,
+            bypassRouting: true,
+            providerPrefs,
+          });
+        } catch {
+          // never let a shadow failure affect the primary path
+        }
+      }
+    }
+
     return result.value;
   }
 
