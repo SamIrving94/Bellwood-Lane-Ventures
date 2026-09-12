@@ -10,6 +10,31 @@ export const metadata: Metadata = {
   description: 'Review items that need your attention',
 };
 
+/**
+ * The founder desk's drafted call, stamped on metadata.desk by
+ * /cron/pipeline-summary. Shape-checked here: metadata is untyped Json.
+ */
+function deskFromMetadata(
+  metadata: unknown
+): { rank: number; call: string; why: string } | null {
+  if (!metadata || typeof metadata !== 'object' || Array.isArray(metadata)) {
+    return null;
+  }
+  const desk = (metadata as { desk?: unknown }).desk;
+  if (!desk || typeof desk !== 'object') {
+    return null;
+  }
+  const d = desk as { rank?: unknown; call?: unknown; why?: unknown };
+  if (typeof d.call !== 'string' || !d.call) {
+    return null;
+  }
+  return {
+    rank: typeof d.rank === 'number' ? d.rank : 0,
+    call: d.call,
+    why: typeof d.why === 'string' ? d.why : '',
+  };
+}
+
 const ActionsPage = async () => {
   const { userId } = await auth();
   if (!userId) redirect('/sign-in');
@@ -117,7 +142,7 @@ const ActionsPage = async () => {
             {sorted.map((action) => (
               <ActionCard
                 key={action.id}
-                action={action}
+                action={{ ...action, desk: deskFromMetadata(action.metadata) }}
                 reviewLeads={action.type === 'review_leads' ? inlineLeads : undefined}
               />
             ))}

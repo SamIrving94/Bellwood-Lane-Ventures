@@ -26,6 +26,37 @@ export type WhatsNewEntry = {
 /** Newest first. The popup shows index 0. */
 export const WHATS_NEW: WhatsNewEntry[] = [
   {
+    id: '2026-09-12-scout-reads-desk-drafts',
+    date: '2026-09-12',
+    emoji: '🔍',
+    title: 'The scout now reads the listing. The desk now drafts your call.',
+    intro:
+      'Sam said "action everything in the report, scout first". Five things landed in one go.',
+    bullets: [
+      {
+        emoji: '📖',
+        text: 'Every listing description is **read for motivation** — executor sale, cash buyers only, relocation. It can **lift the lead type** and the score, and the quote is on the lead page.',
+      },
+      {
+        emoji: '🔨',
+        text: '**Savills and Clive Emson** auction lots now come in. Watch the first Monday scan.',
+      },
+      {
+        emoji: '🗂️',
+        text: 'Every card on the **Action Centre** opens with a **suggested call and the why**, ranked. The morning briefing leads with #1.',
+      },
+      {
+        emoji: '📱',
+        text: '**WhatsApp leads** are scored by the same scorer as the rest of the inbox, so the numbers finally compare.',
+      },
+      {
+        emoji: '🎛️',
+        text: 'Photo screening and WhatsApp parsing are now rows on **Settings → AI models** too.',
+      },
+    ],
+    cta: { label: 'Open the Action Centre', href: '/actions' },
+  },
+  {
     id: '2026-09-12-deep-appraisal-second-opinion',
     date: '2026-09-12',
     emoji: '🧠',

@@ -26,6 +26,8 @@ type Action = {
   agent: string;
   dealId: string | null;
   createdAt: Date;
+  /** Founder desk: the drafted call + why (metadata.desk, from /cron/pipeline-summary). */
+  desk?: { rank: number; call: string; why: string } | null;
 };
 
 type ReviewLead = {
@@ -122,6 +124,22 @@ export function ActionCard({ action, reviewLeads }: { action: Action; reviewLead
               <> &middot; <span className="capitalize">{action.type.replace(/_/g, ' ')}</span></>
             )}
           </p>
+
+          {/* Founder desk — the drafted call. Always visible: the point is
+              that every card opens with a recommendation, not a blank. */}
+          {action.desk && (
+            <div className="mt-2 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 dark:border-emerald-800 dark:bg-emerald-950">
+              <p className="font-medium text-emerald-900 text-sm dark:text-emerald-100">
+                <span className="mr-1.5 font-mono text-[10px] text-emerald-700 uppercase tracking-wide dark:text-emerald-300">
+                  Suggested #{action.desk.rank}
+                </span>
+                {action.desk.call}
+              </p>
+              <p className="mt-0.5 text-emerald-800 text-xs dark:text-emerald-300">
+                {action.desk.why}
+              </p>
+            </div>
+          )}
 
           {/* Expandable description — briefings and alerts are written in
               Markdown; render it instead of showing raw ** asterisks. */}

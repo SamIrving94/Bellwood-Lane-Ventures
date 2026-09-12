@@ -8,7 +8,13 @@ could use an open-source model." Short answer: yes, and most of the plumbing
 already existed. This doc covers what shipped, where else the same trick
 pays off, and what the lead and source quality really looks like.
 
-## 1. What shipped in this change
+## 1. What shipped (PR #112)
+
+Everything in the Tier 1 list below, plus Tier 2 D, shipped in this PR
+after the founder said "action everything". Section 2 keeps the reasoning
+and marks each item.
+
+**Batch 1 — the appraisal**
 
 - **Deep appraisal now argues with the AVM.** The cron hands the in-house
   AVM figure (from `rawPayload.avmFull`) to the model. The model must form
@@ -35,6 +41,26 @@ pays off, and what the lead and source quality really looks like.
 Open-weights models are weaker at large strict schemas. Expect some failed
 calls at first. A failure falls back to Sonnet automatically.
 
+**Batch 2 — scout, sourcing, routing, desk**
+
+- **Scout reads every listing's text** (feature `listing_motivation_read`,
+  Haiku, before the shortlist). Upgrades the lead type when the text
+  states a stronger reason than the source list implied; adds a capped,
+  founder-tunable score factor; quote shown on the lead page.
+- **Savills and Clive Emson are live** via LLM extraction (feature
+  `auction_lot_extract`). Money and postcodes are parsed and validated by
+  code, never by the model. Entry URLs are unverified from the sandbox:
+  check the first Monday run's logs.
+- **Photo screener and WhatsApp parser are routable** (features
+  `property_photo_screen`, `whatsapp_intake_parse`). The shared client
+  gained image support. The probate PDF extractor stays direct (Files API)
+  but now logs to the usage page as `probate_pdf_extract`.
+- **Founder desk** (feature `founder_desk`): every pending action carries a
+  ranked one-line call and the why, shown on the Action Centre card. The
+  morning briefing leads with the top one.
+- **WhatsApp leads are scored by the same scorer** as every other lead.
+  Parser confidence still gates auto-convert and is kept on the payload.
+
 ## 2. Where else an LLM 20x's the work — ranked
 
 Rule of thumb used here: **steps, not thoughts.** Put the LLM where a person
@@ -43,7 +69,7 @@ that gets audited deterministic.
 
 ### Tier 1 — do next
 
-**A. Read motivation from listing text at source.**
+**A. Read motivation from listing text at source.** _Shipped._
 Lead scoring is 100% rule-based (`packages/scouting/src/scorer.ts`). Lead
 type for listings comes from keyword rules (`lead-type.ts`), and that file's
 own header records the bug where every listing silently earned the 20-point
@@ -55,7 +81,7 @@ buyers only, needs modernisation, tenant in situ. Output a typed
 `motivation` object that feeds the acquisition pillar. This is the single
 biggest lift to lead quality, at well under a penny a lead.
 
-**B. Clear the founder-action queue with a ranked desk.**
+**B. Clear the founder-action queue with a ranked desk.** _Shipped._
 `docs/LEARNINGS.md` records 24 actions pending and 0 resolved in a week.
 Generation is not the bottleneck. Decision throughput is. A daily desk that
 ranks pending actions and drafts a one-line call per action (with the why)
@@ -63,7 +89,8 @@ turns 24 open tabs into a 10-minute review. The morning briefing already
 exists (`morning_briefing`, Haiku). Extend it to draft decisions, not just
 summarise.
 
-**C. Make the four unrouted LLM calls routable.**
+**C. Make the four unrouted LLM calls routable.** _Shipped for two;
+the other two log but stay direct (Anthropic-only features)._
 Same trick as this change. These call a provider directly, are not on the
 routing table, and three do not log cost:
 
@@ -79,7 +106,7 @@ client, which it does not have yet.
 
 ### Tier 2 — after the above
 
-**D. Replace brittle scrapers with LLM extraction.**
+**D. Replace brittle scrapers with LLM extraction.** _Shipped._
 Savills and Clive Emson scrapers are stubs that return nothing. The Gazette
 adapter was rewritten after weeks of 500s. Auction catalogues and notices
 change layout; a model reading the page into a typed lot is far more robust
@@ -123,7 +150,8 @@ items may have been fixed since they were written. Check before acting.
 - Three PropertyData endpoints are degraded per LEARNINGS: energy-efficiency
   retired (EPC never contributes), HPI 404 (synthetic HPI feeds the AVM),
   and the valuation endpoint's floor-area unit is unconfirmed.
-- `packages/property-data` has no tests, and the money runs through it.
+- `packages/property-data` now has tests for its adapters. An older
+  learnings entry says it had none. That entry is stale.
 
 **Scoring**
 
@@ -141,19 +169,27 @@ items may have been fixed since they were written. Check before acting.
 
 **Keys and ops**
 
-- LEARNINGS says `ANTHROPIC_API_KEY` was not set on the `bellwood-api`
-  project in production. If that is still true, **no deep appraisal has
-  ever run in prod**. With this change `OPENROUTER_API_KEY` alone is enough.
-  Verify both on Vercel today.
+- A parallel branch (PR #111, 12 Sep) records that the **Anthropic account
+  ran out of credits around 9 Sep** and four LLM features went quiet:
+  deep appraisal, the photo screener, the morning briefing and the
+  marketer. So the key exists; the balance did not. Every feature in this
+  PR accepts `OPENROUTER_API_KEY` alone. Top up Anthropic or set the
+  OpenRouter key on `bellwood-api`, and check the usage page the next
+  morning.
+- **PR #111 and PR #112 both change the shared LLM client.** #111 makes
+  OpenRouter the primary provider with a fallback chain; #112 adds shadow
+  evals for structured calls, image support and direct-call logging.
+  Whichever merges second needs a careful merge of `packages/ai/claude.ts`.
 - The response loop, not the pipeline, is where leads die. See Tier 1 B.
 
 ## 4. Suggested order
 
-1. Verify `ANTHROPIC_API_KEY` or `OPENROUTER_API_KEY`, and
-   `PROPERTYDATA_API_KEY`, on both Vercel projects.
-2. Let this change run for a week. Read the "vs in-house AVM" verdicts.
-3. Build Tier 1 A (motivation read). Measure STRONG-lead count per week
-   before and after.
-4. Build Tier 1 B (ranked desk). Measure actions resolved per week.
-5. Route the four direct calls (Tier 1 C).
-6. Shadow-eval the Sonnet routes on an open-weights model (Tier 2 E).
+1. Fix the LLM balance: top up Anthropic or set `OPENROUTER_API_KEY` on
+   `bellwood-api`. Confirm `PROPERTYDATA_API_KEY` while there.
+2. Merge #111 and #112 with a careful merge of the shared client.
+3. Week one: read the "vs in-house AVM" verdicts, the "listing says"
+   quotes on new leads, and the desk calls on the Action Centre. Measure
+   STRONG leads per week and actions resolved per week against the week
+   before.
+4. Check the first Monday auction scan's logs for Savills and Clive Emson.
+5. Shadow-eval the Sonnet routes on an open-weights model (Tier 2 E).
