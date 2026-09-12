@@ -26,6 +26,30 @@ export type WhatsNewEntry = {
 /** Newest first. The popup shows index 0. */
 export const WHATS_NEW: WhatsNewEntry[] = [
   {
+    id: '2026-09-12-openrouter-first',
+    date: '2026-09-12',
+    emoji: '🔀',
+    title:
+      'AI calls now go through OpenRouter, and an empty balance no longer stops them',
+    intro:
+      'The Anthropic account ran dry and four features went quiet for days: deep appraisal, the photo screener, the morning briefing and the marketer. That failure mode is gone.',
+    bullets: [
+      {
+        emoji: '💳',
+        text: 'One bill. Set OPENROUTER_API_KEY in Vercel and every AI feature routes through it, Claude included.',
+      },
+      {
+        emoji: '🛟',
+        text: 'Out of credits, rate-limited or provider down? The call falls through to the next model instead of failing.',
+      },
+      {
+        emoji: '🧪',
+        text: 'Test open-weight models: pick a shadow model per feature in Settings → AI models, then compare on the LLM usage page. Suggested ids are pre-filled.',
+      },
+    ],
+    cta: { label: 'Open AI models', href: '/settings/ai' },
+  },
+  {
     id: '2026-09-12-batch-upload-big-number',
     date: '2026-09-12',
     emoji: '📄',

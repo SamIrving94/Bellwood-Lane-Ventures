@@ -1,8 +1,18 @@
-// Vitest-only stub for `@ai-sdk/anthropic`, `ai`, and `@repo/ai/keys`.
-// deep-appraisal.ts imports from these at module level. The valuation
-// tests don't exercise the LLM path; they cover the pure AVM math.
-// Re-aliased to this empty module so the test resolver doesn't choke.
+// Vitest-only stub for `@repo/ai/claude`. deep-appraisal.ts and
+// comp-rationale-llm.ts import from it at module level. The valuation tests
+// don't exercise the LLM path; they cover the pure AVM math. Every call
+// reports "no provider" so the code takes its graceful null branch.
 
-export const createAnthropic = () => () => null;
-export const generateObject = async () => ({ object: null });
-export const keys = () => ({ ANTHROPIC_API_KEY: undefined });
+export const CLAUDE_HAIKU = 'claude-haiku-4-5';
+export const CLAUDE_SONNET = 'claude-sonnet-4-5';
+export const CLAUDE_OPUS = 'claude-opus-4-7';
+export const hasLlmProvider = () => false;
+export const callClaude = async () => null;
+export const callClaudeForJson = async () => null;
+export const callClaudeForObject = async () => null;
+export const callClaudeWithMeta = async () => ({
+  text: null,
+  model: CLAUDE_SONNET,
+  provider: null,
+  viaFallback: false,
+});

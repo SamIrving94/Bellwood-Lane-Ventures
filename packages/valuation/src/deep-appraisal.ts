@@ -12,21 +12,26 @@
  *   - EPC Register
  *   - Optional: PropertyData valuation cross-check
  *
- * Calls Claude Sonnet 4.5 with a structured Zod schema (generateObject) so
- * the output is type-safe at the API boundary and renderable by the UI
- * without runtime validation noise.
+ * Calls the shared LLM client with a structured Zod schema
+ * (callClaudeForObject → generateObject) so the output is type-safe at the
+ * API boundary and renderable by the UI without runtime validation noise.
+ * The model is routable from Settings → AI models (feature
+ * `deep_appraisal`), goes via OpenRouter when keyed, and falls back down
+ * the provider chain on an empty balance or outage.
  *
- * Cost: ~£0.06 per appraisal with prompt caching on the system prompt.
- * Returns null on missing ANTHROPIC_API_KEY (caller falls back to the
- * existing AVM-only path).
+ * Cost: ~£0.06 per appraisal on Sonnet. Returns null when no LLM provider
+ * is keyed (caller falls back to the existing AVM-only path).
  */
 
 import 'server-only';
 
-import { createAnthropic } from '@ai-sdk/anthropic';
-import { generateObject } from 'ai';
 import { z } from 'zod';
 
+import {
+  CLAUDE_SONNET,
+  callClaudeForObject,
+  hasLlmProvider,
+} from '@repo/ai/claude';
 import {
   getEpcData,
   getHousepriceIndex,
@@ -34,7 +39,6 @@ import {
   getPropertyDataValuation,
   realTransactions,
 } from '@repo/property-data';
-import { keys } from '@repo/ai/keys';
 
 // ───────────────────────────────────────────────────────────────────────────
 // Output schema — what Claude must return
@@ -46,16 +50,31 @@ export const ComparableSale = z.object({
   pricePence: z.number().int().describe('Sale price in pence'),
   floorAreaSqm: z.number().int().nullable(),
   pricePerSqm: z.number().int().nullable(),
-  notes: z.string().describe('1-line context — outlier reason, refurb signal, etc.'),
-  cleanestMatch: z.boolean().describe('True if this is the single best comparable for the subject property'),
+  notes: z
+    .string()
+    .describe('1-line context — outlier reason, refurb signal, etc.'),
+  cleanestMatch: z
+    .boolean()
+    .describe(
+      'True if this is the single best comparable for the subject property'
+    ),
   excluded: z.boolean().describe('True if excluded from the ARV calculation'),
   exclusionReason: z.string().nullable(),
 });
 
 export const EnvironmentalRisk = z.object({
-  risk: z.enum(['coal_mining', 'radon', 'flood', 'knotweed', 'noise', 'construction']),
+  risk: z.enum([
+    'coal_mining',
+    'radon',
+    'flood',
+    'knotweed',
+    'noise',
+    'construction',
+  ]),
   rating: z.enum(['high', 'medium-high', 'medium', 'medium-low', 'low']),
-  material: z.boolean().describe('True if this risk should block the bid until resolved'),
+  material: z
+    .boolean()
+    .describe('True if this risk should block the bid until resolved'),
   notes: z.string().describe('Why this rating + what to verify before bid'),
 });
 
@@ -66,27 +85,38 @@ export const DiscountLine = z.object({
 });
 
 export const PreAuctionAction = z.object({
-  action: z.string().describe('Concrete action — e.g. "Order Coal Mining Report (CON29M)"'),
+  action: z
+    .string()
+    .describe('Concrete action — e.g. "Order Coal Mining Report (CON29M)"'),
   blocking: z.boolean(),
-  deadline: z.string().nullable().describe('ISO date or relative ("by 12/05 EOD")'),
+  deadline: z
+    .string()
+    .nullable()
+    .describe('ISO date or relative ("by 12/05 EOD")'),
 });
 
 export const DeepAppraisalSchema = z.object({
   property: z.object({
     address: z.string(),
     postcode: z.string(),
-    propertyTypeDescribed: z.string().describe('e.g. "3-bed mid-terrace, freehold, vacant possession"'),
+    propertyTypeDescribed: z
+      .string()
+      .describe('e.g. "3-bed mid-terrace, freehold, vacant possession"'),
     floorAreaSqm: z.number().int().nullable(),
     epcRating: z.string().nullable(),
     councilTaxBand: z.string().nullable(),
-    refurbishmentSignals: z.array(z.string()).describe('e.g. "new kitchen", "new boiler"'),
+    refurbishmentSignals: z
+      .array(z.string())
+      .describe('e.g. "new kitchen", "new boiler"'),
   }),
 
   comparables: z.object({
     selected: z.array(ComparableSale).max(10),
     cleanestMatchAddress: z.string().nullable(),
     postcodeAvgPence: z.number().int().nullable(),
-    methodology: z.string().describe('1-2 lines on how comparables were filtered + adjusted'),
+    methodology: z
+      .string()
+      .describe('1-2 lines on how comparables were filtered + adjusted'),
   }),
 
   arv: z.object({
@@ -101,29 +131,44 @@ export const DeepAppraisalSchema = z.object({
   condition: z.object({
     greenFlags: z.array(z.string()),
     amberFlags: z.array(z.string()),
-    unverified: z.array(z.string()).describe('Data points the AVM had to assume; verify before bid'),
+    unverified: z
+      .array(z.string())
+      .describe('Data points the AVM had to assume; verify before bid'),
   }),
 
-  environment: z.array(EnvironmentalRisk).length(6).describe(
-    'Always exactly 6: coal_mining, radon, flood, knotweed, noise, construction',
-  ),
+  environment: z
+    .array(EnvironmentalRisk)
+    .length(6)
+    .describe(
+      'Always exactly 6: coal_mining, radon, flood, knotweed, noise, construction'
+    ),
 
-  bidCap: z.object({
-    isAuction: z.boolean(),
-    discountStack: z.array(DiscountLine).describe('Each discount + reason'),
-    totalDeductionPercent: z.number(),
-    hardCapPence: z.number().int().describe('Do-not-exceed bid cap'),
-    softTargetPence: z.number().int().describe('Aim-for bid'),
-    probabilityOfWinningPercent: z.number().min(0).max(100).nullable(),
-  }).nullable().describe('Set for auction lots; null for non-auction leads'),
+  bidCap: z
+    .object({
+      isAuction: z.boolean(),
+      discountStack: z.array(DiscountLine).describe('Each discount + reason'),
+      totalDeductionPercent: z.number(),
+      hardCapPence: z.number().int().describe('Do-not-exceed bid cap'),
+      softTargetPence: z.number().int().describe('Aim-for bid'),
+      probabilityOfWinningPercent: z.number().min(0).max(100).nullable(),
+    })
+    .nullable()
+    .describe('Set for auction lots; null for non-auction leads'),
 
   recommendation: z.object({
-    verdict: z.enum(['bid', 'walk', 'bid_with_caveats', 'further_investigation']),
+    verdict: z.enum([
+      'bid',
+      'walk',
+      'bid_with_caveats',
+      'further_investigation',
+    ]),
     headline: z.string().describe('1 sentence — what to do'),
     rationale: z.string().describe('2-3 sentences — why'),
   }),
 
-  preAuctionActions: z.array(PreAuctionAction).describe('Concrete tasks before bid / offer'),
+  preAuctionActions: z
+    .array(PreAuctionAction)
+    .describe('Concrete tasks before bid / offer'),
 
   confidence: z.object({
     estimatedErrorPercent: z.number().describe('e.g. 5.5 means ±5.5%'),
@@ -131,7 +176,9 @@ export const DeepAppraisalSchema = z.object({
     drivers: z.array(z.string()).describe('What would tighten confidence'),
   }),
 
-  escalations: z.array(z.string()).describe('Specific blockers that should escalate to CEO'),
+  escalations: z
+    .array(z.string())
+    .describe('Specific blockers that should escalate to CEO'),
 });
 
 export type DeepAppraisal = z.infer<typeof DeepAppraisalSchema>;
@@ -153,13 +200,19 @@ export interface DeepAppraisalInput {
   listingUrl?: string;
   refurbishmentNotes?: string;
   /** For probate / chain-break leads: vendor-side context that affects motivation. */
-  sellerType?: 'probate' | 'chain_break' | 'short_lease' | 'repossession' | 'relocation' | 'standard';
+  sellerType?:
+    | 'probate'
+    | 'chain_break'
+    | 'short_lease'
+    | 'repossession'
+    | 'relocation'
+    | 'standard';
   estateValuePence?: number;
   /** Optional photo URLs for vision-aware condition assessment (v2). */
   photoUrls?: string[];
 }
 
-const MODEL = 'claude-sonnet-4-5';
+const MODEL = CLAUDE_SONNET;
 
 const SYSTEM_PROMPT = `You are a senior UK property appraiser preparing a bid-or-walk recommendation for Bellwood Ventures. The audience is a founder making a binding decision in the next 24-72 hours.
 
@@ -214,7 +267,7 @@ async function gatherData(input: DeepAppraisalInput): Promise<AssembledData> {
         .slice(0, 25)
         .map(
           (t) =>
-            `- £${t.price.toLocaleString('en-GB')} | ${t.date} | ${t.propertyType}${t.newBuild ? ' (new build)' : ''} | ${t.tenure}`,
+            `- £${t.price.toLocaleString('en-GB')} | ${t.date} | ${t.propertyType}${t.newBuild ? ' (new build)' : ''} | ${t.tenure}`
         )
         .join('\n') +
       `\n\nPostcode area average price (last 12 months): ${
@@ -239,29 +292,45 @@ async function gatherData(input: DeepAppraisalInput): Promise<AssembledData> {
   return { pricePaidSummary, epcSummary, hpiSummary, externalAvmSummary };
 }
 
-function buildUserPrompt(input: DeepAppraisalInput, data: AssembledData): string {
+function buildUserPrompt(
+  input: DeepAppraisalInput,
+  data: AssembledData
+): string {
   const lines: string[] = [
     `Subject property: ${input.address}, ${input.postcode}`,
   ];
-  if (input.propertyTypeHint) lines.push(`Property type (hint): ${input.propertyTypeHint}`);
+  if (input.propertyTypeHint)
+    lines.push(`Property type (hint): ${input.propertyTypeHint}`);
   if (input.bedroomsHint) lines.push(`Bedrooms (hint): ${input.bedroomsHint}`);
-  if (input.sellerType) lines.push(`Seller-type context: ${input.sellerType.replace(/_/g, ' ')}`);
+  if (input.sellerType)
+    lines.push(`Seller-type context: ${input.sellerType.replace(/_/g, ' ')}`);
   if (input.estateValuePence) {
-    lines.push(`Estate / grant value (probate context): £${Math.round(input.estateValuePence / 100).toLocaleString('en-GB')}`);
+    lines.push(
+      `Estate / grant value (probate context): £${Math.round(input.estateValuePence / 100).toLocaleString('en-GB')}`
+    );
   }
-  if (input.refurbishmentNotes) lines.push(`Listing description (refurb signals): ${input.refurbishmentNotes}`);
+  if (input.refurbishmentNotes)
+    lines.push(
+      `Listing description (refurb signals): ${input.refurbishmentNotes}`
+    );
   if (input.isAuction) {
     lines.push('');
     lines.push('=== AUCTION LOT ===');
     if (input.auctionDate) lines.push(`Auction date: ${input.auctionDate}`);
     if (input.guidePricePence) {
-      lines.push(`Guide price: £${Math.round(input.guidePricePence / 100).toLocaleString('en-GB')}`);
+      lines.push(
+        `Guide price: £${Math.round(input.guidePricePence / 100).toLocaleString('en-GB')}`
+      );
     }
     if (input.listingUrl) lines.push(`Listing URL: ${input.listingUrl}`);
-    lines.push('Produce bidCap with full discount stack. recommendation.verdict reflects bid/walk.');
+    lines.push(
+      'Produce bidCap with full discount stack. recommendation.verdict reflects bid/walk.'
+    );
   } else {
     lines.push('');
-    lines.push('Non-auction lead. Set bidCap = null. recommendation reflects offer/walk for a direct approach.');
+    lines.push(
+      'Non-auction lead. Set bidCap = null. recommendation reflects offer/walk for a direct approach.'
+    );
   }
 
   lines.push('');
@@ -287,12 +356,11 @@ function buildUserPrompt(input: DeepAppraisalInput, data: AssembledData): string
  * ANTHROPIC_API_KEY / failed Claude call. Caller persists as FounderAction.
  */
 export async function runDeepAppraisal(
-  input: DeepAppraisalInput,
+  input: DeepAppraisalInput
 ): Promise<DeepAppraisal | null> {
-  const env = keys();
-  if (!env.ANTHROPIC_API_KEY) {
+  if (!hasLlmProvider()) {
     console.warn(
-      '[deep-appraisal] no ANTHROPIC_API_KEY — caller should fall back to AVM-only',
+      '[deep-appraisal] no LLM provider key — caller should fall back to AVM-only'
     );
     return null;
   }
@@ -305,20 +373,21 @@ export async function runDeepAppraisal(
     return null;
   }
 
-  const anthropic = createAnthropic({ apiKey: env.ANTHROPIC_API_KEY });
-
-  try {
-    const { object } = await generateObject({
-      model: anthropic(MODEL),
-      schema: DeepAppraisalSchema,
-      system: SYSTEM_PROMPT,
-      prompt: buildUserPrompt(input, data),
-      maxTokens: 4000,
-      temperature: 0.3,
-    });
-    return object;
-  } catch (err) {
-    console.error('[deep-appraisal] Claude call failed', err);
-    return null;
-  }
+  // callClaudeForObject never throws — null means every provider failed
+  // and the reason is already in LlmCallLog + the server log.
+  const object = await callClaudeForObject({
+    system: SYSTEM_PROMPT,
+    user: buildUserPrompt(input, data),
+    schema: DeepAppraisalSchema,
+    model: MODEL,
+    feature: 'deep_appraisal',
+    maxTokens: 4000,
+    temperature: 0.3,
+    // A full structured appraisal is a long generation; the 8s default is
+    // tuned for one-paragraph drafts.
+    attemptTimeoutMs: 120_000,
+  });
+  if (!object)
+    console.error('[deep-appraisal] LLM call failed on every provider');
+  return object;
 }
