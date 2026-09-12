@@ -26,6 +26,104 @@ export type WhatsNewEntry = {
 /** Newest first. The popup shows index 0. */
 export const WHATS_NEW: WhatsNewEntry[] = [
   {
+    id: '2026-09-12-scout-reads-desk-drafts',
+    date: '2026-09-12',
+    emoji: '🔍',
+    title: 'The scout now reads the listing. The desk now drafts your call.',
+    intro:
+      'Sam said "action everything in the report, scout first". Five things landed in one go.',
+    bullets: [
+      {
+        emoji: '📖',
+        text: 'Every listing description is **read for motivation** — executor sale, cash buyers only, relocation. It can **lift the lead type** and the score, and the quote is on the lead page.',
+      },
+      {
+        emoji: '🔨',
+        text: '**Savills and Clive Emson** auction lots now come in. Watch the first Monday scan.',
+      },
+      {
+        emoji: '🗂️',
+        text: 'Every card on the **Action Centre** opens with a **suggested call and the why**, ranked. The morning briefing leads with #1.',
+      },
+      {
+        emoji: '📱',
+        text: '**WhatsApp leads** are scored by the same scorer as the rest of the inbox, so the numbers finally compare.',
+      },
+      {
+        emoji: '🎛️',
+        text: 'Photo screening and WhatsApp parsing are now rows on **Settings → AI models** too.',
+      },
+    ],
+    cta: { label: 'Open the Action Centre', href: '/actions' },
+  },
+  {
+    id: '2026-09-12-deep-appraisal-second-opinion',
+    date: '2026-09-12',
+    emoji: '🧠',
+    title:
+      'The full appraisal now argues with the AVM — and you pick the brain',
+    intro:
+      'Sam asked "if we put an LLM over the AVM, would it not make sense for some reasoning to look at it?" Yes. It now does, and the model behind it is yours to choose.',
+    bullets: [
+      {
+        emoji: '⚖️',
+        text: 'Every deep appraisal now gets the **in-house AVM figure** and must **agree or challenge it** — with the evidence. Look for "vs in-house AVM" under ARV.',
+      },
+      {
+        emoji: '🎛️',
+        text: 'Deep appraisal is now a row on **Settings → AI models**. Point it at an **open-weights model via OpenRouter** for a fraction of the cost, no deploy.',
+      },
+      {
+        emoji: '👥',
+        text: 'Use the **shadow model** column to run a challenger silently first. Compare cost and quality on the usage stats before you flip it.',
+      },
+    ],
+    cta: { label: 'Open AI models', href: '/settings/ai' },
+  },
+  {
+    id: '2026-09-12-openrouter-first',
+    date: '2026-09-12',
+    emoji: '🔀',
+    title:
+      'AI calls now go through OpenRouter, and an empty balance no longer stops them',
+    intro:
+      'The Anthropic account ran dry and four features went quiet for days: deep appraisal, the photo screener, the morning briefing and the marketer. That failure mode is gone.',
+    bullets: [
+      {
+        emoji: '💳',
+        text: 'One bill. Set OPENROUTER_API_KEY in Vercel and every AI feature routes through it, Claude included.',
+      },
+      {
+        emoji: '🛟',
+        text: 'Out of credits, rate-limited or provider down? The call falls through to the next model instead of failing.',
+      },
+      {
+        emoji: '🧪',
+        text: 'Test open-weight models: pick a shadow model per feature in Settings → AI models, then compare on the LLM usage page. Suggested ids are pre-filled.',
+      },
+    ],
+    cta: { label: 'Open AI models', href: '/settings/ai' },
+  },
+  {
+    id: '2026-09-12-batch-upload-big-number',
+    date: '2026-09-12',
+    emoji: '📄',
+    title: 'Fixed: a batch upload no longer dies on one oversized figure',
+    intro:
+      'The 11 Sep pipeline sheet had one Acceptable Trade Offer cell of 110,000,000 — a hundred times too big for the database. The whole upload failed silently before a batch was created, so "Run appraisals" never appeared.',
+    bullets: [
+      {
+        emoji: '✅',
+        text: 'Upload the same sheet again — every row now loads. The bad cell is left blank and that row shows as "no benchmark" so you can spot it.',
+      },
+      {
+        emoji: '🔎',
+        text: 'The limit is about £21.4m per cell. Anything above it is skipped, never guessed — fix the cell in the sheet and re-upload.',
+      },
+    ],
+    cta: { label: 'Open Batch', href: '/batch' },
+  },
+  {
     id: '2026-09-12-price-per-square-foot',
     date: '2026-09-12',
     emoji: '📐',
@@ -35,7 +133,7 @@ export const WHATS_NEW: WhatsNewEntry[] = [
     bullets: [
       {
         emoji: '📏',
-        text: 'Leads list: **sqft on every card** — EPC-verified when the AVM has matched the house number, the listing\'s own figure before that, each labelled.',
+        text: "Leads list: **sqft on every card** — EPC-verified when the AVM has matched the house number, the listing's own figure before that, each labelled.",
       },
       {
         emoji: '💷',
@@ -43,7 +141,7 @@ export const WHATS_NEW: WhatsNewEntry[] = [
       },
       {
         emoji: '⚖️',
-        text: 'The AVM now has a **size pillar**: rate × this house\'s sqft carries 25–30% of the blend when 2+ comps match. A house 40% bigger than its street no longer prices like its neighbours.',
+        text: "The AVM now has a **size pillar**: rate × this house's sqft carries 25–30% of the blend when 2+ comps match. A house 40% bigger than its street no longer prices like its neighbours.",
       },
       {
         emoji: '🔍',

@@ -1,11 +1,19 @@
 import { env } from '@/env';
 import { recordCronHeartbeat } from '../_lib/heartbeat';
-import { callClaude, CLAUDE_HAIKU } from '@repo/ai/claude';
+import { callClaude, callClaudeForObject, CLAUDE_HAIKU } from '@repo/ai/claude';
 import { database } from '@repo/database';
 import { NextResponse } from 'next/server';
+import { z } from 'zod';
 
 // Pipeline Stage 4: Morning Summary (8:00am daily)
-// Creates a single FounderAction summarising everything the agents did overnight
+// Creates a single FounderAction summarising everything the agents did
+// overnight, and — first — runs the founder desk: every pending action gets
+// a ranked, one-line suggested call (see rankFounderDesk below).
+//
+// The desk is one Haiku call over up to DESK_MAX_ACTIONS actions plus one
+// metadata update per action; comfortably inside this budget.
+export const maxDuration = 120;
+
 export const POST = async (request: Request) => {
   const authHeader = request.headers.get('authorization');
   if (authHeader !== `Bearer ${env.CRON_SECRET}`) {
@@ -90,6 +98,14 @@ export const POST = async (request: Request) => {
     }),
   ]);
 
+  // ── Founder desk — rank the queue and draft the call on each item ──
+  // The bottleneck is decisions, not generation: the queue was sitting at
+  // 24 pending / 0 resolved in a week. Each pending action now carries a
+  // suggested call + why (metadata.desk), and the briefing leads with the
+  // top of that ranking. Graceful: no key / failure → no desk, briefing as
+  // before.
+  const desk = await rankFounderDesk();
+
   const outreachPayload = outreachSent?.payload as Record<string, number> | null;
   const emailsSent = outreachPayload?.autoSent ?? 0;
 
@@ -137,6 +153,7 @@ export const POST = async (request: Request) => {
     pendingActions,
     topPendingActions,
     topStrongLeads,
+    deskTop: desk.slice(0, 5),
   });
 
   const summaryBody = llmBody ?? deterministicBody;
@@ -170,6 +187,7 @@ export const POST = async (request: Request) => {
           slaBreaches,
           pendingActions,
           totalEvents: todayEvents.length,
+          deskTop: desk.slice(0, 5),
         },
       },
     }).catch(() => {
@@ -236,6 +254,8 @@ interface BriefingInput {
     leadScore: number | null;
     leadType: string | null;
   }>;
+  /** Top of the founder desk ranking — the calls the briefing should lead with. */
+  deskTop: DeskCall[];
 }
 
 const BRIEFING_SYSTEM_PROMPT = `You are the Chief of Staff for Kept, a UK property deal-sourcer.
@@ -247,7 +267,7 @@ Rules:
   1. **Overnight movement** — new leads, valuations done, emails sent
   2. **Watch-outs** — SLA breaches, held vendor emails, anything blocking a deal
   3. **Best lead** — the single strongest overnight lead, with address area + score
-  4. **First move** — one concrete action, e.g. "Open /quotes — 2 agent submissions are at hour 18 of 24"
+  4. **First move** — the top-ranked desk call when one is supplied (use its wording), else one concrete action, e.g. "Open /quotes — 2 agent submissions are at hour 18 of 24"
 - SKIP empty categories entirely. Never write "no new leads" or "nothing to report" bullets.
 - NEVER mention how many actions are pending — the dashboard shows that next to this card.
 - NEVER comment on cron, system, or pipeline health — system alerts have their own cards.
@@ -286,6 +306,13 @@ async function buildLlmBriefing(input: BriefingInput): Promise<string | null> {
     '',
     'Top STRONG leads from overnight:',
     leadLines,
+    '',
+    'Founder desk — ranked calls already drafted for the queue (lead the "First move" bullet with #1):',
+    input.deskTop.length === 0
+      ? '(none)'
+      : input.deskTop
+          .map((d) => `${d.rank}. ${d.title} → ${d.call}`)
+          .join('\n'),
   ].join('\n');
 
   return callClaude({
@@ -301,3 +328,144 @@ async function buildLlmBriefing(input: BriefingInput): Promise<string | null> {
 // Vercel cron sends GET by default. Accept either method so a manual
 // POST and an automated GET both reach the same handler.
 export const GET = POST;
+
+// ────────────────────────────────────────────────────────────────────────────
+// Founder desk — rank the pending queue and draft the call on each item
+//
+// Reads every pending / in-progress action (system alerts excluded — they
+// are not decisions), asks Haiku to order them by what moves a deal or
+// protects money TODAY, and to draft a one-line call plus the why for each.
+// The result is stamped on each action as metadata.desk so the Action
+// Centre shows it inline. Steps, not Thoughts: the founder still decides;
+// the desk just means every card opens with a recommendation instead of a
+// blank.
+//
+// Feature 'founder_desk' — routable from Settings → AI models.
+// ────────────────────────────────────────────────────────────────────────────
+
+const DESK_MAX_ACTIONS = 40;
+
+export type DeskCall = {
+  id: string;
+  rank: number;
+  title: string;
+  call: string;
+  why: string;
+};
+
+const DESK_SCHEMA = z.object({
+  calls: z.array(
+    z.object({
+      id: z.string(),
+      rank: z.number().int().min(1),
+      call: z.string().max(160),
+      why: z.string().max(240),
+    })
+  ),
+});
+
+const DESK_SYSTEM_PROMPT = `You are the Chief of Staff for Kept, a UK direct-to-vendor property buyer. The founder is dyslexic and time-poor.
+
+You receive the founder's pending action queue. For EVERY action return:
+- rank: 1 = do first. Order by what moves a deal or protects money today: a binding-offer deadline, a vendor waiting on a reply, a held email, an auction this week, then reviews of new leads, then admin.
+- call: ONE line, imperative, under 20 words, that the founder can act on as written. Name the decision, not the task. Good: "Approve the hold — the vendor asked for a call back, no price yet." Bad: "Review this item."
+- why: under 30 words. The single fact that justifies the call.
+
+Rules:
+- Use only the information given. Never invent addresses, prices or dates.
+- Every id exactly once. No extra ids.
+- Plain English. No jargon, no hedging.`;
+
+async function rankFounderDesk(): Promise<DeskCall[]> {
+  const actions = await database.founderAction.findMany({
+    where: {
+      status: { in: ['pending', 'in_progress'] },
+      agent: { not: 'system' },
+    },
+    orderBy: [{ priority: 'asc' }, { createdAt: 'desc' }],
+    take: DESK_MAX_ACTIONS,
+    select: {
+      id: true,
+      type: true,
+      priority: true,
+      title: true,
+      description: true,
+      createdAt: true,
+      expiresAt: true,
+      metadata: true,
+    },
+  });
+  if (actions.length === 0) return [];
+
+  const block = actions
+    .map((a) => {
+      const ageDays = Math.floor((Date.now() - a.createdAt.getTime()) / 86_400_000);
+      const desc = (a.description ?? '').replace(/\s+/g, ' ').trim().slice(0, 300);
+      return [
+        `id: ${a.id}`,
+        `type: ${a.type} · priority: ${a.priority} · age: ${ageDays}d${a.expiresAt ? ` · expires: ${a.expiresAt.toISOString().slice(0, 10)}` : ''}`,
+        `title: ${a.title}`,
+        desc ? `detail: ${desc}` : null,
+      ]
+        .filter(Boolean)
+        .join('\n');
+    })
+    .join('\n---\n');
+
+  const result = await callClaudeForObject<z.infer<typeof DESK_SCHEMA>>({
+    system: DESK_SYSTEM_PROMPT,
+    user: `Pending queue (${actions.length} items):\n\n${block}`,
+    schema: DESK_SCHEMA,
+    maxTokens: 3000,
+    temperature: 0.2,
+    model: CLAUDE_HAIKU,
+    feature: 'founder_desk',
+    attemptTimeoutMs: 60_000,
+  });
+  if (!result) return [];
+
+  const byId = new Map(actions.map((a) => [a.id, a]));
+  const seen = new Set<string>();
+  const calls: DeskCall[] = [];
+  for (const c of result.calls) {
+    // The model cannot rank actions it was not given, or rank one twice.
+    const action = byId.get(c.id);
+    if (!action || seen.has(c.id)) continue;
+    seen.add(c.id);
+    calls.push({
+      id: c.id,
+      rank: c.rank,
+      title: action.title,
+      call: c.call.trim(),
+      why: c.why.trim(),
+    });
+  }
+  calls.sort((a, b) => a.rank - b.rank);
+  // Re-number so ranks are dense whatever the model returned.
+  calls.forEach((c, i) => {
+    c.rank = i + 1;
+  });
+
+  const at = new Date().toISOString();
+  await Promise.all(
+    calls.map((c) => {
+      const existing = byId.get(c.id)?.metadata;
+      const base =
+        existing && typeof existing === 'object' && !Array.isArray(existing)
+          ? (existing as Record<string, unknown>)
+          : {};
+      return database.founderAction
+        .update({
+          where: { id: c.id },
+          data: {
+            metadata: { ...base, desk: { rank: c.rank, call: c.call, why: c.why, at } },
+          },
+        })
+        .catch((err: unknown) =>
+          console.warn('[cron/pipeline-summary] desk stamp failed', c.id, err)
+        );
+    })
+  );
+
+  return calls;
+}

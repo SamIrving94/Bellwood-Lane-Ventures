@@ -106,6 +106,18 @@ const LeadDetailPage = async ({
         reasons: string[];
       }
     | undefined;
+  // What the listing text itself said about the seller (LLM read, closed
+  // vocabulary — see @repo/scouting motivation-llm.ts). Quote shown verbatim.
+  const motivationRead = raw.motivationRead as
+    | {
+        level: 'strong' | 'some' | 'none';
+        signals: string[];
+        leadType: string | null;
+        evidence: string;
+      }
+    | undefined;
+  const motivationShown =
+    motivationRead && motivationRead.level !== 'none' ? motivationRead : null;
   type ScoreFactor = {
     label: string;
     points: number;
@@ -1025,7 +1037,11 @@ const LeadDetailPage = async ({
             The founder's question is "should I chase this, and why?".
             Answer it up top: plain rationale + what this lead is + score.
             The full factor breakdown stays lower as supporting detail. */}
-        {(rationale || summary || planningProposal || primeOpportunity) && (
+        {(rationale ||
+          summary ||
+          planningProposal ||
+          primeOpportunity ||
+          motivationShown) && (
           <section className="rounded-2xl border-2 border-slate-200 bg-white p-5">
             <div className="flex items-start justify-between gap-4">
               <div className="min-w-0 flex-1">
@@ -1073,6 +1089,31 @@ const LeadDetailPage = async ({
                           margin. The strategy needs both.
                         </p>
                       )}
+                  </div>
+                )}
+                {motivationShown && (
+                  <div
+                    className={`mt-3 rounded-xl border p-3 ${
+                      motivationShown.level === 'strong'
+                        ? 'border-amber-300 bg-amber-50'
+                        : 'border-slate-200 bg-slate-50'
+                    }`}
+                  >
+                    <p className="font-mono text-[10px] text-muted-foreground uppercase tracking-[0.18em]">
+                      {motivationShown.level === 'strong'
+                        ? 'The listing says they need to sell'
+                        : 'The listing hints at motivation'}
+                    </p>
+                    <p className="mt-1.5 text-slate-800 text-sm leading-snug">
+                      {motivationShown.signals
+                        .map((sig) => sig.replace(/_/g, ' '))
+                        .join(' · ')}
+                    </p>
+                    {motivationShown.evidence && (
+                      <p className="mt-1 text-muted-foreground text-xs italic">
+                        “{motivationShown.evidence}”
+                      </p>
+                    )}
                   </div>
                 )}
                 {(positiveFactors.length > 0 || negativeFactors.length > 0) && (

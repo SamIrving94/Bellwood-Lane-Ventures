@@ -63,10 +63,11 @@ export async function getUpcomingAuctions(
     if (r.status === 'fulfilled') {
       all.push(...r.value);
     } else {
-      // A silently dropped rejection is indistinguishable from a quiet market,
-      // and two of the three sources are stubs that legitimately return
-      // nothing — so "zero lots" is the steady state and a total failure of
-      // the only live source would never surface.
+      // A silently dropped rejection is indistinguishable from a quiet market
+      // — for months two sources were stubs returning nothing, so "zero lots"
+      // was the steady state and a total failure of the only live source
+      // would never have surfaced. All four are live now (Savills and Clive
+      // Emson via LLM extraction); the guard stays.
       failures.push(sources[i] ?? `source_${i}`);
       console.error(
         `[auctions] source ${sources[i] ?? i} failed:`,
