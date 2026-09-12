@@ -615,7 +615,7 @@ importers:
         version: link:../ai
       '@t3-oss/env-nextjs':
         specifier: ^0.12.0
-        version: 0.12.0(typescript@5.8.2)(zod@3.25.76)
+        version: 0.12.0(typescript@5.8.2)(zod@3.24.2)
       cheerio:
         specifier: ^1.0.0
         version: 1.2.0
@@ -623,8 +623,8 @@ importers:
         specifier: ^0.0.1
         version: 0.0.1
       zod:
-        specifier: ^3.24.2
-        version: 3.25.76
+        specifier: 3.24.2
+        version: 3.24.2
     devDependencies:
       '@repo/typescript-config':
         specifier: workspace:*
@@ -12682,8 +12682,8 @@ snapshots:
       express-rate-limit: 7.5.1(express@5.2.1)
       pkce-challenge: 4.1.0
       raw-body: 3.0.2
-      zod: 3.25.76
-      zod-to-json-schema: 3.24.1(zod@3.25.76)
+      zod: 3.24.2
+      zod-to-json-schema: 3.24.1(zod@3.24.2)
     transitivePeerDependencies:
       - supports-color
 
@@ -16284,7 +16284,7 @@ snapshots:
     dependencies:
       devtools-protocol: 0.0.1595872
       mitt: 3.0.1
-      zod: 3.25.76
+      zod: 3.24.2
 
   cipher-base@1.0.6:
     dependencies:
@@ -21801,10 +21801,6 @@ snapshots:
   zod-to-json-schema@3.24.1(zod@3.24.2):
     dependencies:
       zod: 3.24.2
-
-  zod-to-json-schema@3.24.1(zod@3.25.76):
-    dependencies:
-      zod: 3.25.76
 
   zod@3.24.2: {}
 
