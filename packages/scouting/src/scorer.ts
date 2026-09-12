@@ -27,6 +27,10 @@ import { isSyntheticPricePaid } from '@repo/property-data/src/hmlr';
 import type { Hpi } from '@repo/property-data/src/hmlr-hpi';
 import type { EnrichedLead } from './enrichment';
 import {
+  MOTIVATION_SIGNAL_LABELS,
+  type MotivationSignal,
+} from './motivation-signals';
+import {
   DEFAULT_SCORER_CONFIG,
   type EquityBand,
   type ScorerConfig,
@@ -118,6 +122,14 @@ export interface LeadSignals {
    * derivable from the postcode-level epcRating above.
    */
   modernisation?: { points: number; reasons: string[] } | null;
+  /**
+   * What the listing text itself says about the seller (motivation-llm.ts).
+   * Only `strong` / `some` reach here; a 'none' read is passed as null.
+   */
+  motivation?: {
+    level: 'strong' | 'some';
+    signals: MotivationSignal[];
+  } | null;
 }
 
 /** ROI inputs from the appraisal (stage 2). */
@@ -260,6 +272,17 @@ function scoreAcquisition(
   // Chain-free / cash-only / repossession distress.
   if (signals?.listingType && DISTRESS_LISTINGS.has(signals.listingType)) {
     add(factors, 'Distressed sale signal', config.distressBonus, 'acquisition');
+  }
+
+  // Motivation the listing text states outright (LLM read, closed
+  // vocabulary). Labelled with the signals so the founder sees WHY.
+  if (signals?.motivation && signals.motivation.signals.length > 0) {
+    const pts = config.motivationSignalPoints[signals.motivation.level];
+    const named = signals.motivation.signals
+      .slice(0, 3)
+      .map((sig) => MOTIVATION_SIGNAL_LABELS[sig] ?? sig)
+      .join(', ');
+    add(factors, `Listing text: ${named}`, pts, 'acquisition');
   }
 
   // Probate execution signals.

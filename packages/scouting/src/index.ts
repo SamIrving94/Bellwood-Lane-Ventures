@@ -47,6 +47,12 @@ import {
 import { fetchGazetteProbateNotices } from './gazette';
 import { matchProbateAddressToSale } from './hmlr-match';
 import { leadTypeForListing } from './lead-type';
+import { readListingMotivation } from './motivation-llm';
+import {
+  type MotivationRead,
+  type MotivationSignal,
+  strongerLeadType,
+} from './motivation-signals';
 import { assessModernisation } from './modernisation';
 import { fetchPlanningConsentLeads } from './planning-consents';
 import { fetchProbateGrants } from './probate-data';
@@ -336,6 +342,24 @@ export {
   type ModernisationInput,
 } from './modernisation';
 export { dedupeDealbreakerRules, screenDealbreakers } from './dealbreakers';
+export {
+  MAX_MOTIVATION_READS_PER_RUN,
+  MOTIVATION_FEATURE,
+  readListingMotivation,
+} from './motivation-llm';
+export type { MotivationCandidate } from './motivation-llm';
+export {
+  MOTIVATION_LEAD_TYPES,
+  MOTIVATION_SIGNAL_LABELS,
+  MOTIVATION_SIGNALS,
+  strongerLeadType,
+} from './motivation-signals';
+export type {
+  MotivationLeadType,
+  MotivationLevel,
+  MotivationRead,
+  MotivationSignal,
+} from './motivation-signals';
 export type { DealbreakerCandidate, DealbreakerHit } from './dealbreakers';
 export {
   applySuggestionChange,
@@ -473,6 +497,17 @@ export interface ScoutingPipelineOptions {
    */
   enrichRationaleLlm?: boolean;
   /**
+   * When true, every listing with a real description gets a batched Haiku
+   * read for motivation the TEXT states (executor sale, cash buyers only,
+   * relocation…). Upgrades the lead type when the text names a stronger
+   * reason than the source list implied, and adds a capped acquisition
+   * factor. Runs BEFORE the shortlist so it changes which leads get the
+   * paid enrichment — that is the point. See motivation-llm.ts.
+   *
+   * Defaults false — the scouting cron opts in. ~30 Haiku calls a day.
+   */
+  readMotivationLlm?: boolean;
+  /**
    * Skip the slow, low-yield PropertyData sources (planning-applications +
    * national-HMO-register) and the Companies-House dissolved-company scan.
    * Each planning/HMO loop carries ~11s + 2.7s/seed of MANDATORY rate-limit
@@ -591,6 +626,17 @@ export interface ScoutingPipelineResult {
   truncatedByDeadline: string[];
   /** Contact-enrichment tier distribution + hit-rate for this run. */
   enrichment: EnrichmentSummary;
+  /**
+   * Listing-text motivation read (motivation-llm.ts): listings read, how
+   * many showed strong / some motivation, and lead types upgraded on the
+   * strength of the text. All zero when the read is off or unavailable.
+   */
+  motivationReads: {
+    read: number;
+    strong: number;
+    some: number;
+    upgraded: number;
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -624,6 +670,7 @@ export async function runScoutingPipeline(
     scorerConfig = DEFAULT_SCORER_CONFIG,
     evalConfigVersion = null,
     enrichRationaleLlm = false,
+    readMotivationLlm = false,
     skipSlowSources = false,
     deadlineMs,
   } = options;
@@ -1283,6 +1330,10 @@ export async function runScoutingPipeline(
       remainingLeaseYears?: number | null;
       marriageValueLease?: boolean;
       leaseUrgency?: number;
+      motivation?: {
+        level: 'strong' | 'some';
+        signals: MotivationSignal[];
+      } | null;
     }
   >();
   for (const g of candidates) {
@@ -1330,6 +1381,78 @@ export async function runScoutingPipeline(
             : undefined,
         commercial: pd.commercial === true,
       });
+    }
+  }
+
+  // ── Motivation read — what the listing text says about the seller ───
+  //
+  // Runs on the FULL candidate pool, before the shortlist, so a "reduced"
+  // listing whose description reads "executor sale, cash buyers only" can
+  // win a paid enrichment slot it would otherwise lose to a plain price
+  // cut. Cheap (Haiku, batched), bounded (per-run cap + deadline hook),
+  // graceful (no key / failure → no reads → identical to today).
+  const motivationReads = { read: 0, strong: 0, some: 0, upgraded: 0 };
+  if (readMotivationLlm && !pastDeadline('motivationRead')) {
+    const readable = candidates.flatMap((g) => {
+      const pd = (
+        g as {
+          propertyData?: {
+            summary?: string | null;
+            listingType?: string | null;
+            propertyType?: string | null;
+          };
+        }
+      ).propertyData;
+      return pd?.summary
+        ? [
+            {
+              ref: g.probateRef,
+              address: g.address,
+              summary: pd.summary,
+              listingType: pd.listingType ?? null,
+              propertyType: pd.propertyType ?? null,
+            },
+          ]
+        : [];
+    });
+    const reads = await readListingMotivation(readable, {
+      shouldStop: () => pastDeadline('motivationRead'),
+    });
+    for (const g of candidates) {
+      const read = reads.get(g.probateRef);
+      if (!read) {
+        continue;
+      }
+      motivationReads.read++;
+      // Verbatim onto the grant → sanitisePayload → rawPayload, so the lead
+      // page shows the quote the call was made on.
+      (g as { motivationRead?: MotivationRead }).motivationRead = read;
+      if (read.level === 'none') {
+        continue;
+      }
+      motivationReads[read.level]++;
+      const sig = signalsByRef.get(g.probateRef);
+      if (sig) {
+        sig.motivation = { level: read.level, signals: read.signals };
+      }
+      const hinted = g as { leadTypeHint?: string };
+      if (hinted.leadTypeHint) {
+        const upgraded = strongerLeadType(
+          hinted.leadTypeHint,
+          read,
+          scorerConfig.leadTypeScores,
+          scorerConfig.leadTypeFallback
+        );
+        if (upgraded !== hinted.leadTypeHint) {
+          hinted.leadTypeHint = upgraded;
+          motivationReads.upgraded++;
+        }
+      }
+    }
+    if (motivationReads.read > 0) {
+      console.info(
+        `[scouting] motivation read: ${motivationReads.read} listings, ${motivationReads.strong} strong, ${motivationReads.some} some, ${motivationReads.upgraded} lead types upgraded`
+      );
     }
   }
 
@@ -1905,5 +2028,6 @@ export async function runScoutingPipeline(
     sourceHealth,
     truncatedByDeadline,
     enrichment: enrichmentSummary,
+    motivationReads,
   };
 }
