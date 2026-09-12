@@ -12,13 +12,13 @@ export default defineConfig({
   // module to an empty stub so the tests can load the production code as-is.
   resolve: {
     alias: {
-      'server-only': new URL('./test-shims/server-only.ts', import.meta.url).pathname,
-      // The LLM path (@repo/ai/claude, reached via deep-appraisal.ts and
-      // comp-rationale-llm.ts) imports these at module top. AVM tests don't
-      // exercise it; alias to a no-op stub. LLM tests vi.mock the client.
-      '@ai-sdk/anthropic': new URL('./test-shims/ai-sdk-stub.ts', import.meta.url).pathname,
-      ai: new URL('./test-shims/ai-sdk-stub.ts', import.meta.url).pathname,
-      '@repo/ai/keys': new URL('./test-shims/ai-sdk-stub.ts', import.meta.url).pathname,
+      'server-only': new URL('./test-shims/server-only.ts', import.meta.url)
+        .pathname,
+      // deep-appraisal.ts and comp-rationale-llm.ts go through
+      // @repo/ai/claude. AVM tests never exercise the LLM path; alias the
+      // client to a stub so no SDK or key is touched.
+      '@repo/ai/claude': new URL('./test-shims/ai-sdk-stub.ts', import.meta.url)
+        .pathname,
     },
   },
 });

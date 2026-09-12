@@ -564,6 +564,9 @@ importers:
       '@types/react-dom':
         specifier: ^19.0.4
         version: 19.0.4(@types/react@19.0.10)
+      vitest:
+        specifier: ^3.0.7
+        version: 3.0.7(@types/debug@4.1.12)(@types/node@22.13.9)(jiti@2.4.2)(jsdom@26.0.0(bufferutil@4.0.9))(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.21.0)(yaml@2.7.0)
 
   packages/analytics:
     dependencies:
@@ -607,9 +610,6 @@ importers:
 
   packages/auctions:
     dependencies:
-      '@anthropic-ai/sdk':
-        specifier: ^0.32.1
-        version: 0.32.1
       '@repo/ai':
         specifier: workspace:*
         version: link:../ai
@@ -1487,7 +1487,7 @@ importers:
         specifier: workspace:*
         version: link:../ai
       zod:
-        specifier: 3.24.2
+        specifier: ^3.24.2
         version: 3.24.2
     devDependencies:
       '@repo/typescript-config':

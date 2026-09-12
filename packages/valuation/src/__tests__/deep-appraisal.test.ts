@@ -6,10 +6,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 vi.mock('@repo/ai/claude', () => ({
   CLAUDE_SONNET: 'claude-sonnet-4-5',
   callClaudeForObject: vi.fn(),
-}));
-
-vi.mock('@repo/ai/keys', () => ({
-  keys: vi.fn(),
+  hasLlmProvider: vi.fn(),
 }));
 
 vi.mock('@repo/property-data', () => ({
@@ -20,8 +17,7 @@ vi.mock('@repo/property-data', () => ({
   realTransactions: (rows: unknown[]) => rows,
 }));
 
-import { callClaudeForObject } from '@repo/ai/claude';
-import { keys } from '@repo/ai/keys';
+import { callClaudeForObject, hasLlmProvider } from '@repo/ai/claude';
 import { getPricePaid } from '@repo/property-data';
 import {
   DEEP_APPRAISAL_FEATURE,
@@ -33,7 +29,7 @@ const baseInput = { address: '12 Test Street', postcode: 'ST4 1AA' };
 
 beforeEach(() => {
   vi.mocked(callClaudeForObject).mockReset();
-  vi.mocked(keys).mockReturnValue({ ANTHROPIC_API_KEY: 'test' } as never);
+  vi.mocked(hasLlmProvider).mockReturnValue(true);
   vi.mocked(getPricePaid).mockClear();
 });
 
@@ -60,14 +56,8 @@ describe('runDeepAppraisal routing', () => {
     await expect(runDeepAppraisal(baseInput)).resolves.toBeNull();
   });
 
-  it('accepts an OpenRouter-only key set (no Anthropic key)', async () => {
-    vi.mocked(keys).mockReturnValue({ OPENROUTER_API_KEY: 'or' } as never);
-    vi.mocked(callClaudeForObject).mockResolvedValue({ ok: true } as never);
-    await expect(runDeepAppraisal(baseInput)).resolves.toEqual({ ok: true });
-  });
-
-  it('bails before fetching data when no LLM key is set', async () => {
-    vi.mocked(keys).mockReturnValue({} as never);
+  it('bails before fetching data when no LLM provider is keyed', async () => {
+    vi.mocked(hasLlmProvider).mockReturnValue(false);
     await expect(runDeepAppraisal(baseInput)).resolves.toBeNull();
     // Data gathering spends PropertyData credits — must not run.
     expect(getPricePaid).not.toHaveBeenCalled();

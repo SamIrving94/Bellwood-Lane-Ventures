@@ -1,18 +1,9 @@
-/**
- * WhatsApp intake parser — a raw group message → a typed lead.
- *
- * Goes through the shared @repo/ai client (feature 'whatsapp_intake_parse'),
- * so the model is a Settings → AI models decision and every parse lands in
- * LlmCallLog. The reply is schema-constrained AND re-validated: the message
- * body is attacker-controllable and the intake route auto-creates a
- * ScoutLead from these fields.
- */
-
-import { CLAUDE_SONNET, callClaudeForObject } from '@repo/ai/claude';
-import { keys } from '@repo/ai/keys';
+import {
+  CLAUDE_SONNET,
+  callClaudeForJson,
+  hasLlmProvider,
+} from '@repo/ai/claude';
 import { z } from 'zod';
-
-export const WHATSAPP_PARSE_FEATURE = 'whatsapp_intake_parse';
 
 export type SellerSituation =
   | 'probate'
@@ -74,6 +65,9 @@ const ParsedLeadSchema = z.object({
   confidence: z.number().optional(),
 });
 
+const MODEL = CLAUDE_SONNET;
+const FEATURE = 'whatsapp_parse';
+
 const SYSTEM_PROMPT = `You are a structured-data extractor for UK property investment leads shared in WhatsApp groups.
 
 Your job: read a raw WhatsApp message and extract lead fields into JSON.
@@ -104,45 +98,64 @@ Schema:
 }`;
 
 /**
- * Parse a raw WhatsApp message into a structured lead.
+ * Parse a raw WhatsApp message into a structured lead with the shared LLM
+ * client (feature `whatsapp_parse` — routable from Settings → AI models,
+ * OpenRouter first, provider fallback on outage or empty balance). This
+ * prompt carries vendor names and numbers: tick PII-safe pinning on the
+ * route if you move it to an open-weight model.
  *
- * Graceful: if no LLM key is set, or the call fails, returns
+ * Graceful: with no LLM provider keyed, or on any failure, returns
  * { confidence: 0, rawNotes } so callers route the intake to manual review.
  */
 export async function parseWhatsAppMessage(
   rawText: string
 ): Promise<ParsedLead> {
-  const env = keys();
-  if (!(env.ANTHROPIC_API_KEY || env.OPENROUTER_API_KEY)) {
+  if (!hasLlmProvider()) {
     console.warn(
-      '[@repo/whatsapp-parser] no LLM key set — skipping parse, returning manual-review placeholder'
+      '[@repo/whatsapp-parser] no LLM provider key set — skipping parse, returning manual-review placeholder'
     );
     return { confidence: 0, rawNotes: rawText };
   }
 
-  // Never throws; null on any failure. The `---` fence around the body is
-  // trivially escaped, so the shape is enforced by the schema, not trusted.
-  const validated = await callClaudeForObject<z.infer<typeof ParsedLeadSchema>>(
-    {
+  try {
+    const parsed = await callClaudeForJson<Record<string, unknown>>({
       system: SYSTEM_PROMPT,
-      user: `Extract the property lead from this WhatsApp message.\n\n---\n${rawText}\n---`,
-      schema: ParsedLeadSchema,
+      user: `Extract the property lead from this WhatsApp message. Return JSON only.\n\n---\n${rawText}\n---`,
+      model: MODEL,
+      feature: FEATURE,
       maxTokens: 1024,
       temperature: 0.2,
-      model: CLAUDE_SONNET,
-      feature: WHATSAPP_PARSE_FEATURE,
-      attemptTimeoutMs: 30_000,
+      attemptTimeoutMs: 20_000,
+    });
+    if (!parsed) {
+      return { confidence: 0, rawNotes: rawText };
     }
-  );
-  if (!validated) {
-    return { confidence: 0, rawNotes: rawText };
+
+    // The message body is attacker-controllable and the `---` fence around it
+    // is trivially escaped, so the reply is untrusted input. Validate the shape
+    // instead of casting: the intake route auto-creates a ScoutLead from these
+    // fields, and unknown keys were previously stored verbatim in rawPayload.
+    const validated = ParsedLeadSchema.safeParse(parsed);
+    if (!validated.success) {
+      console.warn('[@repo/whatsapp-parser] reply failed validation');
+      return { confidence: 0, rawNotes: rawText };
+    }
+
+    // Defensive: clamp confidence to [0, 1], default 0 if missing
+    const confidence =
+      typeof validated.data.confidence === 'number'
+        ? Math.max(0, Math.min(1, validated.data.confidence))
+        : 0;
+
+    return {
+      ...validated.data,
+      confidence,
+    } as ParsedLead;
+  } catch (err) {
+    console.error('[@repo/whatsapp-parser] parse failed', err);
+    return {
+      confidence: 0,
+      rawNotes: rawText,
+    };
   }
-
-  // Defensive: clamp confidence to [0, 1], default 0 if missing
-  const confidence =
-    typeof validated.confidence === 'number'
-      ? Math.max(0, Math.min(1, validated.confidence))
-      : 0;
-
-  return { ...validated, confidence } as ParsedLead;
 }

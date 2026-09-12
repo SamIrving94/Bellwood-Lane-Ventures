@@ -46,8 +46,11 @@ import {
   getPropertyDataValuation,
   realTransactions,
 } from '@repo/property-data';
-import { CLAUDE_SONNET, callClaudeForObject } from '@repo/ai/claude';
-import { keys } from '@repo/ai/keys';
+import {
+  CLAUDE_SONNET,
+  callClaudeForObject,
+  hasLlmProvider,
+} from '@repo/ai/claude';
 
 // ───────────────────────────────────────────────────────────────────────────
 // Output schema — what Claude must return
@@ -385,10 +388,9 @@ export async function runDeepAppraisal(
   // Cheap pre-check before we spend PropertyData credits in gatherData: the
   // shared client returns null on a missing key anyway, but by then the
   // data fetch has already cost money.
-  const env = keys();
-  if (!env.ANTHROPIC_API_KEY && !env.OPENROUTER_API_KEY) {
+  if (!hasLlmProvider()) {
     console.warn(
-      '[deep-appraisal] no ANTHROPIC_API_KEY or OPENROUTER_API_KEY — caller should fall back to AVM-only',
+      '[deep-appraisal] no LLM provider keyed — caller should fall back to AVM-only',
     );
     return null;
   }

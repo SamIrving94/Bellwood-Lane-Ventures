@@ -39,12 +39,17 @@ export interface ParsedSheet {
   rows: ParsedRow[];
   /** Headers we couldn't map to a known field — surfaced as a warning. */
   unmappedHeaders: string[];
+  /**
+   * Per-cell problems we recovered from (e.g. a money figure too big for the
+   * database column). The row still parses; the bad cell is left blank so the
+   * review page flags it rather than the whole upload failing.
+   */
+  warnings: string[];
 }
 
 // UK postcode, tolerant of missing space. Anchored to the *end* of the string
 // (after stripping the " - Purchase" suffix) since the address trails into it.
-const UK_POSTCODE =
-  /([A-Z]{1,2}\d[A-Z\d]?)\s*(\d[A-Z]{2})\s*$/i;
+const UK_POSTCODE = /([A-Z]{1,2}\d[A-Z\d]?)\s*(\d[A-Z]{2})\s*$/i;
 
 function normaliseHeader(h: string): string {
   return h.toLowerCase().replace(/[^a-z0-9]/g, '');
@@ -59,15 +64,44 @@ function findColumn(headers: string[], needles: string[]): number {
   return -1;
 }
 
-/** Parse "£225,000" / "225000.0" / 225000 → integer pence; null if empty/0. */
-export function parseMoneyToPence(raw: unknown): number | null {
+/**
+ * Ceiling for the pence columns on PropertyBatchItem, which are Postgres
+ * `integer` (signed 32-bit): 2,147,483,647 pence ≈ £21.47m. A cell above
+ * this (a typo like 110,000,000 for £110,000, or a figure already in pence)
+ * used to make `createMany` throw "value is out of range for type integer"
+ * and kill the whole upload — the batch never got created (11 Sep 2026).
+ */
+export const MAX_PENCE = 2_147_483_647;
+
+/** Parse "£225,000" / "225000.0" / 225000 → pounds; null if empty/non-numeric. */
+function parseMoneyToPounds(raw: unknown): number | null {
   if (raw == null || raw === '') return null;
   const num =
-    typeof raw === 'number'
-      ? raw
-      : Number(String(raw).replace(/[£,\s]/g, ''));
-  if (!Number.isFinite(num) || num <= 0) return null;
-  return Math.round(num * 100);
+    typeof raw === 'number' ? raw : Number(String(raw).replace(/[£,\s]/g, ''));
+  return Number.isFinite(num) ? num : null;
+}
+
+/**
+ * Parse a money cell → integer pence; null if empty/0/unparseable, and
+ * ALSO null when the figure would overflow the database column. We never
+ * guess what the founder meant (110,000,000 → 1,100,000?) — a blank
+ * benchmark gets the row flagged on the review page, which is the loud
+ * failure we want. Use `moneyCellToPence` when you need to know why.
+ */
+export function parseMoneyToPence(raw: unknown): number | null {
+  return moneyCellToPence(raw).pence;
+}
+
+/** Same as parseMoneyToPence, but says when a figure was dropped for range. */
+export function moneyCellToPence(raw: unknown): {
+  pence: number | null;
+  outOfRange: boolean;
+} {
+  const pounds = parseMoneyToPounds(raw);
+  if (pounds == null || pounds <= 0) return { pence: null, outOfRange: false };
+  const pence = Math.round(pounds * 100);
+  if (pence > MAX_PENCE) return { pence: null, outOfRange: true };
+  return { pence, outOfRange: false };
 }
 
 function parseIntCell(raw: unknown): number | null {
@@ -83,19 +117,27 @@ export function extractAddress(opportunityName: string): {
   postcode: string | null;
 } {
   // Drop a trailing " - Purchase" / " - Sale" style suffix.
-  let cleaned = opportunityName.replace(/\s*[-–]\s*(purchase|sale|let)\s*$/i, '').trim();
+  let cleaned = opportunityName
+    .replace(/\s*[-–]\s*(purchase|sale|let)\s*$/i, '')
+    .trim();
   const match = cleaned.match(UK_POSTCODE);
   let postcode: string | null = null;
   if (match) {
     postcode = `${match[1]} ${match[2]}`.toUpperCase();
     // Remove the postcode (and any trailing comma/space) from the address tail.
-    cleaned = cleaned.slice(0, match.index).replace(/[,\s]+$/, '').trim();
+    cleaned = cleaned
+      .slice(0, match.index)
+      .replace(/[,\s]+$/, '')
+      .trim();
   }
   return { address: cleaned || opportunityName.trim(), postcode };
 }
 
 /** Stable key for week-over-week diffing: postcode + first address token. */
-export function makeDedupeKey(address: string, postcode: string | null): string {
+export function makeDedupeKey(
+  address: string,
+  postcode: string | null
+): string {
   const pc = (postcode ?? '').toUpperCase().replace(/\s+/g, '');
   const head = address
     .toLowerCase()
@@ -108,11 +150,11 @@ export function parseSheet(buffer: ArrayBuffer | Buffer): ParsedSheet {
   const wb = XLSX.read(buffer, { type: 'buffer' });
   const firstSheetName = wb.SheetNames[0];
   if (!firstSheetName) {
-    return { headers: [], rows: [], unmappedHeaders: [] };
+    return { headers: [], rows: [], unmappedHeaders: [], warnings: [] };
   }
   const sheet = wb.Sheets[firstSheetName];
   if (!sheet) {
-    return { headers: [], rows: [], unmappedHeaders: [] };
+    return { headers: [], rows: [], unmappedHeaders: [], warnings: [] };
   }
 
   // Array-of-arrays so we keep the raw header row verbatim.
@@ -121,7 +163,9 @@ export function parseSheet(buffer: ArrayBuffer | Buffer): ParsedSheet {
     blankrows: false,
     defval: '',
   });
-  if (matrix.length === 0) return { headers: [], rows: [], unmappedHeaders: [] };
+  if (matrix.length === 0) {
+    return { headers: [], rows: [], unmappedHeaders: [], warnings: [] };
+  }
 
   const headers = (matrix[0] as unknown[]).map((h) => String(h ?? '').trim());
 
@@ -137,9 +181,12 @@ export function parseSheet(buffer: ArrayBuffer | Buffer): ParsedSheet {
   };
 
   const mappedIdx = new Set(Object.values(col).filter((i) => i >= 0));
-  const unmappedHeaders = headers.filter((_, i) => !mappedIdx.has(i) && headers[i]);
+  const unmappedHeaders = headers.filter(
+    (_, i) => !mappedIdx.has(i) && headers[i]
+  );
 
   const rows: ParsedRow[] = [];
+  const warnings: string[] = [];
   for (let r = 1; r < matrix.length; r++) {
     const cells = matrix[r] as unknown[];
     const cell = (i: number): unknown => (i >= 0 ? cells[i] : undefined);
@@ -149,6 +196,19 @@ export function parseSheet(buffer: ArrayBuffer | Buffer): ParsedSheet {
 
     const { address, postcode } = extractAddress(opportunityName);
 
+    // Money cells: an over-range figure is dropped (left blank) and reported
+    // by sheet row number (1-based, header is row 1) so the founder can fix
+    // the cell, rather than the whole upload failing at the database.
+    const money = (i: number, label: string): number | null => {
+      const parsed = moneyCellToPence(cell(i));
+      if (parsed.outOfRange) {
+        warnings.push(
+          `Row ${r + 1} (${opportunityName}): ${label} "${String(cell(i))}" is above the £${(MAX_PENCE / 100).toLocaleString('en-GB', { maximumFractionDigits: 0 })} limit — left blank, please check the cell.`
+        );
+      }
+      return parsed.pence;
+    };
+
     rows.push({
       rowIndex: r - 1, // 0-based among data rows
       opportunityName,
@@ -156,14 +216,17 @@ export function parseSheet(buffer: ArrayBuffer | Buffer): ParsedSheet {
       postcode,
       dedupeKey: makeDedupeKey(address, postcode),
       propertyType: String(cell(col.type) ?? '').trim(),
-      occupancy: (String(cell(col.occupancy) ?? '').trim() || null),
-      condition: (String(cell(col.condition) ?? '').trim() || null),
+      occupancy: String(cell(col.occupancy) ?? '').trim() || null,
+      condition: String(cell(col.condition) ?? '').trim() || null,
       bedrooms: parseIntCell(cell(col.bedrooms)),
       bathrooms: parseIntCell(cell(col.bathrooms)),
-      acceptableTradeOfferPence: parseMoneyToPence(cell(col.tradeOffer)),
-      signOffPricePence: parseMoneyToPence(cell(col.signOff)),
+      acceptableTradeOfferPence: money(
+        col.tradeOffer,
+        'Acceptable Trade Offer'
+      ),
+      signOffPricePence: money(col.signOff, 'Sign off price'),
     });
   }
 
-  return { headers, rows, unmappedHeaders };
+  return { headers, rows, unmappedHeaders, warnings };
 }

@@ -2,17 +2,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('@repo/ai/claude', () => ({
   CLAUDE_SONNET: 'claude-sonnet-4-5',
-  callClaudeForObject: vi.fn(),
+  callClaudeWithMeta: vi.fn(),
+  hasLlmProvider: vi.fn(),
 }));
-vi.mock('@repo/ai/keys', () => ({ keys: vi.fn() }));
 
-import { callClaudeForObject } from '@repo/ai/claude';
-import { keys } from '@repo/ai/keys';
-import {
-  PHOTO_SCREEN_FEATURE,
-  screenAuctionLot,
-  screenPropertyCondition,
-} from '../lot-screener';
+import { callClaudeWithMeta, hasLlmProvider } from '@repo/ai/claude';
+import { screenAuctionLot, screenPropertyCondition } from '../lot-screener';
 
 const JPEG_BYTES = new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10]);
 
@@ -26,8 +21,8 @@ function imageResponse(type = 'image/jpeg') {
 const realFetch = globalThis.fetch;
 
 beforeEach(() => {
-  vi.mocked(callClaudeForObject).mockReset();
-  vi.mocked(keys).mockReturnValue({ ANTHROPIC_API_KEY: 'k' } as never);
+  vi.mocked(callClaudeWithMeta).mockReset();
+  vi.mocked(hasLlmProvider).mockReturnValue(true);
   globalThis.fetch = vi.fn(async () => imageResponse()) as never;
 });
 
@@ -37,13 +32,18 @@ afterEach(() => {
 
 describe('screenPropertyCondition', () => {
   it('sends the fetched photos as inline images through the routable client', async () => {
-    vi.mocked(callClaudeForObject).mockResolvedValue({
-      conditionScore: 3,
-      condition: 'distressed',
-      flags: ['boarded_windows', 'boarded_windows', 'roof_damage'],
-      rationale: 'Boarded ground floor, missing slates.',
-      confidence: 0.7,
-    } as never);
+    vi.mocked(callClaudeWithMeta).mockResolvedValue({
+      text: JSON.stringify({
+        conditionScore: 3,
+        condition: 'distressed',
+        flags: ['boarded_windows', 'boarded_windows', 'roof_damage'],
+        rationale: 'Boarded ground floor, missing slates.',
+        confidence: 0.7,
+      }),
+      model: 'z-ai/glm-5.2',
+      provider: 'openrouter:z-ai/glm-5.2',
+      viaFallback: false,
+    });
 
     const result = await screenPropertyCondition({
       ref: 'lot-1',
@@ -51,13 +51,11 @@ describe('screenPropertyCondition', () => {
       photoUrls: ['https://cdn.example/a.jpg', 'https://cdn.example/b.jpg'],
     });
 
-    const call = vi.mocked(callClaudeForObject).mock.calls[0][0];
-    expect(call.feature).toBe(PHOTO_SCREEN_FEATURE);
-    expect(call.feature).toBe('property_photo_screen');
-    expect(call.model).toBe('claude-sonnet-4-5');
+    const call = vi.mocked(callClaudeWithMeta).mock.calls[0][0];
+    expect(call.feature).toBe('property_vision');
     expect(call.images).toHaveLength(2);
     expect(call.images?.[0]).toEqual({
-      base64: Buffer.from(JPEG_BYTES).toString('base64'),
+      data: Buffer.from(JPEG_BYTES).toString('base64'),
       mediaType: 'image/jpeg',
     });
     expect(call.user).toContain('Photos provided: 2 of 2');
@@ -68,15 +66,16 @@ describe('screenPropertyCondition', () => {
       flags: ['boarded_windows', 'roof_damage'],
       photoCount: 2,
       confidence: 0.7,
+      modelUsed: 'z-ai/glm-5.2',
     });
   });
 
-  it('returns null with no photos, and without fetching when no key is set', async () => {
+  it('returns null with no photos, and without fetching when no provider is keyed', async () => {
     await expect(
       screenPropertyCondition({ ref: 'x', address: 'y', photoUrls: [] })
     ).resolves.toBeNull();
 
-    vi.mocked(keys).mockReturnValue({} as never);
+    vi.mocked(hasLlmProvider).mockReturnValue(false);
     await expect(
       screenPropertyCondition({
         ref: 'x',
@@ -85,7 +84,7 @@ describe('screenPropertyCondition', () => {
       })
     ).resolves.toBeNull();
     expect(globalThis.fetch).not.toHaveBeenCalled();
-    expect(callClaudeForObject).not.toHaveBeenCalled();
+    expect(callClaudeWithMeta).not.toHaveBeenCalled();
   });
 
   it('returns null when every photo fails to fetch, without calling the model', async () => {
@@ -99,11 +98,30 @@ describe('screenPropertyCondition', () => {
         photoUrls: ['https://cdn.example/a.jpg'],
       })
     ).resolves.toBeNull();
-    expect(callClaudeForObject).not.toHaveBeenCalled();
+    expect(callClaudeWithMeta).not.toHaveBeenCalled();
   });
 
-  it('returns null when the client returns null', async () => {
-    vi.mocked(callClaudeForObject).mockResolvedValue(null);
+  it('returns null on empty text or a reply that fails the schema', async () => {
+    vi.mocked(callClaudeWithMeta).mockResolvedValue({
+      text: null,
+      model: 'm',
+      provider: null,
+      viaFallback: false,
+    });
+    await expect(
+      screenAuctionLot({
+        lotRef: 'x',
+        address: 'y',
+        photoUrls: ['https://cdn.example/a.jpg'],
+      })
+    ).resolves.toBeNull();
+
+    vi.mocked(callClaudeWithMeta).mockResolvedValue({
+      text: '{"conditionScore": 99}',
+      model: 'm',
+      provider: null,
+      viaFallback: false,
+    });
     await expect(
       screenAuctionLot({
         lotRef: 'x',
