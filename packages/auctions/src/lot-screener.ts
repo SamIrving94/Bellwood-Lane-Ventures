@@ -2,36 +2,29 @@
  * Property-photo vision screener.
  *
  * Given the public photos of a property (an auction lot OR a scouted lead's
- * estate-agent listing), ask Claude Sonnet to produce a structured condition
- * assessment. For auction lots the output is attached to
- * AuctionLot.visualAssessment so the appraiser can downgrade visibly-distressed
- * lots; for leads it pre-fills the deal-model condition so the founder doesn't
- * have to eyeball it. `screenAuctionLot` is the original auction-named entry
- * point and now delegates to the generic `screenPropertyCondition`.
+ * estate-agent listing), ask a vision model to produce a structured
+ * condition assessment. For auction lots the output is attached to
+ * AuctionLot.visualAssessment so the appraiser can downgrade visibly-
+ * distressed lots; for leads it pre-fills the deal-model condition so the
+ * founder doesn't have to eyeball it. `screenAuctionLot` is the original
+ * auction-named entry point and now delegates to the generic
+ * `screenPropertyCondition`.
  *
- * TODO: wire this into LlmCallLog via setLlmLogger (or whatever the
- * canonical observability hook is in @repo/ai) so vision spend is tracked
- * alongside other Claude usage. For now we emit a single console.warn on
- * failure and rely on the caller to count successes.
- *
- * NOTE on implementation: the original spec called for Vercel AI SDK
- * `generateObject` with `@ai-sdk/anthropic`. That provider is not
- * currently installed in this monorepo (only `@ai-sdk/openai` is). To
- * avoid a lockfile install in this worktree we use the official
- * `@anthropic-ai/sdk` directly with Zod-driven validation — the exact
- * pattern already in use by `@repo/whatsapp-parser`. The public
- * `screenAuctionLot` signature matches the spec so a future swap to
- * `generateObject` is a localised refactor.
+ * Goes through the shared @repo/ai client (feature 'property_photo_screen'),
+ * so the model is a Settings → AI models decision, a shadow challenger can
+ * run alongside it, and every call lands in LlmCallLog. Sonnet is the code
+ * default; pick a vision-capable model if you route it elsewhere.
  */
 
 import 'server-only';
 
-import Anthropic from '@anthropic-ai/sdk';
+import { CLAUDE_SONNET, callClaudeForObject } from '@repo/ai/claude';
+import { keys } from '@repo/ai/keys';
 import { z } from 'zod';
 
 import type { VisualAssessment, VisualCondition, VisualFlag } from './types';
 
-const MODEL = 'claude-sonnet-4-5';
+export const PHOTO_SCREEN_FEATURE = 'property_photo_screen';
 const MAX_PHOTOS = 10;
 // Per-image fetch budget. Public auction CDNs are normally <1MB; cap at 5MB
 // to avoid pathological responses (Anthropic also rejects images > ~5MB).
@@ -123,10 +116,10 @@ export async function screenPropertyCondition(input: {
     return null;
   }
 
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) {
+  const env = keys();
+  if (!(env.ANTHROPIC_API_KEY || env.OPENROUTER_API_KEY)) {
     console.warn(
-      '[@repo/auctions/lot-screener] ANTHROPIC_API_KEY not set — skipping vision screen for',
+      '[@repo/auctions/lot-screener] no LLM key set — skipping vision screen for',
       ref
     );
     return null;
@@ -134,11 +127,10 @@ export async function screenPropertyCondition(input: {
 
   const sampledPhotos = samplePhotos(photoUrls, MAX_PHOTOS);
 
-  // The installed @anthropic-ai/sdk (0.32.1) only accepts base64 image
-  // sources — URL-source images were added in a later SDK. We fetch each
-  // photo, validate the content-type, and inline it as base64. Any photo
-  // that fails to fetch is dropped silently; we only proceed if at least
-  // one image survived.
+  // Photos are fetched and inlined as base64 rather than passed as URLs:
+  // auction CDNs are inconsistent about hot-linking, and an image the
+  // provider cannot fetch fails the whole call. Any photo that fails here is
+  // dropped silently; we only proceed if at least one survived.
   const fetched = await fetchImages(sampledPhotos);
   if (fetched.length === 0) {
     console.warn(
@@ -150,84 +142,39 @@ export async function screenPropertyCondition(input: {
 
   const userText = `Ref: ${ref}\nAddress: ${address}\nPhotos provided: ${fetched.length} of ${photoUrls.length} available.\n\nAssess the property condition from these photos and return the JSON object.`;
 
-  const client = new Anthropic({ apiKey });
-
-  try {
-    const response = await client.messages.create({
-      model: MODEL,
-      max_tokens: 600,
-      system: SYSTEM_PROMPT,
-      messages: [
-        {
-          role: 'user',
-          content: [
-            ...fetched.map(
-              (img) =>
-                ({
-                  type: 'image' as const,
-                  source: {
-                    type: 'base64' as const,
-                    media_type: img.mediaType,
-                    data: img.data,
-                  },
-                }) as const
-            ),
-            { type: 'text' as const, text: userText },
-          ],
-        },
-      ],
-      // Feature tag for downstream log routing once setLlmLogger is wired.
-      metadata: { user_id: `property_vision:${ref}` },
-    });
-
-    const textBlock = response.content.find((c) => c.type === 'text');
-    if (!textBlock || textBlock.type !== 'text') {
-      console.warn(
-        '[@repo/auctions/lot-screener] no text block in response for',
-        ref
-      );
-      return null;
-    }
-
-    const raw = extractJson(textBlock.text);
-    if (!raw) {
-      console.warn(
-        '[@repo/auctions/lot-screener] could not extract JSON for',
-        ref
-      );
-      return null;
-    }
-
-    const parsed = AssessmentSchema.safeParse(raw);
-    if (!parsed.success) {
-      console.warn(
-        '[@repo/auctions/lot-screener] schema validation failed for',
-        ref,
-        parsed.error.message
-      );
-      return null;
-    }
-
-    // De-duplicate flags (Set preserves insertion order in JS).
-    const uniqueFlags = Array.from(new Set(parsed.data.flags));
-
-    return {
-      conditionScore: parsed.data.conditionScore,
-      condition: parsed.data.condition,
-      flags: uniqueFlags,
-      rationale: parsed.data.rationale,
-      photoCount: fetched.length,
-      confidence: parsed.data.confidence,
-      modelUsed: MODEL,
-    };
-  } catch (err) {
-    console.error(
-      '[@repo/auctions/lot-screener] Claude vision call failed for',
-      ref,
-      err
-    );
+  // Never throws; null on any failure, logged to LlmCallLog by the client.
+  const parsed = await callClaudeForObject<z.infer<typeof AssessmentSchema>>({
+    system: SYSTEM_PROMPT,
+    user: userText,
+    schema: AssessmentSchema,
+    images: fetched.map((img) => ({
+      base64: img.data,
+      mediaType: img.mediaType,
+    })),
+    maxTokens: 600,
+    temperature: 0.2,
+    model: CLAUDE_SONNET,
+    feature: PHOTO_SCREEN_FEATURE,
+    attemptTimeoutMs: 60_000,
+  });
+  if (!parsed) {
     return null;
   }
+
+  // De-duplicate flags (Set preserves insertion order in JS).
+  const uniqueFlags = Array.from(new Set(parsed.flags));
+
+  return {
+    conditionScore: parsed.conditionScore,
+    condition: parsed.condition,
+    flags: uniqueFlags,
+    rationale: parsed.rationale,
+    photoCount: fetched.length,
+    confidence: parsed.confidence,
+    // The model actually billed is whatever the routing table says today;
+    // LlmCallLog has it per call. This label names the route, not a model.
+    modelUsed: `routed:${PHOTO_SCREEN_FEATURE}`,
+  };
 }
 
 /**
@@ -309,23 +256,4 @@ function samplePhotos(urls: string[], cap: number): string[] {
     if (url !== undefined) result.push(url);
   }
   return result;
-}
-
-// Tolerate stray prose / markdown fences in case the model ignores the
-// "JSON only" directive.
-function extractJson(text: string): Record<string, unknown> | null {
-  const trimmed = text.trim();
-  const fenced = trimmed.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
-  const candidate = fenced?.[1] ?? trimmed;
-  const start = candidate.indexOf('{');
-  const end = candidate.lastIndexOf('}');
-  if (start === -1 || end === -1 || end <= start) return null;
-  try {
-    return JSON.parse(candidate.slice(start, end + 1)) as Record<
-      string,
-      unknown
-    >;
-  } catch {
-    return null;
-  }
 }

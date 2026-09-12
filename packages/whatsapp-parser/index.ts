@@ -1,8 +1,18 @@
-import Anthropic from '@anthropic-ai/sdk';
-import { z } from 'zod';
-import { keys } from './keys';
+/**
+ * WhatsApp intake parser — a raw group message → a typed lead.
+ *
+ * Goes through the shared @repo/ai client (feature 'whatsapp_intake_parse'),
+ * so the model is a Settings → AI models decision and every parse lands in
+ * LlmCallLog. The reply is schema-constrained AND re-validated: the message
+ * body is attacker-controllable and the intake route auto-creates a
+ * ScoutLead from these fields.
+ */
 
-const env = keys();
+import { CLAUDE_SONNET, callClaudeForObject } from '@repo/ai/claude';
+import { keys } from '@repo/ai/keys';
+import { z } from 'zod';
+
+export const WHATSAPP_PARSE_FEATURE = 'whatsapp_intake_parse';
 
 export type SellerSituation =
   | 'probate'
@@ -64,8 +74,6 @@ const ParsedLeadSchema = z.object({
   confidence: z.number().optional(),
 });
 
-const MODEL = 'claude-sonnet-4-5';
-
 const SYSTEM_PROMPT = `You are a structured-data extractor for UK property investment leads shared in WhatsApp groups.
 
 Your job: read a raw WhatsApp message and extract lead fields into JSON.
@@ -96,92 +104,45 @@ Schema:
 }`;
 
 /**
- * Parse a raw WhatsApp message into a structured lead using Claude.
+ * Parse a raw WhatsApp message into a structured lead.
  *
- * Graceful: if ANTHROPIC_API_KEY is not set, returns { confidence: 0, rawNotes }
- * so callers can route the intake to manual review.
+ * Graceful: if no LLM key is set, or the call fails, returns
+ * { confidence: 0, rawNotes } so callers route the intake to manual review.
  */
 export async function parseWhatsAppMessage(
   rawText: string
 ): Promise<ParsedLead> {
-  if (!env.ANTHROPIC_API_KEY) {
+  const env = keys();
+  if (!(env.ANTHROPIC_API_KEY || env.OPENROUTER_API_KEY)) {
     console.warn(
-      '[@repo/whatsapp-parser] no ANTHROPIC_API_KEY set — skipping parse, returning manual-review placeholder'
+      '[@repo/whatsapp-parser] no LLM key set — skipping parse, returning manual-review placeholder'
     );
     return { confidence: 0, rawNotes: rawText };
   }
 
-  const client = new Anthropic({ apiKey: env.ANTHROPIC_API_KEY });
-
-  try {
-    const response = await client.messages.create({
-      model: MODEL,
-      max_tokens: 1024,
+  // Never throws; null on any failure. The `---` fence around the body is
+  // trivially escaped, so the shape is enforced by the schema, not trusted.
+  const validated = await callClaudeForObject<z.infer<typeof ParsedLeadSchema>>(
+    {
       system: SYSTEM_PROMPT,
-      messages: [
-        {
-          role: 'user',
-          content: `Extract the property lead from this WhatsApp message. Return JSON only.\n\n---\n${rawText}\n---`,
-        },
-      ],
-    });
-
-    const textBlock = response.content.find((c) => c.type === 'text');
-    if (!textBlock || textBlock.type !== 'text') {
-      return { confidence: 0, rawNotes: rawText };
+      user: `Extract the property lead from this WhatsApp message.\n\n---\n${rawText}\n---`,
+      schema: ParsedLeadSchema,
+      maxTokens: 1024,
+      temperature: 0.2,
+      model: CLAUDE_SONNET,
+      feature: WHATSAPP_PARSE_FEATURE,
+      attemptTimeoutMs: 30_000,
     }
-
-    const parsed = extractJson(textBlock.text);
-    if (!parsed) {
-      return { confidence: 0, rawNotes: rawText };
-    }
-
-    // The message body is attacker-controllable and the `---` fence around it
-    // is trivially escaped, so the reply is untrusted input. Validate the shape
-    // instead of casting: the intake route auto-creates a ScoutLead from these
-    // fields, and unknown keys were previously stored verbatim in rawPayload.
-    const validated = ParsedLeadSchema.safeParse(parsed);
-    if (!validated.success) {
-      console.warn('[@repo/whatsapp-parser] reply failed validation');
-      return { confidence: 0, rawNotes: rawText };
-    }
-
-    // Defensive: clamp confidence to [0, 1], default 0 if missing
-    const confidence =
-      typeof validated.data.confidence === 'number'
-        ? Math.max(0, Math.min(1, validated.data.confidence))
-        : 0;
-
-    return {
-      ...validated.data,
-      confidence,
-    } as ParsedLead;
-  } catch (err) {
-    console.error('[@repo/whatsapp-parser] Claude parse failed', err);
-    return {
-      confidence: 0,
-      rawNotes: rawText,
-    };
+  );
+  if (!validated) {
+    return { confidence: 0, rawNotes: rawText };
   }
-}
 
-// Some responses may have stray code fences or prose; tolerate gracefully.
-function extractJson(text: string): Record<string, unknown> | null {
-  const trimmed = text.trim();
+  // Defensive: clamp confidence to [0, 1], default 0 if missing
+  const confidence =
+    typeof validated.confidence === 'number'
+      ? Math.max(0, Math.min(1, validated.confidence))
+      : 0;
 
-  // Strip ```json ... ``` fences if present
-  const fenced = trimmed.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
-  const candidate = fenced ? fenced[1] : trimmed;
-
-  // Find first { ... last }
-  const start = candidate.indexOf('{');
-  const end = candidate.lastIndexOf('}');
-  if (start === -1 || end === -1 || end <= start) return null;
-
-  const jsonStr = candidate.slice(start, end + 1);
-  try {
-    return JSON.parse(jsonStr);
-  } catch {
-    return null;
-  }
+  return { ...validated, confidence } as ParsedLead;
 }

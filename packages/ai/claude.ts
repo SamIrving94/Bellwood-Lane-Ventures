@@ -547,10 +547,38 @@ export interface CallClaudeObjectInput<T> {
   feature?: string;
   /** Per-attempt wall-clock budget in ms. Default 8000. */
   attemptTimeoutMs?: number;
+  /**
+   * Images to place in the user turn ahead of the text (vision). Either a
+   * public URL or inline base64 with its media type. Anthropic and the
+   * OpenRouter vision models both accept the AI SDK image part; a routed
+   * model without vision fails the call, which returns null as usual.
+   */
+  images?: LlmImageInput[];
   /** INTERNAL — shadow-eval calls bypass routing. Do not set manually. */
   bypassRouting?: boolean;
   /** INTERNAL — provider prefs threaded to shadow calls. Do not set manually. */
   providerPrefs?: Record<string, unknown>;
+}
+
+export type LlmImageInput =
+  | string
+  | { base64: string; mediaType: string };
+
+/** Build the multimodal user message for an object call with images. */
+function imageMessages(input: CallClaudeObjectInput<unknown>): CoreMessage[] {
+  const parts: Array<
+    | { type: 'text'; text: string }
+    | { type: 'image'; image: string | URL; mimeType?: string }
+  > = [];
+  for (const img of input.images ?? []) {
+    if (typeof img === 'string') {
+      parts.push({ type: 'image', image: new URL(img) });
+    } else {
+      parts.push({ type: 'image', image: img.base64, mimeType: img.mediaType });
+    }
+  }
+  parts.push({ type: 'text', text: input.user });
+  return [{ role: 'user', content: parts }];
 }
 
 /**
@@ -578,14 +606,23 @@ export async function callClaudeForObject<T>(
 
   let lastUsage: { promptTokens?: number; completionTokens?: number } = {};
   const runModel = async (modelInstance: AiModelInstance): Promise<T> => {
-    const result = await generateObject({
-      model: modelInstance,
-      schema: input.schema,
-      system: input.system,
-      prompt: input.user,
-      maxTokens: input.maxTokens ?? 800,
-      temperature: input.temperature ?? 0.2,
-    });
+    const result = input.images?.length
+      ? await generateObject({
+          model: modelInstance,
+          schema: input.schema,
+          system: input.system,
+          messages: imageMessages(input),
+          maxTokens: input.maxTokens ?? 800,
+          temperature: input.temperature ?? 0.2,
+        })
+      : await generateObject({
+          model: modelInstance,
+          schema: input.schema,
+          system: input.system,
+          prompt: input.user,
+          maxTokens: input.maxTokens ?? 800,
+          temperature: input.temperature ?? 0.2,
+        });
     lastUsage = result.usage;
     return result.object;
   };
@@ -662,6 +699,21 @@ export async function callClaudeForObject<T>(
     errorReason: shortErrorReason(result.error),
   });
   return null;
+}
+
+// ───────────────────────────────────────────────────────────────────────────
+// Direct-call logging
+// ───────────────────────────────────────────────────────────────────────────
+
+/**
+ * For the few call sites that MUST talk to Anthropic directly because they
+ * use a feature the AI SDK path does not carry (the Files API + citations
+ * in probate-extract, the web-search server tool in overnight-research).
+ * They cannot be routed, but their spend should still land on the usage
+ * page next to everything else. Never throws.
+ */
+export function recordLlmCall(metric: LlmCallMetric): Promise<void> {
+  return logSafely(metric);
 }
 
 // ───────────────────────────────────────────────────────────────────────────
