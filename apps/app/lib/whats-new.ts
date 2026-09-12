@@ -26,6 +26,25 @@ export type WhatsNewEntry = {
 /** Newest first. The popup shows index 0. */
 export const WHATS_NEW: WhatsNewEntry[] = [
   {
+    id: '2026-09-12-batch-upload-big-number',
+    date: '2026-09-12',
+    emoji: '📄',
+    title: 'Fixed: a batch upload no longer dies on one oversized figure',
+    intro:
+      'The 11 Sep pipeline sheet had one Acceptable Trade Offer cell of 110,000,000 — a hundred times too big for the database. The whole upload failed silently before a batch was created, so "Run appraisals" never appeared.',
+    bullets: [
+      {
+        emoji: '✅',
+        text: 'Upload the same sheet again — every row now loads. The bad cell is left blank and that row shows as "no benchmark" so you can spot it.',
+      },
+      {
+        emoji: '🔎',
+        text: 'The limit is about £21.4m per cell. Anything above it is skipped, never guessed — fix the cell in the sheet and re-upload.',
+      },
+    ],
+    cta: { label: 'Open Batch', href: '/batch' },
+  },
+  {
     id: '2026-09-06-equity-proxy-flip',
     date: '2026-09-06',
     emoji: '⚖️',
