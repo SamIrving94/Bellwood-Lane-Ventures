@@ -186,6 +186,15 @@ export const POST = async (request: Request) => {
         comparableCount: r.comparableCount ?? null,
         comparables: r.comparables ?? [],
         requiresReview: Boolean(r.requiresCeoEscalation || r.discountCapped),
+        // Size economics: implied £/m², area £/sqft benchmark, and whether
+        // the size anchor joined the triangulation.
+        pricePerSqm: r.pricePerSqm ?? null,
+        areaPricePerSqft: r.areaPricePerSqft ?? null,
+        sizeAnchorValue: r.sizeAnchorValue ?? null,
+        sizeAnchorUsed: Boolean(r.sizeAnchorUsed),
+        // Listing body language + nearby distress — display context for the
+        // lead page. Null = PropertyData was unreachable at appraisal time.
+        marketSignals: r.marketSignals ?? null,
         // Uncertainty throttle (Zillow lesson): wide interval ⇒ a person
         // re-checks the comps before any offer. Never blocks or re-scores.
         intervalWidthRatio: r.intervalWidthRatio ?? null,

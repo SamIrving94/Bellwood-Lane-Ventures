@@ -26,6 +26,37 @@ export type WhatsNewEntry = {
 /** Newest first. The popup shows index 0. */
 export const WHATS_NEW: WhatsNewEntry[] = [
   {
+    id: '2026-09-12-appraisal-signals-and-size',
+    date: '2026-09-12',
+    emoji: '🫀',
+    title: 'Valuations now read body language — and price the square footage',
+    intro:
+      'The AVM used to price a property and stop. Now every appraisal reads how the LISTING is behaving, what else is struggling nearby — and what the size is actually worth.',
+    bullets: [
+      {
+        emoji: '📐',
+        text: '**Size, priced**: the EPC-verified square footage × the area’s £/sq ft now feeds the valuation — a 70m² and a 140m² house on the same street finally price differently. Shown on every appraisal with the area benchmark.',
+      },
+      {
+        emoji: '⏱️',
+        text: '**Days on market**, **price cuts** and how fast they’re coming — stamped on every valuation, on leads and deals alike.',
+      },
+      {
+        emoji: '🚩',
+        text: 'A clear badge when the property sits on a **distress list** (reduced, slow-to-sell, unmodernised, back-on-market…).',
+      },
+      {
+        emoji: '🏘️',
+        text: '**Nearby distress**: the other flagged listings within a quarter mile, deepest cuts first — the street’s mood at a glance.',
+      },
+      {
+        emoji: '🔒',
+        text: 'Display only — **no score or offer changes**. And no guessing: a listing is matched to a property only on solid address evidence.',
+      },
+    ],
+    cta: { label: 'Open your leads', href: '/leads' },
+  },
+  {
     id: '2026-08-23-zillow-uncertainty-discipline',
     date: '2026-08-23',
     emoji: '📏',

@@ -17,6 +17,7 @@ import {
   getPricePaid,
   getHousepriceIndex,
   getEpcData,
+  getPricesPerSqf,
   getPropertyDataValuation,
   getPropertyFloorArea,
   realTransactions,
@@ -78,6 +79,13 @@ export interface BaseValuation {
   /** The address the floor area was matched to (includes the house number). */
   resolvedAddress: string | null;
   pricePerSqm: number | null;
+  /** Area median £ per SQUARE FOOT (PropertyData /prices-per-sqf). */
+  areaPricePerSqft: number | null;
+  /** areaPricePerSqft × verified size — the size-anchored value estimate. */
+  sizeAnchorValue: number | null;
+  /** True when the size anchor joined the triangulation (verified size +
+   * benchmark present + within the deviation guard vs the CSA). */
+  sizeAnchorUsed: boolean;
   source: string;
   /** Present when the distance-weighted PropertyData path produced the CSA. */
   distanceWeighted?: DistanceWeightedValuation | null;
@@ -102,7 +110,9 @@ const PPDTYPE_MAP: Record<string, PropertyType> = {
 };
 
 function normaliseType(raw: string): PropertyType {
-  return PPDTYPE_MAP[raw] ?? PPDTYPE_MAP[raw.charAt(0).toUpperCase()] ?? 'terraced';
+  return (
+    PPDTYPE_MAP[raw] ?? PPDTYPE_MAP[raw.charAt(0).toUpperCase()] ?? 'terraced'
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -110,9 +120,9 @@ function normaliseType(raw: string): PropertyType {
 // ---------------------------------------------------------------------------
 
 const BEDROOM_PREMIUM: Record<number, number> = {
-  1: -0.20,
+  1: -0.2,
   2: -0.05,
-  3: 0.00,
+  3: 0.0,
   4: 0.12,
   5: 0.22,
 };
@@ -171,7 +181,8 @@ function filterComps(
   // Remove outliers beyond 2σ
   const prices = adjusted.map((t) => t.adjustedPrice);
   const mean = prices.reduce((s, p) => s + p, 0) / prices.length;
-  const variance = prices.reduce((s, p) => s + (p - mean) ** 2, 0) / prices.length;
+  const variance =
+    prices.reduce((s, p) => s + (p - mean) ** 2, 0) / prices.length;
   const sd = Math.sqrt(variance);
   const cleaned = adjusted.filter(
     (t) => Math.abs(t.adjustedPrice - mean) <= 2 * sd
@@ -188,13 +199,12 @@ function calcConfidence(
   hedonicVal: number,
   csaVal: number
 ): { level: ConfidenceLevel; interval: number } {
-  if (hedonicVal === 0 || csaVal === 0)
-    return { level: 'low', interval: 0.08 };
+  if (hedonicVal === 0 || csaVal === 0) return { level: 'low', interval: 0.08 };
 
   const spread = Math.abs(hedonicVal - csaVal) / ((hedonicVal + csaVal) / 2);
 
   if (spread < 0.05) return { level: 'high', interval: 0.03 };
-  if (spread < 0.10) return { level: 'medium', interval: 0.05 };
+  if (spread < 0.1) return { level: 'medium', interval: 0.05 };
   return { level: 'low', interval: 0.08 };
 }
 
@@ -205,7 +215,11 @@ function calcConfidence(
 // one data point). Founder rule: ~4 sold within half a mile ⇒ high.
 // ---------------------------------------------------------------------------
 
-const CONF_RANK: Record<ConfidenceLevel, number> = { low: 0, medium: 1, high: 2 };
+const CONF_RANK: Record<ConfidenceLevel, number> = {
+  low: 0,
+  medium: 1,
+  high: 2,
+};
 const CONF_INTERVAL: Record<ConfidenceLevel, number> = {
   high: 0.03,
   medium: 0.05,
@@ -220,7 +234,10 @@ function confidenceCeilingFromComps(compCount: number): ConfidenceLevel {
 }
 
 /** The more conservative (lower) of two confidence levels. */
-function minConfidence(a: ConfidenceLevel, b: ConfidenceLevel): ConfidenceLevel {
+function minConfidence(
+  a: ConfidenceLevel,
+  b: ConfidenceLevel
+): ConfidenceLevel {
   return CONF_RANK[a] <= CONF_RANK[b] ? a : b;
 }
 
@@ -253,7 +270,15 @@ export async function getBaseValuation(
 ): Promise<BaseValuation> {
   const { postcode, propertyType, floorAreaSqm, bedrooms, address } = input;
 
-  const [pricePaid, hpi, epc, externalAvm, distanceWeighted, pdFloorArea] = await Promise.all([
+  const [
+    pricePaid,
+    hpi,
+    epc,
+    externalAvm,
+    distanceWeighted,
+    pdFloorArea,
+    pricesPerSqf,
+  ] = await Promise.all([
     getPricePaid(postcode, 20),
     getHousepriceIndex(postcode),
     getEpcData(postcode, address),
@@ -274,7 +299,7 @@ export async function getBaseValuation(
     }).catch((err) => {
       console.warn(
         `[base-valuation] external AVM cross-check unavailable for ${postcode}`,
-        err,
+        err
       );
       return null;
     }),
@@ -300,7 +325,17 @@ export async function getBaseValuation(
     }).catch((err) => {
       console.warn(
         `[base-valuation] PropertyData floor-area lookup unavailable for ${postcode}`,
-        err,
+        err
+      );
+      return null;
+    }),
+    // Area £/sqft benchmark (median, 30-day cache). Feeds the size anchor:
+    // benchmark × verified size joins the triangulation below. Best-effort —
+    // a dark benchmark just means the anchor sits out this run.
+    getPricesPerSqf(postcode).catch((err) => {
+      console.warn(
+        `[base-valuation] /prices-per-sqf benchmark unavailable for ${postcode}`,
+        err
       );
       return null;
     }),
@@ -313,7 +348,7 @@ export async function getBaseValuation(
   const hmlrComps = filterComps(
     realTransactions(pricePaid.transactions),
     propertyType,
-    floorAreaSqm,
+    floorAreaSqm
   );
 
   // Floor-area resolution — real data or nothing. Priority:
@@ -322,8 +357,7 @@ export async function getBaseValuation(
   // We deliberately DO NOT fall back to epc.floorAreaSqm here: that comes from
   // a street-level EPC search that can grab a neighbouring property (the M14
   // "doubled size" bug). No match → null → the UI shows no size.
-  const effectiveFloorArea =
-    floorAreaSqm ?? pdFloorArea?.floorAreaSqm ?? null;
+  const effectiveFloorArea = floorAreaSqm ?? pdFloorArea?.floorAreaSqm ?? null;
   const floorAreaSource: BaseValuation['floorAreaSource'] = floorAreaSqm
     ? 'caller'
     : pdFloorArea
@@ -354,11 +388,17 @@ export async function getBaseValuation(
     }));
     csaSource = 'distance';
   } else if (hmlrComps.length > 0) {
-    const sorted = [...hmlrComps].sort((a, b) => a.adjustedPrice - b.adjustedPrice);
+    const sorted = [...hmlrComps].sort(
+      (a, b) => a.adjustedPrice - b.adjustedPrice
+    );
     const mid = Math.floor(sorted.length / 2);
     csaValue =
       sorted.length % 2 === 0
-        ? Math.round(((sorted[mid - 1]?.adjustedPrice ?? 0) + (sorted[mid]?.adjustedPrice ?? 0)) / 2)
+        ? Math.round(
+            ((sorted[mid - 1]?.adjustedPrice ?? 0) +
+              (sorted[mid]?.adjustedPrice ?? 0)) /
+              2
+          )
         : (sorted[mid]?.adjustedPrice ?? 0);
     comparables = hmlrComps.map((c) => ({
       price: c.price,
@@ -387,24 +427,91 @@ export async function getBaseValuation(
   }
 
   // Hedonic estimate — anchored to CSA, adjusted for size/bedrooms
-  const hedonicValue = hedonicEstimate(csaValue, effectiveFloorArea, effectiveBedrooms, epc.floorAreaSqm);
+  const hedonicValue = hedonicEstimate(
+    csaValue,
+    effectiveFloorArea,
+    effectiveBedrooms,
+    epc.floorAreaSqm
+  );
 
   // HPI trend nudge: apply half the annual change as a sentiment adjustment
   const hpiNudge = 1 + (hpi.annualChange / 100) * 0.15;
   const hpiAdjustedHedonic = Math.round(hedonicValue * hpiNudge);
 
-  // Weighted triangulation.
-  //   Distance CSA present:  CSA 60%, Hedonic 25%, External 15% (or 70/30)
-  //   HMLR CSA, with ext:    CSA 40%, Hedonic 40%, External 20%
-  //   HMLR CSA, no ext:      CSA 50%, Hedonic 50%
+  // Size anchor — area median £/sqft × the VERIFIED size. This is the pillar
+  // that actually prices the square footage: comps are priced whole, so
+  // before this a 70m² and a 140m² terrace on the same street triangulated
+  // to the same number. Two hard gates, both founder principles:
+  //   1. Only a verified size counts (caller-typed or house-number-matched
+  //      EPC record) — never the street-level EPC guess (the M14 bug).
+  //   2. Deviation guard: /prices-per-sqf is postcode-level and mixes flats
+  //      with houses, so an anchor >40% away from the comp-based CSA is
+  //      treated as a benchmark mismatch and sits out — recorded, not used.
+  const SQFT_PER_SQM = 10.7639;
+  const areaPricePerSqft = pricesPerSqf?.medianPerSqft ?? null;
+  let sizeAnchorValue: number | null = null;
+  let sizeAnchorUsed = false;
+  if (effectiveFloorArea && effectiveFloorArea > 0 && areaPricePerSqft) {
+    sizeAnchorValue = Math.round(
+      areaPricePerSqft * effectiveFloorArea * SQFT_PER_SQM
+    );
+    const MAX_ANCHOR_DEVIATION = 0.4;
+    sizeAnchorUsed =
+      csaValue > 0 &&
+      Math.abs(sizeAnchorValue - csaValue) / csaValue <= MAX_ANCHOR_DEVIATION;
+  }
+
+  // Weighted triangulation. Without a size anchor the weights are unchanged
+  // from the original three-pillar blend (locked by the golden tests).
+  //   No anchor:
+  //     Distance CSA present:  CSA 60%, Hedonic 25%, External 15% (or 70/30)
+  //     HMLR CSA, with ext:    CSA 40%, Hedonic 40%, External 20%
+  //     HMLR CSA, no ext:      CSA 50%, Hedonic 50%
+  //   With anchor (verified size + benchmark, within the guard):
+  //     Distance + ext:        CSA 55%, Hedonic 20%, Anchor 15%, Ext 10%
+  //     Distance, no ext:      CSA 60%, Hedonic 25%, Anchor 15%
+  //     HMLR + ext:            CSA 35%, Hedonic 30%, Anchor 20%, Ext 15%
+  //     HMLR, no ext:          CSA 40%, Hedonic 35%, Anchor 25%
+  // The anchor's share is kept below the CSA's everywhere: real sold comps
+  // stay the loudest voice, the £/sqft benchmark corrects for size.
   let pointEstimate: number;
-  if (csaSource === 'distance') {
+  if (sizeAnchorUsed && sizeAnchorValue !== null) {
+    if (csaSource === 'distance') {
+      pointEstimate = externalAvm
+        ? Math.round(
+            csaValue * 0.55 +
+              hpiAdjustedHedonic * 0.2 +
+              sizeAnchorValue * 0.15 +
+              externalAvm.estimate * 0.1
+          )
+        : Math.round(
+            csaValue * 0.6 + hpiAdjustedHedonic * 0.25 + sizeAnchorValue * 0.15
+          );
+    } else {
+      pointEstimate = externalAvm
+        ? Math.round(
+            csaValue * 0.35 +
+              hpiAdjustedHedonic * 0.3 +
+              sizeAnchorValue * 0.2 +
+              externalAvm.estimate * 0.15
+          )
+        : Math.round(
+            csaValue * 0.4 + hpiAdjustedHedonic * 0.35 + sizeAnchorValue * 0.25
+          );
+    }
+  } else if (csaSource === 'distance') {
     pointEstimate = externalAvm
-      ? Math.round(csaValue * 0.6 + hpiAdjustedHedonic * 0.25 + externalAvm.estimate * 0.15)
+      ? Math.round(
+          csaValue * 0.6 +
+            hpiAdjustedHedonic * 0.25 +
+            externalAvm.estimate * 0.15
+        )
       : Math.round(csaValue * 0.7 + hpiAdjustedHedonic * 0.3);
   } else {
     pointEstimate = externalAvm
-      ? Math.round(csaValue * 0.4 + hpiAdjustedHedonic * 0.4 + externalAvm.estimate * 0.2)
+      ? Math.round(
+          csaValue * 0.4 + hpiAdjustedHedonic * 0.4 + externalAvm.estimate * 0.2
+        )
       : Math.round(csaValue * 0.5 + hpiAdjustedHedonic * 0.5);
   }
 
@@ -428,7 +535,7 @@ export async function getBaseValuation(
   // evidence behind this estimate.
   const confidenceLevel = minConfidence(
     signalLevel,
-    confidenceCeilingFromComps(comparables.length),
+    confidenceCeilingFromComps(comparables.length)
   );
   const confidenceInterval = CONF_INTERVAL[confidenceLevel];
 
@@ -442,12 +549,14 @@ export async function getBaseValuation(
   // (otherwise the source string silently implies a signal we didn't use).
   const hpiTag = hpi.source === 'hmlr_hpi' ? '+hmlr_hpi' : '';
   const epcTag = epc.source === 'epc_register' ? '+epc' : '';
+  // The size anchor is advertised only when it actually joined the blend.
+  const ppsfTag = sizeAnchorUsed ? '+ppsf' : '';
   const source =
     csaSource === 'distance' && distanceWeighted
-      ? `propertydata_sold_distance(${distanceWeighted.nearCount}@0.25mi/${distanceWeighted.farCount}@0.5mi)${hpiTag}${epcTag}`
+      ? `propertydata_sold_distance(${distanceWeighted.nearCount}@0.25mi/${distanceWeighted.farCount}@0.5mi)${hpiTag}${epcTag}${ppsfTag}`
       : pricePaid.source === 'synthetic'
         ? 'synthetic'
-        : `hmlr_ppd${hpiTag}${epcTag}`;
+        : `hmlr_ppd${hpiTag}${epcTag}${ppsfTag}`;
 
   return {
     postcode,
@@ -464,6 +573,9 @@ export async function getBaseValuation(
     floorAreaSource,
     resolvedAddress,
     pricePerSqm,
+    areaPricePerSqft,
+    sizeAnchorValue,
+    sizeAnchorUsed,
     source,
     distanceWeighted: distanceWeighted ?? null,
   };

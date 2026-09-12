@@ -21,6 +21,7 @@ export type { PropertyDataType };
 
 import { z } from 'zod';
 import { keys } from '../keys';
+import { buildMarketSignals, type MarketSignals } from './market-signals';
 
 const env = keys();
 
@@ -67,7 +68,7 @@ export function __clearMemoryCache(): void {
 async function invalidatePersistent(
   store: PersistentCacheStore,
   key: string,
-  endpoint: string,
+  endpoint: string
 ): Promise<void> {
   cache.delete(key);
   if (!store.delete) return;
@@ -76,7 +77,7 @@ async function invalidatePersistent(
   } catch (error) {
     console.warn(
       `[propertydata] persistent cache invalidate failed for ${endpoint}`,
-      error,
+      error
     );
   }
 }
@@ -98,7 +99,7 @@ function logCreditUsage(endpoint: string, credits: number, fromCache: boolean) {
   }
   creditsThisProcess += credits;
   console.info(
-    `[propertydata] ${endpoint} +${credits} credits (process total: ${creditsThisProcess})`,
+    `[propertydata] ${endpoint} +${credits} credits (process total: ${creditsThisProcess})`
   );
 }
 
@@ -132,7 +133,7 @@ export type PropertyDataResult<T> =
 export class PropertyDataUnavailableError extends Error {
   constructor(
     public readonly endpoint: string,
-    public readonly detail: string,
+    public readonly detail: string
   ) {
     super(`[propertydata ${endpoint}] lookup unavailable: ${detail}`);
     this.name = 'PropertyDataUnavailableError';
@@ -166,7 +167,7 @@ class PropertyDataError extends Error {
   constructor(
     public readonly endpoint: string,
     public readonly status: number,
-    message: string,
+    message: string
   ) {
     super(`[propertydata ${endpoint}] ${status}: ${message}`);
   }
@@ -205,14 +206,14 @@ type FetchOptions<T> = {
 async function fetchPropertyData<T>(
   endpoint: string,
   params: Record<string, string | number | undefined>,
-  options: FetchOptions<T>,
+  options: FetchOptions<T>
 ): Promise<PropertyDataResult<T>> {
   const apiKey = env.PROPERTYDATA_API_KEY;
   if (!apiKey) {
     // A missing key is a FAILURE, not an absence of data. Reporting it as "no
     // data" is how an unconfigured project looked healthy for weeks.
     console.warn(
-      `[propertydata] ${endpoint} skipped — no PROPERTYDATA_API_KEY configured`,
+      `[propertydata] ${endpoint} skipped — no PROPERTYDATA_API_KEY configured`
     );
     return { outcome: 'failed', error: 'PROPERTYDATA_API_KEY not configured' };
   }
@@ -265,7 +266,7 @@ async function fetchPropertyData<T>(
           console.warn(
             `[propertydata] ${endpoint} durable cache entry rejected (${
               revalidated.success ? 'no usable content' : 'schema mismatch'
-            }) — invalidating and re-fetching`,
+            }) — invalidating and re-fetching`
           );
           await invalidatePersistent(persistentStore, cacheKey, endpoint);
         }
@@ -273,7 +274,7 @@ async function fetchPropertyData<T>(
     } catch (error) {
       console.warn(
         `[propertydata] persistent cache read failed for ${endpoint}`,
-        error,
+        error
       );
     }
   }
@@ -312,7 +313,7 @@ async function fetchPropertyData<T>(
       throw new PropertyDataError(
         endpoint,
         res.status,
-        await res.text().catch(() => res.statusText),
+        await res.text().catch(() => res.statusText)
       );
     }
     const json = await res.json();
@@ -320,7 +321,7 @@ async function fetchPropertyData<T>(
     if (!parsed.success) {
       console.warn(
         `[propertydata] ${endpoint} response failed schema validation`,
-        parsed.error.flatten(),
+        parsed.error.flatten()
       );
       return {
         outcome: 'failed',
@@ -333,8 +334,8 @@ async function fetchPropertyData<T>(
       // cached: a 90-day TTL on drift poisons every instance until it expires.
       console.error(
         `[propertydata] ${endpoint} SCHEMA DRIFT — response validated but carries none of the expected fields. Not cached. Top-level keys: ${Object.keys(
-          (json ?? {}) as Record<string, unknown>,
-        ).join(', ')}`,
+          (json ?? {}) as Record<string, unknown>
+        ).join(', ')}`
       );
       return {
         outcome: 'failed',
@@ -350,8 +351,8 @@ async function fetchPropertyData<T>(
         .catch((error) =>
           console.warn(
             `[propertydata] persistent cache write failed for ${endpoint}`,
-            error,
-          ),
+            error
+          )
         );
     }
     logCreditUsage(endpoint, options.estimatedCredits, false);
@@ -365,7 +366,9 @@ async function fetchPropertyData<T>(
       };
     }
     if ((error as { name?: string })?.name === 'AbortError') {
-      console.warn(`[propertydata] ${endpoint} timed out after ${REQUEST_TIMEOUT_MS}ms`);
+      console.warn(
+        `[propertydata] ${endpoint} timed out after ${REQUEST_TIMEOUT_MS}ms`
+      );
       return {
         outcome: 'failed',
         error: `${endpoint} timed out after ${REQUEST_TIMEOUT_MS}ms`,
@@ -438,17 +441,21 @@ export async function getPropertyDataValuation(input: {
 }): Promise<ValuationSaleResult> {
   const data = unwrap(
     '/valuation-sale',
-    await fetchPropertyData('/valuation-sale', {
-      postcode: input.postcode,
-      property_type: toPropertyDataType(input.propertyType),
-      bedrooms: input.bedrooms,
-      internal_area: input.internalAreaSqm,
-    }, {
-      ttlMs: 7 * 24 * 60 * 60 * 1000,
-      estimatedCredits: 3,
-      schema: ValuationSaleSchema,
-      hasContent: (d) => d.result !== undefined,
-    }),
+    await fetchPropertyData(
+      '/valuation-sale',
+      {
+        postcode: input.postcode,
+        property_type: toPropertyDataType(input.propertyType),
+        bedrooms: input.bedrooms,
+        internal_area: input.internalAreaSqm,
+      },
+      {
+        ttlMs: 7 * 24 * 60 * 60 * 1000,
+        estimatedCredits: 3,
+        schema: ValuationSaleSchema,
+        hasContent: (d) => d.result !== undefined,
+      }
+    )
   );
   if (!data?.result) return null;
   const r = data.result;
@@ -476,7 +483,7 @@ const FloorAreasSchema = z.object({
             total_floor_area: z.number().optional(),
             bedrooms: z.number().optional(),
             property_type: z.string().optional(),
-          }),
+          })
         )
         .optional(),
       average_floor_area: z.number().optional(),
@@ -493,12 +500,16 @@ const FloorAreasSchema = z.object({
 export async function getFloorAreas(postcode: string) {
   return unwrap(
     '/floor-areas',
-    await fetchPropertyData('/floor-areas', { postcode }, {
-      ttlMs: 90 * 24 * 60 * 60 * 1000,
-      estimatedCredits: 2,
-      schema: FloorAreasSchema,
-      hasContent: (d) => Array.isArray(d.result?.properties),
-    }),
+    await fetchPropertyData(
+      '/floor-areas',
+      { postcode },
+      {
+        ttlMs: 90 * 24 * 60 * 60 * 1000,
+        estimatedCredits: 2,
+        schema: FloorAreasSchema,
+        hasContent: (d) => Array.isArray(d.result?.properties),
+      }
+    )
   );
 }
 
@@ -551,8 +562,14 @@ export async function getPropertyFloorArea(input: {
 }): Promise<PropertyFloorArea | null> {
   const data = await getFloorAreas(input.postcode);
   const properties = (data?.result?.properties ?? []).filter(
-    (p): p is { address?: string; total_floor_area: number; bedrooms?: number; property_type?: string } =>
-      typeof p.total_floor_area === 'number' && p.total_floor_area > 0,
+    (
+      p
+    ): p is {
+      address?: string;
+      total_floor_area: number;
+      bedrooms?: number;
+      property_type?: string;
+    } => typeof p.total_floor_area === 'number' && p.total_floor_area > 0
   );
   if (properties.length === 0) return null;
 
@@ -560,7 +577,7 @@ export async function getPropertyFloorArea(input: {
   const wanted = input.address ? houseIdentifier(input.address) : null;
   if (wanted) {
     const hit = properties.find(
-      (p) => p.address && houseIdentifier(p.address) === wanted,
+      (p) => p.address && houseIdentifier(p.address) === wanted
     );
     if (hit) {
       return {
@@ -620,14 +637,18 @@ const FloodRiskSchema = z.object({
 export async function getFloodRisk(postcode: string) {
   return unwrap(
     '/flood-risk',
-    await fetchPropertyData('/flood-risk', { postcode }, {
-      ttlMs: 90 * 24 * 60 * 60 * 1000,
-      estimatedCredits: 2,
-      schema: FloodRiskSchema,
-      hasContent: (d) =>
-        d.result?.rivers_and_sea !== undefined ||
-        d.result?.surface_water !== undefined,
-    }),
+    await fetchPropertyData(
+      '/flood-risk',
+      { postcode },
+      {
+        ttlMs: 90 * 24 * 60 * 60 * 1000,
+        estimatedCredits: 2,
+        schema: FloodRiskSchema,
+        hasContent: (d) =>
+          d.result?.rivers_and_sea !== undefined ||
+          d.result?.surface_water !== undefined,
+      }
+    )
   );
 }
 
@@ -652,14 +673,18 @@ const DemandSchema = z.object({
  * ~2 credits, 7-day cache.
  */
 export function getMarketDemandResult(postcode: string) {
-  return fetchPropertyData('/demand', { postcode }, {
-    ttlMs: 7 * 24 * 60 * 60 * 1000,
-    estimatedCredits: 2,
-    schema: DemandSchema,
-    hasContent: (d) =>
-      d.result?.sales_demand_score !== undefined ||
-      d.result?.days_on_market_average !== undefined,
-  });
+  return fetchPropertyData(
+    '/demand',
+    { postcode },
+    {
+      ttlMs: 7 * 24 * 60 * 60 * 1000,
+      estimatedCredits: 2,
+      schema: DemandSchema,
+      hasContent: (d) =>
+        d.result?.sales_demand_score !== undefined ||
+        d.result?.days_on_market_average !== undefined,
+    }
+  );
 }
 
 export async function getMarketDemand(postcode: string) {
@@ -682,7 +707,7 @@ const AgentsSchema = z.object({
             address: z.string().optional(),
             number_of_listings: z.number().optional(),
             url: z.string().optional(),
-          }),
+          })
         )
         .optional(),
     })
@@ -698,12 +723,16 @@ const AgentsSchema = z.object({
 export async function getAgentsByPostcode(postcode: string) {
   return unwrap(
     '/agents',
-    await fetchPropertyData('/agents', { postcode }, {
-      ttlMs: 7 * 24 * 60 * 60 * 1000,
-      estimatedCredits: 3,
-      schema: AgentsSchema,
-      hasContent: (d) => Array.isArray(d.result?.agents),
-    }),
+    await fetchPropertyData(
+      '/agents',
+      { postcode },
+      {
+        ttlMs: 7 * 24 * 60 * 60 * 1000,
+        estimatedCredits: 3,
+        schema: AgentsSchema,
+        hasContent: (d) => Array.isArray(d.result?.agents),
+      }
+    )
   );
 }
 
@@ -749,7 +778,7 @@ const SourcedPropertiesSchema = z.object({
           image_url: z.string().nullable().optional(),
           url: z.string().nullable().optional(),
         })
-        .partial(),
+        .partial()
     )
     .optional(),
 });
@@ -860,7 +889,7 @@ export type ListTypeBreakdown = Record<
 
 export async function probeSourcedByType(
   postcode: string,
-  opts?: { radiusMiles?: number; types?: readonly SourcedListType[] },
+  opts?: { radiusMiles?: number; types?: readonly SourcedListType[] }
 ): Promise<ListTypeBreakdown> {
   const types = opts?.types ?? SOURCED_LIST_TYPES;
   const out: Partial<ListTypeBreakdown> = {};
@@ -898,7 +927,7 @@ export async function probeSourcedByType(
         count: Array.isArray(properties) ? properties.length : 0,
         error: null,
       };
-    }),
+    })
   );
 
   for (const t of SOURCED_LIST_TYPES) {
@@ -914,7 +943,7 @@ export async function getSourcedPropertiesRaw(
     list?: string;
     standardisedType?: string;
     includeSstc?: boolean;
-  },
+  }
 ): Promise<{
   ok: boolean;
   status?: number;
@@ -922,7 +951,8 @@ export async function getSourcedPropertiesRaw(
   error?: string;
 }> {
   const apiKey = env.PROPERTYDATA_API_KEY;
-  if (!apiKey) return { ok: false, error: 'PROPERTYDATA_API_KEY not configured' };
+  if (!apiKey)
+    return { ok: false, error: 'PROPERTYDATA_API_KEY not configured' };
   const url = new URL(`${API_BASE}/sourced-properties`);
   url.searchParams.set('key', apiKey);
   url.searchParams.set('postcode', normalisePostcodeParam(postcode));
@@ -993,7 +1023,7 @@ export async function getSourcedProperties(
     list?: string;
     standardisedType?: string;
     includeSstc?: boolean;
-  },
+  }
 ): Promise<SourcedProperty[]> {
   const params: Record<string, string | number> = {
     postcode,
@@ -1016,25 +1046,19 @@ export async function getSourcedProperties(
   // PropertyData ok. Callers already wrap this in try/catch.
   const data = unwrap(
     '/sourced-properties',
-    await fetchPropertyData(
-      '/sourced-properties',
-      params,
-      {
-        ttlMs: 24 * 60 * 60 * 1000,
-        estimatedCredits: 1,
-        schema: SourcedPropertiesSchema,
-        hasContent: (d) => Array.isArray(d.properties),
-      },
-    ),
+    await fetchPropertyData('/sourced-properties', params, {
+      ttlMs: 24 * 60 * 60 * 1000,
+      estimatedCredits: 1,
+      schema: SourcedPropertiesSchema,
+      hasContent: (d) => Array.isArray(d.properties),
+    })
   );
   // PropertyData puts properties[] at the ROOT of the body, not under `result`.
   // The `list` field at root is an object {id, name}; use id as the listing type.
-  const body = data as
-    | {
-        properties?: unknown[];
-        list?: { id?: string; name?: string };
-      }
-    | null;
+  const body = data as {
+    properties?: unknown[];
+    list?: { id?: string; name?: string };
+  } | null;
   const properties = body?.properties;
   const listSlug =
     typeof body?.list?.id === 'string' ? body.list.id : 'distressed';
@@ -1064,7 +1088,7 @@ export async function getSourcedProperties(
     if (currentPrice && maxHistPrice > currentPrice) {
       originalPricePence = Math.round(maxHistPrice * 100);
       discountPercent = Math.round(
-        ((maxHistPrice - currentPrice) / maxHistPrice) * 100,
+        ((maxHistPrice - currentPrice) / maxHistPrice) * 100
       );
     }
     // Walk history chronologically to count distinct price DROPS.
@@ -1135,7 +1159,7 @@ export async function getSourcedProperties(
  */
 export async function getSourcedPropertiesMulti(
   postcode: string,
-  opts?: { radiusMiles?: number; lists?: readonly string[] },
+  opts?: { radiusMiles?: number; lists?: readonly string[] }
 ): Promise<SourcedProperty[]> {
   // Seven lists: the six core distress signals + back-on-market (failed
   // sale = motivated vendor). Keep in lockstep with DEFAULT_LIST above.
@@ -1159,10 +1183,10 @@ export async function getSourcedPropertiesMulti(
           // Stronger signal wins (earlier in SOURCED_LIST_TYPES = higher signal)
           const existing = seen.get(key)!;
           const existingRank = SOURCED_LIST_TYPES.indexOf(
-            existing.listingType as (typeof SOURCED_LIST_TYPES)[number],
+            existing.listingType as (typeof SOURCED_LIST_TYPES)[number]
           );
           const newRank = SOURCED_LIST_TYPES.indexOf(
-            p.listingType as (typeof SOURCED_LIST_TYPES)[number],
+            p.listingType as (typeof SOURCED_LIST_TYPES)[number]
           );
           if (newRank >= 0 && (existingRank < 0 || newRank < existingRank)) {
             seen.set(key, p);
@@ -1186,11 +1210,40 @@ export async function getSourcedPropertiesMulti(
   if (failures.length === lists.length && lists.length > 0) {
     throw new PropertyDataUnavailableError(
       '/sourced-properties',
-      `all ${lists.length} list types failed — ${failures[0]}`,
+      `all ${lists.length} list types failed — ${failures[0]}`
     );
   }
 
   return Array.from(seen.values());
+}
+
+/**
+ * Market signals for ONE subject property — its own listing behaviour (days
+ * on market, cuts, velocity, distress-list membership) plus the other
+ * distress-flagged listings around it. One /sourced-properties call with all
+ * seven lists combined (cached 24h by postcode+list+radius), ~1 credit.
+ *
+ * `sstc` listings are INCLUDED here: for an appraisal, "under offer after 3
+ * cuts" is signal, not noise. Throws when PropertyData is unreachable —
+ * callers (runAVM) catch and record null, because "no signals" and
+ * "signals unavailable" are different facts.
+ */
+export async function getSubjectMarketSignals(input: {
+  postcode: string;
+  address?: string | null;
+  radiusMiles?: number;
+}): Promise<MarketSignals> {
+  const radiusMiles = input.radiusMiles ?? 0.25;
+  const listings = await getSourcedProperties(input.postcode, {
+    list: DEFAULT_LIST,
+    radiusMiles,
+    includeSstc: true,
+  });
+  return buildMarketSignals({
+    subject: { address: input.address, postcode: input.postcode },
+    listings,
+    radiusMiles,
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -1213,7 +1266,7 @@ const EpcSchema = z.object({
               total_floor_area: z.number().optional(),
               inspection_date: z.string().optional(),
             })
-            .partial(),
+            .partial()
         )
         .optional(),
       average_rating: z.string().optional(),
@@ -1239,7 +1292,7 @@ export type EpcReading = {
  * to match by address fuzzy-string.
  */
 export async function getEpcByPostcodeResult(
-  postcode: string,
+  postcode: string
 ): Promise<PropertyDataResult<EpcReading[]>> {
   const res = await fetchPropertyData(
     '/energy-efficiency',
@@ -1249,14 +1302,18 @@ export async function getEpcByPostcodeResult(
       estimatedCredits: 2,
       schema: EpcSchema,
       hasContent: (d) => Array.isArray(d.result?.properties),
-    },
+    }
   );
   if (res.outcome !== 'ok') return res;
   return { outcome: 'ok', value: readEpcRows(res.value) };
 }
 
-export async function getEpcByPostcode(postcode: string): Promise<EpcReading[]> {
-  return unwrap('/energy-efficiency', await getEpcByPostcodeResult(postcode)) ?? [];
+export async function getEpcByPostcode(
+  postcode: string
+): Promise<EpcReading[]> {
+  return (
+    unwrap('/energy-efficiency', await getEpcByPostcodeResult(postcode)) ?? []
+  );
 }
 
 function readEpcRows(data: unknown): EpcReading[] {
@@ -1309,7 +1366,7 @@ const FreeholdsSchema = z.object({
               ground_rent: z.number().optional(),
               service_charge: z.number().optional(),
             })
-            .partial(),
+            .partial()
         )
         .optional(),
     })
@@ -1331,7 +1388,7 @@ export type TenureReading = {
  * post-survey surprises. ~3 credits, 30-day cache.
  */
 export async function getTenureByPostcodeResult(
-  postcode: string,
+  postcode: string
 ): Promise<PropertyDataResult<TenureReading[]>> {
   const res = await fetchPropertyData(
     '/freeholds',
@@ -1341,14 +1398,14 @@ export async function getTenureByPostcodeResult(
       estimatedCredits: 3,
       schema: FreeholdsSchema,
       hasContent: (d) => Array.isArray(d.result?.properties),
-    },
+    }
   );
   if (res.outcome !== 'ok') return res;
   return { outcome: 'ok', value: readTenureRows(res.value) };
 }
 
 export async function getTenureByPostcode(
-  postcode: string,
+  postcode: string
 ): Promise<TenureReading[]> {
   return unwrap('/freeholds', await getTenureByPostcodeResult(postcode)) ?? [];
 }
@@ -1364,10 +1421,11 @@ function readTenureRows(data: unknown): TenureReading[] {
     if (!address) continue;
     const rawTenure =
       typeof p.tenure === 'string' ? p.tenure.toLowerCase() : 'unknown';
-    const tenure: TenureReading['tenure'] =
-      rawTenure.includes('lease') ? 'leasehold'
-      : rawTenure.includes('free') ? 'freehold'
-      : 'unknown';
+    const tenure: TenureReading['tenure'] = rawTenure.includes('lease')
+      ? 'leasehold'
+      : rawTenure.includes('free')
+        ? 'freehold'
+        : 'unknown';
     out.push({
       address,
       tenure,
@@ -1407,7 +1465,7 @@ const ListingsSchema = z.object({
               agent_name: z.string().optional(),
               agent_phone: z.string().optional(),
             })
-            .partial(),
+            .partial()
         )
         .optional(),
     })
@@ -1435,23 +1493,19 @@ export type ActiveListing = {
  */
 export async function getActiveListings(
   postcode: string,
-  opts?: { radiusMiles?: number; minDaysOnMarket?: number },
+  opts?: { radiusMiles?: number; minDaysOnMarket?: number }
 ): Promise<ActiveListing[]> {
   const params: Record<string, string | number> = { postcode };
   if (typeof opts?.radiusMiles === 'number') params.radius = opts.radiusMiles;
 
   const data = unwrap(
     '/listings',
-    await fetchPropertyData(
-      '/listings',
-      params,
-      {
-        ttlMs: 24 * 60 * 60 * 1000,
-        estimatedCredits: 3,
-        schema: ListingsSchema,
-        hasContent: (d) => Array.isArray(d.result?.properties),
-      },
-    ),
+    await fetchPropertyData('/listings', params, {
+      ttlMs: 24 * 60 * 60 * 1000,
+      estimatedCredits: 3,
+      schema: ListingsSchema,
+      hasContent: (d) => Array.isArray(d.result?.properties),
+    })
   );
   const rows = (data as { result?: { properties?: unknown[] } } | null)?.result
     ?.properties;
@@ -1515,7 +1569,7 @@ export type GrowthReading = {
  * offer % of AVM based on market trajectory. ~2 credits, 30-day cache.
  */
 export async function getGrowthResult(
-  postcode: string,
+  postcode: string
 ): Promise<PropertyDataResult<GrowthReading | null>> {
   const res = await fetchPropertyData(
     '/growth',
@@ -1528,13 +1582,15 @@ export async function getGrowthResult(
         d.result?.annual_growth !== undefined ||
         d.result?.five_year_growth !== undefined ||
         d.result?.forecast_growth !== undefined,
-    },
+    }
   );
   if (res.outcome !== 'ok') return res;
   return { outcome: 'ok', value: readGrowth(res.value) };
 }
 
-export async function getGrowth(postcode: string): Promise<GrowthReading | null> {
+export async function getGrowth(
+  postcode: string
+): Promise<GrowthReading | null> {
   return unwrap('/growth', await getGrowthResult(postcode)) ?? null;
 }
 
@@ -1542,11 +1598,16 @@ function readGrowth(data: unknown): GrowthReading | null {
   const r = (data as { result?: Record<string, unknown> } | null)?.result;
   if (!r) return null;
   return {
-    annualGrowthPct: typeof r.annual_growth === 'number' ? r.annual_growth : null,
-    fiveYearGrowthPct: typeof r.five_year_growth === 'number' ? r.five_year_growth : null,
-    forecastGrowthPct: typeof r.forecast_growth === 'number' ? r.forecast_growth : null,
+    annualGrowthPct:
+      typeof r.annual_growth === 'number' ? r.annual_growth : null,
+    fiveYearGrowthPct:
+      typeof r.five_year_growth === 'number' ? r.five_year_growth : null,
+    forecastGrowthPct:
+      typeof r.forecast_growth === 'number' ? r.forecast_growth : null,
     forecastPeriodMonths:
-      typeof r.forecast_period_months === 'number' ? r.forecast_period_months : null,
+      typeof r.forecast_period_months === 'number'
+        ? r.forecast_period_months
+        : null,
   };
 }
 
@@ -1610,7 +1671,7 @@ export type PreflightChecks = {
 
 function fuzzyMatchAddress<T extends { address: string }>(
   rows: T[],
-  needle?: string,
+  needle?: string
 ): T | null {
   if (!needle || rows.length === 0) return null;
   const n = needle.toLowerCase().replace(/[^a-z0-9]/g, '');
@@ -1628,7 +1689,7 @@ function fuzzyMatchAddress<T extends { address: string }>(
 }
 
 function temperatureBand(
-  index: number | null,
+  index: number | null
 ): PreflightChecks['marketTemperature']['band'] {
   if (index === null) return null;
   if (index >= 0.5) return 'hot';
@@ -1721,7 +1782,7 @@ export async function runPreflightChecks(input: {
   if (components.length > 0) {
     temperatureIndex =
       Math.round(
-        (components.reduce((s, x) => s + x, 0) / components.length) * 100,
+        (components.reduce((s, x) => s + x, 0) / components.length) * 100
       ) / 100;
   }
 
@@ -1734,11 +1795,15 @@ export async function runPreflightChecks(input: {
   //   Cool       →  -0.02
   //   Cold       →  -0.04
   const tempAdj =
-    band === 'hot' ? 0.02
-    : band === 'warm' ? 0.01
-    : band === 'cool' ? -0.02
-    : band === 'cold' ? -0.04
-    : 0;
+    band === 'hot'
+      ? 0.02
+      : band === 'warm'
+        ? 0.01
+        : band === 'cool'
+          ? -0.02
+          : band === 'cold'
+            ? -0.04
+            : 0;
 
   // Either market source failing makes the temperature reading incomplete. When
   // BOTH failed there is no band at all — and a null band silently produces the
@@ -1761,23 +1826,23 @@ export async function runPreflightChecks(input: {
   const reasoning: string[] = [];
   if (epcFailed) {
     reasoning.push(
-      `EPC: lookup UNAVAILABLE (${failureDetail.epc}) — no EPC adjustment applied and no certificate was ruled out; sent for review`,
+      `EPC: lookup UNAVAILABLE (${failureDetail.epc}) — no EPC adjustment applied and no certificate was ruled out; sent for review`
     );
   } else if (matchedEpc) {
     reasoning.push(
-      `EPC ${epcRating ?? '?'} from register (${matchedEpc.address})${isLowEpc ? ' — meaningful renovation cost expected' : ''}`,
+      `EPC ${epcRating ?? '?'} from register (${matchedEpc.address})${isLowEpc ? ' — meaningful renovation cost expected' : ''}`
     );
   } else {
     reasoning.push('EPC: no certificate matched on this address');
   }
   if (tenureFailed) {
     reasoning.push(
-      `Tenure: lookup UNAVAILABLE (${failureDetail.tenure}) — short-lease screen NOT performed; sent for review`,
+      `Tenure: lookup UNAVAILABLE (${failureDetail.tenure}) — short-lease screen NOT performed; sent for review`
     );
   } else if (matchedTenure) {
     if (tenure === 'leasehold') {
       reasoning.push(
-        `Tenure: leasehold${remainingLeaseYears ? `, ${remainingLeaseYears} years remaining` : ''}${isShortLease ? ' — SHORT LEASE FLAG' : ''}`,
+        `Tenure: leasehold${remainingLeaseYears ? `, ${remainingLeaseYears} years remaining` : ''}${isShortLease ? ' — SHORT LEASE FLAG' : ''}`
       );
     } else if (tenure === 'freehold') {
       reasoning.push('Tenure: freehold');
@@ -1785,17 +1850,17 @@ export async function runPreflightChecks(input: {
   }
   if (band) {
     reasoning.push(
-      `Market: ${band}${typeof demandScore === 'number' ? ` (demand ${demandScore}/100)` : ''}${typeof forecastGrowthPct === 'number' ? `, forecast ${forecastGrowthPct > 0 ? '+' : ''}${forecastGrowthPct.toFixed(1)}%` : ''} — offer adjusted ${tempAdj > 0 ? '+' : ''}${(tempAdj * 100).toFixed(1)}%${marketFailed ? ' (PARTIAL — one market source unavailable)' : ''}`,
+      `Market: ${band}${typeof demandScore === 'number' ? ` (demand ${demandScore}/100)` : ''}${typeof forecastGrowthPct === 'number' ? `, forecast ${forecastGrowthPct > 0 ? '+' : ''}${forecastGrowthPct.toFixed(1)}%` : ''} — offer adjusted ${tempAdj > 0 ? '+' : ''}${(tempAdj * 100).toFixed(1)}%${marketFailed ? ' (PARTIAL — one market source unavailable)' : ''}`
     );
   } else if (marketFailed) {
     reasoning.push(
-      `Market temperature: lookup UNAVAILABLE (${failureDetail.demand ?? failureDetail.growth}) — no market adjustment applied; sent for review`,
+      `Market temperature: lookup UNAVAILABLE (${failureDetail.demand ?? failureDetail.growth}) — no market adjustment applied; sent for review`
     );
   }
 
   if (failedSources.length > 0) {
     console.warn(
-      `[propertydata] preflight ${postcode} degraded — ${failedSources.join(', ')} unavailable`,
+      `[propertydata] preflight ${postcode} degraded — ${failedSources.join(', ')} unavailable`
     );
   }
 
@@ -1857,12 +1922,16 @@ const CreditsSchema = z.object({
 export async function getAccountCredits() {
   return unwrap(
     '/account/credits',
-    await fetchPropertyData('/account/credits', {}, {
-      ttlMs: 60 * 1000, // 1 minute
-      estimatedCredits: 0,
-      schema: CreditsSchema,
-      hasContent: (d) => d.result !== undefined,
-    }),
+    await fetchPropertyData(
+      '/account/credits',
+      {},
+      {
+        ttlMs: 60 * 1000, // 1 minute
+        estimatedCredits: 0,
+        schema: CreditsSchema,
+        hasContent: (d) => d.result !== undefined,
+      }
+    )
   );
 }
 
@@ -1891,7 +1960,10 @@ const PlanningApplicationsSchema = z.object({
               type: z.string().optional(),
               status: z.string().optional(),
               decision: z
-                .object({ text: z.string().optional(), rating: z.string().optional() })
+                .object({
+                  text: z.string().optional(),
+                  rating: z.string().optional(),
+                })
                 .partial()
                 .optional(),
               dates: z
@@ -1905,7 +1977,7 @@ const PlanningApplicationsSchema = z.object({
               lng: z.number().optional(),
               distance: z.string().optional(),
             })
-            .partial(),
+            .partial()
         )
         .optional(),
     })
@@ -1940,7 +2012,7 @@ export type PlanningApplication = {
  */
 export async function getPlanningApplications(
   postcode: string,
-  opts?: { radiusMiles?: number },
+  opts?: { radiusMiles?: number }
 ): Promise<PlanningApplication[]> {
   const params: Record<string, string | number> = { postcode };
   if (typeof opts?.radiusMiles === 'number') {
@@ -1948,20 +2020,15 @@ export async function getPlanningApplications(
   }
   const data = unwrap(
     '/planning-applications',
-    await fetchPropertyData(
-      '/planning-applications',
-      params,
-      {
-        ttlMs: 7 * 24 * 60 * 60 * 1000,
-        estimatedCredits: 2,
-        schema: PlanningApplicationsSchema,
-        hasContent: (d) => Array.isArray(d.data?.planning_applications),
-      },
-    ),
+    await fetchPropertyData('/planning-applications', params, {
+      ttlMs: 7 * 24 * 60 * 60 * 1000,
+      estimatedCredits: 2,
+      schema: PlanningApplicationsSchema,
+      hasContent: (d) => Array.isArray(d.data?.planning_applications),
+    })
   );
-  const apps =
-    (data as { data?: { planning_applications?: unknown[] } } | null)?.data
-      ?.planning_applications;
+  const apps = (data as { data?: { planning_applications?: unknown[] } } | null)
+    ?.data?.planning_applications;
   if (!Array.isArray(apps)) return [];
 
   const now = Date.now();
@@ -1979,9 +2046,9 @@ export async function getPlanningApplications(
     const decision = a.decision as Record<string, unknown> | undefined;
     const decisionText =
       typeof decision?.text === 'string' ? decision.text : null;
-    const decisionRating = (typeof decision?.rating === 'string'
-      ? decision.rating
-      : null) as PlanningApplication['decisionRating'];
+    const decisionRating = (
+      typeof decision?.rating === 'string' ? decision.rating : null
+    ) as PlanningApplication['decisionRating'];
 
     const dates = a.dates as Record<string, unknown> | undefined;
     const receivedAt =
@@ -2048,7 +2115,7 @@ const HmoRegisterSchema = z.object({
               licence_type: z.string().optional(),
               distance_miles: z.string().optional(),
             })
-            .partial(),
+            .partial()
         )
         .optional(),
     })
@@ -2073,7 +2140,7 @@ export type HmoRecord = {
  */
 export async function getHmoRegister(
   postcode: string,
-  opts?: { radiusMiles?: number },
+  opts?: { radiusMiles?: number }
 ): Promise<HmoRecord[]> {
   const params: Record<string, string | number> = { postcode };
   if (typeof opts?.radiusMiles === 'number') {
@@ -2081,16 +2148,12 @@ export async function getHmoRegister(
   }
   const data = unwrap(
     '/national-hmo-register',
-    await fetchPropertyData(
-      '/national-hmo-register',
-      params,
-      {
-        ttlMs: 30 * 24 * 60 * 60 * 1000,
-        estimatedCredits: 2,
-        schema: HmoRegisterSchema,
-        hasContent: (d) => Array.isArray(d.data?.hmos),
-      },
-    ),
+    await fetchPropertyData('/national-hmo-register', params, {
+      ttlMs: 30 * 24 * 60 * 60 * 1000,
+      estimatedCredits: 2,
+      schema: HmoRegisterSchema,
+      hasContent: (d) => Array.isArray(d.data?.hmos),
+    })
   );
   const hmos = (data as { data?: { hmos?: unknown[] } } | null)?.data?.hmos;
   if (!Array.isArray(hmos)) return [];
@@ -2115,7 +2178,8 @@ export async function getHmoRegister(
       }
     }
 
-    const distStr = typeof h.distance_miles === 'string' ? h.distance_miles : null;
+    const distStr =
+      typeof h.distance_miles === 'string' ? h.distance_miles : null;
     const distanceMiles = distStr ? Number(distStr) : null;
 
     out.push({
@@ -2162,7 +2226,7 @@ export type DemographicsReading = {
  * any "age" / "65" / "75" markers.
  */
 export async function getDemographics(
-  postcode: string,
+  postcode: string
 ): Promise<DemographicsReading | null> {
   const data = unwrap(
     '/demographics',
@@ -2179,8 +2243,8 @@ export async function getDemographics(
           d.data !== undefined ||
           d.result !== undefined ||
           d.age_bands !== undefined,
-      },
-    ),
+      }
+    )
   );
   if (!data) return null;
   const raw = (data as Record<string, unknown>) ?? null;
@@ -2219,10 +2283,8 @@ export async function getDemographics(
   // Heuristic: many endpoints return age share as fractions (0-1). Normalise
   // to percentages.
   const normalise = (v: number): number => (v <= 1 ? v * 100 : v);
-  const percentOver65 =
-    over65.length > 0 ? normalise(over65[0]!) : null;
-  const percentOver75 =
-    over75.length > 0 ? normalise(over75[0]!) : null;
+  const percentOver65 = over65.length > 0 ? normalise(over65[0]!) : null;
+  const percentOver75 = over75.length > 0 ? normalise(over75[0]!) : null;
 
   return { percentOver65, percentOver75, raw };
 }
@@ -2249,7 +2311,7 @@ const SoldPricesSchema = z.object({
               new_build: z.boolean().optional(),
               tenure: z.string().optional(),
             })
-            .partial(),
+            .partial()
         )
         .optional(),
     })
@@ -2285,7 +2347,7 @@ export type SoldPricesOptions = {
 
 export async function getSoldPrices(
   postcode: string,
-  opts: SoldPricesOptions = {},
+  opts: SoldPricesOptions = {}
 ): Promise<SoldPrices | null> {
   // Clamp to PropertyData's documented ranges so a bad caller value can't 4xx.
   const maxAge =
@@ -2326,8 +2388,8 @@ export async function getSoldPrices(
           Array.isArray(d.result?.transactions) ||
           d.result?.average_price !== undefined ||
           d.result?.median_price !== undefined,
-      },
-    ),
+      }
+    )
   );
   const r = (data as { result?: Record<string, unknown> } | null)?.result;
   if (!r) return null;
@@ -2385,7 +2447,7 @@ export type YieldsReading = {
 };
 
 export async function getYields(
-  postcode: string,
+  postcode: string
 ): Promise<YieldsReading | null> {
   const data = unwrap(
     '/yields',
@@ -2399,8 +2461,8 @@ export async function getYields(
         hasContent: (d) =>
           d.result?.yield_average !== undefined ||
           d.result?.gross_yield !== undefined,
-      },
-    ),
+      }
+    )
   );
   const r = (data as { result?: Record<string, unknown> } | null)?.result;
   if (!r) return null;
@@ -2412,10 +2474,8 @@ export async function getYields(
         : null;
   return {
     averageYieldPct: avg,
-    lowYieldPct:
-      typeof r.yield_low === 'number' ? r.yield_low : null,
-    highYieldPct:
-      typeof r.yield_high === 'number' ? r.yield_high : null,
+    lowYieldPct: typeof r.yield_low === 'number' ? r.yield_low : null,
+    highYieldPct: typeof r.yield_high === 'number' ? r.yield_high : null,
   };
 }
 
@@ -2442,7 +2502,7 @@ export type PricesPerSqf = {
 };
 
 export async function getPricesPerSqf(
-  postcode: string,
+  postcode: string
 ): Promise<PricesPerSqf | null> {
   const data = unwrap(
     '/prices-per-sqf',
@@ -2455,14 +2515,13 @@ export async function getPricesPerSqf(
         schema: PricesPerSqfSchema,
         hasContent: (d) =>
           d.result?.average !== undefined || d.result?.median !== undefined,
-      },
-    ),
+      }
+    )
   );
   const r = (data as { result?: Record<string, unknown> } | null)?.result;
   if (!r) return null;
   return {
-    averagePerSqft:
-      typeof r.average === 'number' ? r.average : null,
+    averagePerSqft: typeof r.average === 'number' ? r.average : null,
     medianPerSqft: typeof r.median === 'number' ? r.median : null,
   };
 }
@@ -2491,7 +2550,7 @@ export type CouncilTaxReading = {
 };
 
 export async function getCouncilTax(
-  postcode: string,
+  postcode: string
 ): Promise<CouncilTaxReading | null> {
   const data = unwrap(
     '/council-tax',
@@ -2506,8 +2565,8 @@ export async function getCouncilTax(
           d.result?.band !== undefined ||
           d.result?.bands !== undefined ||
           d.result?.average_annual_bill !== undefined,
-      },
-    ),
+      }
+    )
   );
   const r = (data as { result?: Record<string, unknown> } | null)?.result;
   if (!r) return null;
@@ -2522,16 +2581,13 @@ export async function getCouncilTax(
           (typeof v.amount === 'number' && v.amount) ||
           (typeof v.annual === 'number' && v.annual) ||
           (typeof v.value === 'number' && v.value);
-        if (typeof amount === 'number')
-          bands[letter.toUpperCase()] = amount;
+        if (typeof amount === 'number') bands[letter.toUpperCase()] = amount;
       }
     }
   }
   return {
     averageAnnualBill:
-      typeof r.average_annual_bill === 'number'
-        ? r.average_annual_bill
-        : null,
+      typeof r.average_annual_bill === 'number' ? r.average_annual_bill : null,
     band: typeof r.band === 'string' ? r.band : null,
     bandsByLetter: bands,
   };
@@ -2629,14 +2685,14 @@ export async function getPropertySnapshot(input: {
   // Helper to wrap each call so we never throw — collect into errors[].
   const safe = async <T>(
     key: string,
-    fn: () => Promise<T>,
+    fn: () => Promise<T>
   ): Promise<T | null> => {
     try {
       return await fn();
     } catch (err) {
       errors[key] = (err as Error)?.message?.slice(0, 150) ?? 'failed';
       console.warn(
-        `[propertydata] snapshot ${input.postcode} — ${key} unavailable: ${errors[key]}`,
+        `[propertydata] snapshot ${input.postcode} — ${key} unavailable: ${errors[key]}`
       );
       return null;
     }
@@ -2648,7 +2704,7 @@ export async function getPropertySnapshot(input: {
   const avmType: 'detached' | 'semi-detached' | 'terraced' | 'flat' | null =
     input.propertyType === 'bungalow'
       ? 'detached'
-      : input.propertyType ?? null;
+      : (input.propertyType ?? null);
   const avmInput = avmType
     ? {
         postcode: input.postcode,
@@ -2676,12 +2732,10 @@ export async function getPropertySnapshot(input: {
   const yieldsRes = await safe('yields', () => getYields(input.postcode));
   await sleep(DELAY);
   const pricesPerSqf = await safe('pricesPerSqf', () =>
-    getPricesPerSqf(input.postcode),
+    getPricesPerSqf(input.postcode)
   );
   await sleep(DELAY);
-  const demandRaw = await safe('demand', () =>
-    getMarketDemand(input.postcode),
-  );
+  const demandRaw = await safe('demand', () => getMarketDemand(input.postcode));
   const demandScore =
     typeof (demandRaw as { result?: { sales_demand_score?: number } } | null)
       ?.result?.sales_demand_score === 'number'
@@ -2689,8 +2743,9 @@ export async function getPropertySnapshot(input: {
           .sales_demand_score
       : null;
   const daysOnMarketAvg =
-    typeof (demandRaw as { result?: { days_on_market_average?: number } } | null)
-      ?.result?.days_on_market_average === 'number'
+    typeof (
+      demandRaw as { result?: { days_on_market_average?: number } } | null
+    )?.result?.days_on_market_average === 'number'
       ? (demandRaw as { result: { days_on_market_average: number } }).result
           .days_on_market_average
       : null;
@@ -2698,18 +2753,18 @@ export async function getPropertySnapshot(input: {
   const growthRes = await safe('growth', () => getGrowth(input.postcode));
   await sleep(DELAY);
   const councilTax = await safe('councilTax', () =>
-    getCouncilTax(input.postcode),
+    getCouncilTax(input.postcode)
   );
   await sleep(DELAY);
   const floodRaw = await safe('flood', () => getFloodRisk(input.postcode));
   const flood = floodRaw
     ? {
         riversAndSea:
-          ((floodRaw as { result?: { rivers_and_sea?: string } } | null)
-            ?.result?.rivers_and_sea as string | undefined) ?? null,
+          ((floodRaw as { result?: { rivers_and_sea?: string } } | null)?.result
+            ?.rivers_and_sea as string | undefined) ?? null,
         surfaceWater:
-          ((floodRaw as { result?: { surface_water?: string } } | null)
-            ?.result?.surface_water as string | undefined) ?? null,
+          ((floodRaw as { result?: { surface_water?: string } } | null)?.result
+            ?.surface_water as string | undefined) ?? null,
       }
     : null;
   await sleep(DELAY);
@@ -2735,7 +2790,7 @@ export async function getPropertySnapshot(input: {
   }
   await sleep(DELAY);
   const tenureRows = await safe('tenure', () =>
-    getTenureByPostcode(input.postcode),
+    getTenureByPostcode(input.postcode)
   );
   let tenure: PropertySnapshot['tenure'] = null;
   if (tenureRows && tenureRows.length > 0) {
@@ -2757,7 +2812,7 @@ export async function getPropertySnapshot(input: {
   }
   await sleep(DELAY);
   const agentsRaw = await safe('agents', () =>
-    getAgentsByPostcode(input.postcode),
+    getAgentsByPostcode(input.postcode)
   );
   const agents: PropertySnapshot['agents'] = [];
   const agentsList = (agentsRaw as { result?: { agents?: unknown[] } } | null)
@@ -2809,7 +2864,10 @@ export type GeorgeMessage = { role: 'user' | 'assistant'; content: string };
  * Falls back to JSON-stringifying the whole response if nothing matches —
  * the user gets *something* useful while we discover the real shape.
  */
-function extractGeorgeAnswer(json: unknown): { answer: string | null; conversationId?: string } {
+function extractGeorgeAnswer(json: unknown): {
+  answer: string | null;
+  conversationId?: string;
+} {
   if (!json || typeof json !== 'object') {
     return { answer: typeof json === 'string' ? json : null };
   }
@@ -2830,12 +2888,16 @@ function extractGeorgeAnswer(json: unknown): { answer: string | null; conversati
     if (typeof c === 'string' && c.trim().length > 0) {
       const conversationId =
         (j.conversation_id as string | undefined) ??
-        ((j.result as Record<string, unknown> | undefined)?.conversation_id as string | undefined);
+        ((j.result as Record<string, unknown> | undefined)?.conversation_id as
+          | string
+          | undefined);
       return { answer: c, conversationId };
     }
   }
   // Last resort — return the whole thing so we can see what came back.
-  return { answer: `(unexpected response shape — raw payload below)\n\n\`\`\`json\n${JSON.stringify(json, null, 2).slice(0, 1500)}\n\`\`\`` };
+  return {
+    answer: `(unexpected response shape — raw payload below)\n\n\`\`\`json\n${JSON.stringify(json, null, 2).slice(0, 1500)}\n\`\`\``,
+  };
 }
 
 /**
@@ -2883,7 +2945,9 @@ export async function askGeorge(input: {
     });
     if (!res.ok) {
       const text = await res.text().catch(() => res.statusText);
-      console.warn(`[propertydata] /george ${res.status}: ${text.slice(0, 500)}`);
+      console.warn(
+        `[propertydata] /george ${res.status}: ${text.slice(0, 500)}`
+      );
       // Surface the upstream error message to the caller so the UI can show
       // something useful rather than a generic "try again later".
       return {
@@ -2899,7 +2963,9 @@ export async function askGeorge(input: {
       return { answer: null, error: 'invalid_response' as const };
     }
     creditsThisProcess += 5; // /george is roughly 5 credits per call
-    console.info(`[propertydata] /george +5 credits (process total: ${creditsThisProcess})`);
+    console.info(
+      `[propertydata] /george +5 credits (process total: ${creditsThisProcess})`
+    );
     const { answer, conversationId } = extractGeorgeAnswer(json);
     if (!answer) {
       // Something came back but we couldn't extract a meaningful answer.
@@ -2907,7 +2973,7 @@ export async function askGeorge(input: {
       // potentially sensitive content.
       console.warn(
         '[propertydata] /george response had no extractable answer. Top-level keys:',
-        Object.keys(json as Record<string, unknown>),
+        Object.keys(json as Record<string, unknown>)
       );
       return { answer: null, error: 'no_answer_extracted' as const };
     }

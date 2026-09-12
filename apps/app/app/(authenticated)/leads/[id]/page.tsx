@@ -367,6 +367,34 @@ const LeadDetailPage = async ({
     uncertaintyMaxWidthRatio?: number | null;
     /** Interval wider than the bound — re-check comps before any offer. */
     secondCheckRequired?: boolean | null;
+    /** Size economics from runAVM — implied £/m², area £/sqft benchmark. */
+    pricePerSqm?: number | null;
+    areaPricePerSqft?: number | null;
+    sizeAnchorValue?: number | null;
+    sizeAnchorUsed?: boolean | null;
+    /** Listing body language + nearby distress, from runAVM. */
+    marketSignals?: {
+      distressListed: boolean;
+      matchedAddress: string | null;
+      pricePence: number | null;
+      discountPercent: number | null;
+      reductionCount: number | null;
+      daysOnMarket: number | null;
+      velocityScore: number | null;
+      sstc: boolean | null;
+      nearby: {
+        address: string;
+        postcode: string;
+        pricePence: number | null;
+        bedrooms: number | null;
+        propertyType: string | null;
+        daysOnMarket: number | null;
+        discountPercent: number | null;
+        listingUrl: string | null;
+      }[];
+      nearbyDistressCount: number;
+      radiusMiles: number;
+    } | null;
     riskScore: number | null;
     assumedPropertyType: string | null;
     /** Verified internal floor area (m²) + where it came from. */
@@ -629,7 +657,7 @@ const LeadDetailPage = async ({
               </div>
             </div>
 
-            <div className="mt-3 grid gap-4 sm:grid-cols-4">
+            <div className="mt-3 grid gap-4 sm:grid-cols-5">
               <div>
                 <p className="text-[11px] text-muted-foreground">Asking</p>
                 <p className="font-bold font-mono text-2xl tabular-nums leading-none">
@@ -674,6 +702,38 @@ const LeadDetailPage = async ({
                   </p>
                 )}
               </div>
+              {/* Size economics — the EPC-verified size priced against the
+                  area's £/sqft. When the size anchor fed the AVM, say so. */}
+              <div>
+                <p className="text-[11px] text-muted-foreground">Size</p>
+                {avmFull.floorAreaSqm ? (
+                  <>
+                    <p className="font-semibold text-lg leading-none">
+                      {Math.round(avmFull.floorAreaSqm)} m²
+                      <span className="ml-1 font-normal text-muted-foreground text-xs">
+                        ({Math.round(avmFull.floorAreaSqm * 10.7639)} sq ft)
+                      </span>
+                    </p>
+                    <p className="mt-1 text-[11px] text-muted-foreground">
+                      {avmFull.pointEstimatePence
+                        ? `£${Math.round(avmFull.pointEstimatePence / 100 / (avmFull.floorAreaSqm * 10.7639)).toLocaleString('en-GB')}/sq ft`
+                        : ''}
+                      {avmFull.areaPricePerSqft
+                        ? ` vs area £${Math.round(avmFull.areaPricePerSqft).toLocaleString('en-GB')}`
+                        : ''}
+                    </p>
+                    {avmFull.sizeAnchorUsed && (
+                      <p className="mt-0.5 text-[11px] text-emerald-700">
+                        ✓ Size feeds this valuation
+                      </p>
+                    )}
+                  </>
+                ) : (
+                  <p className="font-semibold text-lg leading-none text-muted-foreground">
+                    —
+                  </p>
+                )}
+              </div>
             </div>
 
             {/* Asking vs market headline + plain-English read */}
@@ -714,6 +774,87 @@ const LeadDetailPage = async ({
               <p className="mt-1 text-[11px] text-amber-700">
                 ⚠ Flagged for manual review (offer capped / escalation).
               </p>
+            )}
+
+            {/* ── MARKET SIGNALS — the listing's own body language, plus what
+                else is distress-flagged nearby. Display context only: none of
+                this feeds the score or the offer. */}
+            {avmFull.marketSignals && (
+              <div className="mt-4 rounded-lg border p-3">
+                <p className="font-medium text-muted-foreground text-xs uppercase tracking-wide">
+                  Market signals
+                </p>
+                {avmFull.marketSignals.distressListed ? (
+                  <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
+                    <span className="inline-flex rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 font-medium text-[11px] text-amber-900">
+                      On a distress list
+                    </span>
+                    {avmFull.marketSignals.daysOnMarket !== null && (
+                      <span>
+                        <strong>{avmFull.marketSignals.daysOnMarket}</strong>{' '}
+                        days on market
+                      </span>
+                    )}
+                    {(avmFull.marketSignals.reductionCount ?? 0) > 0 && (
+                      <span>
+                        <strong>{avmFull.marketSignals.reductionCount}</strong>{' '}
+                        price cut
+                        {(avmFull.marketSignals.reductionCount ?? 0) > 1
+                          ? 's'
+                          : ''}
+                        {avmFull.marketSignals.discountPercent !== null
+                          ? ` (−${avmFull.marketSignals.discountPercent}% from peak)`
+                          : ''}
+                      </span>
+                    )}
+                    {avmFull.marketSignals.sstc && (
+                      <span className="text-muted-foreground">
+                        Under offer (SSTC)
+                      </span>
+                    )}
+                  </div>
+                ) : (
+                  <p className="mt-2 text-muted-foreground text-sm">
+                    This property isn&apos;t on any distress list right now.
+                  </p>
+                )}
+
+                {avmFull.marketSignals.nearby.length > 0 && (
+                  <div className="mt-3">
+                    <p className="text-[11px] text-muted-foreground">
+                      {avmFull.marketSignals.nearbyDistressCount} other
+                      distress-flagged listing
+                      {avmFull.marketSignals.nearbyDistressCount === 1
+                        ? ''
+                        : 's'}{' '}
+                      within {avmFull.marketSignals.radiusMiles} miles — deepest
+                      cuts first:
+                    </p>
+                    <ul className="mt-1.5 space-y-1">
+                      {avmFull.marketSignals.nearby.slice(0, 6).map((n) => (
+                        <li
+                          key={`${n.postcode}-${n.address}`}
+                          className="flex flex-wrap items-baseline gap-x-2 text-[13px]"
+                        >
+                          <span className="font-medium">{n.address}</span>
+                          <span className="text-muted-foreground">
+                            {n.bedrooms ? `${n.bedrooms} bed · ` : ''}
+                            {n.pricePence
+                              ? `£${Math.round(n.pricePence / 100).toLocaleString('en-GB')}`
+                              : 'price unknown'}
+                            {n.discountPercent
+                              ? ` · −${n.discountPercent}%`
+                              : ''}
+                            {n.daysOnMarket
+                              ? ` · ${n.daysOnMarket}d listed`
+                              : ''}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
             )}
           </section>
         ) : (
