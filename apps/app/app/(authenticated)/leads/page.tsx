@@ -79,6 +79,30 @@ const LeadsPage = async ({
               | Record<string, unknown>
               | undefined;
             const avm = raw.avmFull as Record<string, unknown> | undefined;
+            const sqftEvidence = avm?.sqftEvidence as
+              | { poundsPerSqft?: number | null; matchedCount?: number }
+              | undefined;
+            const ownEpc = raw.propertyEpc as
+              | { floorAreaSqm?: number | null }
+              | undefined;
+            // Floor area, best evidence first: the AVM's house-number-matched
+            // EPC record; else the listing's own sqft; else the scout's EPC
+            // read (a postcode+address search — right most of the time, not
+            // verified to the house number, so it is labelled as such).
+            const SQFT_PER_SQM = 10.7639;
+            let floorAreaSqft: number | null = null;
+            let floorAreaSource: 'epc' | 'listing' | 'epc_unverified' | null =
+              null;
+            if (typeof avm?.floorAreaSqm === 'number' && avm.floorAreaSource) {
+              floorAreaSqft = Math.round(avm.floorAreaSqm * SQFT_PER_SQM);
+              floorAreaSource = 'epc';
+            } else if (typeof pd?.listingSqft === 'number') {
+              floorAreaSqft = pd.listingSqft;
+              floorAreaSource = 'listing';
+            } else if (typeof ownEpc?.floorAreaSqm === 'number') {
+              floorAreaSqft = Math.round(ownEpc.floorAreaSqm * SQFT_PER_SQM);
+              floorAreaSource = 'epc_unverified';
+            }
             const primeOpp = raw.primeOpportunity as
               | {
                   discountToArea?: number | null;
@@ -141,6 +165,13 @@ const LeadsPage = async ({
                 (avm?.pointEstimatePence as number | undefined) ?? null,
               avmConfidence:
                 (avm?.confidenceLevel as string | undefined) ?? null,
+              // Size: sqft + where it came from, £/sqft of this house at the
+              // AVM, and what nearby sold comps fetched per sqft.
+              floorAreaSqft,
+              floorAreaSource,
+              pricePerSqft: (avm?.pricePerSqft as number | undefined) ?? null,
+              areaPerSqft: sqftEvidence?.poundsPerSqft ?? null,
+              areaPerSqftComps: sqftEvidence?.matchedCount ?? 0,
               // Risk flags + score factors (computed scorer-side, stored on
               // rawPayload by the cron — pull defensively for older leads)
               riskFlags: (raw.riskFlags as string[] | undefined) ?? [],

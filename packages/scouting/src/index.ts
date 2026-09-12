@@ -868,6 +868,8 @@ export async function runScoutingPipeline(
         daysOnMarket: number | null;
         daysSincePriceChange: number | null;
         preciseAddress: string | null;
+        /** Listing-stated floor area in sqft (agent-declared, not EPC). */
+        listingSqft: number | null;
         /** True for non-residential (pub/office/shop/unit) — kept but badged. */
         commercial?: boolean;
       };
@@ -958,6 +960,7 @@ export async function runScoutingPipeline(
               daysOnMarket: p.daysOnMarket,
               daysSincePriceChange: p.daysSincePriceChange,
               preciseAddress: p.preciseAddress,
+              listingSqft: p.listingSqft,
               commercial,
             },
           });
