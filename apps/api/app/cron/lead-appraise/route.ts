@@ -11,6 +11,7 @@ import {
   mergeOfferConfig,
   mergeValuationConfig,
   runAVM,
+  saveAvmSnapshot,
 } from '@repo/valuation';
 import { NextResponse } from 'next/server';
 import { recordCronHeartbeat } from '../_lib/heartbeat';
@@ -117,9 +118,10 @@ export const POST = async (request: Request) => {
   const activeConfig = await database.evalConfig.findFirst({
     where: { evalType: 'avm_confidence', activatedAt: { not: null } },
     orderBy: { version: 'desc' },
-    select: { config: true },
+    select: { version: true, config: true },
   });
   const offerConfig = mergeOfferConfig(activeConfig?.config);
+  const offerConfigVersion = activeConfig?.version ?? null;
 
   // Founder-tuned valuation levers (refurb £/m² + defect costs).
   const valuationRow = await database.setting.findUnique({
@@ -163,13 +165,22 @@ export const POST = async (request: Request) => {
         typeof pd?.preciseAddress === 'string'
           ? (pd.preciseAddress as string)
           : null;
-      const avm = await runAVM({
+      const avmInput = {
         postcode: lead.postcode,
         propertyType: avmPropertyType as never,
         address: preciseAddress ?? lead.address,
         bedrooms,
         sellerType: resolveSellerType(lead.leadType) as never,
         offerConfig,
+      };
+      const avm = await runAVM(avmInput);
+      // Freeze the appraisal for the monthly Land Registry backtest.
+      await saveAvmSnapshot(database, {
+        input: avmInput,
+        result: avm,
+        source: 'scout_lead',
+        sourceId: lead.id,
+        evalConfigVersion: offerConfigVersion,
       });
       const r = avm.resultJson;
       const point = r.avmPointEstimate;

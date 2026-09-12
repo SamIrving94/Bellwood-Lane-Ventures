@@ -16,7 +16,7 @@ import {
   generateInstantOffer,
 } from '@repo/instant-offer';
 import { runPreflightChecks } from '@repo/property-data/src/propertydata';
-import type { PropertyType } from '@repo/valuation';
+import { type PropertyType, saveAvmSnapshot } from '@repo/valuation';
 import { DEFAULT_OFFER_CONFIG } from '@repo/valuation/src/offer-config';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
@@ -347,16 +347,29 @@ export async function POST(request: Request) {
   // reasoning, and a small ±% adjustment is applied to the headline offer.
   try {
     const [offerBase, preflight] = await Promise.all([
-      generateInstantOffer({
-        postcode: input.postcode,
-        address: input.address,
-        propertyType: mapPropertyType(input.propertyType),
-        bedrooms: input.bedrooms,
-        condition: input.condition,
-        situation: input.situation as InstantOfferSituation,
-        urgencyDays: input.urgencyDays,
-        askingPricePence: input.askingPricePence,
-      }),
+      generateInstantOffer(
+        {
+          postcode: input.postcode,
+          address: input.address,
+          propertyType: mapPropertyType(input.propertyType),
+          bedrooms: input.bedrooms,
+          condition: input.condition,
+          situation: input.situation as InstantOfferSituation,
+          urgencyDays: input.urgencyDays,
+          askingPricePence: input.askingPricePence,
+        },
+        {
+          // Freeze the appraisal for the monthly Land Registry backtest.
+          // Public quotes are the cleanest cohort: mostly homes we never buy.
+          onAvm: (avmInput, avm) =>
+            saveAvmSnapshot(database, {
+              input: avmInput,
+              result: avm,
+              source: 'quote',
+              sourceId: quoteRequest.id,
+            }).then(() => undefined),
+        }
+      ),
       runPreflightChecks({
         postcode: input.postcode,
         address: input.address,

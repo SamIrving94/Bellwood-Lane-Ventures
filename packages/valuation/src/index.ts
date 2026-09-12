@@ -102,6 +102,20 @@ export {
 } from './backtest';
 export type { BacktestSample, BacktestReport } from './backtest';
 export {
+  buildAvmSnapshot,
+  csaSourceFromLabel,
+  currentEngineVersion,
+  saveAvmSnapshot,
+} from './backtest-snapshot';
+export type {
+  AvmCsaSource,
+  AvmSnapshotRow,
+  AvmSnapshotSource,
+  AvmSnapshotWriter,
+  JsonObject,
+  JsonValue,
+} from './backtest-snapshot';
+export {
   appraiseDeal,
   maxOfferForRoi,
   computeSdltPence,

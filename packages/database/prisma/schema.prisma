@@ -379,6 +379,58 @@ model AvmResult {
   @@index([postcode, propertyType])
 }
 
+// AVM backtest cohort — one frozen row per appraisal at decision time.
+//
+// Every runAVM call site saves a snapshot here (see @repo/valuation
+// `saveAvmSnapshot`). The appraisal fields are written once and never edited;
+// /cron/avm-backtest appends the outcome by matching the property to a later
+// HM Land Registry sale. Properties we bought are excluded (our purchase price
+// is a discounted deal, not market value). The frozen inputs + engine version
+// mean an old estimate can be judged against what the engine knew THEN, not
+// what it knows now — the leakage rule from the Sep 2026 review.
+model AvmSnapshot {
+  id           String   @id @default(cuid())
+  appraisedAt  DateTime @default(now())
+  // scout_lead | deal | quote | batch | backfill
+  source       String
+  sourceId     String?
+  address      String
+  postcode     String
+  propertyType String
+  sellerType   String?
+
+  // The frozen estimate (integer pence, like every money column).
+  pointEstimatePence Int
+  lowPence           Int?
+  highPence          Int?
+  offerPence         Int?
+  confidenceLevel    String?
+  comparableCount    Int?
+  // distance | hmlr | synthetic — which comps path produced the estimate.
+  csaSource          String?
+  // Short git sha of the engine that produced it (VERCEL_GIT_COMMIT_SHA).
+  engineVersion      String?
+  evalConfigVersion  Int?
+  inputJson          Json
+  resultJson         Json
+
+  // Outcome — appended by /cron/avm-backtest, never edits the fields above.
+  // pending | matched | excluded | expired
+  matchStatus     String    @default("pending")
+  lastCheckedAt   DateTime?
+  matchedAt       DateTime?
+  soldPricePence  Int?
+  soldDate        DateTime?
+  soldAddress     String?
+  matchScore      Float?
+  matchConfidence String?
+  exclusionReason String?
+
+  @@index([matchStatus, appraisedAt])
+  @@index([postcode])
+  @@index([source, sourceId])
+}
+
 model LegalStep {
   id          String    @id @default(cuid())
   dealId      String

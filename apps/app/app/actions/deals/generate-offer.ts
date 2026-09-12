@@ -2,7 +2,7 @@
 
 import { requireFounder } from '@repo/auth/server';
 import { database } from '@repo/database';
-import { mergeOfferConfig, runAVM } from '@repo/valuation';
+import { mergeOfferConfig, runAVM, saveAvmSnapshot } from '@repo/valuation';
 import { revalidatePath } from 'next/cache';
 
 // Map a free-text deal.propertyType onto the AVM's PropertyType enum.
@@ -63,7 +63,7 @@ export async function generateDealOffer(dealId: string) {
   const offerConfig = mergeOfferConfig(activeConfig?.config);
   const evalConfigVersion = activeConfig?.version ?? null;
 
-  const avm = await runAVM({
+  const avmInput = {
     postcode: deal.postcode,
     propertyType: avmPropertyType as never,
     address: deal.address,
@@ -71,6 +71,15 @@ export async function generateDealOffer(dealId: string) {
     sellerType: avmSellerType as never,
     dealId: deal.id,
     offerConfig,
+  };
+  const avm = await runAVM(avmInput);
+  // Freeze the appraisal for the monthly Land Registry backtest.
+  await saveAvmSnapshot(database, {
+    input: avmInput,
+    result: avm,
+    source: 'deal',
+    sourceId: deal.id,
+    evalConfigVersion,
   });
 
   const r = avm.resultJson;

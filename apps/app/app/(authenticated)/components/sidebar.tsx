@@ -19,6 +19,7 @@ import {
 import {
   BuildingIcon,
   CompassIcon,
+  CrosshairIcon,
   FileTextIcon,
   GaugeIcon,
   GavelIcon,
@@ -94,6 +95,7 @@ const data = {
       url: '/settings/valuation',
       icon: SlidersHorizontalIcon,
     },
+    { title: 'AVM accuracy', url: '/appraisals/backtest', icon: CrosshairIcon },
     { title: 'Launch', url: '/launch', icon: RocketIcon },
     { title: 'Strategy', url: '/strategy', icon: MapIcon },
     { title: 'Guide', url: '/guide', icon: CompassIcon },

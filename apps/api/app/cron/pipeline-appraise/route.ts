@@ -1,8 +1,8 @@
 import { env } from '@/env';
-import { recordCronHeartbeat } from '../_lib/heartbeat';
 import { database } from '@repo/database';
-import { mergeOfferConfig, runAVM } from '@repo/valuation';
+import { mergeOfferConfig, runAVM, saveAvmSnapshot } from '@repo/valuation';
 import { NextResponse } from 'next/server';
+import { recordCronHeartbeat } from '../_lib/heartbeat';
 
 // Pipeline Stage 2: Auto-appraise top leads (7:15am daily)
 // Finds leads scored >= 70 with no existing AVM, runs valuation, pushes results
@@ -85,7 +85,8 @@ export const POST = async (request: Request) => {
         apartment: 'flat',
         bungalow: 'detached',
       };
-      const avmPropertyType = propertyTypeMap[deal.propertyType.toLowerCase()] ?? 'terraced';
+      const avmPropertyType =
+        propertyTypeMap[deal.propertyType.toLowerCase()] ?? 'terraced';
 
       // Map seller type
       const sellerTypeMap: Record<string, string> = {
@@ -98,15 +99,16 @@ export const POST = async (request: Request) => {
       };
       const avmSellerType = sellerTypeMap[deal.sellerType] ?? 'standard';
 
-      const avmResult = await runAVM({
+      const avmInput = {
         postcode: deal.postcode,
-        propertyType: avmPropertyType as any,
+        propertyType: avmPropertyType as never,
         address: deal.address,
         bedrooms: deal.bedrooms ?? undefined,
-        sellerType: avmSellerType as any,
+        sellerType: avmSellerType as never,
         dealId: deal.id,
         offerConfig,
-      });
+      };
+      const avmResult = await runAVM(avmInput);
 
       // Store AVM result
       await database.avmResult.create({
@@ -119,6 +121,14 @@ export const POST = async (request: Request) => {
           expiresAt: avmResult.expiresAt,
           evalConfigVersion: offerConfigVersion,
         },
+      });
+      // Freeze the appraisal for the monthly Land Registry backtest.
+      await saveAvmSnapshot(database, {
+        input: avmInput,
+        result: avmResult,
+        source: 'deal',
+        sourceId: deal.id,
+        evalConfigVersion: offerConfigVersion,
       });
 
       // Update deal with valuation data.
@@ -136,11 +146,16 @@ export const POST = async (request: Request) => {
       await database.deal.update({
         where: { id: deal.id },
         data: {
-          estimatedMarketValuePence: Math.round(resultJson.avmPointEstimate * 100),
+          estimatedMarketValuePence: Math.round(
+            resultJson.avmPointEstimate * 100
+          ),
           ourOfferPence: Math.round(resultJson.finalOffer * 100),
           marginPercent,
-          verdict: resultJson.requiresCeoEscalation ? 'THIN' :
-                   resultJson.confidenceLevel === 'high' ? 'STRONG' : 'VIABLE',
+          verdict: resultJson.requiresCeoEscalation
+            ? 'THIN'
+            : resultJson.confidenceLevel === 'high'
+              ? 'STRONG'
+              : 'VIABLE',
         },
       });
 
@@ -154,8 +169,12 @@ export const POST = async (request: Request) => {
       });
 
       // Create FounderAction
-      const actionType = resultJson.requiresCeoEscalation ? 'ceo_escalation' : 'approve_offer';
-      const actionPriority = resultJson.requiresCeoEscalation ? 'critical' : 'medium';
+      const actionType = resultJson.requiresCeoEscalation
+        ? 'ceo_escalation'
+        : 'approve_offer';
+      const actionPriority = resultJson.requiresCeoEscalation
+        ? 'critical'
+        : 'medium';
 
       await database.founderAction.create({
         data: {

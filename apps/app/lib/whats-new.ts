@@ -26,6 +26,33 @@ export type WhatsNewEntry = {
 /** Newest first. The popup shows index 0. */
 export const WHATS_NEW: WhatsNewEntry[] = [
   {
+    id: '2026-09-12-avm-backtest',
+    date: '2026-09-12',
+    emoji: '🎯',
+    title: 'The valuation engine now gets marked against real sales',
+    intro:
+      'Every appraisal is frozen the moment it is made. Once a month it is checked against what the house actually sold for, using Land Registry. No more guessing whether the AVM is any good.',
+    bullets: [
+      {
+        emoji: '🧊',
+        text: '**Frozen at decision time** — every valuation from leads, deals, quotes and batch uploads is saved with what the engine knew then.',
+      },
+      {
+        emoji: '📬',
+        text: "**Monthly check** — on the 28th, each frozen appraisal is matched to the property's first Land Registry sale after it. Homes we bought are left out.",
+      },
+      {
+        emoji: '📊',
+        text: '**AVM accuracy page** — median error, which way it leans, and how often the range catches the sale, split by confidence, comps path and price band.',
+      },
+      {
+        emoji: '🛑',
+        text: '**Honest about sample size** — under 30 sales it says "too few". The first matches land a few months from now.',
+      },
+    ],
+    cta: { label: 'See AVM accuracy', href: '/appraisals/backtest' },
+  },
+  {
     id: '2026-09-12-price-per-square-foot',
     date: '2026-09-12',
     emoji: '📐',
@@ -35,7 +62,7 @@ export const WHATS_NEW: WhatsNewEntry[] = [
     bullets: [
       {
         emoji: '📏',
-        text: 'Leads list: **sqft on every card** — EPC-verified when the AVM has matched the house number, the listing\'s own figure before that, each labelled.',
+        text: "Leads list: **sqft on every card** — EPC-verified when the AVM has matched the house number, the listing's own figure before that, each labelled.",
       },
       {
         emoji: '💷',
@@ -43,7 +70,7 @@ export const WHATS_NEW: WhatsNewEntry[] = [
       },
       {
         emoji: '⚖️',
-        text: 'The AVM now has a **size pillar**: rate × this house\'s sqft carries 25–30% of the blend when 2+ comps match. A house 40% bigger than its street no longer prices like its neighbours.',
+        text: "The AVM now has a **size pillar**: rate × this house's sqft carries 25–30% of the blend when 2+ comps match. A house 40% bigger than its street no longer prices like its neighbours.",
       },
       {
         emoji: '🔍',

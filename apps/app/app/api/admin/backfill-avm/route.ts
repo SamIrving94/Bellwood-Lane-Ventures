@@ -1,6 +1,6 @@
 import { isFounder } from '@repo/auth/server';
 import { database } from '@repo/database';
-import { mergeOfferConfig, runAVM } from '@repo/valuation';
+import { mergeOfferConfig, runAVM, saveAvmSnapshot } from '@repo/valuation';
 import { NextResponse } from 'next/server';
 
 /**
@@ -58,7 +58,7 @@ export async function POST(request: Request) {
   const skip = Math.max(0, Number(url.searchParams.get('skip') ?? 0) || 0);
   const take = Math.min(
     50,
-    Math.max(1, Number(url.searchParams.get('take') ?? 15) || 15),
+    Math.max(1, Number(url.searchParams.get('take') ?? 15) || 15)
   );
 
   const total = await database.deal.count();
@@ -101,7 +101,7 @@ export async function POST(request: Request) {
         PROPERTY_TYPE_MAP[deal.propertyType.toLowerCase()] ?? 'terraced';
       const avmSellerType = SELLER_TYPE_MAP[deal.sellerType] ?? 'standard';
 
-      const avm = await runAVM({
+      const avmInput = {
         postcode: deal.postcode,
         propertyType: avmPropertyType as never,
         address: deal.address,
@@ -109,6 +109,15 @@ export async function POST(request: Request) {
         sellerType: avmSellerType as never,
         dealId: deal.id,
         offerConfig,
+      };
+      const avm = await runAVM(avmInput);
+      // Freeze the appraisal for the monthly Land Registry backtest.
+      await saveAvmSnapshot(database, {
+        input: avmInput,
+        result: avm,
+        source: 'backfill',
+        sourceId: deal.id,
+        evalConfigVersion,
       });
       const r = avm.resultJson;
 
@@ -152,7 +161,7 @@ export async function POST(request: Request) {
           dealId: deal.id,
           action: 'avm_backfilled',
           detail: `AVM re-run (unit fix + distance comps): EMV £${Math.round(
-            r.avmPointEstimate,
+            r.avmPointEstimate
           ).toLocaleString('en-GB')}, source ${r.avmSources}`,
         },
       });

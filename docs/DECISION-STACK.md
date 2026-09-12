@@ -161,6 +161,13 @@ Saying no protects the bets.
 
 ## Changelog
 
+- **2026-09-12** — AVM backtest shipped (O1, KR1.1). Every appraisal is
+  frozen at decision time (`AvmSnapshot`); a monthly cron matches each to
+  the property's first Land Registry sale after it, for homes we did not
+  buy, and reports median error, bias, PE10/PE20 and range coverage by
+  segment. Founder decision: the AVM's method stays as it is until the
+  backtest has a reading. Driven by the Sep 2026 scout-and-appraisal
+  review (`docs/research/scout-appraisal-review-2026-09.md`).
 - **2026-08-22** — Promise updated with the signed-off homepage copy: the
   confirmed written offer is sent within two working days of viewing and is
   binding upon Kept for a week (backend `lockedUntil` matches). "Indicative"

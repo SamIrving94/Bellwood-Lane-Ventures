@@ -79,6 +79,10 @@
     {
       "path": "/cron/rate-limit-sweep",
       "schedule": "30 3 * * *"
+    },
+    {
+      "path": "/cron/avm-backtest",
+      "schedule": "0 6 28 * *"
     }
   ]
 }
