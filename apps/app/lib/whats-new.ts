@@ -26,6 +26,28 @@ export type WhatsNewEntry = {
 /** Newest first. The popup shows index 0. */
 export const WHATS_NEW: WhatsNewEntry[] = [
   {
+    id: '2026-09-12-two-doors-have-pages',
+    date: '2026-09-12',
+    emoji: '🚪',
+    title: 'The two new doors now open onto their own pages',
+    intro:
+      'Both new reasons on /sell now lead somewhere: a page for the property with a problem or one that needs work, and a page for everyone whose reason is something else. Same template as probate and chain-break, same four steps, same honest version.',
+    bullets: [
+      {
+        emoji: '🏠',
+        text: '/problem-property: what buyers and lenders walk away from, we price and carry. Nothing to fix first, no lender to say no, honest about the price.',
+      },
+      {
+        emoji: '🤫',
+        text: '/your-situation: quickly, quietly, discreetly. No board, no listing, one visit, your date. Its honest version points to StepChange and Citizens Advice.',
+      },
+      {
+        emoji: '📣',
+        text: 'Organic only for now. Counsel reads the your-situation page before any ads point at it, as the marketing plan asks.',
+      },
+    ],
+  },
+  {
     id: '2026-09-06-equity-proxy-flip',
     date: '2026-09-06',
     emoji: '⚖️',

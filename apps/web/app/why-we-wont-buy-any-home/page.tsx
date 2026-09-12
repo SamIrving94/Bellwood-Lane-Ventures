@@ -104,8 +104,8 @@ const SITUATIONS_WE_BUY_FROM: Array<{
   },
   {
     situation: 'Problem property',
-    route: 'Email us with the issue (knotweed, lease length, structural)',
-    href: 'mailto:hello@bellwoodslane.co.uk?subject=Problem%20property%20enquiry',
+    route: 'Start with the problem-property page',
+    href: '/problem-property',
   },
   {
     situation: 'Distressed sale (financial, divorce, repossession risk)',

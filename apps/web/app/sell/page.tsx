@@ -25,19 +25,17 @@ const REASONS = [
   { t: 'My buyer pulled out', s: 'Chain break', href: '/chain-break' },
   { t: 'We’re separating', s: 'Separation', href: '/separation' },
   { t: 'I’m relocating', s: 'Moving away', href: '/relocation' },
-  // Founder direction, 5 and 9 Sep 2026: two more doors, in the seller's
-  // voice like the rows above. Until their own pages exist
-  // (docs/marketing/PLAN.md §3.4 and §3.5) they jump to their card in
-  // "Is Kept for me?" below.
+  // Founder direction, 5, 9 and 12 Sep 2026: two more doors, in the seller's
+  // voice like the rows above, each with its own page since 12 Sep.
   {
     t: 'My property has a problem or needs work',
     s: 'Problem property',
-    href: '#problem-property',
+    href: '/problem-property',
   },
   {
     t: 'Something else?',
     s: 'Your situation',
-    href: '#something-else',
+    href: '/your-situation',
   },
 ];
 
