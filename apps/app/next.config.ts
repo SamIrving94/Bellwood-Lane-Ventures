@@ -5,6 +5,19 @@ import type { NextConfig } from 'next';
 
 let nextConfig: NextConfig = withLogging(config);
 
+// Batch spreadsheet uploads go through a Server Action (`batch/actions/upload.ts`),
+// and Next caps Server Action request bodies at 1MB by default — the limit is
+// enforced in the runtime BEFORE the action runs, so the action's own 10MB
+// check never got a chance to fire and the founder just saw the generic error
+// page. Raised to match the limit `uploadBatch` already validates against.
+nextConfig.experimental = {
+  ...nextConfig.experimental,
+  serverActions: {
+    ...nextConfig.experimental?.serverActions,
+    bodySizeLimit: '10mb',
+  },
+};
+
 // Aggressively exclude dev-only and unused deps to stay under Vercel's
 // 262MB lambda limit.
 nextConfig.outputFileTracingExcludes = {
