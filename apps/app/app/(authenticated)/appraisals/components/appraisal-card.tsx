@@ -152,6 +152,30 @@ export function AppraisalCard({
             value={`${poundsDisplay(ap.arv.ci80LowPence)} – ${poundsDisplay(ap.arv.ci80HighPence)}`}
           />
           <p className="mt-2 text-sm text-slate-700">{ap.arv.reasoning}</p>
+          {ap.avmCrossCheck &&
+            ap.avmCrossCheck.verdict !== 'no_avm' &&
+            ap.avmCrossCheck.avmPointEstimatePence != null && (
+              <div className="mt-3 border-slate-200 border-t pt-3">
+                <p className="mb-1 font-semibold text-slate-700 text-xs uppercase tracking-wide">
+                  vs in-house AVM
+                </p>
+                <Field
+                  label="AVM point estimate"
+                  value={poundsDisplay(ap.avmCrossCheck.avmPointEstimatePence)}
+                />
+                <Field
+                  label="Verdict"
+                  value={`${ap.avmCrossCheck.verdict.replace(/_/g, ' ')}${
+                    ap.avmCrossCheck.deltaPercent != null
+                      ? ` (${ap.avmCrossCheck.deltaPercent > 0 ? '+' : ''}${ap.avmCrossCheck.deltaPercent.toFixed(1)}%)`
+                      : ''
+                  }`}
+                />
+                <p className="mt-2 text-slate-700 text-sm">
+                  {ap.avmCrossCheck.reasoning}
+                </p>
+              </div>
+            )}
         </Section>
 
         {/* §2 Comparables */}

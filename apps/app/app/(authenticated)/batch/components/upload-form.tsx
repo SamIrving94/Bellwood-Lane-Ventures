@@ -5,6 +5,17 @@ import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';
 import { uploadBatch } from '../actions/upload';
 
+/**
+ * Keep in lockstep with `uploadBatch`'s server-side check AND with
+ * `experimental.serverActions.bodySizeLimit` in apps/app/next.config.ts.
+ * If the Next config limit is ever lower than this, oversized files fail
+ * with the generic error page instead of a message the founder can act on.
+ */
+const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
+
+/** Signatures of a request body rejected before the action ever ran. */
+const TOO_LARGE_RE = /body exceeded|413|payload too large/i;
+
 export function UploadForm() {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
@@ -17,14 +28,37 @@ export function UploadForm() {
       setError('Pick an .xls or .xlsx file first.');
       return;
     }
+    // Check the size here as well as on the server. The server action never
+    // sees an over-sized upload — Next rejects the request body first — so
+    // without this the founder waits for a full upload just to be told no.
+    if (file.size > MAX_UPLOAD_BYTES) {
+      const mb = (file.size / 1024 / 1024).toFixed(1);
+      setError(
+        `That file is ${mb}MB and the limit is 10MB. Delete unused sheets or save as .xlsx to shrink it.`
+      );
+      return;
+    }
     startTransition(async () => {
-      const result = await uploadBatch(formData);
-      if (!result.ok) {
-        setError(result.error);
-        return;
+      try {
+        const result = await uploadBatch(formData);
+        if (!result.ok) {
+          setError(result.error);
+          return;
+        }
+        // Straight to the review page, where appraisals are run.
+        router.push(`/batch/${result.batchId}`);
+      } catch (e) {
+        // A throw here means the action never returned — a rejected request
+        // body, a network drop, or a server crash. Without this catch the
+        // rejection escapes the transition and blows up the whole page with
+        // "something went wrong", which tells the founder nothing.
+        const message = (e as Error)?.message ?? '';
+        setError(
+          TOO_LARGE_RE.test(message)
+            ? 'The server rejected the file for being too large. Try saving it as .xlsx, or remove unused sheets.'
+            : `Upload failed: ${message || 'the server did not respond'}. Try again — if it keeps happening, send the file to an engineer.`
+        );
       }
-      // Straight to the review page, where appraisals are run.
-      router.push(`/batch/${result.batchId}`);
     });
   }
 

@@ -73,8 +73,17 @@ export type {
   DistanceCompInput,
 } from './distance-comps';
 export { generateCompRationale } from './comp-rationale-llm';
-export { runDeepAppraisal, DeepAppraisalSchema } from './deep-appraisal';
-export type { DeepAppraisal, DeepAppraisalInput } from './deep-appraisal';
+export {
+  DEEP_APPRAISAL_FEATURE,
+  DeepAppraisalSchema,
+  formatAvmCrossCheck,
+  runDeepAppraisal,
+} from './deep-appraisal';
+export type {
+  AvmCrossCheckInput,
+  DeepAppraisal,
+  DeepAppraisalInput,
+} from './deep-appraisal';
 export type {
   RadonCategory,
   CoalMiningZone,
