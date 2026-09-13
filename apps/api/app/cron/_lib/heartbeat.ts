@@ -21,7 +21,8 @@ export type CronName =
   | 'sla-alerts'
   | 'legal-chaser'
   | 'deep-appraisal'
-  | 'ch-stream';
+  | 'ch-stream'
+  | 'avm-backtest';
 
 // Max age (hours) between successful runs before the watchdog alerts. Tuned to
 // the documented daily schedules with head-room for timezone/retry jitter.
@@ -43,6 +44,9 @@ export const CRON_MAX_STALENESS_HOURS: Partial<Record<CronName, number>> = {
   // Every-30-min schedule; heartbeats fire even on not-configured skips, so
   // a few hours of silence really does mean the drain has stopped running.
   'ch-stream': 3,
+  // Monthly (28th). 35 days clears one skipped run before the watchdog
+  // shouts; two silent months is a real failure.
+  'avm-backtest': 35 * 24,
 };
 
 export type CronHeartbeat = {

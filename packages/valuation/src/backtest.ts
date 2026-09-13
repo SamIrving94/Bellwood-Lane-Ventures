@@ -47,6 +47,16 @@ export interface BacktestReport {
   intervalCoverage: number | null;
   /** How many samples carried both interval bounds (the coverage denominator). */
   intervalSampleCount: number;
+  /**
+   * Median signed percentage error — the robust twin of `biasPct`. A handful
+   * of wild misses can drag the mean; the median says where the TYPICAL
+   * estimate sits relative to the sale.
+   */
+  medianSignedPct: number;
+  /** Fraction (0–1) of samples within ±10% of the sale price (industry "PE10"). */
+  withinPct10: number;
+  /** Fraction (0–1) of samples within ±20% of the sale price ("PE20"). */
+  withinPct20: number;
 }
 
 /** Absolute percentage error for one pair; caller guarantees actual > 0. */
@@ -85,19 +95,34 @@ export function computeBacktest(samples: BacktestSample[]): BacktestReport {
       biasPct: 0,
       intervalCoverage: null,
       intervalSampleCount: 0,
+      medianSignedPct: 0,
+      withinPct10: 0,
+      withinPct20: 0,
     };
   }
 
   const apes: number[] = [];
+  const signedPcts: number[] = [];
+  let within10 = 0;
+  let within20 = 0;
   let absErrorSum = 0;
   let signedPctSum = 0;
   let withinInterval = 0;
   let intervalSampleCount = 0;
 
   for (const s of usable) {
-    apes.push(ape(s.predictedPence, s.actualPence));
+    const a = ape(s.predictedPence, s.actualPence);
+    apes.push(a);
+    if (a <= 0.1) {
+      within10++;
+    }
+    if (a <= 0.2) {
+      within20++;
+    }
     absErrorSum += Math.abs(s.predictedPence - s.actualPence);
-    signedPctSum += (s.predictedPence - s.actualPence) / s.actualPence;
+    const signed = (s.predictedPence - s.actualPence) / s.actualPence;
+    signedPctSum += signed;
+    signedPcts.push(signed);
 
     if (
       s.intervalLowPence != null &&
@@ -124,6 +149,9 @@ export function computeBacktest(samples: BacktestSample[]): BacktestReport {
     intervalCoverage:
       intervalSampleCount === 0 ? null : withinInterval / intervalSampleCount,
     intervalSampleCount,
+    medianSignedPct: median(signedPcts),
+    withinPct10: within10 / n,
+    withinPct20: within20 / n,
   };
 }
 

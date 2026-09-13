@@ -10,7 +10,13 @@
 import 'server-only';
 
 import { callClaude } from '@repo/ai/claude';
-import { runAVM, type PropertyType, type SellerType } from '@repo/valuation';
+import {
+  type AvmInput,
+  type AvmResultPayload,
+  type PropertyType,
+  type SellerType,
+  runAVM,
+} from '@repo/valuation';
 // Imported from the leaf module rather than the package barrel: offer-config
 // is a pure module (no `server-only`, no AVM pull-through), and keeping it off
 // the barrel specifier means a caller that mocks '@repo/valuation' still gets
@@ -86,14 +92,21 @@ export interface InstantOfferResult {
 
 function mapSituationToSellerType(s: InstantOfferSituation): SellerType {
   switch (s) {
-    case 'probate': return 'probate';
-    case 'chain_break': return 'chain_break';
-    case 'repossession': return 'repossession';
-    case 'relocation': return 'relocation';
-    case 'short_lease': return 'short_lease';
-    case 'problem_property': return 'standard'; // use standard pricing, flag via reasoning
+    case 'probate':
+      return 'probate';
+    case 'chain_break':
+      return 'chain_break';
+    case 'repossession':
+      return 'repossession';
+    case 'relocation':
+      return 'relocation';
+    case 'short_lease':
+      return 'short_lease';
+    case 'problem_property':
+      return 'standard'; // use standard pricing, flag via reasoning
     case 'other':
-    default: return 'standard';
+    default:
+      return 'standard';
   }
 }
 
@@ -142,7 +155,7 @@ const LOW_EVIDENCE_CONFIDENCE_CEILING = 0.4;
 function isLowEvidence(
   avmConfidenceLevel: string,
   avmSources: string,
-  comparableCount: number,
+  comparableCount: number
 ): boolean {
   return (
     avmConfidenceLevel.toLowerCase() === 'low' ||
@@ -155,7 +168,7 @@ export function computeConfidence(
   comparableCount: number,
   hasCondition: boolean,
   avmConfidenceLevel: string,
-  avmSources: string,
+  avmSources: string
 ): number {
   // Base 0.5, up to +0.25 for comps, +0.1 for condition, +0.15 for level mapping
   let score = 0.5;
@@ -187,8 +200,18 @@ export function computeConfidence(
 // Main function
 // ---------------------------------------------------------------------------
 
+export interface InstantOfferHooks {
+  /**
+   * Called with the exact AVM input and result once the valuation has run,
+   * so the caller can freeze it (AvmSnapshot) without the AVM payload ever
+   * riding on the public quote response. Awaited; must not throw.
+   */
+  onAvm?: (input: AvmInput, result: AvmResultPayload) => Promise<void> | void;
+}
+
 export async function generateInstantOffer(
   input: InstantOfferInput,
+  hooks: InstantOfferHooks = {}
 ): Promise<InstantOfferResult> {
   const sellerType = mapSituationToSellerType(input.situation);
 
@@ -201,14 +224,16 @@ export async function generateInstantOffer(
     ? ASSUMED_SHORT_LEASE_YEARS
     : input.remainingLeaseYears;
 
-  const avm = await runAVM({
+  const avmInput: AvmInput = {
     postcode: input.postcode,
     propertyType: input.propertyType,
     address: input.address,
     bedrooms: input.bedrooms,
     sellerType,
     remainingLeaseYears,
-  });
+  };
+  const avm = await runAVM(avmInput);
+  if (hooks.onAvm) await hooks.onAvm(avmInput, avm);
 
   const r = avm.resultJson;
 
@@ -216,7 +241,7 @@ export async function generateInstantOffer(
 
   // Comparables
   reasoning.push(
-    `${r.comparableCount} comparable sales in ${r.postcode} (last 24 months) via ${r.avmSources}`,
+    `${r.comparableCount} comparable sales in ${r.postcode} (last 24 months) via ${r.avmSources}`
   );
 
   // AVM headline. `avmPointEstimate` is already in POUNDS (the AVM works in
@@ -224,25 +249,27 @@ export async function generateInstantOffer(
   // below), so it must NOT be divided by 100. It used to be, which printed
   // "AVM point estimate £3,050" beside a £305,000 offer.
   reasoning.push(
-    `AVM point estimate £${Math.round(r.avmPointEstimate).toLocaleString('en-GB')} (${r.confidenceLevel} confidence)`,
+    `AVM point estimate £${Math.round(r.avmPointEstimate).toLocaleString('en-GB')} (${r.confidenceLevel} confidence)`
   );
 
   // Base acquisition margin
   reasoning.push(
-    `Base acquisition margin for ${sellerType.replace('_', ' ')}: ${(r.baseAcquisitionMargin * 100).toFixed(0)}%`,
+    `Base acquisition margin for ${sellerType.replace('_', ' ')}: ${(r.baseAcquisitionMargin * 100).toFixed(0)}%`
   );
 
   // Top discount factors
   for (const line of r.discountLines.slice(0, 4)) {
     if (line.fraction !== 0) {
       const pct = (line.fraction * 100).toFixed(1);
-      reasoning.push(`${line.label}: ${line.fraction > 0 ? '-' : '+'}${Math.abs(Number(pct))}%`);
+      reasoning.push(
+        `${line.label}: ${line.fraction > 0 ? '-' : '+'}${Math.abs(Number(pct))}%`
+      );
     }
   }
 
   if (leaseYearsAssumed) {
     reasoning.push(
-      `Remaining lease not supplied — ${ASSUMED_SHORT_LEASE_YEARS} years assumed for this estimate, subject to confirmation from the title`,
+      `Remaining lease not supplied — ${ASSUMED_SHORT_LEASE_YEARS} years assumed for this estimate, subject to confirmation from the title`
     );
   }
 
@@ -256,7 +283,9 @@ export async function generateInstantOffer(
   if (r.epcRating) {
     // `>= 0` (not `> 0`) keeps a neutral band C/D reading "+0.0%" rather than
     // the nonsensical "-0.0%".
-    reasoning.push(`EPC rating ${r.epcRating} (${r.epcAdjustment >= 0 ? '+' : '-'}${Math.abs(r.epcAdjustment * 100).toFixed(1)}%)`);
+    reasoning.push(
+      `EPC rating ${r.epcRating} (${r.epcAdjustment >= 0 ? '+' : '-'}${Math.abs(r.epcAdjustment * 100).toFixed(1)}%)`
+    );
   }
 
   // Pre-RICS flags (honest surface)
@@ -273,34 +302,42 @@ export async function generateInstantOffer(
   const lowEvidence = isLowEvidence(
     r.confidenceLevel,
     r.avmSources,
-    r.comparableCount,
+    r.comparableCount
   );
   const requiresReview =
     r.requiresCeoEscalation || r.discountCapped || lowEvidence;
 
   if (r.requiresCeoEscalation) {
-    reasoning.push('Offer below 60% of AVM — founder review required before commitment');
+    reasoning.push(
+      'Offer below 60% of AVM — founder review required before commitment'
+    );
   }
   if (lowEvidence) {
-    reasoning.push('Limited comparable evidence for this property — founder review required before commitment');
+    reasoning.push(
+      'Limited comparable evidence for this property — founder review required before commitment'
+    );
   }
 
   // Problem property note
   if (input.situation === 'problem_property') {
-    reasoning.push('Problem property — our cash buyer model handles knotweed, short leases, structural, non-standard construction');
+    reasoning.push(
+      'Problem property — our cash buyer model handles knotweed, short leases, structural, non-standard construction'
+    );
   }
 
   // Urgency
   const completionDays = computeCompletionDays(input.urgencyDays);
   if (input.urgencyDays && input.urgencyDays < 14) {
-    reasoning.push(`Urgency <14 days requested — we commit to completion in ${completionDays} days`);
+    reasoning.push(
+      `Urgency <14 days requested — we commit to completion in ${completionDays} days`
+    );
   }
 
   const confidenceScore = computeConfidence(
     r.comparableCount,
     typeof input.condition === 'number',
     r.confidenceLevel,
-    r.avmSources,
+    r.avmSources
   );
 
   // Generate a plain-English narrative for the vendor PDF / follow-up email.
@@ -330,7 +367,8 @@ export async function generateInstantOffer(
     estimatedMarketValueMinPence: Math.round(r.avmLow * 100),
     estimatedMarketValueMaxPence: Math.round(r.avmHigh * 100),
     offerPence: Math.round(r.finalOffer * 100),
-    offerPercentOfAvm: Math.round((r.finalOffer / r.avmPointEstimate) * 1000) / 1000,
+    offerPercentOfAvm:
+      Math.round((r.finalOffer / r.avmPointEstimate) * 1000) / 1000,
     confidenceScore,
     completionDays,
     reasoning,
@@ -462,7 +500,9 @@ interface NarrativeInput {
   requiresReview: boolean;
 }
 
-async function generateOfferNarrative(input: NarrativeInput): Promise<string | null> {
+async function generateOfferNarrative(
+  input: NarrativeInput
+): Promise<string | null> {
   const discountList =
     input.discountLines.length === 0
       ? '(no risk discounts applied)'
@@ -475,7 +515,9 @@ async function generateOfferNarrative(input: NarrativeInput): Promise<string | n
       ? '(none)'
       : input.preRicsFlags.map((f) => `- ${f}`).join('\n');
 
-  const offerPct = ((input.finalOffer / input.avmPointEstimate) * 100).toFixed(0);
+  const offerPct = ((input.finalOffer / input.avmPointEstimate) * 100).toFixed(
+    0
+  );
 
   const userPrompt = [
     `Offer figure: £${input.finalOffer.toLocaleString('en-GB')}`,
