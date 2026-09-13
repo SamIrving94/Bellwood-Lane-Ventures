@@ -26,25 +26,6 @@ export type WhatsNewEntry = {
 /** Newest first. The popup shows index 0. */
 export const WHATS_NEW: WhatsNewEntry[] = [
   {
-    id: '2026-09-07-new-areas-scan-first',
-    date: '2026-09-07',
-    emoji: '📍',
-    title: 'Add an area, run the scout — it is in THAT run',
-    intro:
-      'A freshly added area used to slip to the back of the 6-a-day rotation, so the run you triggered for it could skip it. Fixed.',
-    bullets: [
-      {
-        emoji: '📍',
-        text: 'New areas now go to the FRONT of the rotation. Add Wanstead (E11), add South Woodford (E18), click "Run scout now" — both are scanned in that run.',
-      },
-      {
-        emoji: '★',
-        text: 'Want a patch checked on EVERY run, not just the next one? Mark it ★ Prime. That also tells the classifier to treat £700k+ finds there as prime stock.',
-      },
-    ],
-    cta: { label: 'Open scouting areas', href: '/settings/scouting' },
-  },
-  {
     id: '2026-09-12-scout-reads-desk-drafts',
     date: '2026-09-12',
     emoji: '🔍',
@@ -190,6 +171,25 @@ export const WHATS_NEW: WhatsNewEntry[] = [
         text: 'Organic only for now. Counsel reads the your-situation page before any ads point at it, as the marketing plan asks.',
       },
     ],
+  },
+  {
+    id: '2026-09-07-new-areas-scan-first',
+    date: '2026-09-07',
+    emoji: '📍',
+    title: 'Add an area, run the scout — it is in THAT run',
+    intro:
+      'A freshly added area used to slip to the back of the 6-a-day rotation, so the run you triggered for it could skip it. Fixed.',
+    bullets: [
+      {
+        emoji: '📍',
+        text: 'New areas now go to the FRONT of the rotation. Add Wanstead (E11), add South Woodford (E18), click "Run scout now" — both are scanned in that run.',
+      },
+      {
+        emoji: '★',
+        text: 'Want a patch checked on EVERY run, not just the next one? Mark it ★ Prime. That also tells the classifier to treat £700k+ finds there as prime stock.',
+      },
+    ],
+    cta: { label: 'Open scouting areas', href: '/settings/scouting' },
   },
   {
     id: '2026-09-06-equity-proxy-flip',
