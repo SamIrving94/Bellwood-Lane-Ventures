@@ -1,9 +1,11 @@
 import type { SituationValue } from '@/lib/situations';
 
 /**
- * Content for the four situation landing pages (probate, chain-break,
- * separation, relocation), verbatim from the Aug 2026 design handoff's
- * reason-page template. The copy is signed off; do not paraphrase.
+ * Content for the situation landing pages. The first four (probate,
+ * chain-break, separation, relocation) are verbatim from the Aug 2026 design
+ * handoff's reason-page template; that copy is signed off, do not paraphrase.
+ * The two Sep 2026 pages (problem-property, your-situation) were drafted on
+ * the same template from the founder's own card copy for the /sell doors.
  *
  * One deliberate normalisation, flagged at implementation: the handoff's
  * homepage carries the NEWER promise chain (offer confirmed within two
@@ -16,7 +18,9 @@ export type SituationKey =
   | 'probate'
   | 'chain-break'
   | 'separation'
-  | 'relocation';
+  | 'relocation'
+  | 'problem-property'
+  | 'your-situation';
 
 export type SituationContent = {
   /** Quote-intake situation value submitted with the form. */
@@ -201,7 +205,7 @@ export const SITUATION_CONTENT: Record<SituationKey, SituationContent> = {
     honestTitle: 'If you can wait, waiting will pay you more.',
     honestBody:
       'If your onward purchase is safe and you can put the house back on the market for a few more months, the open market will almost certainly get you a better price. Speed is the trade you are paying for with us.',
-    ctaLabel: 'Get my offer',
+    ctaLabel: 'Send us your details',
     mobileNote: 'Same-day response',
   },
   separation: {
@@ -241,7 +245,7 @@ export const SITUATION_CONTENT: Record<SituationKey, SituationContent> = {
     honestTitle: 'If the goal is the highest possible price, say so.',
     honestBody:
       'Our offer is below open-market value by design. If both of you want to maximise every pound and you can live with the wait and the viewings, a good local agent is the better route, and we will tell you that on the phone.',
-    ctaLabel: 'Get my offer',
+    ctaLabel: 'Send us your details',
     mobileNote: 'Solicitor to solicitor',
   },
   relocation: {
@@ -282,7 +286,102 @@ export const SITUATION_CONTENT: Record<SituationKey, SituationContent> = {
     honestTitle: 'A good house in a good street sells itself.',
     honestBody:
       'If the property is in excellent condition and high demand, and your move can absorb a few months of chain risk, a good high-street agent will very likely net you more. That is their wedge, not ours.',
-    ctaLabel: 'Get my offer',
+    ctaLabel: 'Send us your details',
     mobileNote: 'Same-day response',
+  },
+  'problem-property': {
+    situation: 'problem_property',
+    triggerLabel: 'Problem property',
+    photo: true,
+    eyebrow: 'for a property with a problem, or one that needs work',
+    h1a: 'Your property has a problem or needs work.',
+    h1b: 'We buy it as it is.',
+    sub: 'Major refurbishments, structural issues, knotweed, a short lease, a lender that says no. If your property has an issue that is causing you problems, you do not have to fix it or explain it away. We come and see it, confirm a price in writing, and complete quickly, so you can put it behind you.',
+    fitTitle: 'What buyers and lenders walk away from, we price and carry.',
+    fitBody:
+      'A survey that finds movement. A lease running short. Knotweed in the garden. Cladding still waiting on its certificate. A kitchen and wiring from another decade. Each one thins the field of buyers, and most lenders will not touch what is left. We buy for cash, so there is no lender to say no, and we carry the work and the risk ourselves. The price reflects that, and we show you exactly how.',
+    cards: [
+      {
+        t: 'Nothing to fix first',
+        d: 'We buy the property as it stands. No repairs, no certificates to chase, no tidying up for viewings. We tell you in advance what we are looking for when we visit.',
+      },
+      {
+        t: 'No lender to say no',
+        d: 'Cash, no mortgage condition, no valuation for a lender to walk away from. If a buyer has already fallen away at the survey, that is exactly the gap we fill.',
+      },
+      {
+        t: 'Honest about the price',
+        d: 'Our offer is below open-market value, and with a problem property the gap reflects the cost and the risk of putting it right. We share the notes behind the figure, and you have a week to decide.',
+      },
+    ],
+    stepsEyebrow: 'how it works',
+    stepsTitle: 'Four steps. No surprises.',
+    steps: KEPT_STEPS,
+    qaTitle: 'Questions sellers ask us.',
+    faqs: [
+      {
+        q: 'What counts as a problem property?',
+        a: 'Anything that makes a normal sale hard: structural movement or subsidence, Japanese knotweed, a short lease, cladding or fire-safety issues, non-standard construction, damp, a roof that has gone, or a property that needs a full refurbishment. If you are not sure, tell us what you know and we will say whether it is something we buy.',
+      },
+      {
+        q: 'Do I need a survey or a specialist report first?',
+        a: 'No. Tell us what you know about the issue and we come and see it ourselves. If a report already exists, share it, because it helps us price accurately. If it does not, we arrange what we need at our own cost.',
+      },
+      {
+        q: 'Can the offer change once you have seen the problem?',
+        a: CHANGE_A,
+      },
+      { q: 'Why is the offer below open-market?', a: BELOW_A },
+      { q: 'What does it cost me?', a: FEE_A },
+    ],
+    honestTitle: 'Some problems are worth fixing first.',
+    honestBody:
+      'If the issue is cosmetic and you have the money and the time, a modest refurbishment and a good local agent will very likely net you more than we will. Our offer prices in the work and the risk, and that is a real cost to you. If that is your position, we will say so.',
+    ctaLabel: 'Send us your details',
+    mobileNote: 'Nothing to fix first',
+  },
+  'your-situation': {
+    situation: 'other',
+    triggerLabel: 'Something else',
+    photo: true,
+    eyebrow: 'for everything not on the list',
+    h1a: 'Something else?',
+    h1b: 'Quickly, quietly, discreetly.',
+    sub: 'Not every reason for selling fits a heading. A house that has become a burden, a change in health, a move into care, a landlord stepping back, a decision you would rather not explain to a street full of viewers. If you need to move on quickly, quietly, and discreetly, we will tailor a process to meet whatever your unique needs are.',
+    fitTitle: 'One conversation, then a plan built around you.',
+    fitBody:
+      'Tell us what is going on, as much or as little as you want. We come and see the property once, confirm a price in writing, and agree the date and the way of working that suits your situation: no board outside, no online listing, no viewings by strangers, and solicitors talking to solicitors if you would rather not. The price we write down is the price we complete at.',
+    cards: [
+      {
+        t: 'Discreet by default',
+        d: 'No board, no listing, no open days. One visit by us, and only the people you choose need to know the house is changing hands.',
+      },
+      {
+        t: 'Your timeline, either way',
+        d: 'Fast when you need fast, in as little as two weeks. Patient when you are waiting on something else. You set the date; we work to it.',
+      },
+      {
+        t: 'In writing, held for a week',
+        d: 'A price confirmed after viewing, held for a week so you can talk it over with whoever you trust, and never reduced at the last minute.',
+      },
+    ],
+    stepsEyebrow: 'how it works',
+    stepsTitle: 'Four steps. No surprises.',
+    steps: KEPT_STEPS,
+    qaTitle: 'Questions sellers ask us.',
+    faqs: [
+      {
+        q: 'Do I have to tell you why I am selling?',
+        a: 'No. It helps us shape the process, and a sentence is usually enough, but you can tell us as little as you like. What we do need is the address, one visit, and a solicitor to send the paperwork to.',
+      },
+      { q: 'Can I change my mind after I accept?', a: MIND_A },
+      { q: 'How quickly can you complete?', a: SPEED_A },
+      { q: 'Are you regulated?', a: REG_A },
+    ],
+    honestTitle: 'We are not the answer to every situation.',
+    honestBody:
+      'Our offer is below open-market value by design. If you can wait, and the house is in good shape, a good local agent will very likely net you more. And if a faster sale would leave you with debt you cannot service, talk to StepChange (stepchange.org) or Citizens Advice first. They are free, they will not judge, and a sale is only one of the levers. If that is you, we will say so.',
+    ctaLabel: 'Send us your details',
+    mobileNote: 'Quietly and discreetly',
   },
 };

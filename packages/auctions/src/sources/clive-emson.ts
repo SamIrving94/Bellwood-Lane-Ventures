@@ -6,35 +6,39 @@
  * Clive Emson are the largest independent regional land & property
  * auctioneer, covering the south of England. They run 8 sales a year.
  *
- * SCRAPING STATUS: not implemented. Returns empty arrays — NEVER fake
- * data in production.
+ * SCRAPING STATUS: LLM extraction (see ../llm-lot-extract.ts). The
+ * landing page is fetched, the "current catalogue" link is followed, and
+ * each page's text is read into typed lots by a cheap model with the money
+ * parsed by code.
  *
- * TODO (real scraper):
- *   1. GET https://www.cliveemson.co.uk/ — find the "Current Catalogue" CTA
- *   2. Follow to /catalogue
- *   3. Each .lot-card has:
- *        - .lot-number
- *        - .lot-address
- *        - .guide-price (format "*Guide: £X" or "£X - £Y")
- *        - .lot-description → use for property type classification
- *   4. Clive Emson publishes lot-by-lot PDFs — skip those, HTML is richer.
- *   5. Each sale has a single date — fetch from the catalogue header.
+ * The entry URLs below are the paths recorded when this adapter was a
+ * stub; they could not be re-verified from the build sandbox (outbound to
+ * cliveemson.co.uk is blocked there). Watch Vercel logs for
+ * `[auctions/clive-emson]` on the first Monday run.
  *
- * Recommended starting point: copy the JSON-LD strategy from
- * packages/auctions/src/sources/auction-house.ts and run it against
- * the cliveemson.co.uk catalogue. Most modern auction sites embed
- * schema.org Product / RealEstateListing markup.
+ * Results are not scraped — returns [] honestly.
  */
 
 import 'server-only';
+import { fetchCatalogueLots } from '../llm-lot-extract';
 import type { AuctionLot, AuctionResult } from '../types';
 
+const ENTRY_URLS = [
+  'https://www.cliveemson.co.uk/catalogue',
+  'https://www.cliveemson.co.uk/',
+];
+
 export async function fetchCliveEmsonUpcoming(): Promise<AuctionLot[]> {
-  console.info('[auctions/clive-emson] scraper not yet implemented — returning []');
-  return [];
+  return await fetchCatalogueLots({
+    sourceHouse: 'clive_emson',
+    entryUrls: ENTRY_URLS,
+    tag: 'auctions/clive-emson',
+  });
 }
 
-export async function fetchCliveEmsonResults(): Promise<AuctionResult[]> {
-  console.info('[auctions/clive-emson] results scraper not yet implemented — returning []');
-  return [];
+export function fetchCliveEmsonResults(): Promise<AuctionResult[]> {
+  console.info(
+    '[auctions/clive-emson] results scraper not implemented — returning []'
+  );
+  return Promise.resolve([]);
 }

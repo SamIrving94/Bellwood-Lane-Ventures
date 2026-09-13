@@ -35,7 +35,7 @@ export default function AboutPage() {
               How we price
             </Link>
             <Button href="/sell#offer" className="px-5 py-2 text-sm">
-              Get my offer
+              Send us your details
             </Button>
           </div>
         </div>
@@ -129,7 +129,7 @@ export default function AboutPage() {
             <span className="font-normal text-leaf">in writing.</span>
           </h2>
           <div>
-            <Button href="/sell#offer">Get my offer</Button>
+            <Button href="/sell#offer">Send us your details</Button>
             <p className="mt-[18px] text-[14px] text-stone-600 leading-[1.6]">
               Same-day response, Monday to Friday. No figure until we&rsquo;ve
               stood in the house.

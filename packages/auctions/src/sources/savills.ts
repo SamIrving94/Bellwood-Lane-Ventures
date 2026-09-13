@@ -6,34 +6,41 @@
  * Savills run national residential + commercial auctions roughly every
  * 6 weeks. Catalogues go live about 3 weeks before each sale date.
  *
- * SCRAPING STATUS: not implemented. Returns empty arrays — NEVER fake
- * data in production. The real scraper is straightforward but Savills
- * use a SPA-style catalogue that may need Puppeteer or a JSON API
- * discovery first.
+ * SCRAPING STATUS: LLM extraction (see ../llm-lot-extract.ts). The
+ * landing page is fetched, catalogue-shaped links are followed one level
+ * down, and each page's text is read into typed lots by a cheap model
+ * with the money parsed by code. No selector map to rot.
  *
- * TODO (real scraper):
- *   1. GET https://www.savills.co.uk/auctions — find active catalogue link
- *      (selector: a[href*="/auction-catalogue/"] — usually top of page)
- *   2. Follow to /auction-catalogue/{id}
- *   3. Each lot row:
- *        - .lot-number → sourceLotRef
- *        - .property-address → address
- *        - .guide-price → guide range (strip "£", "Guide Price", "+" suffix)
- *        - "View Details" link → lotUrl
- *   4. Savills publishes a PDF catalogue too (linked at top) —
- *      could fall back to PDF scrape if HTML structure changes.
- *   5. Respect robots.txt; add 500ms delay between requests.
+ * The entry URLs below are the public catalogue paths recorded when this
+ * adapter was a stub; they could not be re-verified from the build
+ * sandbox (outbound to savills.co.uk is blocked there). Watch Vercel logs
+ * for `[auctions/savills]` on the first Monday run: an HTTP 404 line means
+ * the path moved and only this list needs updating.
+ *
+ * Results (hammer prices) are not scraped — returns [] honestly, same as
+ * the AH-UK adapter.
  */
 
 import 'server-only';
+import { fetchCatalogueLots } from '../llm-lot-extract';
 import type { AuctionLot, AuctionResult } from '../types';
 
+const ENTRY_URLS = [
+  'https://auctions.savills.co.uk/',
+  'https://www.savills.co.uk/auctions',
+];
+
 export async function fetchSavillsUpcoming(): Promise<AuctionLot[]> {
-  console.info('[auctions/savills] scraper not yet implemented — returning []');
-  return [];
+  return await fetchCatalogueLots({
+    sourceHouse: 'savills',
+    entryUrls: ENTRY_URLS,
+    tag: 'auctions/savills',
+  });
 }
 
-export async function fetchSavillsResults(): Promise<AuctionResult[]> {
-  console.info('[auctions/savills] results scraper not yet implemented — returning []');
-  return [];
+export function fetchSavillsResults(): Promise<AuctionResult[]> {
+  console.info(
+    '[auctions/savills] results scraper not implemented — returning []'
+  );
+  return Promise.resolve([]);
 }

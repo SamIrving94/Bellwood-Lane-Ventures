@@ -25,19 +25,17 @@ const REASONS = [
   { t: 'My buyer pulled out', s: 'Chain break', href: '/chain-break' },
   { t: 'We’re separating', s: 'Separation', href: '/separation' },
   { t: 'I’m relocating', s: 'Moving away', href: '/relocation' },
-  // Founder direction, 5 and 9 Sep 2026: two more doors, in the seller's
-  // voice like the rows above. Until their own pages exist
-  // (docs/marketing/PLAN.md §3.4 and §3.5) they jump to their card in
-  // "Is Kept for me?" below.
+  // Founder direction, 5, 9 and 12 Sep 2026: two more doors, in the seller's
+  // voice like the rows above, each with its own page since 12 Sep.
   {
     t: 'My property has a problem or needs work',
     s: 'Problem property',
-    href: '#problem-property',
+    href: '/problem-property',
   },
   {
     t: 'Something else?',
     s: 'Your situation',
-    href: '#something-else',
+    href: '/your-situation',
   },
 ];
 
@@ -368,6 +366,16 @@ export default function SellPage() {
               Months of uncertainty. A fee for the privilege. And a one in three
               chance that after all of it, you are back where you started.
             </p>
+            {/* Founder direction, 12 Sep 2026: the cash-buyer concern comes
+                back into "why we exist". Sourced (footnote 4) so it clears the
+                verify-before-asserting rule that took the unsourced "most
+                cited" version out. */}
+            <p className="mt-4 max-w-[62ch] text-[#44403c] text-[17px] leading-[1.7]">
+              A cash buyer should be the simple way out. Yet when the Office of
+              Fair Trading looked at quick-sale buyers, the price dropping at
+              the last minute was one of the main concerns it found.
+              <sup className="ml-1 text-[11px] text-stone-400">4</sup>
+            </p>
 
             <div className="mt-9 max-w-[66ch] border-hair border-t pt-[30px]">
               <h3
@@ -409,6 +417,12 @@ export default function SellPage() {
               <li>
                 3. Typical UK high-street sole-agency fee range; your agent may
                 charge more or less.
+              </li>
+              <li>
+                4. Office of Fair Trading, quick house sales market study
+                (OFT1499), August 2013. Last-minute price reductions were among
+                the main concerns it raised, and firms later gave undertakings
+                not to reduce an offer without a valid reason.
               </li>
             </ol>
           </div>
@@ -640,7 +654,7 @@ export default function SellPage() {
             </div>
             <nav className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-stone-600">
               <a href="#offer" className="hover:text-brand-deep">
-                Get an offer
+                Send us your details
               </a>
               <Link href="/about" className="hover:text-brand-deep">
                 Kept&rsquo;s story

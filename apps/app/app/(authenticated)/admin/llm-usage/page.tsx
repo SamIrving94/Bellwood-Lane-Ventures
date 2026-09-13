@@ -13,15 +13,29 @@ export const revalidate = 0;
  * No PII — metrics only. Safe to share with Counsel or investors.
  */
 
-// USD per 1M tokens — verify against console.anthropic.com/pricing before
-// trusting cost figures. These are early-2026 list prices.
+// USD per 1M tokens. Anthropic rows: early-2026 list prices. OpenRouter
+// rows (slash ids): openrouter.ai model pages, 2026-09-12 — refresh when a
+// model in the routing table is missing here (unknown ids are costed as
+// Sonnet, which over-states cheap open-weight models).
 const PRICING: Record<string, { in: number; out: number }> = {
   'claude-haiku-4-5': { in: 1, out: 5 },
   'claude-sonnet-4-5': { in: 3, out: 15 },
   'claude-opus-4-7': { in: 15, out: 75 },
+  'anthropic/claude-haiku-4.5': { in: 1, out: 5 },
+  'anthropic/claude-sonnet-4.5': { in: 3, out: 15 },
+  'anthropic/claude-opus-4.7': { in: 15, out: 75 },
+  'qwen/qwen3-235b-a22b-2507': { in: 0.0875, out: 0.35 },
+  'deepseek/deepseek-v4-flash': { in: 0.05, out: 0.16 },
+  'z-ai/glm-5.2': { in: 0.4875, out: 1.56 },
+  'moonshotai/kimi-k2.6': { in: 0.5795, out: 2.44 },
+  'meta-llama/llama-4-maverick': { in: 0.2, out: 0.696 },
 };
 
-function estimateUsdCost(model: string, inputTokens: number, outputTokens: number): number {
+function estimateUsdCost(
+  model: string,
+  inputTokens: number,
+  outputTokens: number
+): number {
   const p = PRICING[model] ?? { in: 3, out: 15 };
   return (inputTokens * p.in + outputTokens * p.out) / 1_000_000;
 }
@@ -41,45 +55,52 @@ function formatTokens(n: number): string {
 export default async function LlmUsagePage() {
   const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
 
-  const [byFeatureRaw, byFeatureCounts, byModelRaw, recentFailures, totalCalls] = await Promise.all(
-    [
-      database.llmCallLog.groupBy({
-        by: ['feature', 'model'],
-        where: { createdAt: { gte: since } },
-        _count: { _all: true },
-        _sum: { inputTokens: true, outputTokens: true, durationMs: true },
-        _avg: { durationMs: true },
-        _max: { durationMs: true },
-      }),
-      database.llmCallLog.groupBy({
-        by: ['feature', 'success'],
-        where: { createdAt: { gte: since } },
-        _count: { _all: true },
-      }),
-      database.llmCallLog.groupBy({
-        by: ['model'],
-        where: { createdAt: { gte: since } },
-        _count: { _all: true },
-        _sum: { inputTokens: true, outputTokens: true },
-      }),
-      database.llmCallLog.findMany({
-        where: { success: false, createdAt: { gte: since } },
-        orderBy: { createdAt: 'desc' },
-        take: 20,
-        select: {
-          id: true,
-          createdAt: true,
-          feature: true,
-          model: true,
-          durationMs: true,
-          errorReason: true,
-        },
-      }),
-      database.llmCallLog.count({ where: { createdAt: { gte: since } } }),
-    ],
-  );
+  const [
+    byFeatureRaw,
+    byFeatureCounts,
+    byModelRaw,
+    recentFailures,
+    totalCalls,
+  ] = await Promise.all([
+    database.llmCallLog.groupBy({
+      by: ['feature', 'model'],
+      where: { createdAt: { gte: since } },
+      _count: { _all: true },
+      _sum: { inputTokens: true, outputTokens: true, durationMs: true },
+      _avg: { durationMs: true },
+      _max: { durationMs: true },
+    }),
+    database.llmCallLog.groupBy({
+      by: ['feature', 'success'],
+      where: { createdAt: { gte: since } },
+      _count: { _all: true },
+    }),
+    database.llmCallLog.groupBy({
+      by: ['model'],
+      where: { createdAt: { gte: since } },
+      _count: { _all: true },
+      _sum: { inputTokens: true, outputTokens: true },
+    }),
+    database.llmCallLog.findMany({
+      where: { success: false, createdAt: { gte: since } },
+      orderBy: { createdAt: 'desc' },
+      take: 20,
+      select: {
+        id: true,
+        createdAt: true,
+        feature: true,
+        model: true,
+        durationMs: true,
+        errorReason: true,
+      },
+    }),
+    database.llmCallLog.count({ where: { createdAt: { gte: since } } }),
+  ]);
 
-  const successByFeature = new Map<string, { success: number; failure: number }>();
+  const successByFeature = new Map<
+    string,
+    { success: number; failure: number }
+  >();
   for (const row of byFeatureCounts) {
     const key = row.feature;
     const entry = successByFeature.get(key) ?? { success: 0, failure: 0 };
@@ -91,17 +112,23 @@ export default async function LlmUsagePage() {
   const totalSpendUsd = byFeatureRaw.reduce(
     (sum, r) =>
       sum +
-      estimateUsdCost(r.model, r._sum.inputTokens ?? 0, r._sum.outputTokens ?? 0),
-    0,
+      estimateUsdCost(
+        r.model,
+        r._sum.inputTokens ?? 0,
+        r._sum.outputTokens ?? 0
+      ),
+    0
   );
 
-  const featureRows = [...byFeatureRaw].sort((a, b) => b._count._all - a._count._all);
+  const featureRows = [...byFeatureRaw].sort(
+    (a, b) => b._count._all - a._count._all
+  );
 
   return (
     <div className="mx-auto max-w-6xl space-y-8 p-6">
       <header className="space-y-1">
-        <h1 className="text-2xl font-semibold">LLM usage — last 7 days</h1>
-        <p className="text-sm text-slate-500">
+        <h1 className="font-semibold text-2xl">LLM usage — last 7 days</h1>
+        <p className="text-slate-500 text-sm">
           Per-feature rollup of every Claude call. Metrics only — no prompts
           stored. Pricing figures are early-2026 list prices; verify against{' '}
           <a
@@ -130,7 +157,7 @@ export default async function LlmUsagePage() {
       </section>
 
       <section className="space-y-2">
-        <h2 className="text-lg font-medium">By feature</h2>
+        <h2 className="font-medium text-lg">By feature</h2>
         <div className="overflow-x-auto rounded-lg border border-slate-200">
           <table className="min-w-full text-sm">
             <thead className="bg-slate-50 text-left">
@@ -149,10 +176,13 @@ export default async function LlmUsagePage() {
             <tbody>
               {featureRows.length === 0 && (
                 <tr>
-                  <td className="px-3 py-6 text-center text-slate-500" colSpan={9}>
-                    No LLM calls logged in the last 7 days. If your features
-                    are firing, check ANTHROPIC_API_KEY + that
-                    instrumentation.ts was deployed.
+                  <td
+                    className="px-3 py-6 text-center text-slate-500"
+                    colSpan={9}
+                  >
+                    No LLM calls logged in the last 7 days. If your features are
+                    firing, check ANTHROPIC_API_KEY + that instrumentation.ts
+                    was deployed.
                   </td>
                 </tr>
               )}
@@ -170,9 +200,11 @@ export default async function LlmUsagePage() {
                 return (
                   <tr
                     key={`${row.feature}__${row.model}`}
-                    className="border-t border-slate-100"
+                    className="border-slate-100 border-t"
                   >
-                    <td className="px-3 py-2 font-mono text-xs">{row.feature}</td>
+                    <td className="px-3 py-2 font-mono text-xs">
+                      {row.feature}
+                    </td>
                     <td className="px-3 py-2 font-mono text-xs">{row.model}</td>
                     <td className="px-3 py-2 text-right">
                       {row._count._all.toLocaleString('en-GB')}
@@ -208,10 +240,10 @@ export default async function LlmUsagePage() {
       </section>
 
       <section className="space-y-2">
-        <h2 className="text-lg font-medium">By model (spend share)</h2>
+        <h2 className="font-medium text-lg">By model (spend share)</h2>
         <div className="space-y-1">
           {byModelRaw.length === 0 && (
-            <p className="text-sm text-slate-500">No data yet.</p>
+            <p className="text-slate-500 text-sm">No data yet.</p>
           )}
           {byModelRaw
             .map((m) => ({
@@ -220,7 +252,7 @@ export default async function LlmUsagePage() {
               cost: estimateUsdCost(
                 m.model,
                 m._sum.inputTokens ?? 0,
-                m._sum.outputTokens ?? 0,
+                m._sum.outputTokens ?? 0
               ),
             }))
             .sort((a, b) => b.cost - a.cost)
@@ -247,7 +279,7 @@ export default async function LlmUsagePage() {
                   <span className="w-24 text-right font-mono tabular-nums">
                     {formatUsd(row.cost)}
                   </span>
-                  <span className="w-10 text-right text-xs text-slate-500">
+                  <span className="w-10 text-right text-slate-500 text-xs">
                     {pct}%
                   </span>
                 </div>
@@ -257,9 +289,9 @@ export default async function LlmUsagePage() {
       </section>
 
       <section className="space-y-2">
-        <h2 className="text-lg font-medium">Recent failures</h2>
+        <h2 className="font-medium text-lg">Recent failures</h2>
         {recentFailures.length === 0 ? (
-          <p className="text-sm text-emerald-700">
+          <p className="text-emerald-700 text-sm">
             No failures in the last 7 days. Healthy.
           </p>
         ) : (
@@ -276,13 +308,18 @@ export default async function LlmUsagePage() {
               </thead>
               <tbody>
                 {recentFailures.map((row) => (
-                  <tr key={row.id} className="border-t border-slate-100">
+                  <tr key={row.id} className="border-slate-100 border-t">
                     <td className="px-3 py-2 font-mono text-xs">
-                      {row.createdAt.toISOString().replace('T', ' ').slice(0, 19)}
+                      {row.createdAt
+                        .toISOString()
+                        .replace('T', ' ')
+                        .slice(0, 19)}
                     </td>
-                    <td className="px-3 py-2 font-mono text-xs">{row.feature}</td>
+                    <td className="px-3 py-2 font-mono text-xs">
+                      {row.feature}
+                    </td>
                     <td className="px-3 py-2 font-mono text-xs">{row.model}</td>
-                    <td className="px-3 py-2 text-xs text-rose-700">
+                    <td className="px-3 py-2 text-rose-700 text-xs">
                       {row.errorReason ?? '(no reason captured)'}
                     </td>
                     <td className="px-3 py-2 text-right">{row.durationMs}</td>
@@ -294,10 +331,11 @@ export default async function LlmUsagePage() {
         )}
       </section>
 
-      <footer className="border-t border-slate-200 pt-4 text-xs text-slate-500">
+      <footer className="border-slate-200 border-t pt-4 text-slate-500 text-xs">
         Source table: <code>LlmCallLog</code>. Logger installed in each
-        app&apos;s <code>instrumentation.ts</code>. Add a feature tag at the call
-        site via <code>{`callClaude({ ..., feature: 'my_feature' })`}</code>.
+        app&apos;s <code>instrumentation.ts</code>. Add a feature tag at the
+        call site via{' '}
+        <code>{`callClaude({ ..., feature: 'my_feature' })`}</code>.
       </footer>
     </div>
   );
@@ -306,8 +344,10 @@ export default async function LlmUsagePage() {
 function Stat({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-lg border border-slate-200 p-4">
-      <div className="text-xs uppercase tracking-wide text-slate-500">{label}</div>
-      <div className="mt-1 text-2xl font-semibold tabular-nums">{value}</div>
+      <div className="text-slate-500 text-xs uppercase tracking-wide">
+        {label}
+      </div>
+      <div className="mt-1 font-semibold text-2xl tabular-nums">{value}</div>
     </div>
   );
 }

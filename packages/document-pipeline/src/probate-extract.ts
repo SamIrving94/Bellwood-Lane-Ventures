@@ -1,5 +1,7 @@
 import 'server-only';
 
+import { recordLlmCall } from '@repo/ai/claude';
+
 import { keys } from '../keys';
 import { runMistralOcr, type MistralOcrResult } from './mistral-ocr';
 import {
@@ -349,7 +351,15 @@ interface ClaudeContentBlock {
 
 interface ClaudeMessagesResponse {
   content?: ClaudeContentBlock[];
+  usage?: { input_tokens?: number; output_tokens?: number };
 }
+
+/**
+ * Usage-page bucket for this call. It cannot go through the routable
+ * client — it needs the Files API + citations betas, which the AI SDK path
+ * does not carry — so it logs itself instead.
+ */
+const PROBATE_EXTRACT_FEATURE = 'probate_pdf_extract';
 
 async function callClaudeForProbateExtract(args: {
   apiKey: string;
@@ -417,6 +427,7 @@ async function callClaudeForProbateExtract(args: {
     ],
   };
 
+  const startedAt = Date.now();
   const res = await fetch(`${ANTHROPIC_API_BASE}/v1/messages`, {
     method: 'POST',
     headers: {
@@ -431,12 +442,29 @@ async function callClaudeForProbateExtract(args: {
 
   if (!res.ok) {
     const text = await res.text().catch(() => '');
+    await recordLlmCall({
+      feature: PROBATE_EXTRACT_FEATURE,
+      model: CLAUDE_SONNET,
+      inputTokens: 0,
+      outputTokens: 0,
+      durationMs: Date.now() - startedAt,
+      success: false,
+      errorReason: `http_${res.status}`,
+    });
     throw new Error(
       `Claude messages failed: ${res.status} ${text.slice(0, 300)}`,
     );
   }
 
   const json = (await res.json()) as ClaudeMessagesResponse;
+  await recordLlmCall({
+    feature: PROBATE_EXTRACT_FEATURE,
+    model: CLAUDE_SONNET,
+    inputTokens: json.usage?.input_tokens ?? 0,
+    outputTokens: json.usage?.output_tokens ?? 0,
+    durationMs: Date.now() - startedAt,
+    success: true,
+  });
   return parseClaudeResponse(json);
 }
 

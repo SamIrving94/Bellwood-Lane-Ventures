@@ -1,4 +1,5 @@
 import { database } from '@repo/database';
+import { mergeScorerConfig, scoreLead } from '@repo/scouting';
 import { parseWhatsAppMessage } from '@repo/whatsapp-parser';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
@@ -14,21 +15,47 @@ const bodySchema = z.object({
   receivedAt: z.string().datetime().optional(),
 });
 
-// Map parser's sellerSituation enum -> ScoutLead.leadType string
-function mapLeadType(
-  situation: string | undefined
-): string {
+// Map parser's sellerSituation enum -> ScoutLead.leadType string.
+//
+// Every value returned here must be a key of ScorerConfig.leadTypeScores so
+// the scorer credits it: 'short_lease' and 'distressed' used to be stored
+// verbatim and silently scored as the fallback (4 points) had they ever
+// reached the scorer at all.
+function mapLeadType(situation: string | undefined): string {
   switch (situation) {
     case 'probate':
     case 'chain_break':
     case 'repossession':
     case 'relocation':
-    case 'short_lease':
       return situation;
+    case 'short_lease':
+      return 'lease_expiry';
     case 'distressed':
-      return 'distressed';
+      return 'distressed_sale';
     default:
-      return 'whatsapp_intake';
+      return 'unknown';
+  }
+}
+
+/**
+ * Active founder-tuned scorer weights (EvalConfig 'lead_scoring'), same
+ * lookup the scouting cron makes, so a WhatsApp lead and a scouted lead are
+ * scored by one ruler. Falls back to the hard-coded defaults.
+ */
+async function loadScorerConfig() {
+  try {
+    const active = await database.evalConfig.findFirst({
+      where: { evalType: 'lead_scoring', activatedAt: { not: null } },
+      orderBy: { version: 'desc' },
+      select: { version: true, config: true },
+    });
+    return {
+      scorerConfig: mergeScorerConfig(active?.config ?? null),
+      evalConfigVersion: active?.version ?? null,
+    };
+  } catch (err) {
+    console.warn('[intake/whatsapp] failed to load scorer config', err);
+    return { scorerConfig: mergeScorerConfig(null), evalConfigVersion: null };
   }
 }
 
@@ -91,32 +118,79 @@ export const POST = async (request: Request) => {
   let finalStatus: 'parsed' | 'manual_review' | 'failed';
 
   if (canAutoConvert) {
-    // 3a. Create ScoutLead
-    // Map parser confidence (0-1) into a lead score (0-100)
-    const leadScore = Math.round(parsed.confidence * 100);
-    const verdict =
-      leadScore >= 80
-        ? 'STRONG'
-        : leadScore >= 60
-          ? 'VIABLE'
-          : leadScore >= 40
-            ? 'THIN'
-            : 'INSUFFICIENT_DATA';
+    // 3a. Create ScoutLead, scored by the SAME scorer as every other lead.
+    //
+    // This used to store parser confidence × 100 as the lead score — a
+    // measure of how sure the model was that the message was a lead, on a
+    // different scale from the scouting scorer, so WhatsApp leads were not
+    // comparable to the rest of the inbox. Confidence still gates the
+    // auto-convert above and is kept on rawPayload; the score is the
+    // scorer's (lead type + whatever else the message gave us), with the
+    // factor lines stamped so the lead page can show why.
+    const { scorerConfig, evalConfigVersion } = await loadScorerConfig();
+    const leadType = mapLeadType(parsed.sellerSituation);
+    const address = parsed.propertyAddress ?? 'Unknown';
+    const postcode = parsed.postcode ?? '';
+    const breakdown = scoreLead(
+      {
+        probateRef: `whatsapp-${intake.id}`,
+        address,
+        postcode,
+        leadType,
+        grantDate: new Date().toISOString().slice(0, 10),
+        grantType: 'unknown',
+        daysSinceGrant: 0,
+        goldenWindowLabel: 'cold',
+        solicitorFirm: null,
+        estateValuePence: parsed.askingPricePence ?? null,
+        contactName: parsed.contactInfo?.name ?? null,
+        contactPhone: parsed.contactInfo?.phone ?? senderPhone ?? null,
+        contactEmail: parsed.contactInfo?.email ?? null,
+        enrichmentTier: 3,
+        sourceTrail: 'whatsapp_intake',
+      },
+      null,
+      null,
+      parsed.urgency === 'high'
+        ? { motivation: { level: 'strong', signals: ['quick_sale_wanted'] } }
+        : {},
+      scorerConfig
+    );
 
     const lead = await database.scoutLead.create({
       data: {
         runDate: new Date(),
         source: 'whatsapp_intake',
-        address: parsed.propertyAddress ?? 'Unknown',
-        postcode: parsed.postcode ?? '',
-        leadType: mapLeadType(parsed.sellerSituation),
+        address,
+        postcode,
+        leadType,
         estimatedEquityPence: null,
         contactName: parsed.contactInfo?.name,
         contactPhone: parsed.contactInfo?.phone ?? senderPhone,
         contactEmail: parsed.contactInfo?.email,
-        leadScore,
-        verdict,
-        rawPayload: parsed as unknown as object,
+        leadScore: breakdown.total,
+        verdict: breakdown.verdict,
+        evalConfigVersion,
+        rawPayload: JSON.parse(
+          JSON.stringify({
+            ...parsed,
+            parserConfidence: parsed.confidence,
+            riskFlags: breakdown.riskFlags,
+            rationale: breakdown.rationale,
+            scoreFactors: breakdown.factors,
+            leadingIndicator: breakdown.leadingIndicator,
+            scoreBreakdown: {
+              acquisition: breakdown.acquisition,
+              roi: breakdown.roi,
+              marketTrend: breakdown.marketTrend,
+              risk: breakdown.risk,
+              total: breakdown.total,
+              appraised: breakdown.appraised,
+              sourcingScore: breakdown.sourcingScore,
+              achievablePoints: breakdown.achievablePoints,
+            },
+          })
+        ),
         status: 'new',
       },
     });
