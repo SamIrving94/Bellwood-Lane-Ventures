@@ -32,10 +32,7 @@ import { z } from 'zod';
 import { getPricePaid, PricePaidSchema, realTransactions } from './hmlr';
 import { getHousepriceIndex, HpiSchema } from './hmlr-hpi';
 import { getEpcData, EpcSchema } from './epc';
-import {
-  enrichEstateCompany,
-  EstateOwnershipSchema,
-} from './companies-house';
+import { enrichEstateCompany, EstateOwnershipSchema } from './companies-house';
 import { resolveAddress, OsPlaceSchema } from './os-places';
 
 export * from './arbitrage';
@@ -45,6 +42,7 @@ export * from './epc';
 export * from './companies-house';
 export * from './os-places';
 export * from './propertydata';
+export * from './market-signals';
 export * from './postcodes-io';
 export * from './registered-leases';
 export {
@@ -80,9 +78,7 @@ export const PropertyLookupResultSchema = z.object({
   address: z.string().nullable(),
   postcode: z.string().nullable(),
   uprn: z.string().nullable(),
-  coordinates: z
-    .object({ lat: z.number(), lng: z.number() })
-    .nullable(),
+  coordinates: z.object({ lat: z.number(), lng: z.number() }).nullable(),
 
   // ── Price history (HMLR PPD) ─────────────────────────────────────────────
   pricePaid: z
@@ -188,9 +184,7 @@ async function safe<T>(
   try {
     return await withTimeout(promise, LOOKUP_TIMEOUT_MS, label);
   } catch (err) {
-    console.warn(
-      `[property-data/${label}] ${(err as Error).message}`
-    );
+    console.warn(`[property-data/${label}] ${(err as Error).message}`);
     return fallback;
   }
 }
@@ -209,9 +203,7 @@ function deriveAvgDaysOnMarket(
   // days-on-market signal from them fabricates a market read. Real rows only.
   const real = realTransactions(pricePaid.transactions);
   if (real.length < 2) return null;
-  const sorted = [...real].sort((a, b) =>
-    b.date.localeCompare(a.date)
-  );
+  const sorted = [...real].sort((a, b) => b.date.localeCompare(a.date));
   const latest = sorted[0];
   const second = sorted[1];
   if (!latest?.date || !second?.date) return null;
@@ -265,14 +257,25 @@ export async function lookupProperty(
     resolvedUprn = resolvedAddress?.uprn ?? null;
   }
 
-  const effectivePostcode =
-    postcode ?? resolvedAddress?.postcode ?? '';
+  const effectivePostcode = postcode ?? resolvedAddress?.postcode ?? '';
 
   // Parallel calls to HMLR, EPC, and Companies House
   const [pricePaid, hpi, epc, ownership] = await Promise.all([
-    safe(getPricePaid(effectivePostcode), 'hmlr-ppd', null as unknown as Awaited<ReturnType<typeof getPricePaid>>),
-    safe(getHousepriceIndex(effectivePostcode), 'hmlr-hpi', null as unknown as Awaited<ReturnType<typeof getHousepriceIndex>>),
-    safe(getEpcData(effectivePostcode, address), 'epc', null as unknown as Awaited<ReturnType<typeof getEpcData>>),
+    safe(
+      getPricePaid(effectivePostcode),
+      'hmlr-ppd',
+      null as unknown as Awaited<ReturnType<typeof getPricePaid>>
+    ),
+    safe(
+      getHousepriceIndex(effectivePostcode),
+      'hmlr-hpi',
+      null as unknown as Awaited<ReturnType<typeof getHousepriceIndex>>
+    ),
+    safe(
+      getEpcData(effectivePostcode, address),
+      'epc',
+      null as unknown as Awaited<ReturnType<typeof getEpcData>>
+    ),
     safe(
       enrichEstateCompany({ solicitorFirm, contactName }),
       'companies-house',
@@ -372,13 +375,11 @@ export async function lookupProperty(
     meta: {
       lookupMs: elapsedMs,
       sources: {
-        address:
-          resolvedAddress?.source ?? (uprn ? 'uprn_provided' : 'none'),
+        address: resolvedAddress?.source ?? (uprn ? 'uprn_provided' : 'none'),
         pricePaid: pricePaid?.source ?? 'none',
         hpi: hpi?.source ?? 'none',
         epc: epc?.source ?? 'none',
-        estateOwnership:
-          ownership?.solicitorCompany?.source ?? 'none',
+        estateOwnership: ownership?.solicitorCompany?.source ?? 'none',
       },
     },
   };

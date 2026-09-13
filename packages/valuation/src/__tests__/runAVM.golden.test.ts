@@ -44,6 +44,9 @@ vi.mock('@repo/property-data', () => ({
   geocodePostcodes: vi.fn(),
   getSoldPrices: vi.fn(),
   distanceMiles: vi.fn(),
+  // Market signals (listing body language) — display-context only, mocked
+  // dark so the golden valuation math stays untouched.
+  getSubjectMarketSignals: vi.fn(),
 }));
 
 // Imported AFTER vi.mock so the mocked module is in scope.
@@ -58,6 +61,7 @@ const {
   geocodePostcode,
   geocodePostcodes,
   getSoldPrices,
+  getSubjectMarketSignals,
 } = await import('@repo/property-data');
 const { runAVM } = await import('../index');
 
@@ -70,7 +74,9 @@ function applyScenario(scn: {
   vi.mocked(getPricePaid).mockResolvedValue(scn.pricePaid as never);
   vi.mocked(getHousepriceIndex).mockResolvedValue(scn.hpi as never);
   vi.mocked(getEpcData).mockResolvedValue(scn.epc as never);
-  vi.mocked(getPropertyDataValuation).mockResolvedValue(scn.externalAvm as never);
+  vi.mocked(getPropertyDataValuation).mockResolvedValue(
+    scn.externalAvm as never
+  );
   // No verified per-property floor area in the golden scenarios (real-or-null).
   vi.mocked(getPropertyFloorArea).mockResolvedValue(null as never);
   vi.mocked(getFloorAreaRows).mockResolvedValue([] as never);
@@ -79,6 +85,12 @@ function applyScenario(scn: {
   vi.mocked(geocodePostcode).mockResolvedValue(null as never);
   vi.mocked(geocodePostcodes).mockResolvedValue(new Map() as never);
   vi.mocked(getSoldPrices).mockResolvedValue(null as never);
+  // Signals dark — resultJson.marketSignals must land as null, not blow up.
+  vi.mocked(getSubjectMarketSignals).mockRejectedValue(
+    new Error('unavailable in golden tests') as never
+  );
+  // Benchmark dark — the size anchor sits out, original weights apply.
+  vi.mocked(getPricesPerSqf).mockResolvedValue(null as never);
 }
 
 beforeEach(() => {
@@ -106,7 +118,7 @@ describe('runAVM — Scenario 1: Normal terraced sale in M14', () => {
 
     // Offer should be 70-82% of AVM (standard 22% margin, no extra risk)
     const offerPct = r.finalOffer / r.avmPointEstimate;
-    expect(offerPct).toBeGreaterThan(0.70);
+    expect(offerPct).toBeGreaterThan(0.7);
     expect(offerPct).toBeLessThan(0.82);
 
     // No CEO escalation, no pre-RICS flags
@@ -137,7 +149,9 @@ describe('runAVM — Scenario 2: Chain-break with EPC F', () => {
     const r = result.resultJson;
 
     // EPC F penalty must appear in the discount lines
-    expect(r.discountLines.some((d) => d.label.includes('EPC band F'))).toBe(true);
+    expect(r.discountLines.some((d) => d.label.includes('EPC band F'))).toBe(
+      true
+    );
     expect(r.epcAdjustment).toBeLessThan(0); // negative = penalty
     expect(r.epcRating).toBe('F');
 
@@ -147,7 +161,7 @@ describe('runAVM — Scenario 2: Chain-break with EPC F', () => {
     // Offer falls below 78% (the standard-clean band) because of the EPC pull
     const offerPct = r.finalOffer / r.avmPointEstimate;
     expect(offerPct).toBeLessThan(0.79);
-    expect(offerPct).toBeGreaterThan(0.60); // still above the floor
+    expect(offerPct).toBeGreaterThan(0.6); // still above the floor
     expect(r.requiresCeoEscalation).toBe(false);
   });
 });
@@ -181,7 +195,7 @@ describe('runAVM — Scenario 3: Probate with no comps + flood zone 2', () => {
 
     // Probate seller type → 20% base margin
     expect(r.sellerType).toBe('probate');
-    expect(r.baseAcquisitionMargin).toBeCloseTo(0.20, 2);
+    expect(r.baseAcquisitionMargin).toBeCloseTo(0.2, 2);
 
     // Flood zone 2 surfaces as a discount line (no pre-RICS flag — only 3a+)
     expect(r.discountLines.some((d) => d.label.includes('Flood'))).toBe(true);
@@ -213,21 +227,39 @@ describe('runAVM — confidence is capped by comp volume', () => {
 
   it('one comp → low confidence, never high', async () => {
     applyScenario(SINGLE_COMP);
-    const r = (await runAVM({ postcode: 'M14 5AB', propertyType: 'terraced', sellerType: 'standard' })).resultJson;
+    const r = (
+      await runAVM({
+        postcode: 'M14 5AB',
+        propertyType: 'terraced',
+        sellerType: 'standard',
+      })
+    ).resultJson;
     expect(r.comparableCount).toBe(1);
     expect(r.confidenceLevel).toBe('low');
   });
 
   it('three comps → at most medium', async () => {
     applyScenario(THREE_COMPS);
-    const r = (await runAVM({ postcode: 'M14 5AB', propertyType: 'terraced', sellerType: 'standard' })).resultJson;
+    const r = (
+      await runAVM({
+        postcode: 'M14 5AB',
+        propertyType: 'terraced',
+        sellerType: 'standard',
+      })
+    ).resultJson;
     expect(r.comparableCount).toBe(3);
     expect(r.confidenceLevel).toBe('medium');
   });
 
   it('a full comp set (12) can reach high', async () => {
     applyScenario(SCENARIO_NORMAL_TERRACED);
-    const r = (await runAVM({ postcode: 'M14 5AB', propertyType: 'terraced', sellerType: 'standard' })).resultJson;
+    const r = (
+      await runAVM({
+        postcode: 'M14 5AB',
+        propertyType: 'terraced',
+        sellerType: 'standard',
+      })
+    ).resultJson;
     expect(r.comparableCount).toBeGreaterThanOrEqual(4);
     expect(r.confidenceLevel).toBe('high');
   });

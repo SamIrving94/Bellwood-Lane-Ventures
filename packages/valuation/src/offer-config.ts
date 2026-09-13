@@ -34,6 +34,20 @@ export interface OfferConfig {
   totalDiscountCap: number;
   /** How many days an issued offer stays valid. */
   offerValidityDays: number;
+  /**
+   * Uncertainty throttle (the Zillow lesson): when an AVM run's prediction-
+   * interval width — (high − low) ÷ point estimate — exceeds this bound, the
+   * result is stamped `secondCheckRequired` so a person re-checks the comps
+   * before any offer. Never blocks or re-scores. 0.15 flags low-confidence
+   * runs (±8% ⇒ width 0.16) and clears medium/high (0.10 / 0.06).
+   */
+  maxIntervalWidthRatio: number;
+  /**
+   * Same throttle for deep appraisals, judged on the LLM's own 80% CI. Its
+   * normal calibration is ±12–15% (width 0.24–0.30), so 0.30 flags only the
+   * appraisals where the model admits MORE than its usual uncertainty.
+   */
+  maxDeepIntervalWidthRatio: number;
 }
 
 export const DEFAULT_OFFER_CONFIG: OfferConfig = {
@@ -57,6 +71,8 @@ export const DEFAULT_OFFER_CONFIG: OfferConfig = {
   ceilingFraction: 0.88,
   totalDiscountCap: 0.4,
   offerValidityDays: 14,
+  maxIntervalWidthRatio: 0.15,
+  maxDeepIntervalWidthRatio: 0.3,
 };
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -109,5 +125,13 @@ export function mergeOfferConfig(raw: unknown): OfferConfig {
     ceilingFraction: num(raw.ceilingFraction, d.ceilingFraction),
     totalDiscountCap: num(raw.totalDiscountCap, d.totalDiscountCap),
     offerValidityDays: num(raw.offerValidityDays, d.offerValidityDays),
+    maxIntervalWidthRatio: num(
+      raw.maxIntervalWidthRatio,
+      d.maxIntervalWidthRatio
+    ),
+    maxDeepIntervalWidthRatio: num(
+      raw.maxDeepIntervalWidthRatio,
+      d.maxDeepIntervalWidthRatio
+    ),
   };
 }

@@ -117,6 +117,26 @@ const DealDetailPage = async ({
 
   const latestAvm = deal.avmResults[0];
 
+  // Market signals recorded by runAVM — the listing's own body language.
+  // Older AvmResult rows predate the field; treat absence as "not recorded".
+  const avmMarketSignals = (() => {
+    const rj = latestAvm?.resultJson as
+      | {
+          marketSignals?: {
+            distressListed: boolean;
+            daysOnMarket: number | null;
+            reductionCount: number | null;
+            discountPercent: number | null;
+            sstc: boolean | null;
+            nearbyDistressCount: number;
+            radiusMiles: number;
+          } | null;
+        }
+      | null
+      | undefined;
+    return rj?.marketSignals ?? null;
+  })();
+
   // Merge human activities + agent events into unified timeline
   const timeline = [
     ...deal.activities.map((a) => ({
@@ -453,6 +473,48 @@ const DealDetailPage = async ({
                   {new Date(latestAvm.createdAt).toLocaleDateString('en-GB')}
                 </span>
               </div>
+              {avmMarketSignals && (
+                <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 border-t pt-3 text-sm">
+                  {avmMarketSignals.distressListed ? (
+                    <>
+                      <span className="inline-flex rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 font-medium text-[11px] text-amber-900">
+                        On a distress list
+                      </span>
+                      {avmMarketSignals.daysOnMarket !== null && (
+                        <span>
+                          <strong>{avmMarketSignals.daysOnMarket}</strong> days
+                          on market
+                        </span>
+                      )}
+                      {(avmMarketSignals.reductionCount ?? 0) > 0 && (
+                        <span>
+                          <strong>{avmMarketSignals.reductionCount}</strong>{' '}
+                          price cut
+                          {(avmMarketSignals.reductionCount ?? 0) > 1
+                            ? 's'
+                            : ''}
+                          {avmMarketSignals.discountPercent !== null
+                            ? ` (−${avmMarketSignals.discountPercent}%)`
+                            : ''}
+                        </span>
+                      )}
+                      {avmMarketSignals.sstc && (
+                        <span className="text-muted-foreground">
+                          Under offer (SSTC)
+                        </span>
+                      )}
+                    </>
+                  ) : (
+                    <span className="text-muted-foreground">
+                      Not on any distress list at valuation time
+                    </span>
+                  )}
+                  <span className="text-muted-foreground">
+                    {avmMarketSignals.nearbyDistressCount} distress-flagged
+                    nearby ({avmMarketSignals.radiusMiles} mi)
+                  </span>
+                </div>
+              )}
             </div>
 
             {/* Rate the valuation */}

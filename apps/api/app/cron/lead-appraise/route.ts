@@ -197,6 +197,17 @@ export const POST = async (request: Request) => {
         comparableCount: r.comparableCount ?? null,
         comparables: r.comparables ?? [],
         requiresReview: Boolean(r.requiresCeoEscalation || r.discountCapped),
+        // Size economics: implied £/m², area £/sqft benchmark, and whether
+        // the size anchor joined the triangulation.
+        pricePerSqm: r.pricePerSqm ?? null,
+        // Listing body language + nearby distress — display context for the
+        // lead page. Null = PropertyData was unreachable at appraisal time.
+        marketSignals: r.marketSignals ?? null,
+        // Uncertainty throttle (Zillow lesson): wide interval ⇒ a person
+        // re-checks the comps before any offer. Never blocks or re-scores.
+        intervalWidthRatio: r.intervalWidthRatio ?? null,
+        uncertaintyMaxWidthRatio: r.uncertaintyMaxWidthRatio,
+        secondCheckRequired: Boolean(r.secondCheckRequired),
         riskScore: avm.riskScore,
         assumedPropertyType: normalised ? null : avmPropertyType,
         floorAreaSqm: r.floorAreaSqm ?? null,
@@ -348,6 +359,33 @@ export const POST = async (request: Request) => {
         },
       });
       appraised++;
+
+      // Trendable uncertainty telemetry — one event per appraisal so the
+      // weekly-patterns cron can watch portfolio interval widths (the Zillow
+      // failure mode). Best-effort: telemetry must never fail the appraisal.
+      await database.agentEvent
+        .create({
+          data: {
+            agent: 'appraiser',
+            eventType: 'avm_uncertainty',
+            summary: `AVM interval ${
+              r.intervalWidthRatio !== null
+                ? `${(r.intervalWidthRatio * 100).toFixed(1)}% of estimate`
+                : 'unmeasurable'
+            } (${r.comparableCount} comps)${r.secondCheckRequired ? ' — second check required' : ''}`,
+            count: 1,
+            payload: {
+              source: 'lead-appraise',
+              leadId: lead.id,
+              postcode: lead.postcode,
+              intervalWidthRatio: r.intervalWidthRatio,
+              comparableCount: r.comparableCount,
+              confidenceLevel: r.confidenceLevel,
+              secondCheckRequired: r.secondCheckRequired,
+            },
+          },
+        })
+        .catch(() => undefined);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       errors.push(`${lead.id}: ${msg.slice(0, 120)}`);

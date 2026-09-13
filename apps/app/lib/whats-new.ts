@@ -26,6 +26,33 @@ export type WhatsNewEntry = {
 /** Newest first. The popup shows index 0. */
 export const WHATS_NEW: WhatsNewEntry[] = [
   {
+    id: '2026-09-12-appraisal-signals-and-size',
+    date: '2026-09-12',
+    emoji: '🫀',
+    title: 'Valuations now read body language',
+    intro:
+      'The AVM used to price a property and stop. Now every appraisal reads how the LISTING is behaving, what else is struggling nearby — and what the size is actually worth.',
+    bullets: [
+      {
+        emoji: '⏱️',
+        text: '**Days on market**, **price cuts** and how fast they’re coming — stamped on every valuation, on leads and deals alike.',
+      },
+      {
+        emoji: '🚩',
+        text: 'A clear badge when the property sits on a **distress list** (reduced, slow-to-sell, unmodernised, back-on-market…).',
+      },
+      {
+        emoji: '🏘️',
+        text: '**Nearby distress**: the other flagged listings within a quarter mile, deepest cuts first — the street’s mood at a glance.',
+      },
+      {
+        emoji: '🔒',
+        text: 'Display only — **no score or offer changes**. And no guessing: a listing is matched to a property only on solid address evidence.',
+      },
+    ],
+    cta: { label: 'Open your leads', href: '/leads' },
+  },
+  {
     id: '2026-09-12-avm-backtest',
     date: '2026-09-12',
     emoji: '🎯',
@@ -430,6 +457,37 @@ export const WHATS_NEW: WhatsNewEntry[] = [
       },
     ],
     cta: { label: 'See your leads', href: '/pipeline?tab=leads' },
+  },
+  {
+    id: '2026-08-23-zillow-uncertainty-discipline',
+    date: '2026-08-23',
+    emoji: '📏',
+    title: 'The AVM now tells you when NOT to trust it',
+    intro:
+      'Zillow lost $500m acting on confident-sounding prices built on thin evidence. Every valuation now measures its own uncertainty — and owns up when it needs a human.',
+    bullets: [
+      {
+        emoji: '📐',
+        text: 'Every appraisal records its **interval width** — how wide the honest price range is vs the headline number — plus the comps behind it.',
+      },
+      {
+        emoji: '🖐️',
+        text: '**Second check required**: leads with a too-wide interval get a clear amber banner — check the sold comps by hand before any offer. Scores and offers are untouched.',
+      },
+      {
+        emoji: '📉',
+        text: 'The Sunday review now watches the **portfolio trend**: if intervals widen materially week-over-week, you get one card saying model confidence is slipping — the Zillow failure mode, caught early.',
+      },
+      {
+        emoji: '🌡️',
+        text: 'Same card watches for a **market shift**: days-on-market or price-drop share jumping week-over-week means the comps behind our numbers aged fast.',
+      },
+      {
+        emoji: '🎛️',
+        text: 'The width bounds are **yours to tune** from the valuation config (avm_confidence) — no code change needed.',
+      },
+    ],
+    cta: { label: 'See your leads', href: '/leads' },
   },
   {
     id: '2026-08-22-prime-gold-dust-capture',

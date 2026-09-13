@@ -122,6 +122,9 @@ export async function enrichLeadById(leadId: string): Promise<{
   const offerConfigVersion = activeConfig?.version ?? null;
 
   let avmFull: Record<string, unknown> | null = null;
+  // True only when THIS call produced the reading — the failure path below
+  // reuses the previous avmFull, and stale readings must not re-emit telemetry.
+  let avmRanFresh = false;
   try {
     // Prefer a precise (house-numbered) address when the listing gave one —
     // it lets the AVM match the exact EPC floor-area record for this house.
@@ -161,6 +164,14 @@ export async function enrichLeadById(leadId: string): Promise<{
       comparableCount: r.comparableCount ?? null,
       comparables: r.comparables ?? [],
       requiresReview: Boolean(r.requiresCeoEscalation || r.discountCapped),
+      // Listing body language + nearby distress — display context for the
+      // lead page. Null = PropertyData was unreachable at appraisal time.
+      marketSignals: r.marketSignals ?? null,
+      // Uncertainty throttle (Zillow lesson): wide interval ⇒ a person
+      // re-checks the comps before any offer. Never blocks or re-scores.
+      intervalWidthRatio: r.intervalWidthRatio ?? null,
+      uncertaintyMaxWidthRatio: r.uncertaintyMaxWidthRatio,
+      secondCheckRequired: Boolean(r.secondCheckRequired),
       riskScore: avm.riskScore,
       assumedPropertyType: normalised ? null : avmPropertyType, // flag a guess
       floorAreaSqm: r.floorAreaSqm ?? null,
@@ -183,6 +194,7 @@ export async function enrichLeadById(leadId: string): Promise<{
       hmoLikely: (bedrooms ?? 0) >= 5,
       fetchedAt: new Date().toISOString(),
     };
+    avmRanFresh = true;
   } catch {
     // AVM failure must not block snapshot enrichment — leave avmFull null and
     // keep whatever was there before.
@@ -319,6 +331,35 @@ export async function enrichLeadById(leadId: string): Promise<{
     where: { id: leadId },
     data: { ...scoreUpdate, rawPayload: updatedRaw as Prisma.InputJsonValue },
   });
+
+  // Trendable uncertainty telemetry — mirrors the lead-appraise cron so the
+  // weekly-patterns confidence check sees manual appraisals too. Best-effort.
+  if (avmFull && avmRanFresh) {
+    await database.agentEvent
+      .create({
+        data: {
+          agent: 'appraiser',
+          eventType: 'avm_uncertainty',
+          summary: `AVM interval ${
+            typeof avmFull.intervalWidthRatio === 'number'
+              ? `${(avmFull.intervalWidthRatio * 100).toFixed(1)}% of estimate`
+              : 'unmeasurable'
+          } (${avmFull.comparableCount ?? '?'} comps)${avmFull.secondCheckRequired ? ' — second check required' : ''}`,
+          count: 1,
+          payload: {
+            source: 'manual-appraise',
+            leadId,
+            postcode: lead.postcode,
+            intervalWidthRatio:
+              (avmFull.intervalWidthRatio as number | null) ?? null,
+            comparableCount: (avmFull.comparableCount as number | null) ?? null,
+            confidenceLevel: (avmFull.confidenceLevel as string | null) ?? null,
+            secondCheckRequired: Boolean(avmFull.secondCheckRequired),
+          },
+        },
+      })
+      .catch(() => undefined);
+  }
 
   revalidatePath(`/leads/${leadId}`);
   revalidatePath('/leads');

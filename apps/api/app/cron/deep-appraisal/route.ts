@@ -3,6 +3,8 @@ import { database } from '@repo/database';
 import {
   type AvmCrossCheckInput,
   type DeepAppraisal,
+  mergeOfferConfig,
+  readUncertainty,
   runDeepAppraisal,
 } from '@repo/valuation';
 import { NextResponse } from 'next/server';
@@ -90,6 +92,16 @@ async function handle(request: Request) {
   const startedAt = new Date();
   const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
   const auctionHorizon = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);
+
+  // Founder-tuned bounds (highest active avm_confidence EvalConfig) — used
+  // here for the deep-appraisal uncertainty throttle, judged on the LLM's
+  // own 80% CI. No active config → built-in defaults.
+  const activeConfig = await database.evalConfig.findFirst({
+    where: { evalType: 'avm_confidence', activatedAt: { not: null } },
+    orderBy: { version: 'desc' },
+    select: { config: true },
+  });
+  const offerConfig = mergeOfferConfig(activeConfig?.config);
 
   // ── Candidate selection ─────────────────────────────────────────────
   const [leadCandidates, upcomingLots] = await Promise.all([
@@ -251,6 +263,20 @@ async function handle(request: Request) {
       ? ` · Hard cap £${Math.round(appraisal.bidCap.hardCapPence / 100).toLocaleString('en-GB')}`
       : '';
 
+    // Uncertainty throttle (Zillow lesson), judged on the model's own 80% CI
+    // against the founder-tunable deep bound. Comps behind the ARV = the
+    // selected comparables that weren't excluded from the calculation.
+    const compsUsed = appraisal.comparables.selected.filter(
+      (c) => !c.excluded
+    ).length;
+    const uncertainty = readUncertainty({
+      pointEstimate: appraisal.arv.pointEstimatePence,
+      low: appraisal.arv.ci80LowPence,
+      high: appraisal.arv.ci80HighPence,
+      comparableCount: compsUsed,
+      maxWidthRatio: offerConfig.maxDeepIntervalWidthRatio,
+    });
+
     const title = `${verdict.replace(/_/g, ' ').toUpperCase()}: ${ref} — ARV ${arvDisplay}${bidCapDisplay}`;
     const description = [
       appraisal.recommendation.headline,
@@ -258,6 +284,13 @@ async function handle(request: Request) {
       appraisal.recommendation.rationale,
       '',
       `Confidence: ${appraisal.confidence.level} (±${appraisal.confidence.estimatedErrorPercent.toFixed(1)}%)`,
+      uncertainty.secondCheckRequired
+        ? `\nSecond check required — the model's own 80% interval is ${
+            uncertainty.intervalWidthRatio !== null
+              ? `±${((uncertainty.intervalWidthRatio / 2) * 100).toFixed(0)}% of the ARV`
+              : 'unmeasurable'
+          } (bound ±${((offerConfig.maxDeepIntervalWidthRatio / 2) * 100).toFixed(0)}%, ${compsUsed} comps). Verify the comparables before any offer, whatever the verdict says.`
+        : '',
       // Older appraisals (pre cross-check) have no avmCrossCheck; guard.
       appraisal.avmCrossCheck &&
       appraisal.avmCrossCheck.verdict !== 'no_avm' &&
@@ -291,6 +324,7 @@ async function handle(request: Request) {
               entityId: cand.kind === 'lead' ? cand.lead.id : cand.lot.id,
               listingUrl: listingUrl ?? null,
               appraisal,
+              uncertainty,
               link:
                 cand.kind === 'lead' ? `/leads/${cand.lead.id}` : `/appraisals`,
             })
@@ -299,6 +333,31 @@ async function handle(request: Request) {
       });
       produced++;
       sample.push({ kind: cand.kind, ref, verdict });
+
+      // Trendable uncertainty telemetry for the weekly confidence check.
+      await database.agentEvent
+        .create({
+          data: {
+            agent: 'appraiser',
+            eventType: 'avm_uncertainty',
+            summary: `Deep-appraisal 80% interval ${
+              uncertainty.intervalWidthRatio !== null
+                ? `${(uncertainty.intervalWidthRatio * 100).toFixed(1)}% of ARV`
+                : 'unmeasurable'
+            } (${compsUsed} comps)${uncertainty.secondCheckRequired ? ' — second check required' : ''}`,
+            count: 1,
+            payload: {
+              source: 'deep-appraisal',
+              kind: cand.kind,
+              entityId: cand.kind === 'lead' ? cand.lead.id : cand.lot.id,
+              intervalWidthRatio: uncertainty.intervalWidthRatio,
+              comparableCount: compsUsed,
+              confidenceLevel: appraisal.confidence.level,
+              secondCheckRequired: uncertainty.secondCheckRequired,
+            },
+          },
+        })
+        .catch(() => undefined);
     } catch (err) {
       console.warn('[deep-appraisal] founderAction.create failed', err);
       failed++;

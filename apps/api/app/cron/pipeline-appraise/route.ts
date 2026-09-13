@@ -176,6 +176,17 @@ export const POST = async (request: Request) => {
         ? 'critical'
         : 'medium';
 
+      // Uncertainty throttle (Zillow lesson): a wide interval means the
+      // valuation needs a second pair of eyes before the offer goes out.
+      // Surfaced on the card — never blocks the offer or changes the score.
+      const secondCheckNote = resultJson.secondCheckRequired
+        ? ` Check this one by hand before the offer goes out — the valuation interval is wider than our bound (${
+            resultJson.intervalWidthRatio !== null
+              ? `${(resultJson.intervalWidthRatio * 100).toFixed(0)}% of the estimate`
+              : 'unmeasurable'
+          }, on ${resultJson.comparableCount} comps).`
+        : '';
+
       await database.founderAction.create({
         data: {
           type: actionType as any,
@@ -183,7 +194,7 @@ export const POST = async (request: Request) => {
           title: resultJson.requiresCeoEscalation
             ? `CEO escalation: offer < 60% AVM on ${deal.address}`
             : `Approve offer on ${deal.address} — ${resultJson.finalOffer.toLocaleString('en-GB', { style: 'currency', currency: 'GBP', maximumFractionDigits: 0 })} (margin ${marginPercent !== null ? marginPercent.toFixed(1) : '—'}%)`,
-          description: `Auto-valuation complete. Risk: ${avmResult.riskScore}/100. ${resultJson.preRicsFlags.length > 0 ? `Pre-RICS flags: ${resultJson.preRicsFlags.join(', ')}` : 'No pre-RICS flags.'}`,
+          description: `Auto-valuation complete. Risk: ${avmResult.riskScore}/100. ${resultJson.preRicsFlags.length > 0 ? `Pre-RICS flags: ${resultJson.preRicsFlags.join(', ')}` : 'No pre-RICS flags.'}${secondCheckNote}`,
           agent: 'appraiser',
           dealId: deal.id,
           metadata: {
@@ -192,9 +203,39 @@ export const POST = async (request: Request) => {
             finalOfferPence: Math.round(resultJson.finalOffer * 100),
             marginPercent,
             preRicsFlags: resultJson.preRicsFlags,
+            intervalWidthRatio: resultJson.intervalWidthRatio,
+            secondCheckRequired: resultJson.secondCheckRequired,
           },
         },
       });
+
+      // Trendable uncertainty telemetry for the weekly confidence check.
+      // Best-effort: telemetry must never fail the appraisal.
+      await database.agentEvent
+        .create({
+          data: {
+            agent: 'appraiser',
+            eventType: 'avm_uncertainty',
+            summary: `AVM interval ${
+              resultJson.intervalWidthRatio !== null
+                ? `${(resultJson.intervalWidthRatio * 100).toFixed(1)}% of estimate`
+                : 'unmeasurable'
+            } (${resultJson.comparableCount} comps)${resultJson.secondCheckRequired ? ' — second check required' : ''}`,
+            count: 1,
+            dealId: deal.id,
+            pipelineRunId,
+            payload: {
+              source: 'pipeline-appraise',
+              dealId: deal.id,
+              postcode: deal.postcode,
+              intervalWidthRatio: resultJson.intervalWidthRatio,
+              comparableCount: resultJson.comparableCount,
+              confidenceLevel: resultJson.confidenceLevel,
+              secondCheckRequired: resultJson.secondCheckRequired,
+            },
+          },
+        })
+        .catch(() => undefined);
 
       results.push({
         type: 'deal',

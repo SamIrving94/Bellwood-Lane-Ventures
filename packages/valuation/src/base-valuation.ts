@@ -131,7 +131,9 @@ const PPDTYPE_MAP: Record<string, PropertyType> = {
 };
 
 function normaliseType(raw: string): PropertyType {
-  return PPDTYPE_MAP[raw] ?? PPDTYPE_MAP[raw.charAt(0).toUpperCase()] ?? 'terraced';
+  return (
+    PPDTYPE_MAP[raw] ?? PPDTYPE_MAP[raw.charAt(0).toUpperCase()] ?? 'terraced'
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -139,9 +141,9 @@ function normaliseType(raw: string): PropertyType {
 // ---------------------------------------------------------------------------
 
 const BEDROOM_PREMIUM: Record<number, number> = {
-  1: -0.20,
+  1: -0.2,
   2: -0.05,
-  3: 0.00,
+  3: 0.0,
   4: 0.12,
   5: 0.22,
 };
@@ -200,7 +202,8 @@ function filterComps(
   // Remove outliers beyond 2σ
   const prices = adjusted.map((t) => t.adjustedPrice);
   const mean = prices.reduce((s, p) => s + p, 0) / prices.length;
-  const variance = prices.reduce((s, p) => s + (p - mean) ** 2, 0) / prices.length;
+  const variance =
+    prices.reduce((s, p) => s + (p - mean) ** 2, 0) / prices.length;
   const sd = Math.sqrt(variance);
   const cleaned = adjusted.filter(
     (t) => Math.abs(t.adjustedPrice - mean) <= 2 * sd
@@ -217,13 +220,12 @@ function calcConfidence(
   hedonicVal: number,
   csaVal: number
 ): { level: ConfidenceLevel; interval: number } {
-  if (hedonicVal === 0 || csaVal === 0)
-    return { level: 'low', interval: 0.08 };
+  if (hedonicVal === 0 || csaVal === 0) return { level: 'low', interval: 0.08 };
 
   const spread = Math.abs(hedonicVal - csaVal) / ((hedonicVal + csaVal) / 2);
 
   if (spread < 0.05) return { level: 'high', interval: 0.03 };
-  if (spread < 0.10) return { level: 'medium', interval: 0.05 };
+  if (spread < 0.1) return { level: 'medium', interval: 0.05 };
   return { level: 'low', interval: 0.08 };
 }
 
@@ -234,7 +236,11 @@ function calcConfidence(
 // one data point). Founder rule: ~4 sold within half a mile ⇒ high.
 // ---------------------------------------------------------------------------
 
-const CONF_RANK: Record<ConfidenceLevel, number> = { low: 0, medium: 1, high: 2 };
+const CONF_RANK: Record<ConfidenceLevel, number> = {
+  low: 0,
+  medium: 1,
+  high: 2,
+};
 const CONF_INTERVAL: Record<ConfidenceLevel, number> = {
   high: 0.03,
   medium: 0.05,
@@ -249,7 +255,10 @@ function confidenceCeilingFromComps(compCount: number): ConfidenceLevel {
 }
 
 /** The more conservative (lower) of two confidence levels. */
-function minConfidence(a: ConfidenceLevel, b: ConfidenceLevel): ConfidenceLevel {
+function minConfidence(
+  a: ConfidenceLevel,
+  b: ConfidenceLevel
+): ConfidenceLevel {
   return CONF_RANK[a] <= CONF_RANK[b] ? a : b;
 }
 
@@ -282,7 +291,14 @@ export async function getBaseValuation(
 ): Promise<BaseValuation> {
   const { postcode, propertyType, floorAreaSqm, bedrooms, address } = input;
 
-  const [pricePaid, hpi, epc, externalAvm, distanceWeighted, pdFloorArea] = await Promise.all([
+  const [
+    pricePaid,
+    hpi,
+    epc,
+    externalAvm,
+    distanceWeighted,
+    pdFloorArea,
+  ] = await Promise.all([
     getPricePaid(postcode, 20),
     getHousepriceIndex(postcode),
     getEpcData(postcode, address),
@@ -303,7 +319,7 @@ export async function getBaseValuation(
     }).catch((err) => {
       console.warn(
         `[base-valuation] external AVM cross-check unavailable for ${postcode}`,
-        err,
+        err
       );
       return null;
     }),
@@ -329,7 +345,7 @@ export async function getBaseValuation(
     }).catch((err) => {
       console.warn(
         `[base-valuation] PropertyData floor-area lookup unavailable for ${postcode}`,
-        err,
+        err
       );
       return null;
     }),
@@ -342,7 +358,7 @@ export async function getBaseValuation(
   const hmlrComps = filterComps(
     realTransactions(pricePaid.transactions),
     propertyType,
-    floorAreaSqm,
+    floorAreaSqm
   );
 
   // Floor-area resolution — real data or nothing. Priority:
@@ -351,8 +367,7 @@ export async function getBaseValuation(
   // We deliberately DO NOT fall back to epc.floorAreaSqm here: that comes from
   // a street-level EPC search that can grab a neighbouring property (the M14
   // "doubled size" bug). No match → null → the UI shows no size.
-  const effectiveFloorArea =
-    floorAreaSqm ?? pdFloorArea?.floorAreaSqm ?? null;
+  const effectiveFloorArea = floorAreaSqm ?? pdFloorArea?.floorAreaSqm ?? null;
   const floorAreaSource: BaseValuation['floorAreaSource'] = floorAreaSqm
     ? 'caller'
     : pdFloorArea
@@ -385,11 +400,17 @@ export async function getBaseValuation(
     }));
     csaSource = 'distance';
   } else if (hmlrComps.length > 0) {
-    const sorted = [...hmlrComps].sort((a, b) => a.adjustedPrice - b.adjustedPrice);
+    const sorted = [...hmlrComps].sort(
+      (a, b) => a.adjustedPrice - b.adjustedPrice
+    );
     const mid = Math.floor(sorted.length / 2);
     csaValue =
       sorted.length % 2 === 0
-        ? Math.round(((sorted[mid - 1]?.adjustedPrice ?? 0) + (sorted[mid]?.adjustedPrice ?? 0)) / 2)
+        ? Math.round(
+            ((sorted[mid - 1]?.adjustedPrice ?? 0) +
+              (sorted[mid]?.adjustedPrice ?? 0)) /
+              2
+          )
         : (sorted[mid]?.adjustedPrice ?? 0);
     comparables = hmlrComps.map((c) => ({
       price: c.price,
@@ -420,7 +441,12 @@ export async function getBaseValuation(
   }
 
   // Hedonic estimate — anchored to CSA, adjusted for size/bedrooms
-  const hedonicValue = hedonicEstimate(csaValue, effectiveFloorArea, effectiveBedrooms, epc.floorAreaSqm);
+  const hedonicValue = hedonicEstimate(
+    csaValue,
+    effectiveFloorArea,
+    effectiveBedrooms,
+    epc.floorAreaSqm
+  );
 
   // HPI trend nudge: apply half the annual change as a sentiment adjustment
   const hpiNudge = 1 + (hpi.annualChange / 100) * 0.15;
@@ -490,7 +516,7 @@ export async function getBaseValuation(
   // evidence behind this estimate.
   const confidenceLevel = minConfidence(
     signalLevel,
-    confidenceCeilingFromComps(comparables.length),
+    confidenceCeilingFromComps(comparables.length)
   );
   const confidenceInterval = CONF_INTERVAL[confidenceLevel];
 
