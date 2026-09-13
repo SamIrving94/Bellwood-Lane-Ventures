@@ -50,3 +50,6 @@ vercel-env-app.env
 
 # git worktrees created by Claude Code agents
 .claude/worktrees/
+
+# Local probe output (real addresses) — see scripts/propertydata-probe.mts
+scratch/

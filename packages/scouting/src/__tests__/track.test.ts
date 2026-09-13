@@ -344,6 +344,26 @@ describe('isPotentialPrimeCapture — guaranteed shortlist slots', () => {
         postcode: 'SE22 8HP',
       })
     ).toBe(false);
+    // Tightened 27 Aug 2026 (founder: "much tighter") — a mid-market house
+    // price in a prime district is no longer a GUARANTEED slot. 0.4 of the
+    // floor (£280k) captured ~every house in the SW seeds (232 in one day);
+    // the capture bar is now 0.75 of the floor (£525k). These leads still
+    // compete for the volume shortlist and still classify discounted-prime
+    // after enrichment against their real street average.
+    expect(
+      isPotentialPrimeCapture({
+        valuePence: 400_000_00,
+        postcode: 'SW17 7EW',
+        text: '12 Fishponds Road — terraced house',
+      })
+    ).toBe(false);
+    expect(
+      isPotentialPrimeCapture({
+        valuePence: 300_000_00,
+        postcode: 'SW11 5PS',
+        text: 'Taybridge Road',
+      })
+    ).toBe(false);
   });
 
   it('honours founder-marked districts, and stays out of everything else', () => {

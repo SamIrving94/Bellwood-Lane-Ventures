@@ -219,6 +219,8 @@ export async function setScanSeeds(seeds: ScanSeed[]): Promise<{
 
 export async function triggerScoutingCron(): Promise<{
   success: boolean;
+  /** True when the run was kicked off but is still working in the background. */
+  started?: boolean;
   result?: Record<string, unknown>;
   error?: string;
 }> {
@@ -229,10 +231,28 @@ export async function triggerScoutingCron(): Promise<{
   if (!cronSecret)
     return { success: false, error: 'CRON_SECRET not configured' };
 
+  // Founder ask (27 Aug 2026): a manual scout run should refresh EVERYTHING,
+  // so kick the Companies House stream drain alongside it. Fire-and-forget:
+  // it has its own 30-min schedule as the backstop, its API is free, and a
+  // failure here must never block the scout itself.
+  fetch('https://bellwood-api.vercel.app/cron/ch-stream', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${cronSecret}` },
+    signal: AbortSignal.timeout(10_000),
+  }).catch(() => {
+    // Covered by the next scheduled drain.
+  });
+
   try {
+    // The scout is the founder's on-demand run now (no daily schedule) and a
+    // full run can take several minutes on the api side. This server action
+    // cannot wait that long, so it waits briefly for a fast run and otherwise
+    // reports "started" — the api function carries on to completion after we
+    // stop listening, and the results land as leads + the review card.
     const res = await fetch('https://bellwood-api.vercel.app/cron/scouting', {
       method: 'POST',
       headers: { Authorization: `Bearer ${cronSecret}` },
+      signal: AbortSignal.timeout(60_000),
     });
     const result = await res.json().catch(() => ({}));
     if (!res.ok) {
@@ -240,6 +260,9 @@ export async function triggerScoutingCron(): Promise<{
     }
     return { success: true, result };
   } catch (err) {
+    if ((err as Error).name === 'TimeoutError') {
+      return { success: true, started: true };
+    }
     return {
       success: false,
       error: `Failed to reach cron: ${(err as Error).message}`,

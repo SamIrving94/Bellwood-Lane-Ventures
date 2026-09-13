@@ -35,6 +35,7 @@ import { getEpcData, EpcSchema } from './epc';
 import { enrichEstateCompany, EstateOwnershipSchema } from './companies-house';
 import { resolveAddress, OsPlaceSchema } from './os-places';
 
+export * from './arbitrage';
 export * from './hmlr';
 export * from './hmlr-hpi';
 export * from './epc';

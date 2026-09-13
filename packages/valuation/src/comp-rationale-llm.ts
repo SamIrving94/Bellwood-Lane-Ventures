@@ -109,7 +109,17 @@ export async function generateCompRationale(
     lines.push('', `EPC rating: ${bv.epc.epcRating} (used as a secondary condition signal).`);
   }
   if (bv.floorAreaSqm) {
-    lines.push(`Floor area: ${bv.floorAreaSqm} m² (drives the £/m² hedonic anchor).`);
+    lines.push(
+      `Floor area: ${bv.floorAreaSqm} m² (${bv.floorAreaSqft ?? '?'} sqft), giving £${bv.pricePerSqft ?? '?'}/sqft at the estimate.`,
+    );
+  }
+  if (bv.sqft?.poundsPerSqft) {
+    const sizeLine = bv.sqft.sqftEstimate
+      ? `; size-based value £${bv.sqft.sqftEstimate.toLocaleString('en-GB')} carried ${Math.round(bv.sqftWeight * 100)}% of the blend.`
+      : '.';
+    lines.push(
+      `Nearby sold £/sqft: £${bv.sqft.poundsPerSqft}/sqft from ${bv.sqft.matchedCount} comps matched to their EPC floor areas${sizeLine}`,
+    );
   }
 
   return callClaude({

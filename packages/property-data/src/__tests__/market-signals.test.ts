@@ -36,6 +36,7 @@ function listing(overrides: Partial<SourcedProperty>): SourcedProperty {
     imageUrl: null,
     source: 'propertydata_reduced-properties',
     sstc: null,
+    listingSqft: null,
     ...overrides,
   };
 }

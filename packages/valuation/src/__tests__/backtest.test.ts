@@ -110,3 +110,27 @@ describe('computeBacktestBySegment', () => {
     expect(segments.low.mape).toBeCloseTo(0.5);
   });
 });
+
+describe('computeBacktest — PE10 / PE20 / median signed error', () => {
+  it('counts the share of estimates within 10% and 20% of the sale', () => {
+    const r = computeBacktest([
+      { predictedPence: 105, actualPence: 100 }, // +5%  → in both
+      { predictedPence: 85, actualPence: 100 }, // −15% → PE20 only
+      { predictedPence: 130, actualPence: 100 }, // +30% → neither
+      { predictedPence: 100, actualPence: 100 }, // exact → in both
+    ]);
+    expect(r.withinPct10).toBeCloseTo(0.5, 5);
+    expect(r.withinPct20).toBeCloseTo(0.75, 5);
+  });
+
+  it('median signed error ignores one wild miss that drags the mean', () => {
+    const r = computeBacktest([
+      { predictedPence: 101, actualPence: 100 },
+      { predictedPence: 99, actualPence: 100 },
+      { predictedPence: 102, actualPence: 100 },
+      { predictedPence: 300, actualPence: 100 }, // one 3× over-value
+    ]);
+    expect(r.biasPct).toBeGreaterThan(0.4);
+    expect(r.medianSignedPct).toBeCloseTo(0.015, 5);
+  });
+});

@@ -30,7 +30,11 @@ import {
   getTenureByPostcode,
 } from '@repo/property-data/src/propertydata';
 
-import { isSyntheticPricePaid } from '@repo/property-data/src/hmlr';
+import { getEpcData } from '@repo/property-data/src/epc';
+import {
+  isSyntheticPricePaid,
+  realTransactions,
+} from '@repo/property-data/src/hmlr';
 import { normaliseUkAddress } from './address-normalise';
 import { fetchCompaniesHouseDistressLeads } from './companies-house-charges';
 import {
@@ -43,6 +47,13 @@ import {
 import { fetchGazetteProbateNotices } from './gazette';
 import { matchProbateAddressToSale } from './hmlr-match';
 import { leadTypeForListing } from './lead-type';
+import { readListingMotivation } from './motivation-llm';
+import {
+  type MotivationRead,
+  type MotivationSignal,
+  strongerLeadType,
+} from './motivation-signals';
+import { assessModernisation } from './modernisation';
 import { fetchPlanningConsentLeads } from './planning-consents';
 import { fetchProbateGrants } from './probate-data';
 import { enrichRationaleWithLlm } from './rationale-llm';
@@ -59,6 +70,7 @@ import {
 import {
   classifyTrack,
   isBlockText,
+  isCornerstoneValue,
   isPotentialPrimeCapture,
   primeOpportunityForTrack,
   toDistrictSet,
@@ -235,6 +247,27 @@ export type {
   ChDistressScoutResult,
   ChDistressScoutOptions,
 } from './companies-house-charges';
+export {
+  companyNumberFromResourceUri,
+  drainCompaniesHouseStream,
+  fetchCompanyCharges,
+  fetchCompanyProfile,
+  filterToDistricts,
+  isPropertyCompany,
+  leadTypeForInsolvencyCase,
+  minePropertiesFromParticulars,
+  parseChargeItem,
+  parseStreamLine,
+  PROPERTY_SIC_CODES,
+} from './ch-stream';
+export type {
+  ChChargeItem,
+  ChCompanyProfile,
+  ChStreamEvent,
+  ChStreamName,
+  MinedProperty,
+  StreamDrainResult,
+} from './ch-stream';
 export { fetchReceivershipLeads } from './receiverships';
 export type {
   ReceivershipRawLead,
@@ -286,6 +319,8 @@ export {
   AUCTION_GUIDE_HEADROOM,
   classifyAuctionTrack,
   classifyTrack,
+  CORNERSTONE_MIN_VALUE_PENCE,
+  isCornerstoneValue,
   toDistrictSet,
   isBlockText,
   isPotentialPrimeCapture,
@@ -293,12 +328,38 @@ export {
   LONDON_PRIME_DISTRICTS,
   MIN_MEANINGFUL_DISCOUNT,
   outwardCode,
+  PRIME_CAPTURE_VALUE_MIN_RATIO,
   PRIME_DISCOUNT_MIN_RATIO,
   PRIME_MIN_VALUE_PENCE,
   type DealTrackValue,
   type PrimeOpportunity,
 } from './track';
+export {
+  assessModernisation,
+  MODERNISATION_MAX_POINTS,
+  MODERNISATION_RIPE_POINTS,
+  type ModernisationAssessment,
+  type ModernisationInput,
+} from './modernisation';
 export { dedupeDealbreakerRules, screenDealbreakers } from './dealbreakers';
+export {
+  MAX_MOTIVATION_READS_PER_RUN,
+  MOTIVATION_FEATURE,
+  readListingMotivation,
+} from './motivation-llm';
+export type { MotivationCandidate } from './motivation-llm';
+export {
+  MOTIVATION_LEAD_TYPES,
+  MOTIVATION_SIGNAL_LABELS,
+  MOTIVATION_SIGNALS,
+  strongerLeadType,
+} from './motivation-signals';
+export type {
+  MotivationLeadType,
+  MotivationLevel,
+  MotivationRead,
+  MotivationSignal,
+} from './motivation-signals';
 export type { DealbreakerCandidate, DealbreakerHit } from './dealbreakers';
 export {
   applySuggestionChange,
@@ -436,6 +497,17 @@ export interface ScoutingPipelineOptions {
    */
   enrichRationaleLlm?: boolean;
   /**
+   * When true, every listing with a real description gets a batched Haiku
+   * read for motivation the TEXT states (executor sale, cash buyers only,
+   * relocation…). Upgrades the lead type when the text names a stronger
+   * reason than the source list implied, and adds a capped acquisition
+   * factor. Runs BEFORE the shortlist so it changes which leads get the
+   * paid enrichment — that is the point. See motivation-llm.ts.
+   *
+   * Defaults false — the scouting cron opts in. ~30 Haiku calls a day.
+   */
+  readMotivationLlm?: boolean;
+  /**
    * Skip the slow, low-yield PropertyData sources (planning-applications +
    * national-HMO-register) and the Companies-House dissolved-company scan.
    * Each planning/HMO loop carries ~11s + 2.7s/seed of MANDATORY rate-limit
@@ -446,6 +518,23 @@ export interface ScoutingPipelineOptions {
    * sourced-properties still run.
    */
   skipSlowSources?: boolean;
+  /**
+   * Hard wall-clock deadline (epoch ms) for the PAID enrichment phases.
+   * When the clock passes it, the pipeline stops starting new PropertyData /
+   * HMLR work (short-lease scan, planning/HMO loops, per-postcode
+   * enrichment, per-lead comparable lookups) and finishes with whatever it
+   * already has — so the caller ALWAYS gets leads back to persist.
+   *
+   * Why this exists: scoring polish is optional, the day's leads are not.
+   * From 24–27 Aug 2026 the daily run outgrew the 800s function budget
+   * (prime seeds → 935 listings → 60-lead shortlist → rate-limited
+   * enrichment) and was killed by the platform BEFORE persistence, so four
+   * days of leads evaporated with a 504 and no heartbeat. A truncated run
+   * reports what it skipped via `truncatedByDeadline`.
+   *
+   * Undefined = no deadline (previous behaviour).
+   */
+  deadlineMs?: number;
 }
 
 export interface ScoutingPipelineResult {
@@ -529,8 +618,25 @@ export interface ScoutingPipelineResult {
    * lead count.
    */
   sourceHealth: SourceHealthEntry[];
+  /**
+   * Paid phases skipped because the run hit `deadlineMs`. Empty on a full
+   * run. Non-empty means the leads are real but some carry less enrichment
+   * polish than usual — never a reason to distrust the leads themselves.
+   */
+  truncatedByDeadline: string[];
   /** Contact-enrichment tier distribution + hit-rate for this run. */
   enrichment: EnrichmentSummary;
+  /**
+   * Listing-text motivation read (motivation-llm.ts): listings read, how
+   * many showed strong / some motivation, and lead types upgraded on the
+   * strength of the text. All zero when the read is off or unavailable.
+   */
+  motivationReads: {
+    read: number;
+    strong: number;
+    some: number;
+    upgraded: number;
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -564,8 +670,24 @@ export async function runScoutingPipeline(
     scorerConfig = DEFAULT_SCORER_CONFIG,
     evalConfigVersion = null,
     enrichRationaleLlm = false,
+    readMotivationLlm = false,
     skipSlowSources = false,
+    deadlineMs,
   } = options;
+
+  // Deadline guard — see ScoutingPipelineOptions.deadlineMs. Records WHICH
+  // phase was cut (once per phase) so the caller can surface a truthful
+  // "run truncated" note instead of a silent quality drop.
+  const truncatedByDeadline: string[] = [];
+  const pastDeadline = (phase: string): boolean => {
+    if (deadlineMs === undefined || Date.now() < deadlineMs) {
+      return false;
+    }
+    if (!truncatedByDeadline.includes(phase)) {
+      truncatedByDeadline.push(phase);
+    }
+    return true;
+  };
 
   // ── Sourcing gate ────────────────────────────────────────────────────
   // The keep/drop decision is made on the NORMALISED pre-appraisal score
@@ -793,6 +915,8 @@ export async function runScoutingPipeline(
         daysOnMarket: number | null;
         daysSincePriceChange: number | null;
         preciseAddress: string | null;
+        /** Listing-stated floor area in sqft (agent-declared, not EPC). */
+        listingSqft: number | null;
         /** True for non-residential (pub/office/shop/unit) — kept but badged. */
         commercial?: boolean;
       };
@@ -883,6 +1007,7 @@ export async function runScoutingPipeline(
               daysOnMarket: p.daysOnMarket,
               daysSincePriceChange: p.daysSincePriceChange,
               preciseAddress: p.preciseAddress,
+              listingSqft: p.listingSqft,
               commercial,
             },
           });
@@ -956,7 +1081,11 @@ export async function runScoutingPipeline(
 
   // ── /planning-applications — serial after sourced ───────────────────
   const planningGrants: RawGrant[] = [];
-  for (let i = 0; !skipSlowSources && i < allSeeds.length; i++) {
+  for (
+    let i = 0;
+    !skipSlowSources && i < allSeeds.length && !pastDeadline('planning');
+    i++
+  ) {
     const seed = allSeeds[i]!;
     // First iteration: wait long enough for the sourced phase's rate-limit
     // window to clear (PropertyData allows 4 calls / 10s).
@@ -1004,7 +1133,11 @@ export async function runScoutingPipeline(
 
   // ── /national-hmo-register — serial after planning ──────────────────
   const hmoGrants: RawGrant[] = [];
-  for (let i = 0; !skipSlowSources && i < allSeeds.length; i++) {
+  for (
+    let i = 0;
+    !skipSlowSources && i < allSeeds.length && !pastDeadline('hmo');
+    i++
+  ) {
     const seed = allSeeds[i]!;
     await sleep(i === 0 ? 11000 : 2700);
     try {
@@ -1125,6 +1258,10 @@ export async function runScoutingPipeline(
       allSeeds.map((s) => ({ label: s.label, postcode: s.postcode }));
     const collected: ShortLeaseGrant[] = [];
     for (let i = 0; i < leaseSeeds.length; i++) {
+      // The short-lease scan is the first paid loop the deadline can cut:
+      // one throttled /freeholds call per seed adds up across 18 seeds, and
+      // these are supplementary leads — never worth losing the run over.
+      if (pastDeadline('shortLease')) break;
       // Space calls to respect the 4-calls/10s PropertyData limit (mirrors the
       // planning/HMO loops).
       if (i > 0) await sleep(2700);
@@ -1196,6 +1333,10 @@ export async function runScoutingPipeline(
       remainingLeaseYears?: number | null;
       marriageValueLease?: boolean;
       leaseUrgency?: number;
+      motivation?: {
+        level: 'strong' | 'some';
+        signals: MotivationSignal[];
+      } | null;
     }
   >();
   for (const g of candidates) {
@@ -1243,6 +1384,78 @@ export async function runScoutingPipeline(
             : undefined,
         commercial: pd.commercial === true,
       });
+    }
+  }
+
+  // ── Motivation read — what the listing text says about the seller ───
+  //
+  // Runs on the FULL candidate pool, before the shortlist, so a "reduced"
+  // listing whose description reads "executor sale, cash buyers only" can
+  // win a paid enrichment slot it would otherwise lose to a plain price
+  // cut. Cheap (Haiku, batched), bounded (per-run cap + deadline hook),
+  // graceful (no key / failure → no reads → identical to today).
+  const motivationReads = { read: 0, strong: 0, some: 0, upgraded: 0 };
+  if (readMotivationLlm && !pastDeadline('motivationRead')) {
+    const readable = candidates.flatMap((g) => {
+      const pd = (
+        g as {
+          propertyData?: {
+            summary?: string | null;
+            listingType?: string | null;
+            propertyType?: string | null;
+          };
+        }
+      ).propertyData;
+      return pd?.summary
+        ? [
+            {
+              ref: g.probateRef,
+              address: g.address,
+              summary: pd.summary,
+              listingType: pd.listingType ?? null,
+              propertyType: pd.propertyType ?? null,
+            },
+          ]
+        : [];
+    });
+    const reads = await readListingMotivation(readable, {
+      shouldStop: () => pastDeadline('motivationRead'),
+    });
+    for (const g of candidates) {
+      const read = reads.get(g.probateRef);
+      if (!read) {
+        continue;
+      }
+      motivationReads.read++;
+      // Verbatim onto the grant → sanitisePayload → rawPayload, so the lead
+      // page shows the quote the call was made on.
+      (g as { motivationRead?: MotivationRead }).motivationRead = read;
+      if (read.level === 'none') {
+        continue;
+      }
+      motivationReads[read.level]++;
+      const sig = signalsByRef.get(g.probateRef);
+      if (sig) {
+        sig.motivation = { level: read.level, signals: read.signals };
+      }
+      const hinted = g as { leadTypeHint?: string };
+      if (hinted.leadTypeHint) {
+        const upgraded = strongerLeadType(
+          hinted.leadTypeHint,
+          read,
+          scorerConfig.leadTypeScores,
+          scorerConfig.leadTypeFallback
+        );
+        if (upgraded !== hinted.leadTypeHint) {
+          hinted.leadTypeHint = upgraded;
+          motivationReads.upgraded++;
+        }
+      }
+    }
+    if (motivationReads.read > 0) {
+      console.info(
+        `[scouting] motivation read: ${motivationReads.read} listings, ${motivationReads.strong} strong, ${motivationReads.some} some, ${motivationReads.upgraded} lead types upgraded`
+      );
     }
   }
 
@@ -1410,6 +1623,10 @@ export async function runScoutingPipeline(
   };
 
   for (const pc of uniquePostcodes) {
+    // The heaviest phase: ~4 rate-limited PropertyData calls per unique
+    // postcode. Past the deadline, remaining postcodes score without risk /
+    // demographic colour — leads still land, factors say less.
+    if (pastDeadline('postcodeEnrichment')) break;
     try {
       const [demo, flood, epcs, tenures] = await Promise.all([
         getDemographics(pc).catch((e) => {
@@ -1483,12 +1700,45 @@ export async function runScoutingPipeline(
   // Step 4 — Score leads (fan-out postcode lookups)
   const scored = await Promise.all(
     enriched.map(async (lead) => {
-      const [pricePaid, hpi] = await Promise.all([
-        getPricePaid(lead.postcode).catch(() => null),
-        getHousepriceIndex(lead.postcode).catch(() => null),
-      ]);
+      // Comparable lookups are cached per postcode, but a cold cache across
+      // many areas still costs real time — past the deadline, score without
+      // them (the sourcing gate normalises for missing comparables).
+      // The property's OWN EPC rides alongside the comparables: it is the
+      // free register (not PropertyData credits), carries the evidence the
+      // modernisation assessor runs on (band, assessment date, heating),
+      // and degrades to `unavailable` — never invented — without a token.
+      const [pricePaid, hpi, ownEpc] = pastDeadline('comparableLookups')
+        ? [null, null, null]
+        : await Promise.all([
+            getPricePaid(lead.postcode).catch(() => null),
+            getHousepriceIndex(lead.postcode).catch(() => null),
+            getEpcData(lead.postcode, lead.address).catch(() => null),
+          ]);
 
       const baseSignals = signalsByRef.get(lead.probateRef) ?? {};
+
+      // Ripe for modernisation — "focus on what has NOT been refurbished"
+      // (founder direction, 30 Aug 2026). Positive evidence only: the
+      // property's own certificate, dated heating, long tenure (real HMLR
+      // rows — a synthetic sale proves nothing), and the listing's own
+      // condition badge. Pre-computed here because the scorer's epcRating
+      // is the POSTCODE average, not this house.
+      const lastRealSaleDate =
+        pricePaid && !isSyntheticPricePaid(pricePaid)
+          ? ([...realTransactions(pricePaid.transactions)].sort((a, b) =>
+              b.date.localeCompare(a.date)
+            )[0]?.date ?? null)
+          : null;
+      const propertyEpc =
+        ownEpc && ownEpc.source !== 'unavailable' ? ownEpc : null;
+      const modernisation = assessModernisation({
+        epcRating: propertyEpc?.epcRating ?? null,
+        epcInspectionDate: propertyEpc?.inspectionDate ?? null,
+        heatingType: propertyEpc?.heatingType ?? null,
+        lastSaleDate: lastRealSaleDate,
+        listingType: baseSignals.listingType ?? null,
+        text: lead.address,
+      });
       const pc = enrichmentByPostcode.get(lead.postcode);
       const signals = {
         ...baseSignals,
@@ -1502,6 +1752,10 @@ export async function runScoutingPipeline(
         tenure: baseSignals.tenure ?? pc?.tenure ?? null,
         remainingLeaseYears:
           baseSignals.remainingLeaseYears ?? pc?.remainingLeaseYears ?? null,
+        modernisation:
+          modernisation.points > 0
+            ? { points: modernisation.points, reasons: modernisation.reasons }
+            : null,
       };
       const breakdown = scoreLead(lead, pricePaid, hpi, signals, scorerConfig);
 
@@ -1536,7 +1790,12 @@ export async function runScoutingPipeline(
       // Opt-in LLM rationale on STRONG leads only. Side-effect-safe: returns
       // null on missing key / call failure, in which case the deterministic
       // `rationale` field above is the surface the UI renders.
-      if (enrichRationaleLlm && breakdown.verdict === 'STRONG' && enrichedRaw) {
+      if (
+        enrichRationaleLlm &&
+        breakdown.verdict === 'STRONG' &&
+        enrichedRaw &&
+        !pastDeadline('rationaleLlm')
+      ) {
         const llmRationale = await enrichRationaleWithLlm(breakdown, {
           address: lead.address,
           postcode: lead.postcode,
@@ -1552,7 +1811,11 @@ export async function runScoutingPipeline(
       // score. Best-effort + real-data-only (returns confidence 'none' when
       // it can't pin a sale) so it never blocks or fabricates. HMLR is cached
       // per postcode inside the matcher, so many leads in one area = one call.
-      if (lead.leadType === 'probate' && enrichedRaw) {
+      if (
+        lead.leadType === 'probate' &&
+        enrichedRaw &&
+        !pastDeadline('probateSaleMatch')
+      ) {
         try {
           const probateMatch = await matchProbateAddressToSale({
             address: lead.address,
@@ -1605,10 +1868,42 @@ export async function runScoutingPipeline(
         areaAvgPence,
         listingType: pd?.listingType ?? null,
         text: `${lead.address} ${pd?.summary ?? ''}`,
+        // The property's own certificate — what lets a probate lead (no
+        // badge, no listing text) carry real condition evidence.
+        epcRating: propertyEpc?.epcRating ?? null,
+        epcInspectionDate: propertyEpc?.inspectionDate ?? null,
         primeDistricts: founderPrimeDistricts,
       });
       if (primeOpportunity) {
         enrichedRaw = { ...(enrichedRaw ?? {}), primeOpportunity };
+      }
+
+      // Ripe-for-modernisation evidence + the property's own EPC, verbatim
+      // for the lead page; and the cornerstone tier marker (£1.5M–£10M
+      // inside prime — founder decision 29 Aug: a triage badge, never a
+      // floor change).
+      if (enrichedRaw) {
+        if (modernisation.points > 0) {
+          enrichedRaw = { ...enrichedRaw, modernisation };
+        }
+        if (propertyEpc) {
+          enrichedRaw = {
+            ...enrichedRaw,
+            propertyEpc: {
+              rating: propertyEpc.epcRating,
+              score: propertyEpc.epcScore,
+              inspectionDate: propertyEpc.inspectionDate,
+              heatingType: propertyEpc.heatingType,
+              floorAreaSqm: propertyEpc.floorAreaSqm,
+            },
+          };
+        }
+        if (
+          track === 'prime' &&
+          isCornerstoneValue(lead.estateValuePence, areaAvgPence)
+        ) {
+          enrichedRaw = { ...enrichedRaw, cornerstone: true };
+        }
       }
 
       const scoutLead: ScoutLead = {
@@ -1698,6 +1993,14 @@ export async function runScoutingPipeline(
   const healthSummary = summariseSourceHealth(sourceHealth);
   console.info(`[scouting] source health: ${healthSummary.headline}`);
 
+  if (truncatedByDeadline.length > 0) {
+    // Loud, but not fatal: the whole point of the deadline is that the run
+    // still RETURNS and the caller still persists every lead below.
+    console.warn(
+      `[scouting] DEADLINE HIT — skipped paid phases: ${truncatedByDeadline.join(', ')}. Leads are kept; some carry less enrichment than usual.`
+    );
+  }
+
   return {
     runDate,
     fetched: rawGrants.length,
@@ -1726,6 +2029,8 @@ export async function runScoutingPipeline(
     seedOutcomes,
     sourceErrors,
     sourceHealth,
+    truncatedByDeadline,
     enrichment: enrichmentSummary,
+    motivationReads,
   };
 }

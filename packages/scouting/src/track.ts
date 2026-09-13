@@ -81,6 +81,28 @@ export const PRIME_MIN_VALUE_PENCE = 700_000_00;
 export const PRIME_DISCOUNT_MIN_RATIO = 0.4;
 
 /**
+ * The CAPTURE-TIME stand-in for the ratio above, used only by
+ * `isPotentialPrimeCapture` when a below-floor price must be judged BEFORE
+ * the street average exists (shortlist time, no HMLR lookup yet).
+ *
+ * Deliberately much tighter than PRIME_DISCOUNT_MIN_RATIO (founder
+ * direction, 27 Aug 2026: "be tighter on prime, much tighter"). The 0.4
+ * ratio is calibrated against a REAL street average (≥ £700k proven); at
+ * capture time the only anchor is the £700k floor itself, and 0.4 of THAT
+ * (£280k) guaranteed a slot to nearly every house-shaped listing in a prime
+ * district — 232 "prime" captures in one day, the runaway guard truncating
+ * daily, and the enrichment bill for 30 of them every run. At 0.75 (£525k)
+ * the guessed cohort is plausibly-prime only.
+ *
+ * What this does NOT change: real prime (≥ £700k own value), blocks, and
+ * valueless notices in prime districts (the probate cohort) capture exactly
+ * as before — and a £300k–£525k listing is not LOST, it competes for the
+ * volume shortlist and still classifies discounted-prime after enrichment
+ * against its real street average.
+ */
+export const PRIME_CAPTURE_VALUE_MIN_RATIO = 0.75;
+
+/**
  * Auction guide prices are marketing floors, not valuations — hammer prices
  * routinely land 10–40% over guide. Inside a prime district a lot guided at
  * ≥ 70% of the prime floor is therefore likely prime stock at the fall of
@@ -89,6 +111,28 @@ export const PRIME_DISCOUNT_MIN_RATIO = 0.4;
  * existing nationwide behaviour.
  */
 export const AUCTION_GUIDE_HEADROOM = 0.7;
+
+/**
+ * The cornerstone tier INSIDE prime (founder decision, 29 Aug 2026: the
+ * £700k floor stays; £1.5M–£10M is a named tier, not a new floor). Purely
+ * a triage marker — cornerstone leads are still `prime`, still bypass the
+ * gate, still get a human decision. There is still no ceiling anywhere.
+ */
+export const CORNERSTONE_MIN_VALUE_PENCE = 1_500_000_00;
+
+/**
+ * True when a prime lead belongs to the cornerstone tier. A lead with no
+ * value of its own (every probate notice) is judged by its street average,
+ * the same stand-in classifyTrack uses — a valueless notice on a £2M
+ * street is a cornerstone conversation, not a volume one.
+ */
+export function isCornerstoneValue(
+  valuePence: number | null | undefined,
+  areaAvgPence: number | null | undefined
+): boolean {
+  const basis = typeof valuePence === 'number' ? valuePence : areaAvgPence;
+  return typeof basis === 'number' && basis >= CORNERSTONE_MIN_VALUE_PENCE;
+}
 
 /**
  * London districts where the buy-under-market → refurb → sell strategy works.
@@ -193,8 +237,10 @@ const OUTWARD_ONLY = /^([A-Z]{1,2}\d{1,2}[A-Z]?)$/;
  * Condition language, for listings whose feed gave us no distress badge.
  * Grouped, so the \b anchors bind every alternative rather than only the
  * first and last — the classic alternation-precedence trap.
+ * Exported so the modernisation assessor scores the SAME language this
+ * classifier recognises — two lists would drift.
  */
-const REFURB_TEXT =
+export const REFURB_TEXT =
   /\b(?:un-?modernised|unimproved|(?:needs?|requires?|requiring|in need of)\s+(?:full\s+|complete\s+|total\s+)?(?:modernisation|modernising|updating|renovation|renovating|refurbishment|repair)|renovation project|refurbishment project|doer[-\s]upper)\b/i;
 
 /**
@@ -443,6 +489,15 @@ export function assessPrimeOpportunity(input: {
   listingType?: string | null;
   /** Any listing text, for condition language the badge missed. */
   text?: string | null;
+  /**
+   * The property's OWN EPC rating, when the register had one. This is what
+   * lets a probate lead — no listing badge, no listing text — carry real
+   * condition evidence: an F or G says the heating and insulation are
+   * untouched, in the register's own hand.
+   */
+  epcRating?: string | null;
+  /** Assessment date of that certificate (ISO-ish), for the reason line. */
+  epcInspectionDate?: string | null;
 }): PrimeOpportunity {
   const reasons: string[] = [];
 
@@ -465,12 +520,20 @@ export function assessPrimeOpportunity(input: {
 
   const badge = input.listingType ?? '';
   const textual = REFURB_TEXT.test(input.text ?? '');
-  const isRefurbCandidate = REFURB_LISTING_TYPES.has(badge) || textual;
-  if (isRefurbCandidate) {
+  const epcBand = input.epcRating?.toUpperCase();
+  const epcEvidence = epcBand === 'F' || epcBand === 'G';
+  const isRefurbCandidate =
+    REFURB_LISTING_TYPES.has(badge) || textual || epcEvidence;
+  if (REFURB_LISTING_TYPES.has(badge)) {
+    reasons.push(`Condition signal: ${badge.replace(/-/g, ' ')}`);
+  } else if (textual) {
     reasons.push(
-      badge && REFURB_LISTING_TYPES.has(badge)
-        ? `Condition signal: ${badge.replace(/-/g, ' ')}`
-        : 'Condition signal: listing text describes an unmodernised property'
+      'Condition signal: listing text describes an unmodernised property'
+    );
+  } else if (epcEvidence) {
+    const year = input.epcInspectionDate?.slice(0, 4);
+    reasons.push(
+      `Condition signal: EPC ${epcBand}${year ? ` (assessed ${year})` : ''} — heating and insulation untouched`
     );
   }
 
@@ -562,11 +625,13 @@ export function isPotentialPrimeCapture(input: {
     return true;
   }
   // Valued below the floor → potential discounted prime, unless the price or
-  // the text says "flat". Mirrors classifyTrack's discounted-prime path with
-  // the floor itself standing in for the street average we don't yet have.
+  // the text says "flat". Mirrors classifyTrack's discounted-prime path, but
+  // with a MUCH tighter ratio: the floor stands in for the street average we
+  // don't yet have, and guessing generously here is what flooded capture —
+  // see PRIME_CAPTURE_VALUE_MIN_RATIO.
   const haystack = [input.text ?? '', input.propertyType ?? ''].join(' ');
   return (
-    input.valuePence >= PRIME_MIN_VALUE_PENCE * PRIME_DISCOUNT_MIN_RATIO &&
+    input.valuePence >= PRIME_MIN_VALUE_PENCE * PRIME_CAPTURE_VALUE_MIN_RATIO &&
     !FLAT_TEXT.test(haystack)
   );
 }
@@ -578,6 +643,9 @@ export function primeOpportunityForTrack(input: {
   areaAvgPence?: number | null;
   listingType?: string | null;
   text?: string | null;
+  /** The property's own EPC evidence, when fetched (see assessPrimeOpportunity). */
+  epcRating?: string | null;
+  epcInspectionDate?: string | null;
   /** Founder-marked prime districts (see isPrimeDistrict). */
   primeDistricts?: ReadonlySet<string>;
 }): PrimeOpportunity | null {
@@ -593,5 +661,7 @@ export function primeOpportunityForTrack(input: {
     areaAvgPence: input.areaAvgPence,
     listingType: input.listingType,
     text: input.text,
+    epcRating: input.epcRating,
+    epcInspectionDate: input.epcInspectionDate,
   });
 }

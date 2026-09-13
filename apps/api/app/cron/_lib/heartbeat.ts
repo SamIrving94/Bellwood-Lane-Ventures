@@ -20,12 +20,18 @@ export type CronName =
   | 'pipeline-summary'
   | 'sla-alerts'
   | 'legal-chaser'
-  | 'deep-appraisal';
+  | 'deep-appraisal'
+  | 'ch-stream'
+  | 'avm-backtest';
 
 // Max age (hours) between successful runs before the watchdog alerts. Tuned to
 // the documented daily schedules with head-room for timezone/retry jitter.
-export const CRON_MAX_STALENESS_HOURS: Record<CronName, number> = {
-  scouting: 28,
+//
+// Partial on purpose: a cron with NO entry here still records heartbeats but
+// is never watchdogged. `scouting` moved to that category on 27 Aug 2026 —
+// it is founder-triggered now (Settings → Scouting → "Run scout now"), so
+// days of silence is a spend decision, not a failure.
+export const CRON_MAX_STALENESS_HOURS: Partial<Record<CronName, number>> = {
   'lead-appraise': 28,
   'pipeline-appraise': 28,
   'pipeline-outreach': 28,
@@ -35,6 +41,12 @@ export const CRON_MAX_STALENESS_HOURS: Record<CronName, number> = {
   // gap, so the alert window must clear a full weekend.
   'legal-chaser': 80,
   'deep-appraisal': 28,
+  // Every-30-min schedule; heartbeats fire even on not-configured skips, so
+  // a few hours of silence really does mean the drain has stopped running.
+  'ch-stream': 3,
+  // Monthly (28th). 35 days clears one skipped run before the watchdog
+  // shouts; two silent months is a real failure.
+  'avm-backtest': 35 * 24,
 };
 
 export type CronHeartbeat = {

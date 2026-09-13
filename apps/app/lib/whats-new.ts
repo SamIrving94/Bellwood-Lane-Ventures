@@ -29,14 +29,10 @@ export const WHATS_NEW: WhatsNewEntry[] = [
     id: '2026-09-12-appraisal-signals-and-size',
     date: '2026-09-12',
     emoji: '🫀',
-    title: 'Valuations now read body language — and price the square footage',
+    title: 'Valuations now read body language',
     intro:
       'The AVM used to price a property and stop. Now every appraisal reads how the LISTING is behaving, what else is struggling nearby — and what the size is actually worth.',
     bullets: [
-      {
-        emoji: '📐',
-        text: '**Size, priced**: the EPC-verified square footage × the area’s £/sq ft now feeds the valuation — a 70m² and a 140m² house on the same street finally price differently. Shown on every appraisal with the area benchmark.',
-      },
       {
         emoji: '⏱️',
         text: '**Days on market**, **price cuts** and how fast they’re coming — stamped on every valuation, on leads and deals alike.',
@@ -55,6 +51,412 @@ export const WHATS_NEW: WhatsNewEntry[] = [
       },
     ],
     cta: { label: 'Open your leads', href: '/leads' },
+  },
+  {
+    id: '2026-09-12-avm-backtest',
+    date: '2026-09-12',
+    emoji: '🎯',
+    title: 'The valuation engine now gets marked against real sales',
+    intro:
+      'Every appraisal is frozen the moment it is made. Once a month it is checked against what the house actually sold for, using Land Registry. No more guessing whether the AVM is any good.',
+    bullets: [
+      {
+        emoji: '🧊',
+        text: '**Frozen at decision time** — every valuation from leads, deals, quotes and batch uploads is saved with what the engine knew then.',
+      },
+      {
+        emoji: '📬',
+        text: "**Monthly check** — on the 28th, each frozen appraisal is matched to the property's first Land Registry sale after it. Homes we bought are left out.",
+      },
+      {
+        emoji: '📊',
+        text: '**AVM accuracy page** — median error, which way it leans, and how often the range catches the sale, split by confidence, comps path and price band.',
+      },
+      {
+        emoji: '🛑',
+        text: '**Honest about sample size** — under 30 sales it says "too few". The first matches land a few months from now.',
+      },
+    ],
+    cta: { label: 'See AVM accuracy', href: '/appraisals/backtest' },
+  },
+  {
+    id: '2026-09-12-scout-reads-desk-drafts',
+    date: '2026-09-12',
+    emoji: '🔍',
+    title: 'The scout now reads the listing. The desk now drafts your call.',
+    intro:
+      'Sam said "action everything in the report, scout first". Five things landed in one go.',
+    bullets: [
+      {
+        emoji: '📖',
+        text: 'Every listing description is **read for motivation** — executor sale, cash buyers only, relocation. It can **lift the lead type** and the score, and the quote is on the lead page.',
+      },
+      {
+        emoji: '🔨',
+        text: '**Savills and Clive Emson** auction lots now come in. Watch the first Monday scan.',
+      },
+      {
+        emoji: '🗂️',
+        text: 'Every card on the **Action Centre** opens with a **suggested call and the why**, ranked. The morning briefing leads with #1.',
+      },
+      {
+        emoji: '📱',
+        text: '**WhatsApp leads** are scored by the same scorer as the rest of the inbox, so the numbers finally compare.',
+      },
+      {
+        emoji: '🎛️',
+        text: 'Photo screening and WhatsApp parsing are now rows on **Settings → AI models** too.',
+      },
+    ],
+    cta: { label: 'Open the Action Centre', href: '/actions' },
+  },
+  {
+    id: '2026-09-12-deep-appraisal-second-opinion',
+    date: '2026-09-12',
+    emoji: '🧠',
+    title:
+      'The full appraisal now argues with the AVM — and you pick the brain',
+    intro:
+      'Sam asked "if we put an LLM over the AVM, would it not make sense for some reasoning to look at it?" Yes. It now does, and the model behind it is yours to choose.',
+    bullets: [
+      {
+        emoji: '⚖️',
+        text: 'Every deep appraisal now gets the **in-house AVM figure** and must **agree or challenge it** — with the evidence. Look for "vs in-house AVM" under ARV.',
+      },
+      {
+        emoji: '🎛️',
+        text: 'Deep appraisal is now a row on **Settings → AI models**. Point it at an **open-weights model via OpenRouter** for a fraction of the cost, no deploy.',
+      },
+      {
+        emoji: '👥',
+        text: 'Use the **shadow model** column to run a challenger silently first. Compare cost and quality on the usage stats before you flip it.',
+      },
+    ],
+    cta: { label: 'Open AI models', href: '/settings/ai' },
+  },
+  {
+    id: '2026-09-12-openrouter-first',
+    date: '2026-09-12',
+    emoji: '🔀',
+    title:
+      'AI calls now go through OpenRouter, and an empty balance no longer stops them',
+    intro:
+      'The Anthropic account ran dry and four features went quiet for days: deep appraisal, the photo screener, the morning briefing and the marketer. That failure mode is gone.',
+    bullets: [
+      {
+        emoji: '💳',
+        text: 'One bill. Set OPENROUTER_API_KEY in Vercel and every AI feature routes through it, Claude included.',
+      },
+      {
+        emoji: '🛟',
+        text: 'Out of credits, rate-limited or provider down? The call falls through to the next model instead of failing.',
+      },
+      {
+        emoji: '🧪',
+        text: 'Test open-weight models: pick a shadow model per feature in Settings → AI models, then compare on the LLM usage page. Suggested ids are pre-filled.',
+      },
+    ],
+    cta: { label: 'Open AI models', href: '/settings/ai' },
+  },
+  {
+    id: '2026-09-12-batch-upload-big-number',
+    date: '2026-09-12',
+    emoji: '📄',
+    title: 'Fixed: a batch upload no longer dies on one oversized figure',
+    intro:
+      'The 11 Sep pipeline sheet had one Acceptable Trade Offer cell of 110,000,000 — a hundred times too big for the database. The whole upload failed silently before a batch was created, so "Run appraisals" never appeared.',
+    bullets: [
+      {
+        emoji: '✅',
+        text: 'Upload the same sheet again — every row now loads. The bad cell is left blank and that row shows as "no benchmark" so you can spot it.',
+      },
+      {
+        emoji: '🔎',
+        text: 'The limit is about £21.4m per cell. Anything above it is skipped, never guessed — fix the cell in the sheet and re-upload.',
+      },
+    ],
+    cta: { label: 'Open Batch', href: '/batch' },
+  },
+  {
+    id: '2026-09-12-price-per-square-foot',
+    date: '2026-09-12',
+    emoji: '📐',
+    title: 'Square footage is in — and the AVM now prices by it',
+    intro:
+      'Sam asked why size was not part of the valuation. It is now. Every lead shows its floor area in sqft, and the AVM checks the whole-house comps against what nearby sold homes fetched per square foot.',
+    bullets: [
+      {
+        emoji: '📏',
+        text: "Leads list: **sqft on every card** — EPC-verified when the AVM has matched the house number, the listing's own figure before that, each labelled.",
+      },
+      {
+        emoji: '💷',
+        text: 'Appraised leads show **£/sqft for this house** next to the **nearby sold £/sqft** — sold comps matched to their own EPC floor areas, never a postcode average.',
+      },
+      {
+        emoji: '⚖️',
+        text: "The AVM now has a **size pillar**: rate × this house's sqft carries 25–30% of the blend when 2+ comps match. A house 40% bigger than its street no longer prices like its neighbours.",
+      },
+      {
+        emoji: '🔍',
+        text: 'Lead page: a **£/sqft panel** under the comps — ¼-mile vs ½-mile rates, the size-based value, and how far it sits from the whole-house comps.',
+      },
+    ],
+    cta: { label: 'See the leads', href: '/leads' },
+  },
+  {
+    id: '2026-09-12-two-doors-have-pages',
+    date: '2026-09-12',
+    emoji: '🚪',
+    title: 'The two new doors now open onto their own pages',
+    intro:
+      'Both new reasons on /sell now lead somewhere: a page for the property with a problem or one that needs work, and a page for everyone whose reason is something else. Same template as probate and chain-break, same four steps, same honest version.',
+    bullets: [
+      {
+        emoji: '🏠',
+        text: '/problem-property: what buyers and lenders walk away from, we price and carry. Nothing to fix first, no lender to say no, honest about the price.',
+      },
+      {
+        emoji: '🤫',
+        text: '/your-situation: quickly, quietly, discreetly. No board, no listing, one visit, your date. Its honest version points to StepChange and Citizens Advice.',
+      },
+      {
+        emoji: '📣',
+        text: 'Organic only for now. Counsel reads the your-situation page before any ads point at it, as the marketing plan asks.',
+      },
+    ],
+  },
+  {
+    id: '2026-09-07-new-areas-scan-first',
+    date: '2026-09-07',
+    emoji: '📍',
+    title: 'Add an area, run the scout — it is in THAT run',
+    intro:
+      'A freshly added area used to slip to the back of the 6-a-day rotation, so the run you triggered for it could skip it. Fixed.',
+    bullets: [
+      {
+        emoji: '📍',
+        text: 'New areas now go to the FRONT of the rotation. Add Wanstead (E11), add South Woodford (E18), click "Run scout now" — both are scanned in that run.',
+      },
+      {
+        emoji: '★',
+        text: 'Want a patch checked on EVERY run, not just the next one? Mark it ★ Prime. That also tells the classifier to treat £700k+ finds there as prime stock.',
+      },
+    ],
+    cta: { label: 'Open scouting areas', href: '/settings/scouting' },
+  },
+  {
+    id: '2026-09-06-equity-proxy-flip',
+    date: '2026-09-06',
+    emoji: '⚖️',
+    title: 'Fixed: the score no longer rewards the OPPOSITE of a discount',
+    intro:
+      'Sam asked "is anything else being marked down that should score up?" — and yes. Before appraisal, a house priced 50% ABOVE its street scored 15 points while one 40% UNDER it scored 3. That is now the right way round.',
+    bullets: [
+      {
+        emoji: '💎',
+        text: 'A discount WITH a condition reason (EPC evidence, unmodernised badge, dated heating) now scores top of the range: the deeper the explained discount, the more points.',
+      },
+      {
+        emoji: '⚠️',
+        text: 'A discount with NO reason keeps the honest treatment: low points and "check why" — an unexplained cheap house usually hides an unfixable problem.',
+      },
+      {
+        emoji: '🚫',
+        text: 'A price under 40% of the street earns a token whatever the evidence — that is usually a flat wearing a house’s postcode.',
+      },
+      {
+        emoji: '🎛️',
+        text: 'All eight weights are founder-tunable in the scorer config. The sourcing-gate calibration is unchanged: 285/285 tests green.',
+      },
+    ],
+    cta: { label: 'See the leads', href: '/leads' },
+  },
+  {
+    id: '2026-09-06-ripe-for-modernisation',
+    date: '2026-09-06',
+    emoji: '🔧',
+    title: 'The scout now hunts the unmodernised — and badges the big tickets',
+    intro:
+      'Two changes to how leads rank and read: the scout finally rewards houses that have NOT been touched (it used to mark them down), and £1.5M+ prime leads wear their own badge.',
+    bullets: [
+      {
+        emoji: '🔎',
+        text: 'Each shortlisted lead now gets its OWN energy certificate read: an F or G band, a lapsed 10-year-old certificate, back boilers or storage heaters, and decades since the last sale all now ADD points instead of nothing.',
+      },
+      {
+        emoji: '🔧',
+        text: 'A new "Ripe for modernisation" pill on lead cards — hover it to see the evidence verbatim (e.g. "EPC F: heating and insulation untouched · no recorded sale since 1998").',
+      },
+      {
+        emoji: '⭐',
+        text: 'Probate leads finally show real condition proof: an old F-rated certificate now counts as the "why it is cheap" reason instead of "check why".',
+      },
+      {
+        emoji: '◆',
+        text: 'Cornerstone badge: prime leads at £1.5M+ (own value or street average) show ◆ in violet, so the big-ticket book triages first. Floor unchanged — £700k prime stands.',
+      },
+      {
+        emoji: '🔑',
+        text: 'Needs EPC_API_TOKEN on bellwood-api (same key as the web project — the launch board step now covers both). Without it, leads score as before, honestly.',
+      },
+    ],
+    cta: { label: 'See the leads', href: '/leads' },
+  },
+  {
+    id: '2026-09-05-two-more-doors',
+    date: '2026-09-05',
+    emoji: '🚪',
+    title: 'Two more doors on the front page',
+    intro:
+      'The "why are you selling?" list on /sell now speaks to two more sellers: the property that has a problem or needs work, and anyone whose situation is something else and needs handling quickly, quietly and discreetly. Each has its own card, and its own answer in the form.',
+    bullets: [
+      {
+        emoji: '🏠',
+        text: 'Problem or needs work: major refurbishments, structural issues, knotweed. The form records it as problem_property.',
+      },
+      {
+        emoji: '🤫',
+        text: 'Something else? A tailored process for whatever the situation is. The form records it as other.',
+      },
+      {
+        emoji: '📄',
+        text: 'Their own pages are still to build. Counsel reads any financial-pressure page before ads point at it.',
+      },
+    ],
+  },
+  {
+    id: '2026-09-05-phone-front-door',
+    date: '2026-09-05',
+    emoji: '📱',
+    title: 'The front door now leads with the door on phones',
+    intro:
+      'Open the public site on your phone. The threshold photograph and the seal are on the first screen, where they always were on desktop. The form is one thumb-scroll down, and Get started still jumps straight to it.',
+    bullets: [
+      {
+        emoji: '🚪',
+        text: 'Photo first: on phones the photograph now sits between the headline and the form, instead of a full screen down.',
+      },
+      {
+        emoji: '✂️',
+        text: 'Less crowding: shorter step labels on phones, a tighter header, and the trust marks sit under the photo as a caption.',
+      },
+      {
+        emoji: '🖥️',
+        text: 'Desktop unchanged: same grid, same spacing, same copy. Nothing in the signed-off wording moved.',
+      },
+    ],
+  },
+  {
+    id: '2026-08-30-launch-board',
+    date: '2026-08-30',
+    emoji: '🚀',
+    title: 'The October launch board is live — one next step each',
+    intro:
+      'No more lists in chat. The Launch page shows Sam, Ant and Claude each ONE green "do this now" card with exact steps and a Done button. Tick it, the next one appears. Both of you see the same live board.',
+    bullets: [
+      {
+        emoji: '✅',
+        text: 'One task at a time: the green card is the only thing to look at. Steps are literal — open this, paste this, click Done.',
+      },
+      {
+        emoji: '📋',
+        text: 'Commands come with a Copy button. No retyping, no hunting through chat history.',
+      },
+      {
+        emoji: '⏳',
+        text: '"Waiting on others" shows why a task is parked — in plain words, no list numbers.',
+      },
+      {
+        emoji: '💼',
+        text: 'The PPC freelancer brief is written, with a starter shortlist and 5 screening questions: docs/marketing/freelancer-brief-ppc.md.',
+      },
+    ],
+    cta: { label: 'Open the launch board', href: '/launch' },
+  },
+  {
+    id: '2026-08-29-prime-2m-keyhole',
+    date: '2026-08-29',
+    emoji: '🗝️',
+    title: 'The £2M+ trial, a district truth machine, and Keyhole is live',
+    intro:
+      'Three decisions, shipped together: the scout can hunt the super-prime fringe, the district list can finally be MEASURED instead of guessed, and professionals get a free report tool that quietly sends us leads.',
+    bullets: [
+      {
+        emoji: '🏰',
+        text: 'W11 + NW3 fringe trial, one command: seed-london-prime now takes --districts=W11,NW3. There was never a price ceiling in the code, only a scanning gap.',
+      },
+      {
+        emoji: '📏',
+        text: 'New arbitrage-rank script: Land Registry sales matched to EPC certificates, per district, giving real unmodernised vs refurbished £/sqft. The list stops being a hypothesis.',
+      },
+      {
+        emoji: '🗝️',
+        text: 'Keyhole is live at /keyhole (invite-only, unlisted): solicitors, surveyors and wealth managers get a one-page condition-and-value report. Never a valuation, never auto-contact.',
+      },
+      {
+        emoji: '🤝',
+        text: 'Their referrals land in deals@ with the report attached, opt-in only. The first-look playbook for buying agents is in docs/templates.',
+      },
+      {
+        emoji: '🔑',
+        text: 'One env to add: EPC_API_TOKEN on the web project, or Keyhole reports skip the EPC section (honestly, with a note).',
+      },
+    ],
+  },
+  {
+    id: '2026-08-27-scout-on-demand',
+    date: '2026-08-27',
+    emoji: '🎯',
+    title: 'The scout runs when YOU run it — and never loses a day again',
+    intro:
+      'Two changes: the scout is now on-demand (you trigger it, you control the spend), and a run can never again time out and throw away everything it found.',
+    bullets: [
+      {
+        emoji: '🔧',
+        text: 'Fixed: since Sunday the daily run was timing out and losing ALL its leads — four days of finds evaporated. A run now banks its leads no matter what.',
+      },
+      {
+        emoji: '▶️',
+        text: 'Run it yourself: Settings → Scouting → "Run scout now". A full sweep takes ~10 minutes; leads land on the Leads page and the review card appears in Actions.',
+      },
+      {
+        emoji: '💷',
+        text: 'You control the spend: no more automatic 7am run burning PropertyData credits daily. Run it when you want fresh stock — same-day re-runs are mostly cached, so they cost little.',
+      },
+      {
+        emoji: '⏱️',
+        text: 'If a run does run long, it says so: "ran out of time for X — leads kept, some with less detail" instead of failing silently.',
+      },
+      {
+        emoji: '🤫',
+        text: 'The watchdog no longer nags about the scout being "silent" — quiet days are your choice now, not a fault.',
+      },
+    ],
+    cta: { label: 'Run the scout', href: '/settings/scouting' },
+  },
+  {
+    id: '2026-08-23-ch-stream-and-connections',
+    date: '2026-08-23',
+    emoji: '⚡',
+    title: 'Lender trouble now surfaces in minutes, not tomorrow',
+    intro:
+      'The scout now listens to the Companies House live stream — fresh charges and insolvencies on property companies in your patch land as leads within the half-hour. Plus: leads now show what we already know around them.',
+    bullets: [
+      {
+        emoji: '📡',
+        text: 'Live stream, every 30 minutes: a new charge or insolvency on a property company in your areas becomes a lead the same morning it is filed — the old daily check stays on as the safety net.',
+      },
+      {
+        emoji: '🚨',
+        text: 'Fresh catches get their own high-priority card — the office-holder clock is running, so you hear about it first.',
+      },
+      {
+        emoji: '🕸️',
+        text: 'New Connections panel on lead pages: the company behind a lead, its lender, and the OTHER properties it holds charges over — links no address list could show. Review-only; it never changes a score.',
+      },
+    ],
+    cta: { label: 'See your leads', href: '/pipeline?tab=leads' },
   },
   {
     id: '2026-08-23-zillow-uncertainty-discipline',

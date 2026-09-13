@@ -1,6 +1,15 @@
 # The Prime Scout: how it works, how to run it, how to tune it
 
-_Last verified against the code: 2026-08-22._
+_Last verified against the code: 2026-08-29._
+
+> **Fast path (Aug 2026):** `/cron/ch-stream` drains the Companies House
+> Streaming API every 30 minutes for fresh charges/insolvencies on
+> property-SIC companies across ALL configured areas (prime and volume) —
+> lender-pressure leads land in minutes instead of the daily poll's ~24h.
+> Same scorer, same gate, same prime classification; the daily cron remains
+> the backstop. It also feeds the read-only entity graph behind the lead
+> page's Connections panel. Needs `CH_STREAM_KEY` (a separate Companies
+> House streaming registration) on bellwood-api.
 
 The prime book is a **London refurb-arbitrage play**: buy a period house
 below what its own street sells for, refurbish, sell into a deep
@@ -83,8 +92,22 @@ pnpm tsx scripts/prime-audit.mts
 pnpm tsx scripts/seed-london-prime.mts --limit=10
 pnpm tsx scripts/seed-london-prime.mts --write --limit=10
 
+# 2b. The super-prime FRINGE trial (founder decision, 29 Aug 2026): scan
+#     W11 + NW3 only — explicitly named districts seed regardless of tier.
+#     Optionality, not conviction: the Aug 2026 deep research SUPPORTED the
+#     super-prime exclusion; this scans the two most house-shaped fringe
+#     districts so the founder glance decides deal-by-deal. ~2 extra prime
+#     seeds per run (~40% more credits each than a volume seed).
+pnpm tsx scripts/seed-london-prime.mts --write --districts=W11,NW3
+
 # 3. After the next cron run, re-audit to measure the difference.
 pnpm tsx scripts/prime-audit.mts
+
+# 4. Rank districts by MEASURED refurb arbitrage (LR sold prices × EPC
+#    condition, matched by address). Read-only, free APIs; needs
+#    EPC_API_TOKEN in .env. This is the evidence the district list has
+#    been waiting for — see §4's "hypothesis, not a finding" warning.
+pnpm tsx --env-file=.env scripts/arbitrage-rank.mts --districts=SE22,W11,NW3
 ```
 
 ## 6. Credit maths (why you start with --limit=10)
@@ -124,6 +147,19 @@ or a slower prime rotation, never silence.
 5. **Condition language.** `REFURB_TEXT` in `track.ts`. Extend when real
    listings use phrasing it misses; every alternative is anchored, grouped,
    and tested.
+6. **Ripe-for-modernisation weights** (`modernisation.ts`, added 30 Aug
+   2026 — "focus on what has NOT been refurbished"). The scout now fetches
+   each shortlisted lead's OWN EPC (free register, needs `EPC_API_TOKEN`
+   on bellwood-api) and scores positive evidence of an untouched home:
+   band F/G, a lapsed certificate (10y+), dated heating language, and
+   long tenure from real HMLR sales — capped at +8 acquisition points
+   (`MODERNISATION_MAX_POINTS`), badge at ≥5 (`MODERNISATION_RIPE_POINTS`).
+   The same certificate now feeds `assessPrimeOpportunity`, so a probate
+   lead with an F-rated 2013 EPC finally shows a real condition reason
+   instead of "check why". Unknown scores nothing, in either direction —
+   the register's `unavailable` cannot distinguish "no certificate" from
+   "lookup failed". The old −4 Poor-EPC RISK factor stays (it is honest
+   for the risk verdict); the net for F/G evidence is now positive.
 
 ## 8. What "good" looks like
 

@@ -9,6 +9,10 @@
  *
  * Source weights: HMLR-CSA 40%, Hedonic 40%, External cross-check 20%
  * (External AVM cross-check is provided by caller if available.)
+ *
+ * Sep 2026 — a fourth pillar, SIZE: sold comps matched to their EPC floor
+ * areas give a £/sqft rate for the street, re-priced by the subject's own
+ * EPC floor area. See ./sqft-comps.ts for the weights it takes.
  */
 
 import 'server-only';
@@ -17,9 +21,10 @@ import {
   getPricePaid,
   getHousepriceIndex,
   getEpcData,
-  getPricesPerSqf,
   getPropertyDataValuation,
   getPropertyFloorArea,
+  getFloorAreaRows,
+  getPricesPerSqf,
   realTransactions,
   type PpdTransaction,
   type Epc,
@@ -29,6 +34,14 @@ import {
   getDistanceWeightedValuation,
   type DistanceWeightedValuation,
 } from './distance-comps';
+import {
+  buildSqftEvidence,
+  normalisePostcode,
+  sqmToSqft,
+  triangulationWeights,
+  type FloorAreaRow,
+  type SqftEvidence,
+} from './sqft-comps';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -56,6 +69,10 @@ export interface ComparableSale {
   postcode: string | null;
   /** Distance from the subject in miles. Null for the HMLR fallback path. */
   distanceMiles: number | null;
+  /** EPC floor area of the sold comp (m²). Null when no register row matched. */
+  floorAreaSqm: number | null;
+  /** Time-adjusted £/sqft of the comp. Null when its size is unknown. */
+  pricePerSqft: number | null;
 }
 
 export type ConfidenceLevel = 'high' | 'medium' | 'low';
@@ -79,13 +96,17 @@ export interface BaseValuation {
   /** The address the floor area was matched to (includes the house number). */
   resolvedAddress: string | null;
   pricePerSqm: number | null;
-  /** Area median £ per SQUARE FOOT (PropertyData /prices-per-sqf). */
-  areaPricePerSqft: number | null;
-  /** areaPricePerSqft × verified size — the size-anchored value estimate. */
-  sizeAnchorValue: number | null;
-  /** True when the size anchor joined the triangulation (verified size +
-   * benchmark present + within the deviation guard vs the CSA). */
-  sizeAnchorUsed: boolean;
+  /** Point estimate ÷ verified floor area, £/sqft. Null without a size. */
+  pricePerSqft: number | null;
+  floorAreaSqft: number | null;
+  /**
+   * The size pillar: nearby sold comps × their EPC floor areas ⇒ £/sqft,
+   * and the estimate that rate gives for THIS house. Null only when the
+   * lookup itself was skipped; a thin result is returned as-is (matched: 0).
+   */
+  sqft: SqftEvidence | null;
+  /** Share of the point estimate the size pillar carried (0 when unused). */
+  sqftWeight: number;
   source: string;
   /** Present when the distance-weighted PropertyData path produced the CSA. */
   distanceWeighted?: DistanceWeightedValuation | null;
@@ -277,7 +298,6 @@ export async function getBaseValuation(
     externalAvm,
     distanceWeighted,
     pdFloorArea,
-    pricesPerSqf,
   ] = await Promise.all([
     getPricePaid(postcode, 20),
     getHousepriceIndex(postcode),
@@ -329,16 +349,6 @@ export async function getBaseValuation(
       );
       return null;
     }),
-    // Area £/sqft benchmark (median, 30-day cache). Feeds the size anchor:
-    // benchmark × verified size joins the triangulation below. Best-effort —
-    // a dark benchmark just means the anchor sits out this run.
-    getPricesPerSqf(postcode).catch((err) => {
-      console.warn(
-        `[base-valuation] /prices-per-sqf benchmark unavailable for ${postcode}`,
-        err
-      );
-      return null;
-    }),
   ]);
 
   // Real Land Registry sales only — a hash-derived placeholder must never be
@@ -385,6 +395,8 @@ export async function getBaseValuation(
       address: c.address,
       postcode: c.postcode,
       distanceMiles: c.distanceMiles,
+      floorAreaSqm: null,
+      pricePerSqft: null,
     }));
     csaSource = 'distance';
   } else if (hmlrComps.length > 0) {
@@ -410,6 +422,8 @@ export async function getBaseValuation(
       address: null,
       postcode: null,
       distanceMiles: null,
+      floorAreaSqm: null,
+      pricePerSqft: null,
     }));
     csaSource = 'hmlr';
   } else {
@@ -438,82 +452,49 @@ export async function getBaseValuation(
   const hpiNudge = 1 + (hpi.annualChange / 100) * 0.15;
   const hpiAdjustedHedonic = Math.round(hedonicValue * hpiNudge);
 
-  // Size anchor — area median £/sqft × the VERIFIED size. This is the pillar
-  // that actually prices the square footage: comps are priced whole, so
-  // before this a 70m² and a 140m² terrace on the same street triangulated
-  // to the same number. Two hard gates, both founder principles:
-  //   1. Only a verified size counts (caller-typed or house-number-matched
-  //      EPC record) — never the street-level EPC guess (the M14 bug).
-  //   2. Deviation guard: /prices-per-sqf is postcode-level and mixes flats
-  //      with houses, so an anchor >40% away from the comp-based CSA is
-  //      treated as a benchmark mismatch and sits out — recorded, not used.
-  const SQFT_PER_SQM = 10.7639;
-  const areaPricePerSqft = pricesPerSqf?.medianPerSqft ?? null;
-  let sizeAnchorValue: number | null = null;
-  let sizeAnchorUsed = false;
-  if (effectiveFloorArea && effectiveFloorArea > 0 && areaPricePerSqft) {
-    sizeAnchorValue = Math.round(
-      areaPricePerSqft * effectiveFloorArea * SQFT_PER_SQM
-    );
-    const MAX_ANCHOR_DEVIATION = 0.4;
-    sizeAnchorUsed =
-      csaValue > 0 &&
-      Math.abs(sizeAnchorValue - csaValue) / csaValue <= MAX_ANCHOR_DEVIATION;
+  // Size pillar — £/sqft from the comps we already hold, matched to their
+  // EPC floor areas. The subject postcode's /floor-areas call is the same
+  // one getPropertyFloorArea just made (90-day cache), so it costs nothing
+  // extra; comp postcodes beyond it are capped so a wide radius can't fan
+  // out into a credit burn. The area benchmark (/prices-per-sqf, 30-day
+  // cache) is the fallback rate when too few comps match.
+  const sqft = await resolveSqftEvidence({
+    postcode,
+    comps: comparables,
+    subjectFloorAreaSqm: effectiveFloorArea,
+  });
+  // Stamp each comp with its matched size so the UI can show £/sqft per row.
+  if (sqft && sqft.matchedCount > 0) {
+    for (const comp of comparables) {
+      const hit = sqft.matched.find(
+        (m) =>
+          m.address === comp.address &&
+          m.adjustedPricePence === Math.round(comp.adjustedPrice * 100),
+      );
+      if (hit) {
+        comp.floorAreaSqm = hit.floorAreaSqm;
+        comp.pricePerSqft = hit.poundsPerSqft;
+      }
+    }
   }
 
-  // Weighted triangulation. Without a size anchor the weights are unchanged
-  // from the original three-pillar blend (locked by the golden tests).
-  //   No anchor:
-  //     Distance CSA present:  CSA 60%, Hedonic 25%, External 15% (or 70/30)
-  //     HMLR CSA, with ext:    CSA 40%, Hedonic 40%, External 20%
-  //     HMLR CSA, no ext:      CSA 50%, Hedonic 50%
-  //   With anchor (verified size + benchmark, within the guard):
-  //     Distance + ext:        CSA 55%, Hedonic 20%, Anchor 15%, Ext 10%
-  //     Distance, no ext:      CSA 60%, Hedonic 25%, Anchor 15%
-  //     HMLR + ext:            CSA 35%, Hedonic 30%, Anchor 20%, Ext 15%
-  //     HMLR, no ext:          CSA 40%, Hedonic 35%, Anchor 25%
-  // The anchor's share is kept below the CSA's everywhere: real sold comps
-  // stay the loudest voice, the £/sqft benchmark corrects for size.
-  let pointEstimate: number;
-  if (sizeAnchorUsed && sizeAnchorValue !== null) {
-    if (csaSource === 'distance') {
-      pointEstimate = externalAvm
-        ? Math.round(
-            csaValue * 0.55 +
-              hpiAdjustedHedonic * 0.2 +
-              sizeAnchorValue * 0.15 +
-              externalAvm.estimate * 0.1
-          )
-        : Math.round(
-            csaValue * 0.6 + hpiAdjustedHedonic * 0.25 + sizeAnchorValue * 0.15
-          );
-    } else {
-      pointEstimate = externalAvm
-        ? Math.round(
-            csaValue * 0.35 +
-              hpiAdjustedHedonic * 0.3 +
-              sizeAnchorValue * 0.2 +
-              externalAvm.estimate * 0.15
-          )
-        : Math.round(
-            csaValue * 0.4 + hpiAdjustedHedonic * 0.35 + sizeAnchorValue * 0.25
-          );
-    }
-  } else if (csaSource === 'distance') {
-    pointEstimate = externalAvm
-      ? Math.round(
-          csaValue * 0.6 +
-            hpiAdjustedHedonic * 0.25 +
-            externalAvm.estimate * 0.15
-        )
-      : Math.round(csaValue * 0.7 + hpiAdjustedHedonic * 0.3);
-  } else {
-    pointEstimate = externalAvm
-      ? Math.round(
-          csaValue * 0.4 + hpiAdjustedHedonic * 0.4 + externalAvm.estimate * 0.2
-        )
-      : Math.round(csaValue * 0.5 + hpiAdjustedHedonic * 0.5);
-  }
+  // Weighted triangulation — see triangulationWeights for the table. Without
+  // a size signal these are the weights the AVM has always used:
+  //   Distance CSA present:  CSA 60%, Hedonic 25%, External 15% (or 70/30)
+  //   HMLR CSA, with ext:    CSA 40%, Hedonic 40%, External 20%
+  //   HMLR CSA, no ext:      CSA 50%, Hedonic 50%
+  const sqftEstimate = sqft?.sqftEstimate ?? null;
+  const weights = triangulationWeights(
+    csaSource,
+    Boolean(externalAvm),
+    sqftEstimate != null ? sqft?.source ?? null : null,
+  );
+  const pointEstimate = Math.round(
+    csaValue * weights.csa +
+      hpiAdjustedHedonic * weights.hedonic +
+      (externalAvm?.estimate ?? 0) * weights.external +
+      (sqftEstimate ?? 0) * weights.sqft,
+  );
 
   // Confidence — two stages:
   //   1. a "signal" level from the model that produced the estimate
@@ -543,20 +524,33 @@ export async function getBaseValuation(
     effectiveFloorArea && effectiveFloorArea > 0
       ? Math.round(pointEstimate / effectiveFloorArea)
       : null;
+  const floorAreaSqft =
+    effectiveFloorArea && effectiveFloorArea > 0
+      ? sqmToSqft(effectiveFloorArea)
+      : null;
+  const pricePerSqft =
+    floorAreaSqft && floorAreaSqft > 0
+      ? Math.round(pointEstimate / floorAreaSqft)
+      : null;
 
   // Only advertise a data source in the trail when it actually contributed real
   // data — never claim hmlr_hpi/epc when the feed came back 'unavailable'
   // (otherwise the source string silently implies a signal we didn't use).
   const hpiTag = hpi.source === 'hmlr_hpi' ? '+hmlr_hpi' : '';
   const epcTag = epc.source === 'epc_register' ? '+epc' : '';
-  // The size anchor is advertised only when it actually joined the blend.
-  const ppsfTag = sizeAnchorUsed ? '+ppsf' : '';
+  // The size pillar only earns a tag when it actually moved the estimate.
+  const sqftTag =
+    sqftEstimate != null && sqft?.source === 'matched_comps'
+      ? `+sqft(${sqft.matchedCount})`
+      : sqftEstimate != null && sqft?.source === 'area_benchmark'
+        ? '+sqft_benchmark'
+        : '';
   const source =
     csaSource === 'distance' && distanceWeighted
-      ? `propertydata_sold_distance(${distanceWeighted.nearCount}@0.25mi/${distanceWeighted.farCount}@0.5mi)${hpiTag}${epcTag}${ppsfTag}`
+      ? `propertydata_sold_distance(${distanceWeighted.nearCount}@0.25mi/${distanceWeighted.farCount}@0.5mi)${hpiTag}${epcTag}${sqftTag}`
       : pricePaid.source === 'synthetic'
         ? 'synthetic'
-        : `hmlr_ppd${hpiTag}${epcTag}${ppsfTag}`;
+        : `hmlr_ppd${hpiTag}${epcTag}${sqftTag}`;
 
   return {
     postcode,
@@ -573,10 +567,89 @@ export async function getBaseValuation(
     floorAreaSource,
     resolvedAddress,
     pricePerSqm,
-    areaPricePerSqft,
-    sizeAnchorValue,
-    sizeAnchorUsed,
+    pricePerSqft,
+    floorAreaSqft,
+    sqft,
+    sqftWeight: weights.sqft,
     source,
     distanceWeighted: distanceWeighted ?? null,
   };
+}
+
+// ---------------------------------------------------------------------------
+// Size pillar — fetch the EPC floor areas behind the comps and build £/sqft
+// ---------------------------------------------------------------------------
+
+/**
+ * Beyond the subject's own postcode (already cached by the floor-area
+ * lookup above), how many comp postcodes we will pull /floor-areas for.
+ * ~2 credits each, 90-day cache. Nearest comps first, so the cap trims the
+ * far bucket, never the near one.
+ */
+const MAX_COMP_POSTCODE_LOOKUPS = 5;
+
+async function resolveSqftEvidence(input: {
+  postcode: string;
+  comps: ComparableSale[];
+  subjectFloorAreaSqm: number | null;
+}): Promise<SqftEvidence | null> {
+  const subjectKey = normalisePostcode(input.postcode);
+  // HMLR comps carry no address, so nothing can match — but the benchmark
+  // can still size the subject. Skip the fan-out, keep the benchmark.
+  const addressed = input.comps.filter((c) => c.address);
+  const compKeys: string[] = [];
+  for (const c of [...addressed].sort(
+    (a, b) => (a.distanceMiles ?? 0) - (b.distanceMiles ?? 0),
+  )) {
+    const key = normalisePostcode(c.postcode);
+    if (!key || key === subjectKey || compKeys.includes(key)) continue;
+    compKeys.push(key);
+    if (compKeys.length >= MAX_COMP_POSTCODE_LOOKUPS) break;
+  }
+
+  try {
+    const [subjectRows, benchmark, ...compRows] = await Promise.all([
+      addressed.length > 0
+        ? getFloorAreaRows(input.postcode)
+        : Promise.resolve([] as FloorAreaRow[]),
+      // Benchmark only matters when we have a subject size to multiply.
+      input.subjectFloorAreaSqm
+        ? getPricesPerSqf(input.postcode).catch((err) => {
+            console.warn(
+              `[base-valuation] £/sqft benchmark unavailable for ${input.postcode}`,
+              err,
+            );
+            return null;
+          })
+        : Promise.resolve(null),
+      ...compKeys.map((key) => getFloorAreaRows(key)),
+    ]);
+
+    const floorAreasByPostcode = new Map<string, FloorAreaRow[]>();
+    floorAreasByPostcode.set(subjectKey, subjectRows);
+    compKeys.forEach((key, i) => {
+      floorAreasByPostcode.set(key, compRows[i] ?? []);
+    });
+
+    return buildSqftEvidence({
+      comps: addressed.map((c) => ({
+        address: c.address,
+        postcode: c.postcode,
+        adjustedPricePence: Math.round(c.adjustedPrice * 100),
+        distanceMiles: c.distanceMiles,
+      })),
+      floorAreasByPostcode,
+      subjectPostcode: input.postcode,
+      subjectFloorAreaSqm: input.subjectFloorAreaSqm,
+      benchmarkPerSqft:
+        benchmark?.medianPerSqft ?? benchmark?.averagePerSqft ?? null,
+    });
+  } catch (err) {
+    // A failed size lookup must never take down a valuation that has comps.
+    console.warn(
+      `[base-valuation] £/sqft evidence unavailable for ${input.postcode}`,
+      err,
+    );
+    return null;
+  }
 }

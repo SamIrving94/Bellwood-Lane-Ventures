@@ -52,6 +52,20 @@ nextConfig.outputFileTracingExcludes = {
   ],
 };
 
+// The Linux query engine must reach the lambda at a path the bundled client
+// actually SEARCHES at runtime. Web's chunk layout probes
+// /var/task/apps/web/generated/client first — so the build script copies
+// the engine there (scripts/copy-prisma-engine.mjs) and this include makes
+// tracing carry it into every function. Keyhole (6 Sep 2026) — web's FIRST
+// database route — 500'd on every report without this
+// (PrismaClientInitializationError: could not locate the Query Engine for
+// runtime rhel-openssl-3.0.x); a repo-relative include of the generated
+// client alone did not land anywhere the client looks. ~17MB, comfortably
+// inside the lambda budget.
+nextConfig.outputFileTracingIncludes = {
+  '*': ['generated/client/**'],
+};
+
 if (process.env.NODE_ENV === 'production') {
   const redirects: NextConfig['redirects'] = async () => [
     {

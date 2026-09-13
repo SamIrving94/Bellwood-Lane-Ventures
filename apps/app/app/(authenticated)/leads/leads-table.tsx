@@ -57,12 +57,22 @@ type Lead = {
   appraised: boolean;
   avmValuePence: number | null;
   avmConfidence: string | null;
+  // Size — the founder's "highest indicator". sqft + provenance, £/sqft of
+  // this house at the AVM, and the nearby sold £/sqft it was checked against.
+  floorAreaSqft: number | null;
+  floorAreaSource: 'epc' | 'listing' | 'epc_unverified' | null;
+  pricePerSqft: number | null;
+  areaPerSqft: number | null;
+  areaPerSqftComps: number;
   riskFlags: string[];
   rationale: string | null;
   topPositiveFactors: string[];
   primeIsOpportunity: boolean;
   primeDiscountPct: number | null;
   primeReasons: string[];
+  cornerstone: boolean;
+  modernisationRipe: boolean;
+  modernisationReasons: string[];
 };
 
 type Props = {
@@ -619,16 +629,24 @@ function LeadCard({
   const oppTitle =
     lead.primeReasons.length > 0 ? lead.primeReasons.join(' · ') : undefined;
   if (lead.track === 'prime') {
+    // Cornerstone = the £1.5M–£10M tier inside prime (founder decision,
+    // 29 Aug 2026) — bigger ticket, investor-backed deal-by-deal, triaged
+    // first. Same rules otherwise: still prime, still a human decision.
+    const mark = lead.cornerstone ? '◆ Cornerstone' : '★ Prime';
     highlights.push(
       lead.primeIsOpportunity
         ? {
-            label: `★ Prime opportunity${oppSuffix}`,
-            cls: 'border-emerald-400 bg-emerald-200 text-emerald-950',
+            label: `${mark} opportunity${oppSuffix}`,
+            cls: lead.cornerstone
+              ? 'border-violet-400 bg-violet-200 text-violet-950'
+              : 'border-emerald-400 bg-emerald-200 text-emerald-950',
             title: oppTitle,
           }
         : {
-            label: '★ Prime — own book',
-            cls: 'border-emerald-300 bg-emerald-100 text-emerald-900',
+            label: `${mark} — own book`,
+            cls: lead.cornerstone
+              ? 'border-violet-300 bg-violet-100 text-violet-900'
+              : 'border-emerald-300 bg-emerald-100 text-emerald-900',
             title:
               oppTitle ??
               'Prime-district (or high-value) stock: a principal-track candidate for the Kept book, not the investor feed. See packages/scouting/src/track.ts.',
@@ -646,6 +664,19 @@ function LeadCard({
       title:
         oppTitle ??
         'Multi-unit language in the listing — whole block or portfolio. Principal-track candidate; the house AVM does not apply.',
+    });
+  }
+  // The refurb-arbitrage signal itself: real evidence the home has NOT been
+  // touched (own EPC band + certificate age, dated heating, long tenure).
+  // Hover shows the evidence lines verbatim.
+  if (lead.modernisationRipe) {
+    highlights.push({
+      label: '🔧 Ripe for modernisation',
+      cls: 'border-lime-300 bg-lime-100 text-lime-900',
+      title:
+        lead.modernisationReasons.length > 0
+          ? lead.modernisationReasons.join(' · ')
+          : undefined,
     });
   }
   if (lead.discountPercent && lead.discountPercent > 0) {
@@ -789,6 +820,44 @@ function LeadCard({
                 {typeof lead.bedrooms === 'number' && (
                   <span className="text-muted-foreground">
                     {lead.bedrooms} bed
+                  </span>
+                )}
+                {typeof lead.floorAreaSqft === 'number' && (
+                  <span
+                    className="text-muted-foreground"
+                    title={
+                      lead.floorAreaSource === 'epc'
+                        ? 'EPC floor area, matched to this house number'
+                        : lead.floorAreaSource === 'listing'
+                          ? 'Floor area as the listing states it (not yet EPC-verified)'
+                          : 'EPC floor area from a postcode + address search (not verified to the house number)'
+                    }
+                  >
+                    {lead.floorAreaSqft.toLocaleString('en-GB')} sqft
+                    <span className="ml-1 text-[11px]">
+                      {lead.floorAreaSource === 'epc'
+                        ? '(EPC)'
+                        : lead.floorAreaSource === 'listing'
+                          ? '(listing)'
+                          : '(EPC?)'}
+                    </span>
+                  </span>
+                )}
+                {typeof lead.pricePerSqft === 'number' && (
+                  <span
+                    className="font-medium text-slate-700"
+                    title={
+                      lead.areaPerSqft
+                        ? `AVM £/sqft for this house · nearby sold ${lead.areaPerSqftComps} comps at £${lead.areaPerSqft}/sqft`
+                        : 'AVM £/sqft for this house'
+                    }
+                  >
+                    £{lead.pricePerSqft.toLocaleString('en-GB')}/sqft
+                    {lead.areaPerSqft ? (
+                      <span className="ml-1 font-normal text-[11px] text-muted-foreground">
+                        · area £{lead.areaPerSqft.toLocaleString('en-GB')}
+                      </span>
+                    ) : null}
                   </span>
                 )}
                 {typeof lead.daysOnMarket === 'number' &&

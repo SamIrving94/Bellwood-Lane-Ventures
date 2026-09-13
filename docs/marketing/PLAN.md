@@ -1,6 +1,6 @@
 # Bellwood Lane — Marketing Plan
 
-_Last verified against the live site: 2026-08-22._
+_Last verified against the live site: 2026-09-12._
 
 **Status:** May 2026 (v1).
 **Audience:** CEO, Marketer, Liaison, Designer, Counsel.
@@ -90,7 +90,14 @@ In priority order for Bellwood's economics:
 
 - **Why:** Highest sensitivity. Done badly = vulture. Done well = trusted.
 - **Channel:** Carefully — Google search with empathetic copy
-- **Landing:** `/sell/distress` — must signpost StepChange, Citizens Advice
+- **Landing:** `/your-situation` (live from 12 Sep 2026): the "Something
+  else?" catch-all the founder chose over a money-specific door (quickly,
+  quietly, discreetly, a tailored process). Records as `other`. Its honest
+  version signposts StepChange and Citizens Advice, as does the won't-buy
+  page. A distress-specific page is not built; if one is, it carries the
+  same signpost, and Counsel reads every word before paid traffic points
+  at either.
+- **Front door:** the `/sell` reason index row "Something else?" links to it.
 - **Content:** **don't run paid here until Counsel has reviewed every word.**
   Reputational damage is permanent.
 
@@ -98,7 +105,12 @@ In priority order for Bellwood's economics:
 
 - **Why:** Niche, highest margin. Knotweed, short lease, cladding, structural.
 - **Channel:** Long-tail SEO does most of the work
-- **Landing:** `/sell/problem-property`
+- **Landing:** `/problem-property` (live from 12 Sep 2026): major
+  refurbishments, structural issues, knotweed, a short lease, a lender that
+  says no. Records as `problem_property`. The won't-buy page's "Problem
+  property" route points here too.
+- **Front door:** the `/sell` reason index row "My property has a problem or
+  needs work" links to it.
 - **Content:** frank — what we'll buy, what we won't, typical discount
 
 ---

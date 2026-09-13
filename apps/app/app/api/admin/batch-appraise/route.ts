@@ -1,6 +1,6 @@
 import { isFounder } from '@repo/auth/server';
 import { database } from '@repo/database';
-import { mergeOfferConfig, runAVM } from '@repo/valuation';
+import { mergeOfferConfig, runAVM, saveAvmSnapshot } from '@repo/valuation';
 import { NextResponse } from 'next/server';
 import { conservativeMarketValue } from '../../../../lib/batch/condition';
 import { computeDiscount } from '../../../../lib/batch/discount';
@@ -43,7 +43,7 @@ export async function POST(request: Request) {
   }
   const take = Math.min(
     20,
-    Math.max(1, Number(url.searchParams.get('take') ?? 8) || 8),
+    Math.max(1, Number(url.searchParams.get('take') ?? 8) || 8)
   );
 
   const batch = await database.propertyBatch.findUnique({
@@ -58,9 +58,10 @@ export async function POST(request: Request) {
   const activeConfig = await database.evalConfig.findFirst({
     where: { evalType: 'avm_confidence', activatedAt: { not: null } },
     orderBy: { version: 'desc' },
-    select: { config: true },
+    select: { version: true, config: true },
   });
   const offerConfig = mergeOfferConfig(activeConfig?.config);
+  const offerConfigVersion = activeConfig?.version ?? null;
 
   // Pull the next chunk of not-yet-processed items.
   const items = await database.propertyBatchItem.findMany({
@@ -79,33 +80,45 @@ export async function POST(request: Request) {
           where: { id: item.id },
           data: {
             status: 'skipped',
-            error: !item.postcode
-              ? 'No postcode found in opportunity name'
-              : 'Unrecognised property type',
+            error: item.postcode
+              ? 'Unrecognised property type'
+              : 'No postcode found in opportunity name',
           },
         });
         failed++;
         continue;
       }
 
-      const avm = await runAVM({
+      const avmInput = {
         postcode: item.postcode,
         propertyType: item.mappedType as never,
         address: item.address,
         bedrooms: item.bedrooms ?? undefined,
-        sellerType: 'standard',
+        sellerType: 'standard' as const,
         offerConfig,
+      };
+      const avm = await runAVM(avmInput);
+      // Freeze the appraisal for the monthly Land Registry backtest.
+      await saveAvmSnapshot(database, {
+        input: avmInput,
+        result: avm,
+        source: 'batch',
+        sourceId: item.id,
+        evalConfigVersion: offerConfigVersion,
       });
       const r = avm.resultJson;
 
       // Conservative, condition-adjusted market value (pounds), then → pence.
-      const emvPounds = conservativeMarketValue(r.avmPointEstimate, item.condition);
+      const emvPounds = conservativeMarketValue(
+        r.avmPointEstimate,
+        item.condition
+      );
       const estimatedMarketValuePence = Math.round(emvPounds * 100);
 
       const discount = computeDiscount(
         estimatedMarketValuePence,
         item.acceptableTradeOfferPence,
-        item.signOffPricePence,
+        item.signOffPricePence
       );
 
       // Enrich with extra PropertyData signals. fetchBatchSignals is fully

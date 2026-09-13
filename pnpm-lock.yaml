@@ -469,6 +469,9 @@ importers:
       '@repo/storage':
         specifier: workspace:*
         version: link:../../packages/storage
+      '@repo/valuation':
+        specifier: workspace:*
+        version: link:../../packages/valuation
       '@t3-oss/env-nextjs':
         specifier: ^0.12.0
         version: 0.12.0(typescript@5.8.2)(zod@3.24.2)
@@ -561,6 +564,9 @@ importers:
       '@types/react-dom':
         specifier: ^19.0.4
         version: 19.0.4(@types/react@19.0.10)
+      vitest:
+        specifier: ^3.0.7
+        version: 3.0.7(@types/debug@4.1.12)(@types/node@22.13.9)(jiti@2.4.2)(jsdom@26.0.0(bufferutil@4.0.9))(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.21.0)(yaml@2.7.0)
 
   packages/analytics:
     dependencies:
@@ -604,15 +610,12 @@ importers:
 
   packages/auctions:
     dependencies:
-      '@anthropic-ai/sdk':
-        specifier: ^0.32.1
-        version: 0.32.1
       '@repo/ai':
         specifier: workspace:*
         version: link:../ai
       '@t3-oss/env-nextjs':
         specifier: ^0.12.0
-        version: 0.12.0(typescript@5.8.2)(zod@3.25.76)
+        version: 0.12.0(typescript@5.8.2)(zod@3.24.2)
       cheerio:
         specifier: ^1.0.0
         version: 1.2.0
@@ -620,8 +623,8 @@ importers:
         specifier: ^0.0.1
         version: 0.0.1
       zod:
-        specifier: ^3.24.2
-        version: 3.25.76
+        specifier: 3.24.2
+        version: 3.24.2
     devDependencies:
       '@repo/typescript-config':
         specifier: workspace:*
@@ -979,6 +982,9 @@ importers:
       '@anthropic-ai/sdk':
         specifier: ^0.32.1
         version: 0.32.1
+      '@repo/ai':
+        specifier: workspace:*
+        version: link:../ai
       '@t3-oss/env-nextjs':
         specifier: ^0.12.0
         version: 0.12.0(typescript@5.8.2)(zod@3.25.76)
@@ -1477,15 +1483,12 @@ importers:
 
   packages/whatsapp-parser:
     dependencies:
-      '@anthropic-ai/sdk':
-        specifier: ^0.32.1
-        version: 0.32.1
-      '@t3-oss/env-nextjs':
-        specifier: ^0.12.0
-        version: 0.12.0(typescript@5.8.2)(zod@3.25.76)
+      '@repo/ai':
+        specifier: workspace:*
+        version: link:../ai
       zod:
         specifier: ^3.24.2
-        version: 3.25.76
+        version: 3.24.2
     devDependencies:
       '@repo/typescript-config':
         specifier: workspace:*
@@ -1496,6 +1499,9 @@ importers:
       typescript:
         specifier: ^5.8.2
         version: 5.8.2
+      vitest:
+        specifier: ^3.0.7
+        version: 3.0.7(@types/debug@4.1.12)(@types/node@22.13.9)(jiti@2.4.2)(jsdom@26.0.0(bufferutil@4.0.9))(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.21.0)(yaml@2.7.0)
 
   services/whatsapp-bridge:
     dependencies:
@@ -12679,8 +12685,8 @@ snapshots:
       express-rate-limit: 7.5.1(express@5.2.1)
       pkce-challenge: 4.1.0
       raw-body: 3.0.2
-      zod: 3.25.76
-      zod-to-json-schema: 3.24.1(zod@3.25.76)
+      zod: 3.24.2
+      zod-to-json-schema: 3.24.1(zod@3.24.2)
     transitivePeerDependencies:
       - supports-color
 
@@ -16281,7 +16287,7 @@ snapshots:
     dependencies:
       devtools-protocol: 0.0.1595872
       mitt: 3.0.1
-      zod: 3.25.76
+      zod: 3.24.2
 
   cipher-base@1.0.6:
     dependencies:
@@ -21798,10 +21804,6 @@ snapshots:
   zod-to-json-schema@3.24.1(zod@3.24.2):
     dependencies:
       zod: 3.24.2
-
-  zod-to-json-schema@3.24.1(zod@3.25.76):
-    dependencies:
-      zod: 3.25.76
 
   zod@3.24.2: {}
 

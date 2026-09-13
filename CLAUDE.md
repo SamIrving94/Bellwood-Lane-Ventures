@@ -94,10 +94,12 @@ This is the most important custom surface. Two families of route handlers:
   `PAPERCLIP_API_KEY` is accepted as a legacy alias only.
 
 **Cron endpoints** — `apps/api/app/cron/<name>/route.ts`. Triggered on a schedule
-(Vercel cron). Examples: `scouting`, `pipeline-appraise`, `pipeline-outreach`,
+(Vercel cron). Examples: `pipeline-appraise`, `pipeline-outreach`,
 `pipeline-summary`, `sla-alerts`, `auction-scan`, `marketer-daily/weekly/monthly`,
 `event-poller`, `deep-appraisal`, `agent-prospecting`, `quote-ops`, `keep-alive`,
-`weekly-patterns`.
+`weekly-patterns`, `avm-backtest` (monthly, 28th). **Exception:** `scouting` has NO schedule (founder decision,
+27 Aug 2026) — it is founder-triggered from Settings → Scouting ("Run scout
+now") to control PropertyData spend; same route, same CRON_SECRET auth.
 - **Auth:** `Authorization: Bearer <CRON_SECRET>` (checked inline in each route).
 - Long-running routes set `export const maxDuration = 300;` (Vercel Pro cap).
 
@@ -162,6 +164,12 @@ Run a task for one workspace with a filter, e.g.
 - **Safety rails (do not break these):** vendor emails are always held for
   founder review (`OutreachHold`); CEO escalation fires for offers <60% of AVM;
   SLA breaches are deduplicated so they don't spawn duplicate `FounderAction`s.
+- **Every `runAVM` call site must freeze its result with `saveAvmSnapshot`**
+  (`@repo/valuation`). The monthly `avm-backtest` cron judges those frozen
+  rows against later Land Registry sales; an appraisal that is not frozen
+  cannot be measured. Never edit a snapshot's appraisal fields. See
+  `docs/AVM-BACKTEST.md`. Founder decision (Sep 2026): the AVM's method
+  does not change again until the backtest has produced a reading.
 - **Never fabricate identifiers and hope downstream accepts them.** Resolve
   them, or fail loudly at the moment of input. The SW3 incident (Aug 2026):
   the area resolver guessed `"SW3 1AA"` for an unknown district, PropertyData
@@ -237,6 +245,16 @@ Rules:
   and the api Vitest suite.
 
 ## Working in this repo
+
+- **Challenge before building** (founder direction, 29 Aug 2026). On
+  anything strategy-shaped — a new product, audience, or channel — a
+  founder "yes, build it" is the trigger for one more message, not the
+  last checkpoint: state the strongest case AGAINST, the assumption that
+  kills it, and who hates it and why; build on the second yes. Keyhole
+  shipped with its value loop mis-aimed at its audience's fiduciary
+  duties, and the founder had to catch it himself hours later. Strategy
+  builds also ship dark (noindex, no outreach) until the premise survives
+  one real user. Full account: `docs/LEARNINGS.md`, 2026-08-29.
 
 - **Announce shipped features in-app.** When you ship a founder-visible
   feature, add an entry to the TOP of `apps/app/lib/whats-new.ts` (fresh

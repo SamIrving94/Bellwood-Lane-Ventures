@@ -1,6 +1,6 @@
 import { env } from '@/env';
 import { database } from '@repo/database';
-import { mergeOfferConfig, runAVM } from '@repo/valuation';
+import { mergeOfferConfig, runAVM, saveAvmSnapshot } from '@repo/valuation';
 import { NextResponse } from 'next/server';
 import { recordCronHeartbeat } from '../_lib/heartbeat';
 
@@ -99,15 +99,16 @@ export const POST = async (request: Request) => {
       };
       const avmSellerType = sellerTypeMap[deal.sellerType] ?? 'standard';
 
-      const avmResult = await runAVM({
+      const avmInput = {
         postcode: deal.postcode,
-        propertyType: avmPropertyType as any,
+        propertyType: avmPropertyType as never,
         address: deal.address,
         bedrooms: deal.bedrooms ?? undefined,
-        sellerType: avmSellerType as any,
+        sellerType: avmSellerType as never,
         dealId: deal.id,
         offerConfig,
-      });
+      };
+      const avmResult = await runAVM(avmInput);
 
       // Store AVM result
       await database.avmResult.create({
@@ -120,6 +121,14 @@ export const POST = async (request: Request) => {
           expiresAt: avmResult.expiresAt,
           evalConfigVersion: offerConfigVersion,
         },
+      });
+      // Freeze the appraisal for the monthly Land Registry backtest.
+      await saveAvmSnapshot(database, {
+        input: avmInput,
+        result: avmResult,
+        source: 'deal',
+        sourceId: deal.id,
+        evalConfigVersion: offerConfigVersion,
       });
 
       // Update deal with valuation data.

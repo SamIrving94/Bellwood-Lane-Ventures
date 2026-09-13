@@ -19,16 +19,19 @@ import {
 import {
   BuildingIcon,
   CompassIcon,
+  CrosshairIcon,
   FileTextIcon,
   GaugeIcon,
   GavelIcon,
   HammerIcon,
   InboxIcon,
   KanbanIcon,
+  KeyRoundIcon,
   LineChartIcon,
   MailIcon,
   MapIcon,
   MegaphoneIcon,
+  RocketIcon,
   SearchIcon,
   Settings2Icon,
   SheetIcon,
@@ -58,6 +61,11 @@ type GlobalSidebarProperties = {
  * Deleted outright (were dead or Paperclip-era): /agents, /campaigns,
  * /valuations.
  */
+// Keyhole lives on the PUBLIC web project (invite-only, unlisted there — the
+// founders reach it from here). NEXT_PUBLIC_WEB_URL follows the Kept domain
+// cutover automatically; the fallback is the current live web deployment.
+const keyholeUrl = `${process.env.NEXT_PUBLIC_WEB_URL || 'https://bellwood-web.vercel.app'}/keyhole`;
+
 const data = {
   dealFlow: [
     { title: 'Today', url: '/', icon: InboxIcon, hasBadge: true },
@@ -77,6 +85,8 @@ const data = {
     { title: 'Research', url: '/research', icon: SearchIcon },
     { title: 'Marketing', url: '/marketing', icon: MegaphoneIcon },
     { title: 'Outreach', url: '/outreach', icon: MailIcon },
+    // The professional report tool — opens the public site in a new tab.
+    { title: 'Keyhole', url: keyholeUrl, icon: KeyRoundIcon, external: true },
     { title: 'Documents', url: '/documents', icon: FileTextIcon },
   ],
   system: [
@@ -85,6 +95,8 @@ const data = {
       url: '/settings/valuation',
       icon: SlidersHorizontalIcon,
     },
+    { title: 'AVM accuracy', url: '/appraisals/backtest', icon: CrosshairIcon },
+    { title: 'Launch', url: '/launch', icon: RocketIcon },
     { title: 'Strategy', url: '/strategy', icon: MapIcon },
     { title: 'Guide', url: '/guide', icon: CompassIcon },
     { title: 'Settings', url: '/settings', icon: Settings2Icon },
@@ -97,6 +109,8 @@ type NavItem = {
   url: string;
   icon: typeof InboxIcon;
   hasBadge?: boolean;
+  /** Absolute URL on another site — rendered as a plain new-tab anchor. */
+  external?: boolean;
 };
 
 // Stable slug per nav item for the in-app tour to anchor on. Selectors
@@ -108,6 +122,7 @@ const TOUR_SLUGS: Record<string, string> = {
   '/appraisals': 'appraisals',
   '/batch': 'batch',
   '/pipeline': 'pipeline',
+  '/launch': 'launch',
   '/strategy': 'strategy',
   '/book': 'book',
   '/investors': 'investors',
@@ -149,20 +164,29 @@ function NavSection({
               asChild
               tooltip={item.title}
               isActive={
-                item.url === '/'
-                  ? pathname === '/'
-                  : pathname.startsWith(item.url)
+                item.external
+                  ? false
+                  : item.url === '/'
+                    ? pathname === '/'
+                    : pathname.startsWith(item.url)
               }
             >
-              <Link href={item.url}>
-                <item.icon />
-                <span>{item.title}</span>
-                {item.hasBadge && pendingActionCount > 0 && (
-                  <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1.5 font-medium text-white text-xs">
-                    {pendingActionCount > 99 ? '99+' : pendingActionCount}
-                  </span>
-                )}
-              </Link>
+              {item.external ? (
+                <a href={item.url} target="_blank" rel="noreferrer">
+                  <item.icon />
+                  <span>{item.title}</span>
+                </a>
+              ) : (
+                <Link href={item.url}>
+                  <item.icon />
+                  <span>{item.title}</span>
+                  {item.hasBadge && pendingActionCount > 0 && (
+                    <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1.5 font-medium text-white text-xs">
+                      {pendingActionCount > 99 ? '99+' : pendingActionCount}
+                    </span>
+                  )}
+                </Link>
+              )}
             </SidebarMenuButton>
           </SidebarMenuItem>
         ))}

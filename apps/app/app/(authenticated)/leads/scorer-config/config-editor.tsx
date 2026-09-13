@@ -1,10 +1,10 @@
 'use client';
 
-import type { ScorerConfig } from '@repo/scouting/src/scorer-config';
+import { saveAndActivateConfig } from '@/app/actions/scorer-config/manage';
 import { Button } from '@repo/design-system/components/ui/button';
+import type { ScorerConfig } from '@repo/scouting/src/scorer-config';
 import { useState, useTransition } from 'react';
 import { toast } from 'sonner';
-import { saveAndActivateConfig } from '@/app/actions/scorer-config/manage';
 
 // Plain-English labels for the lead-type weights founders care about.
 const LEAD_TYPE_LABELS: Record<string, string> = {
@@ -122,7 +122,7 @@ export function ConfigEditor({
         setDescription('');
       } catch (err) {
         toast.error(
-          err instanceof Error ? err.message : 'Failed to save config.',
+          err instanceof Error ? err.message : 'Failed to save config.'
         );
       }
     });
@@ -184,16 +184,13 @@ export function ConfigEditor({
         <div className="border-b p-4">
           <h2 className="font-medium text-sm">Lead-type weight</h2>
           <p className="mt-0.5 text-muted-foreground text-xs">
-            How much urgency each lead type earns (out of 40 motivation
-            points). Raise the types that convert well for you; trim the noisy
-            ones.
+            How much urgency each lead type earns (out of 40 motivation points).
+            Raise the types that convert well for you; trim the noisy ones.
           </p>
         </div>
         <div className="divide-y px-4">
           {Object.keys(state.leadTypeScores)
-            .sort(
-              (a, b) => state.leadTypeScores[b]! - state.leadTypeScores[a]!,
-            )
+            .sort((a, b) => state.leadTypeScores[b]! - state.leadTypeScores[a]!)
             .map((key) => (
               <NumberField
                 key={key}
@@ -205,7 +202,6 @@ export function ConfigEditor({
             ))}
         </div>
       </section>
-
 
       {/* Save bar */}
       <div className="sticky bottom-4 rounded-xl border bg-card/95 p-4 shadow-lg backdrop-blur">

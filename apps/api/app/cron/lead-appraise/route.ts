@@ -11,6 +11,7 @@ import {
   mergeOfferConfig,
   mergeValuationConfig,
   runAVM,
+  saveAvmSnapshot,
 } from '@repo/valuation';
 import { NextResponse } from 'next/server';
 import { recordCronHeartbeat } from '../_lib/heartbeat';
@@ -117,9 +118,10 @@ export const POST = async (request: Request) => {
   const activeConfig = await database.evalConfig.findFirst({
     where: { evalType: 'avm_confidence', activatedAt: { not: null } },
     orderBy: { version: 'desc' },
-    select: { config: true },
+    select: { version: true, config: true },
   });
   const offerConfig = mergeOfferConfig(activeConfig?.config);
+  const offerConfigVersion = activeConfig?.version ?? null;
 
   // Founder-tuned valuation levers (refurb £/m² + defect costs).
   const valuationRow = await database.setting.findUnique({
@@ -163,13 +165,22 @@ export const POST = async (request: Request) => {
         typeof pd?.preciseAddress === 'string'
           ? (pd.preciseAddress as string)
           : null;
-      const avm = await runAVM({
+      const avmInput = {
         postcode: lead.postcode,
         propertyType: avmPropertyType as never,
         address: preciseAddress ?? lead.address,
         bedrooms,
         sellerType: resolveSellerType(lead.leadType) as never,
         offerConfig,
+      };
+      const avm = await runAVM(avmInput);
+      // Freeze the appraisal for the monthly Land Registry backtest.
+      await saveAvmSnapshot(database, {
+        input: avmInput,
+        result: avm,
+        source: 'scout_lead',
+        sourceId: lead.id,
+        evalConfigVersion: offerConfigVersion,
       });
       const r = avm.resultJson;
       const point = r.avmPointEstimate;
@@ -189,9 +200,6 @@ export const POST = async (request: Request) => {
         // Size economics: implied £/m², area £/sqft benchmark, and whether
         // the size anchor joined the triangulation.
         pricePerSqm: r.pricePerSqm ?? null,
-        areaPricePerSqft: r.areaPricePerSqft ?? null,
-        sizeAnchorValue: r.sizeAnchorValue ?? null,
-        sizeAnchorUsed: Boolean(r.sizeAnchorUsed),
         // Listing body language + nearby distress — display context for the
         // lead page. Null = PropertyData was unreachable at appraisal time.
         marketSignals: r.marketSignals ?? null,
@@ -205,6 +213,19 @@ export const POST = async (request: Request) => {
         floorAreaSqm: r.floorAreaSqm ?? null,
         floorAreaSource: r.floorAreaSource ?? null,
         resolvedAddress: r.resolvedAddress ?? null,
+        // Size pillar — sqft is the unit the founder reads; £/sqft of this
+        // house at the AVM, plus what nearby sold comps fetched per sqft.
+        floorAreaSqft: r.floorAreaSqft ?? null,
+        pricePerSqft: r.pricePerSqft ?? null,
+        sqftEvidence: r.sqftEvidence
+          ? {
+              ...r.sqftEvidence,
+              sqftEstimatePence:
+                r.sqftEvidence.sqftEstimate != null
+                  ? Math.round(r.sqftEvidence.sqftEstimate * 100)
+                  : null,
+            }
+          : null,
         // Flag likely HMO/multi-let (5+ beds) so the UI can caveat the AVM and
         // scoring can withhold ROI credit — a house AVM under-values these.
         hmoLikely: (bedrooms ?? 0) >= 5,

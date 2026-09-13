@@ -32,6 +32,10 @@ function baseValuation(overrides: Partial<BaseValuation> = {}): BaseValuation {
     floorAreaSource: 'propertydata',
     resolvedAddress: null,
     pricePerSqm: 3500,
+    pricePerSqft: 328,
+    floorAreaSqft: 915,
+    sqft: null,
+    sqftWeight: 0,
     source: 'hmlr_ppd+hmlr_hpi+epc',
     ...overrides,
   };

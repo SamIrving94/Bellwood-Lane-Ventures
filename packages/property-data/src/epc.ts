@@ -101,6 +101,7 @@ function unavailableEpc(postcode: string): Epc {
 interface DomesticSearchResponse {
   data?: Array<{
     certificateNumber?: string;
+    address?: string;
     postcode?: string;
     registrationDate?: string;
     currentEnergyEfficiencyBand?: string;
@@ -108,12 +109,64 @@ interface DomesticSearchResponse {
 }
 
 /**
+ * One row of a domestic-search response, kept as close to the wire shape as
+ * possible. `band` is the CURRENT energy band from the search row itself —
+ * enough to shortlist, but the full certificate (floor area, assessment
+ * date) still needs `getEpcCertificateByNumber`.
+ */
+export interface EpcSearchRow {
+  certificateNumber: string;
+  /** Single-line address as the register prints it. Empty when absent. */
+  address: string;
+  postcode: string | null;
+  band: (typeof EPC_RATINGS)[number] | null;
+  /** ISO-ish registration date string, as returned. Null when absent. */
+  registrationDate: string | null;
+}
+
+/**
+ * Parse EVERY usable row of a domestic-search response (the whole-postcode
+ * view the arbitrage model needs, vs `pickLatestCertificateNumber`'s
+ * single-property view). Address fields vary by lodgement schema, so the
+ * parse is defensive: `address` as a string, or assembled from addressLine
+ * parts. Rows without a certificate number are dropped — they cannot key
+ * the follow-up fetch, so keeping them would only invite address-only
+ * guessing downstream.
+ */
+export function parseDomesticSearchRows(body: unknown): EpcSearchRow[] {
+  const rows = (body as DomesticSearchResponse)?.data;
+  if (!Array.isArray(rows)) return [];
+  const out: EpcSearchRow[] = [];
+  for (const r of rows) {
+    if (typeof r?.certificateNumber !== 'string' || !r.certificateNumber) {
+      continue;
+    }
+    const rec = r as Record<string, unknown>;
+    const addressStr =
+      str(rec.address) ??
+      [str(rec.addressLine1), str(rec.addressLine2), str(rec.addressLine3)]
+        .filter(Boolean)
+        .join(', ');
+    const rawBand = str(rec.currentEnergyEfficiencyBand)?.toUpperCase();
+    out.push({
+      certificateNumber: r.certificateNumber,
+      address: addressStr ?? '',
+      postcode: str(rec.postcode),
+      band:
+        rawBand && (EPC_RATINGS as readonly string[]).includes(rawBand)
+          ? (rawBand as (typeof EPC_RATINGS)[number])
+          : null,
+      registrationDate: str(rec.registrationDate),
+    });
+  }
+  return out;
+}
+
+/**
  * Pick the most recently registered certificate from a domestic search
  * response. Returns null when the response has no usable rows.
  */
-export function pickLatestCertificateNumber(
-  body: unknown
-): string | null {
+export function pickLatestCertificateNumber(body: unknown): string | null {
   const rows = (body as DomesticSearchResponse)?.data;
   if (!Array.isArray(rows) || rows.length === 0) return null;
   const sorted = [...rows]
@@ -127,7 +180,7 @@ export function pickLatestCertificateNumber(
 }
 
 function num(v: unknown): number | null {
-  const n = typeof v === 'number' ? v : parseFloat(String(v ?? ''));
+  const n = typeof v === 'number' ? v : Number.parseFloat(String(v ?? ''));
   return Number.isFinite(n) && n !== 0 ? n : null;
 }
 
@@ -267,4 +320,61 @@ export async function getEpcData(
     }
   }
   return unavailableEpc(postcode);
+}
+
+/**
+ * Every domestic certificate the register holds for a postcode (one page,
+ * page_size 100 — a UK unit postcode is ~15–60 dwellings, so one page is the
+ * realistic universe; a truncated dense postcode costs recall, never
+ * correctness). Returns [] without credentials or on failure — the caller
+ * sees "no certificates", never invented ones.
+ */
+export async function searchDomesticEpc(
+  postcode: string
+): Promise<EpcSearchRow[]> {
+  const token = process.env.EPC_API_TOKEN ?? '';
+  if (!token) return [];
+
+  const params = new URLSearchParams();
+  params.set('postcode', postcode.toUpperCase().trim());
+  params.set('page_size', '100');
+  try {
+    const body = await apiGet(
+      `/api/domestic/search?${params.toString()}`,
+      token
+    );
+    return parseDomesticSearchRows(body);
+  } catch (err) {
+    // 404 = genuinely no certificates in this postcode; not worth a warning.
+    if (!(err as Error).message.includes('No EPC records')) {
+      console.warn(
+        `[property-data/epc] search failed for ${postcode} (${(err as Error).message}) — returning []`
+      );
+    }
+    return [];
+  }
+}
+
+/**
+ * Fetch one full certificate by number (floor area, assessment date, band).
+ * Null without credentials or on failure — never a fabricated certificate.
+ */
+export async function getEpcCertificateByNumber(
+  certificateNumber: string,
+  fallbackPostcode = ''
+): Promise<Epc | null> {
+  const token = process.env.EPC_API_TOKEN ?? '';
+  if (!token) return null;
+  try {
+    const cert = await apiGet(
+      `/api/certificate?certificate_number=${encodeURIComponent(certificateNumber)}`,
+      token
+    );
+    return parseCertificateResponse(cert, fallbackPostcode);
+  } catch (err) {
+    console.warn(
+      `[property-data/epc] certificate ${certificateNumber} failed (${(err as Error).message}) — returning null`
+    );
+    return null;
+  }
 }

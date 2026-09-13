@@ -513,6 +513,55 @@ export async function getFloorAreas(postcode: string) {
   );
 }
 
+/** One EPC floor-area row, as the £/sqft comp matcher consumes it. */
+export type FloorAreaRow = {
+  address: string;
+  /** Real EPC-derived internal floor area, m². Rows without one are dropped. */
+  floorAreaSqm: number;
+  bedrooms: number | null;
+  propertyType: string | null;
+};
+
+/**
+ * Every EPC floor-area row the register holds for a postcode — the whole-
+ * postcode view the £/sqft comp matcher needs (vs `getPropertyFloorArea`'s
+ * single-property view). Same /floor-areas call, same 90-day cache, so
+ * matching many comps in one postcode costs one lookup. Returns [] without
+ * a key or on failure — the caller sees "no rows", never invented ones.
+ */
+export async function getFloorAreaRows(
+  postcode: string,
+): Promise<FloorAreaRow[]> {
+  let data: Awaited<ReturnType<typeof getFloorAreas>>;
+  try {
+    data = await getFloorAreas(postcode);
+  } catch (err) {
+    console.warn(
+      `[propertydata] /floor-areas unavailable for ${postcode} — no £/sqft rows`,
+      err,
+    );
+    return [];
+  }
+  const out: FloorAreaRow[] = [];
+  for (const p of data?.result?.properties ?? []) {
+    if (
+      typeof p.address !== 'string' ||
+      typeof p.total_floor_area !== 'number' ||
+      p.total_floor_area <= 0
+    ) {
+      continue;
+    }
+    out.push({
+      address: p.address,
+      floorAreaSqm: p.total_floor_area,
+      bedrooms: typeof p.bedrooms === 'number' ? p.bedrooms : null,
+      propertyType:
+        typeof p.property_type === 'string' ? p.property_type : null,
+    });
+  }
+  return out;
+}
+
 // ---------------------------------------------------------------------------
 // Resolve ONE property's real floor area (EPC-derived) from /floor-areas
 // ---------------------------------------------------------------------------
@@ -811,6 +860,13 @@ export type SourcedProperty = {
   summary: string | null;
   imageUrl: string | null;
   source: string;
+  /**
+   * Floor area in SQUARE FEET as the LISTING states it (PropertyData `sqf`).
+   * Agent-declared, not the EPC — a first read at sourcing time until the
+   * AVM verifies the size against the register. Null when the listing has
+   * none, which is most of them.
+   */
+  listingSqft: number | null;
   /**
    * True when PropertyData flags the listing as sold-subject-to-contract.
    * We request exclude_sstc=1 by default, but the flag still comes back set
@@ -1140,6 +1196,8 @@ export async function getSourcedProperties(
       summary: typeof p.summary === 'string' ? p.summary : null,
       imageUrl: typeof p.image_url === 'string' ? p.image_url : null,
       source: `propertydata_${listSlug}`,
+      listingSqft:
+        typeof p.sqf === 'number' && p.sqf > 0 ? Math.round(p.sqf) : null,
       sstc: typeof p.sstc === 'number' ? p.sstc === 1 : null,
     });
   }

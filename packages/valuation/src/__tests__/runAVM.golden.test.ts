@@ -27,6 +27,11 @@ vi.mock('@repo/property-data', () => ({
   getEpcData: vi.fn(),
   getPropertyDataValuation: vi.fn(),
   getPropertyFloorArea: vi.fn(),
+  // Size pillar dependencies — stubbed to "no rows / no benchmark" so the
+  // golden math stays the pre-size blend. Failing to stub them would leave
+  // the pillar undefined and throw inside the valuation.
+  getFloorAreaRows: vi.fn(),
+  getPricesPerSqf: vi.fn(),
   // Pure provenance filter — keep the REAL implementation. Stubbing it out
   // would let fabricated comps through the very guard we're locking in.
   realTransactions: (txs: Array<{ provenance?: string }>) =>
@@ -42,10 +47,6 @@ vi.mock('@repo/property-data', () => ({
   // Market signals (listing body language) — display-context only, mocked
   // dark so the golden valuation math stays untouched.
   getSubjectMarketSignals: vi.fn(),
-  // £/sqft benchmark — mocked dark here so these goldens keep locking the
-  // ORIGINAL three-pillar weights. The size-anchored blend has its own
-  // golden (size-anchor.golden.test.ts).
-  getPricesPerSqf: vi.fn(),
 }));
 
 // Imported AFTER vi.mock so the mocked module is in scope.
@@ -55,11 +56,12 @@ const {
   getEpcData,
   getPropertyDataValuation,
   getPropertyFloorArea,
+  getFloorAreaRows,
+  getPricesPerSqf,
   geocodePostcode,
   geocodePostcodes,
   getSoldPrices,
   getSubjectMarketSignals,
-  getPricesPerSqf,
 } = await import('@repo/property-data');
 const { runAVM } = await import('../index');
 
@@ -77,6 +79,8 @@ function applyScenario(scn: {
   );
   // No verified per-property floor area in the golden scenarios (real-or-null).
   vi.mocked(getPropertyFloorArea).mockResolvedValue(null as never);
+  vi.mocked(getFloorAreaRows).mockResolvedValue([] as never);
+  vi.mocked(getPricesPerSqf).mockResolvedValue(null as never);
   // Disable the distance path for the golden (HMLR fallback) scenarios.
   vi.mocked(geocodePostcode).mockResolvedValue(null as never);
   vi.mocked(geocodePostcodes).mockResolvedValue(new Map() as never);

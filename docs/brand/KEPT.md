@@ -1,6 +1,6 @@
 # Kept. — brand & design system
 
-_Last verified against the live site: 2026-08-22._
+_Last verified against the live site: 2026-09-05._
 
 **Status:** exploration approved by both founders, July 2026. Domain secured:
 **wearekept.co.uk**. Legal/trading structure TBC (trademark class 36 search
@@ -124,8 +124,9 @@ principles her edits demonstrate:
   those apply? The price does not change." One per section at most.
 - **Warm sign-offs on the brand line.** "That's our promise: a promise made
   is a promise Kept."
-- **Say who we're wrong for, unprompted.** "We'd rather you sold well than
-  sold to us."
+- **Say who we're wrong for, unprompted.** "If that's you, we'll say so."
+  (Founder decision, 5 Sep 2026: the earlier line "We'd rather you sold well
+  than sold to us" is retired on every surface. Do not reuse it.)
 
 - Short declaratives. "The price holds." "Our word. Kept."
 - We name the trade-off out loud (below-market by design, and why).

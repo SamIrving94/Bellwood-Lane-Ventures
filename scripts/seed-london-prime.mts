@@ -12,7 +12,14 @@
  *   pnpm tsx scripts/seed-london-prime.mts --write --tier2   # include super-prime
  *   pnpm tsx scripts/seed-london-prime.mts --write --limit=10
  *   pnpm tsx scripts/seed-london-prime.mts --write --districts=W11,NW3
- *       # only these districts (must still be in track.ts — never invented)
+ *
+ * --districts seeds ONLY the named districts, tier ignored (naming a tier-2
+ * district explicitly is consent to scan it — the Aug 2026 fringe trial is
+ * exactly this: --districts=W11,NW3). Names must exist in track.ts, because
+ * a district the classifier does not know would be scanned daily while every
+ * lead it finds files as volume. For a district outside the built-in list,
+ * mark it ★ Prime in Settings → Scouting instead, which extends the
+ * classifier and the scan together.
  *
  * SAFE BY DEFAULT: additive, idempotent, dry-run unless --write. Every seed
  * postcode is resolved LIVE from postcodes.io and verified to sit inside its
@@ -46,13 +53,11 @@ const limitArg = process.argv.find((a) => a.startsWith('--limit='));
 const LIMIT = limitArg
   ? Number(limitArg.split('=')[1])
   : Number.POSITIVE_INFINITY;
-// --districts=W11,NW3 restricts the run to just those district codes. They
-// must still exist in track.ts — this is a filter, never a way to invent an
-// area outside the source of truth (the SW3 lesson). Unknown codes fail loud.
 const districtsArg = process.argv.find((a) => a.startsWith('--districts='));
 const ONLY_DISTRICTS = districtsArg
   ? new Set(
-      (districtsArg.split('=')[1] ?? '')
+      districtsArg
+        .split('=')[1]
         .split(',')
         .map((d) => d.trim().toUpperCase())
         .filter(Boolean)
@@ -162,16 +167,19 @@ async function resolveSeed(district: string): Promise<string | null> {
 async function main() {
   const all = loadDistricts();
 
-  // Explicitly named districts win over the tier gate: naming NW3 IS the
-  // founder opting into that super-prime area, no --tier2 needed. A code not
-  // in track.ts is a hard error — the source of truth is never bypassed.
+  // Explicitly named districts win over the tier filter: naming W11 IS the
+  // decision to scan it. Unknown names fail loudly rather than being guessed
+  // at (the SW3 rule) — the classifier must know a district before we pay to
+  // scan it.
   if (ONLY_DISTRICTS) {
     const known = new Set(all.map((d) => d.district.toUpperCase()));
-    const unknown = [...ONLY_DISTRICTS].filter((d) => !known.has(d));
-    if (unknown.length > 0) {
-      throw new Error(
-        `Unknown district(s) not in track.ts: ${unknown.join(', ')} — add them to LONDON_PRIME_DISTRICTS first.`
-      );
+    for (const requested of ONLY_DISTRICTS) {
+      if (!known.has(requested)) {
+        console.error(
+          `  ! ${requested} is not in LONDON_PRIME_DISTRICTS (track.ts) - refusing to seed a district the classifier does not know. For a new district, mark it prime in Settings -> Scouting instead.`
+        );
+        process.exitCode = 1;
+      }
     }
   }
 
@@ -192,11 +200,12 @@ async function main() {
   console.log(
     `  of which prime:    ${existing.filter((a) => a.track === 'prime').length}`
   );
-  let scopeNote = INCLUDE_TIER2 ? ' (incl. tier 2)' : ' (tier 1 only)';
-  if (ONLY_DISTRICTS) {
-    scopeNote = ` (only: ${[...ONLY_DISTRICTS].join(', ')})`;
-  }
-  console.log(`Candidates:          ${wanted.length}${scopeNote}`);
+  const mode = ONLY_DISTRICTS
+    ? ` (only: ${[...ONLY_DISTRICTS].join(', ')})`
+    : INCLUDE_TIER2
+      ? ' (incl. tier 2)'
+      : ' (tier 1 only)';
+  console.log(`Candidates:          ${wanted.length}${mode}`);
   console.log(`Already present:     ${wanted.length - toAdd.length}`);
   console.log('');
 

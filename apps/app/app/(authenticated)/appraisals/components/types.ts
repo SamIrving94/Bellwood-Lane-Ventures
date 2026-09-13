@@ -62,6 +62,13 @@ export type DeepAppraisalLite = {
     ci80HighPence: number;
     reasoning: string;
   };
+  /** Added Sep 2026 — absent on appraisals stored before then. */
+  avmCrossCheck?: {
+    avmPointEstimatePence: number | null;
+    deltaPercent: number | null;
+    verdict: 'agree' | 'avm_too_high' | 'avm_too_low' | 'no_avm';
+    reasoning: string;
+  } | null;
   condition: {
     greenFlags: string[];
     amberFlags: string[];

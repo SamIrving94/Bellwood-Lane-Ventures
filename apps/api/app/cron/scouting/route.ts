@@ -9,8 +9,9 @@ import {
   summariseSourceHealth,
 } from '@repo/scouting';
 import { NextResponse, after } from 'next/server';
+import { recordChargeObservation } from '../_lib/entity-graph';
 import { recordCronHeartbeat } from '../_lib/heartbeat';
-import { mergeAreaProbes } from '../_lib/merge-area-probes';
+import { lastScannedAtMs, mergeAreaProbes } from '../_lib/merge-area-probes';
 import {
   type ScoutRunStats,
   buildDryStreakActionCopy,
@@ -26,14 +27,31 @@ import { selfOrigin } from '../_lib/self-origin';
 export const maxDuration = 800;
 
 /**
- * Daily scouting pipeline — runs at 7am.
- * Fetches probate / chain-break / repos leads, enriches, scores, persists.
+ * The scouting pipeline — FOUNDER-TRIGGERED (was daily at 7am).
+ *
+ * The daily schedule was removed on 27 Aug 2026 at the founder's direction:
+ * each run spends real PropertyData credits, and running on demand from
+ * Settings → Scouting ("Run scout now") lets the founder control spend and
+ * review each run properly. The route itself is unchanged — the Vercel cron
+ * entry is gone, the trigger is `triggerScoutingCron` in the dashboard
+ * (Bearer CRON_SECRET, same auth as before).
  *
  * Mirrors the FounderAction creation in /agents/leads so the founder
- * dashboard's Today page surfaces high-scoring leads regardless of
- * whether scouting ran via this cron or via Paperclip's API push.
+ * dashboard's Today page surfaces high-scoring leads regardless of how the
+ * run was triggered.
  */
+
+// The pipeline gets this much wall-clock for its paid phases; the ~3 min
+// left inside maxDuration (800s) covers scoring tails, persistence, probe
+// write-backs and founder-surfacing. From 24–27 Aug 2026 the run outgrew
+// the budget (prime seeds → 935 listings → 60-lead shortlist → rate-limited
+// enrichment), the platform killed it at 800s BEFORE persistence, and four
+// days of leads evaporated as 504s. The deadline makes that impossible:
+// past it the pipeline stops paid enrichment and returns what it has.
+const PIPELINE_BUDGET_MS = 620_000;
+
 export const POST = async (request: Request) => {
+  const startedAtMs = Date.now();
   const authHeader = request.headers.get('authorization');
   if (authHeader !== `Bearer ${env.CRON_SECRET}`) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -50,10 +68,11 @@ export const POST = async (request: Request) => {
   // sleep — the function was killed mid-run, persisting nothing. That is why
   // zero leads landed and no completion event was logged for weeks.
   //
-  // Fix: pick the MAX_SEEDS_PER_RUN oldest-probed (never-probed first) areas,
-  // stamp lastProbe after the run so tomorrow picks the next batch, and rotate
-  // through the whole list over a few days. `track: 'prime'` areas sit outside
-  // this rotation and are scanned every run instead — see below.
+  // Fix: pick the MAX_SEEDS_PER_RUN oldest-scanned (never-scanned first)
+  // areas, stamp lastScannedAt after the run so tomorrow picks the next
+  // batch, and rotate through the whole list over a few days. `track:
+  // 'prime'` areas sit outside this rotation and are scanned every run
+  // instead — see below.
   const MAX_SEEDS_PER_RUN = 6;
 
   type ScanSeed = {
@@ -92,14 +111,12 @@ export const POST = async (request: Request) => {
         const id =
           typeof a.id === 'string' ? a.id : (seedPostcode ?? `${label}`);
         const isPrime = a.track === 'prime';
-        // never-probed → 0 so it sorts to the FRONT of the rotation queue.
-        const lp = a.lastProbe as { checkedAt?: unknown } | null | undefined;
-        const lastProbeAt =
-          lp && typeof lp.checkedAt === 'string'
-            ? Number.isFinite(Date.parse(lp.checkedAt))
-              ? Date.parse(lp.checkedAt)
-              : 0
-            : 0;
+        // never-scanned → 0 so it sorts to the FRONT of the rotation queue.
+        // Sorted on the cron's own stamp, NOT lastProbe.checkedAt — the
+        // dashboard sets that at add time, which used to push a just-added
+        // area to the back of the queue and out of the run the founder had
+        // triggered for it (see lastScannedAtMs).
+        const lastScannedAt = lastScannedAtMs(a);
         if (!seedPostcode) return [];
         const district = typeof a.district === 'string' ? a.district : null;
         return [
@@ -108,7 +125,7 @@ export const POST = async (request: Request) => {
             seedPostcode,
             radiusMiles,
             label,
-            lastProbeAt,
+            lastScannedAt,
             isPrime,
             district,
           },
@@ -124,8 +141,8 @@ export const POST = async (request: Request) => {
       const volumeAreas = parsed.filter((a) => !a.isPrime);
 
       rotationAreaCount = volumeAreas.length;
-      // Oldest-probed (and never-probed) first; bounded batch per run.
-      volumeAreas.sort((a, b) => a.lastProbeAt - b.lastProbeAt);
+      // Oldest-scanned (and never-scanned) first; bounded batch per run.
+      volumeAreas.sort((a, b) => a.lastScannedAt - b.lastScannedAt);
       const batch = volumeAreas.slice(0, MAX_SEEDS_PER_RUN);
       const selected = [...primeAreas, ...batch];
       scanSeeds = selected.map((a) => ({
@@ -252,12 +269,26 @@ export const POST = async (request: Request) => {
     evalConfigVersion,
     // Reuse the scanned-area postcodes to look for short leases.
     scanShortLeases,
+    // Read every listing's description for motivation the text states
+    // (executor sale, cash buyers only…). Runs before the shortlist so it
+    // changes which leads get paid enrichment. ~30 Haiku calls a day;
+    // feature 'listing_motivation_read' on Settings → AI models.
+    readMotivationLlm: true,
     // Skip the slow, low-yield planning / HMO / dissolved-company sources.
     // Their mandatory rate-limit sleeps (~80–120s) were pushing the run past
     // the function budget so persist + founder-surfacing never ran. Every
     // qualified lead to date came from sourced-properties anyway.
     skipSlowSources: true,
+    // Hard stop for paid enrichment — the pipeline must RETURN in time to
+    // persist. See PIPELINE_BUDGET_MS above.
+    deadlineMs: startedAtMs + PIPELINE_BUDGET_MS,
   });
+
+  if (result.truncatedByDeadline.length > 0) {
+    console.warn(
+      `[cron/scouting] run truncated by deadline (skipped: ${result.truncatedByDeadline.join(', ')}) — leads persisted below as normal`
+    );
+  }
 
   // ── Dealbreaker screen (founder's recorded hard NOs) ─────────────────
   // Rules mined from feedback notes/voice notes (overrides._insights
@@ -354,9 +385,52 @@ export const POST = async (request: Request) => {
     createdCount = written.count;
   }
 
+  // ── Feed the entity graph (best-effort, read-only overlay) ───────────
+  // Company-flavoured sources (receiverships, CH charges/insolvency) carry
+  // deterministic company numbers — record company↔property↔lender edges so
+  // the lead detail page's Connections panel can surface cross-source links
+  // the address-only dedup can't see. A failure here (including the graph
+  // tables not yet existing) never affects the leads persisted above.
+  let graphWrites = 0;
+  for (const lead of result.leads) {
+    const raw = (lead.rawPayload ?? {}) as Record<string, unknown>;
+    const signal = (raw.receivershipSignal ??
+      raw.chargeSignal ??
+      raw.insolvencySignal) as
+      | {
+          companyNumber?: string | null;
+          companyName?: string | null;
+          lender?: string | null;
+          noticeId?: string | null;
+          chargeRef?: string | null;
+        }
+      | undefined;
+    if (!signal?.companyNumber) continue;
+    try {
+      await recordChargeObservation({
+        companyNumber: signal.companyNumber,
+        companyName: signal.companyName ?? signal.companyNumber,
+        address: lead.address,
+        postcode: lead.postcode,
+        lender: signal.lender ?? null,
+        kind:
+          raw.insolvencySignal || raw.receivershipSignal
+            ? 'insolvency'
+            : 'charge_over',
+        sourceRef: `scout:${signal.noticeId ?? signal.chargeRef ?? lead.address}`,
+        sourceTrail: lead.sourceTrail ?? lead.source,
+        observedAt: result.runDate,
+      });
+      graphWrites++;
+    } catch (err) {
+      console.warn('[cron/scouting] graph write failed', err);
+      break; // tables likely absent — don't warn once per lead
+    }
+  }
+
   // ── Advance area rotation + write back what the run learned ─────────
-  // Because we select oldest-probed-first, stamping checkedAt pushes scanned
-  // areas to the back of the queue — full coverage over
+  // Because we select oldest-scanned-first, stamping lastScannedAt pushes
+  // scanned areas to the back of the queue — full coverage over
   // ~ceil(areaCount / MAX_SEEDS_PER_RUN) days. The merge also writes each
   // area's listing count and error truthfully (see merge-area-probes.ts).
   // Best-effort: a failure here never affects the leads persisted above.
@@ -443,6 +517,8 @@ export const POST = async (request: Request) => {
           // Prime/block capture candidates shortlisted OUTSIDE the volume
           // limit — trendable evidence the capture door is actually firing.
           primeGuaranteed: result.sources.primeGuaranteed,
+          // Entity-graph edges recorded this run (overlay trial telemetry).
+          graphWrites,
         },
       },
     });
@@ -507,6 +583,9 @@ export const POST = async (request: Request) => {
           assignedToAgent: 'board',
           leadCount: result.leads.length,
           newLeadCount: createdCount,
+          // Non-empty when the run hit its time budget and skipped some paid
+          // enrichment — the leads are real, some just carry fewer factors.
+          truncatedByDeadline: result.truncatedByDeadline,
           duplicatesSkipped,
           highScoreCount: highScoreLeads.length,
           strongCount: strongLeads.length,
@@ -973,6 +1052,7 @@ export const POST = async (request: Request) => {
     sources: result.sources,
     sourceErrors: result.sourceErrors,
     sourceHealth: result.sourceHealth,
+    truncatedByDeadline: result.truncatedByDeadline,
     sourceHealthHeadline: healthSummary.headline,
   });
 };

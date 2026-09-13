@@ -24,24 +24,33 @@ export const POST = async (request: Request) => {
   }
 
   const now = Date.now();
-  const stale: Array<{ name: CronName; hoursSince: number | null }> = [];
+  const stale: Array<{
+    name: CronName;
+    hoursSince: number | null;
+    maxHours: number;
+  }> = [];
   const healthy: CronName[] = [];
 
   for (const name of Object.keys(CRON_MAX_STALENESS_HOURS) as CronName[]) {
+    const maxHours = CRON_MAX_STALENESS_HOURS[name];
+    // Not in the map = not watchdogged (founder-triggered crons like
+    // scouting). Object.keys never yields these, but the map is Partial so
+    // the type demands the guard.
+    if (maxHours === undefined) continue;
     const hb = await readCronHeartbeat(name);
-    const maxAgeMs = CRON_MAX_STALENESS_HOURS[name] * 3_600_000;
+    const maxAgeMs = maxHours * 3_600_000;
 
     if (!hb) {
       // No recorded success yet — either it has never run or it fails before
       // it can report. Surface it so a never-running cron doesn't stay
       // invisible.
-      stale.push({ name, hoursSince: null });
+      stale.push({ name, hoursSince: null, maxHours });
       continue;
     }
 
     const ageMs = now - new Date(hb.lastSuccessAt).getTime();
     if (ageMs > maxAgeMs) {
-      stale.push({ name, hoursSince: Math.round(ageMs / 3_600_000) });
+      stale.push({ name, hoursSince: Math.round(ageMs / 3_600_000), maxHours });
     } else {
       healthy.push(name);
     }
@@ -54,7 +63,7 @@ export const POST = async (request: Request) => {
     const description =
       s.hoursSince === null
         ? `The "${s.name}" cron has no recorded successful run. It may never have run, or is failing before it can report success. Check the Vercel cron logs for this function.`
-        : `The "${s.name}" cron last succeeded ~${s.hoursSince}h ago, past its ${CRON_MAX_STALENESS_HOURS[s.name]}h window. It is likely failing or timing out. Check the Vercel cron logs for this function.`;
+        : `The "${s.name}" cron last succeeded ~${s.hoursSince}h ago, past its ${s.maxHours}h window. It is likely failing or timing out. Check the Vercel cron logs for this function.`;
 
     try {
       // Upsert: first detection creates the card; while the cron stays dead,
@@ -84,6 +93,28 @@ export const POST = async (request: Request) => {
       raised++;
     } catch {
       // Non-fatal for a monitoring route.
+    }
+  }
+
+  // Retired-watchdog sweep: crons removed from CRON_MAX_STALENESS_HOURS
+  // (scouting became founder-triggered on 27 Aug 2026) can leave an open
+  // "gone silent" card behind that no healthy-recovery pass will ever touch,
+  // because the cron is no longer checked at all. Close those cards — silence
+  // is now a founder choice, not a fault.
+  const RETIRED_WATCHDOG_CRONS = ['scouting'] as const;
+  let retiredClosed = 0;
+  for (const name of RETIRED_WATCHDOG_CRONS) {
+    try {
+      const res = await database.founderAction.updateMany({
+        where: {
+          dedupKey: { startsWith: `cron-watchdog:${name}` },
+          status: { in: ['pending', 'in_progress'] },
+        },
+        data: { status: 'completed', resolvedAt: new Date() },
+      });
+      retiredClosed += res.count;
+    } catch {
+      // Non-fatal.
     }
   }
 
@@ -130,6 +161,7 @@ export const POST = async (request: Request) => {
     stale: stale.map((s) => s.name),
     raised,
     autoResolved,
+    retiredClosed,
     expired,
   });
 };

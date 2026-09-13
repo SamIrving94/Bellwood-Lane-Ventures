@@ -25,6 +25,18 @@ const REASONS = [
   { t: 'My buyer pulled out', s: 'Chain break', href: '/chain-break' },
   { t: 'We’re separating', s: 'Separation', href: '/separation' },
   { t: 'I’m relocating', s: 'Moving away', href: '/relocation' },
+  // Founder direction, 5, 9 and 12 Sep 2026: two more doors, in the seller's
+  // voice like the rows above, each with its own page since 12 Sep.
+  {
+    t: 'My property has a problem or needs work',
+    s: 'Problem property',
+    href: '/problem-property',
+  },
+  {
+    t: 'Something else?',
+    s: 'Your situation',
+    href: '/your-situation',
+  },
 ];
 
 const STATS = [
@@ -48,7 +60,13 @@ const STATS = [
   },
 ];
 
-const SITUATIONS = [
+const SITUATIONS: Array<{
+  /** Anchor the reason index jumps to, for the doors without their own page. */
+  id?: string;
+  k: string;
+  t: string;
+  b: string;
+}> = [
   {
     k: 'Probate',
     t: 'You’re the executor of an estate',
@@ -68,6 +86,22 @@ const SITUATIONS = [
     k: 'Divorce or separation',
     t: 'You need a clean break',
     b: 'Court-ordered timelines, a joint mortgage to clear, emotional weight. We move quietly and quickly. Solicitors talk to solicitors.',
+  },
+  // Founder copy, 9 Sep 2026: verbatim, typos corrected, the dash split
+  // into two sentences per the copy rule. "Something else?" replaced the
+  // earlier money door, so the StepChange signpost now lives only on the
+  // won't-buy page until the dedicated distress page is built.
+  {
+    id: 'problem-property',
+    k: 'Problem property',
+    t: 'Your property has a problem or needs work',
+    b: 'Major refurbishments, structural issues, knotweed. If your property has an issue that is causing you problems, we can complete quickly and allow you to put it behind you.',
+  },
+  {
+    id: 'something-else',
+    k: 'Your situation',
+    t: 'Something else?',
+    b: 'If you need to move on quickly, quietly, and discreetly, we will tailor a process to meet whatever your unique needs are.',
   },
 ];
 
@@ -166,7 +200,7 @@ export default function SellPage() {
     <>
       {/* ————— NAV ————— */}
       <header className="sticky top-0 z-40 border-hair/70 border-b bg-cream/85 backdrop-blur-md">
-        <div className="mx-auto flex max-w-7xl items-center justify-between gap-8 px-6 py-3.5 md:px-10">
+        <div className="mx-auto flex max-w-7xl items-center justify-between gap-8 px-6 py-2.5 md:px-10 md:py-3.5">
           <LogoLockup href="/sell" animate />
           <nav className="hidden items-center gap-7 text-[14px] text-stone-600 md:flex">
             {NAV.map((item) => (
@@ -194,14 +228,21 @@ export default function SellPage() {
           on the left; the threshold photograph with the wax seal straddling
           its bottom-left corner on the right. The seal overlap is what stops
           the photograph floating. The earlier offer-document card is removed
-          and must not be reinstated — its points live in the promise section. */}
+          and must not be reinstated — its points live in the promise section.
+
+          Phones (Sep 2026 mobile review): the grid children are placed
+          explicitly so the photograph sits BETWEEN the kicker and the form
+          when the two columns collapse. Left to source order, the text
+          column alone was 730px tall and the photograph, the one real
+          artefact on the page, landed a full screen down. On lg the figure
+          spans both rows of the right column, so desktop is unchanged. */}
       <main className="mx-auto max-w-7xl px-6 md:px-10">
-        <div className="pt-10">
+        <div className="pt-6 md:pt-10">
           <Eyebrow>for UK property sellers</Eyebrow>
         </div>
 
-        <section className="grid grid-cols-1 items-start gap-12 pt-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,0.8fr)] lg:gap-[72px]">
-          <div>
+        <section className="grid grid-cols-1 items-start gap-y-8 pt-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,0.8fr)] lg:gap-x-[72px] lg:gap-y-7">
+          <div className="lg:col-start-1 lg:row-start-1">
             <h1
               className="text-balance font-bold font-serif text-forest leading-[1.02] tracking-[-0.03em]"
               style={{ fontSize: 'clamp(34px, 4vw, 54px)' }}
@@ -222,32 +263,41 @@ export default function SellPage() {
               trust that your written cash offer won&rsquo;t change at the last
               minute.
             </p>
-            <p className="mt-3.5 mb-7 font-serif text-[19px] text-forest">
+            <p className="mt-3.5 font-serif text-[19px] text-forest">
               Every promise, kept.
             </p>
+          </div>
 
+          <figure className="m-0 lg:col-start-2 lg:row-span-2 lg:row-start-1">
+            <div className="relative">
+              <div className="overflow-hidden rounded-[2px] border border-hair">
+                <Image
+                  src="/home/threshold.webp"
+                  alt="An open front door on a wet afternoon, hall light on, a packing box just inside"
+                  width={1100}
+                  height={1375}
+                  priority
+                  sizes="(max-width: 1024px) 100vw, 40vw"
+                  className="block h-[44vh] min-h-[280px] w-full object-cover object-[50%_30%] lg:h-auto lg:max-h-none lg:object-contain"
+                />
+              </div>
+              <Seal className="-bottom-[18px] -left-[18px] lg:-bottom-[30px] lg:-left-[30px] absolute h-[72px] w-[72px] bg-cream shadow-[0_14px_30px_-14px_rgba(36,28,26,0.45)] lg:h-[92px] lg:w-[92px]" />
+            </div>
+            {/* On phones the trust marks caption the photograph, set beside
+                the seal. On lg they sit under the form, as in the handoff. */}
+            <figcaption className="mt-3 pl-[64px] font-serif text-[13px] text-stone-500 leading-[1.6] lg:hidden">
+              Property Redress Scheme &middot; HMRC AML supervised &middot; ICO
+              registered &middot; No fees to you
+            </figcaption>
+          </figure>
+
+          <div className="lg:col-start-1 lg:row-start-2">
             <OfferForm />
-
-            <p className="mt-5 font-serif text-[13px] text-stone-500 leading-[1.6]">
+            <p className="mt-5 hidden font-serif text-[13px] text-stone-500 leading-[1.6] lg:block">
               Property Redress Scheme &middot; HMRC AML supervised &middot; ICO
               registered &middot; No fees to you
             </p>
           </div>
-
-          <figure className="relative m-0">
-            <div className="overflow-hidden rounded-[2px] border border-hair">
-              <Image
-                src="/home/threshold.webp"
-                alt="An open front door on a wet afternoon, hall light on, a packing box just inside"
-                width={1100}
-                height={1375}
-                priority
-                sizes="(max-width: 1024px) 100vw, 40vw"
-                className="block h-auto max-h-[62vh] w-full object-cover object-[50%_30%] lg:max-h-none lg:object-contain"
-              />
-            </div>
-            <Seal className="-bottom-[18px] -left-[18px] lg:-bottom-[30px] lg:-left-[30px] absolute h-[72px] w-[72px] bg-cream shadow-[0_14px_30px_-14px_rgba(36,28,26,0.45)] lg:h-[92px] lg:w-[92px]" />
-          </figure>
         </section>
 
         {/* ————— REASON INDEX ————— */}
@@ -260,12 +310,15 @@ export default function SellPage() {
                   href={r.href}
                   className="group flex min-h-11 items-baseline gap-3 py-3.5 text-forest transition-colors hover:text-leaf"
                 >
-                  <span className="shrink-0 font-serif text-[18px]">{r.t}</span>
+                  {/* The text may wrap, and the tag hides below xl: the two
+                      Sep 2026 rows are long enough to overflow a 390px column
+                      when both are pinned to one line. */}
+                  <span className="min-w-0 font-serif text-[18px]">{r.t}</span>
                   <span
                     aria-hidden
                     className="mb-[5px] flex-1 border-stone-400/40 border-b border-dotted"
                   />
-                  <span className="shrink-0 text-[10.5px] text-stone-500 uppercase tracking-[0.14em] [font-family:var(--font-courier)]">
+                  <span className="hidden shrink-0 text-[10.5px] text-stone-500 uppercase tracking-[0.14em] [font-family:var(--font-courier)] xl:inline">
                     {r.s}
                   </span>
                   <span aria-hidden className="shrink-0 text-leaf">
@@ -313,6 +366,16 @@ export default function SellPage() {
               Months of uncertainty. A fee for the privilege. And a one in three
               chance that after all of it, you are back where you started.
             </p>
+            {/* Founder direction, 12 Sep 2026: the cash-buyer concern comes
+                back into "why we exist". Sourced (footnote 4) so it clears the
+                verify-before-asserting rule that took the unsourced "most
+                cited" version out. */}
+            <p className="mt-4 max-w-[62ch] text-[#44403c] text-[17px] leading-[1.7]">
+              A cash buyer should be the simple way out. Yet when the Office of
+              Fair Trading looked at quick-sale buyers, the price dropping at
+              the last minute was one of the main concerns it found.
+              <sup className="ml-1 text-[11px] text-stone-400">4</sup>
+            </p>
 
             <div className="mt-9 max-w-[66ch] border-hair border-t pt-[30px]">
               <h3
@@ -354,6 +417,12 @@ export default function SellPage() {
               <li>
                 3. Typical UK high-street sole-agency fee range; your agent may
                 charge more or less.
+              </li>
+              <li>
+                4. Office of Fair Trading, quick house sales market study
+                (OFT1499), August 2013. Last-minute price reductions were among
+                the main concerns it raised, and firms later gave undertakings
+                not to reduce an offer without a valid reason.
               </li>
             </ol>
           </div>
@@ -422,7 +491,7 @@ export default function SellPage() {
         </div>
         <div className="grid grid-cols-1 gap-px overflow-hidden rounded-[2px] border border-hair bg-hair md:grid-cols-2">
           {SITUATIONS.map((c) => (
-            <div key={c.k} className="bg-white p-8">
+            <div key={c.k} id={c.id} className="scroll-mt-24 bg-white p-8">
               <p className="m-0 text-[#8B9489] text-[10.5px] uppercase tracking-[0.16em] [font-family:var(--font-courier)]">
                 {c.k}
               </p>
@@ -460,7 +529,7 @@ export default function SellPage() {
           <p className="mt-4 text-[#44403c] text-[16px] leading-[1.75]">
             If you can wait months for the right buyer, or your property is in
             excellent condition and high demand, get in touch with a local agent
-            first. We&rsquo;d rather you sold well than sold to us.
+            first. If that&rsquo;s you, we&rsquo;ll say so.
           </p>
         </div>
       </section>
@@ -553,7 +622,9 @@ export default function SellPage() {
             <span className="font-normal text-leaf">in writing.</span>
           </h2>
           <div>
-            <Button href="#offer">Get my offer</Button>
+            {/* Co-founder note, 9 Sep 2026: the button sends details, it does
+                not get an offer (no figure on screen), so say what it does. */}
+            <Button href="#offer">Send us your details</Button>
             <p className="mt-4 text-[14px] text-stone-600 leading-[1.6]">
               Or, if you&rsquo;re an estate agent with a chain coming apart:{' '}
               <Link
@@ -562,7 +633,7 @@ export default function SellPage() {
               >
                 the partner programme
               </Link>
-              . Fee agreed per deal, in writing.
+              .
             </p>
           </div>
         </div>
@@ -583,7 +654,7 @@ export default function SellPage() {
             </div>
             <nav className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-stone-600">
               <a href="#offer" className="hover:text-brand-deep">
-                Get an offer
+                Send us your details
               </a>
               <Link href="/about" className="hover:text-brand-deep">
                 Kept&rsquo;s story

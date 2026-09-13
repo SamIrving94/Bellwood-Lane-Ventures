@@ -1,6 +1,7 @@
 import { env } from '@/env';
 import { database } from '@repo/database';
 import {
+  type AvmCrossCheckInput,
   type DeepAppraisal,
   mergeOfferConfig,
   readUncertainty,
@@ -32,8 +33,15 @@ export const maxDuration = 800;
  *      /cron/lead-appraise), then STRONG volume leads
  *   2. AuctionLots within the next 14 days that don't have an appraisal yet
  *
- * Cap: MAX_APPRAISALS_PER_RUN — guards spend (~£0.06 per appraisal at
- * Sonnet 4.5 with caching). At 10/day, ~£18/month worst case.
+ * Cap: MAX_APPRAISALS_PER_RUN — guards spend (~£0.06 per appraisal on the
+ * Sonnet default with caching; open-weights routes are far cheaper). At
+ * 10/day, ~£18/month worst case. The model is picked on Settings → AI
+ * models under feature 'deep_appraisal' — see @repo/valuation deep-appraisal.
+ *
+ * AVM second opinion: leads that /cron/lead-appraise (07:50) already ran the
+ * in-house AVM on carry `rawPayload.avmFull`. We hand that figure to the
+ * appraisal so the model agrees with or challenges it, and the verdict lands
+ * in `appraisal.avmCrossCheck` + the action description.
  *
  * Output: one FounderAction(type='review_appraisal', priority='high', agent='appraiser')
  * per appraisal, with the full structured payload in metadata. Renders on
@@ -44,6 +52,36 @@ export const maxDuration = 800;
  */
 
 const MAX_APPRAISALS_PER_RUN = 10;
+
+/**
+ * Lift the deterministic AVM out of the lead's rawPayload (written by
+ * /cron/lead-appraise) into the deep-appraisal input. Undefined when the
+ * AVM hasn't run — the prompt then asks for verdict 'no_avm'.
+ */
+function avmCrossCheckFromRaw(
+  raw: Record<string, unknown>
+): AvmCrossCheckInput | undefined {
+  const avm = raw.avmFull as Record<string, unknown> | undefined;
+  if (!avm || typeof avm.pointEstimatePence !== 'number') {
+    return undefined;
+  }
+  const num = (v: unknown) => (typeof v === 'number' ? v : null);
+  const str = (v: unknown) => (typeof v === 'string' ? v : null);
+  return {
+    pointEstimatePence: avm.pointEstimatePence,
+    lowPence: num(avm.lowPence),
+    highPence: num(avm.highPence),
+    finalOfferPence: num(avm.finalOfferPence),
+    confidenceLevel: str(avm.confidenceLevel),
+    comparableCount: num(avm.comparableCount),
+    riskScore: num(avm.riskScore),
+    refurbEstimatePence: num(avm.refurbEstimatePence),
+    conditionVisual: str(avm.conditionVisual),
+    conditionFlags: Array.isArray(avm.conditionFlags)
+      ? avm.conditionFlags.filter((f): f is string => typeof f === 'string')
+      : null,
+  };
+}
 
 async function handle(request: Request) {
   const authHeader = request.headers.get('authorization');
@@ -189,6 +227,7 @@ async function handle(request: Request) {
           return 'standard';
         })(),
         estateValuePence: lead.estimatedEquityPence ?? undefined,
+        avmCrossCheck: avmCrossCheckFromRaw(raw),
       });
     } else {
       const lot = cand.lot;
@@ -251,6 +290,16 @@ async function handle(request: Request) {
               ? `±${((uncertainty.intervalWidthRatio / 2) * 100).toFixed(0)}% of the ARV`
               : 'unmeasurable'
           } (bound ±${((offerConfig.maxDeepIntervalWidthRatio / 2) * 100).toFixed(0)}%, ${compsUsed} comps). Verify the comparables before any offer, whatever the verdict says.`
+        : '',
+      // Older appraisals (pre cross-check) have no avmCrossCheck; guard.
+      appraisal.avmCrossCheck &&
+      appraisal.avmCrossCheck.verdict !== 'no_avm' &&
+      appraisal.avmCrossCheck.avmPointEstimatePence != null
+        ? `vs in-house AVM £${Math.round(appraisal.avmCrossCheck.avmPointEstimatePence / 100).toLocaleString('en-GB')}: ${appraisal.avmCrossCheck.verdict.replace(/_/g, ' ')}${
+            appraisal.avmCrossCheck.deltaPercent != null
+              ? ` (${appraisal.avmCrossCheck.deltaPercent > 0 ? '+' : ''}${appraisal.avmCrossCheck.deltaPercent.toFixed(1)}%)`
+              : ''
+          }`
         : '',
       appraisal.escalations.length
         ? `\nEscalations: ${appraisal.escalations.join('; ')}`

@@ -5,10 +5,6 @@
       "schedule": "30 5 * * *"
     },
     {
-      "path": "/cron/scouting",
-      "schedule": "0 7 * * *"
-    },
-    {
       "path": "/cron/lead-appraise",
       "schedule": "50 7 * * *"
     },
@@ -73,12 +69,20 @@
       "schedule": "*/30 * * * *"
     },
     {
+      "path": "/cron/ch-stream",
+      "schedule": "*/30 * * * *"
+    },
+    {
       "path": "/cron/quote-ops",
       "schedule": "*/30 * * * *"
     },
     {
       "path": "/cron/rate-limit-sweep",
       "schedule": "30 3 * * *"
+    },
+    {
+      "path": "/cron/avm-backtest",
+      "schedule": "0 6 28 * *"
     }
   ]
 }

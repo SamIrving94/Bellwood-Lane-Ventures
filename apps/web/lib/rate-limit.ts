@@ -194,4 +194,25 @@ export const LIMITS = {
     limit: 60,
     windowMs: 60 * 60 * 1000,
   },
+  /**
+   * Keyhole reports hit free APIs but write rows and can email a
+   * caller-supplied address; a professional running a probate caseload is
+   * still comfortably inside 20/hour.
+   */
+  keyholeReportByIp: {
+    bucket: 'keyhole-report:ip',
+    limit: 20,
+    windowMs: 60 * 60 * 1000,
+  },
+  keyholeReportByEmail: {
+    bucket: 'keyhole-report:email',
+    limit: 10,
+    windowMs: 60 * 60 * 1000,
+  },
+  /** A referral notifies the deals inbox — keep the write path tight. */
+  keyholeReferByIp: {
+    bucket: 'keyhole-refer:ip',
+    limit: 10,
+    windowMs: 60 * 60 * 1000,
+  },
 } as const satisfies Record<string, RateLimitRule>;
