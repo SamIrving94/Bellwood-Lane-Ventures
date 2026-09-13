@@ -33,6 +33,15 @@ export type Area = {
     checkedAt: string;
     error: string | null;
   } | null;
+  /**
+   * When the scout cron last scanned this area (ISO). Written ONLY by the
+   * cron — `lastProbe.checkedAt` is also set by the add-time validation
+   * probe, so the rotation sorts on this stamp instead. Absent until the
+   * first run picks the area up, which is exactly what puts a new area at
+   * the front of the queue. Preserved here so a dashboard save never
+   * resets an area's place in the rotation.
+   */
+  lastScannedAt?: string;
   /** Rolling 30-day listing-count history for the sparkline. */
   history?: Array<{ date: string; count: number }>;
   /**
@@ -172,6 +181,9 @@ async function loadAreas(): Promise<Area[]> {
           a.lastProbe && typeof a.lastProbe === 'object'
             ? (a.lastProbe as Area['lastProbe'])
             : null,
+        ...(typeof a.lastScannedAt === 'string'
+          ? { lastScannedAt: a.lastScannedAt }
+          : {}),
         history: Array.isArray(a.history)
           ? (a.history as Array<{ date: string; count: number }>)
           : [],

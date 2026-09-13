@@ -11,7 +11,7 @@ import {
 import { NextResponse, after } from 'next/server';
 import { recordChargeObservation } from '../_lib/entity-graph';
 import { recordCronHeartbeat } from '../_lib/heartbeat';
-import { mergeAreaProbes } from '../_lib/merge-area-probes';
+import { lastScannedAtMs, mergeAreaProbes } from '../_lib/merge-area-probes';
 import {
   type ScoutRunStats,
   buildDryStreakActionCopy,
@@ -68,10 +68,11 @@ export const POST = async (request: Request) => {
   // sleep — the function was killed mid-run, persisting nothing. That is why
   // zero leads landed and no completion event was logged for weeks.
   //
-  // Fix: pick the MAX_SEEDS_PER_RUN oldest-probed (never-probed first) areas,
-  // stamp lastProbe after the run so tomorrow picks the next batch, and rotate
-  // through the whole list over a few days. `track: 'prime'` areas sit outside
-  // this rotation and are scanned every run instead — see below.
+  // Fix: pick the MAX_SEEDS_PER_RUN oldest-scanned (never-scanned first)
+  // areas, stamp lastScannedAt after the run so tomorrow picks the next
+  // batch, and rotate through the whole list over a few days. `track:
+  // 'prime'` areas sit outside this rotation and are scanned every run
+  // instead — see below.
   const MAX_SEEDS_PER_RUN = 6;
 
   type ScanSeed = {
@@ -110,14 +111,12 @@ export const POST = async (request: Request) => {
         const id =
           typeof a.id === 'string' ? a.id : (seedPostcode ?? `${label}`);
         const isPrime = a.track === 'prime';
-        // never-probed → 0 so it sorts to the FRONT of the rotation queue.
-        const lp = a.lastProbe as { checkedAt?: unknown } | null | undefined;
-        const lastProbeAt =
-          lp && typeof lp.checkedAt === 'string'
-            ? Number.isFinite(Date.parse(lp.checkedAt))
-              ? Date.parse(lp.checkedAt)
-              : 0
-            : 0;
+        // never-scanned → 0 so it sorts to the FRONT of the rotation queue.
+        // Sorted on the cron's own stamp, NOT lastProbe.checkedAt — the
+        // dashboard sets that at add time, which used to push a just-added
+        // area to the back of the queue and out of the run the founder had
+        // triggered for it (see lastScannedAtMs).
+        const lastScannedAt = lastScannedAtMs(a);
         if (!seedPostcode) return [];
         const district = typeof a.district === 'string' ? a.district : null;
         return [
@@ -126,7 +125,7 @@ export const POST = async (request: Request) => {
             seedPostcode,
             radiusMiles,
             label,
-            lastProbeAt,
+            lastScannedAt,
             isPrime,
             district,
           },
@@ -142,8 +141,8 @@ export const POST = async (request: Request) => {
       const volumeAreas = parsed.filter((a) => !a.isPrime);
 
       rotationAreaCount = volumeAreas.length;
-      // Oldest-probed (and never-probed) first; bounded batch per run.
-      volumeAreas.sort((a, b) => a.lastProbeAt - b.lastProbeAt);
+      // Oldest-scanned (and never-scanned) first; bounded batch per run.
+      volumeAreas.sort((a, b) => a.lastScannedAt - b.lastScannedAt);
       const batch = volumeAreas.slice(0, MAX_SEEDS_PER_RUN);
       const selected = [...primeAreas, ...batch];
       scanSeeds = selected.map((a) => ({
@@ -430,8 +429,8 @@ export const POST = async (request: Request) => {
   }
 
   // ── Advance area rotation + write back what the run learned ─────────
-  // Because we select oldest-probed-first, stamping checkedAt pushes scanned
-  // areas to the back of the queue — full coverage over
+  // Because we select oldest-scanned-first, stamping lastScannedAt pushes
+  // scanned areas to the back of the queue — full coverage over
   // ~ceil(areaCount / MAX_SEEDS_PER_RUN) days. The merge also writes each
   // area's listing count and error truthfully (see merge-area-probes.ts).
   // Best-effort: a failure here never affects the leads persisted above.
