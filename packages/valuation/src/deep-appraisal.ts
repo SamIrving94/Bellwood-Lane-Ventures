@@ -12,19 +12,31 @@
  *   - EPC Register
  *   - Optional: PropertyData valuation cross-check
  *
- * Calls Claude Sonnet 4.5 with a structured Zod schema (generateObject) so
- * the output is type-safe at the API boundary and renderable by the UI
- * without runtime validation noise.
+ * Calls the model through the shared @repo/ai client (callClaudeForObject)
+ * with a structured Zod schema, so the output is type-safe at the API
+ * boundary and renderable by the UI without runtime validation noise.
  *
- * Cost: ~£0.06 per appraisal with prompt caching on the system prompt.
- * Returns null on missing ANTHROPIC_API_KEY (caller falls back to the
- * existing AVM-only path).
+ * Model choice is a CONFIG decision, not a code decision. The call is
+ * tagged feature = 'deep_appraisal', so it shows up on Settings → AI models
+ * where the founder can point it at any Anthropic or OpenRouter model
+ * (slash = OpenRouter, e.g. an open-weights model), run a shadow challenger
+ * alongside it, and pin zero-data-retention providers — no deploy. The
+ * code default is Sonnet.
+ *
+ * Second opinion on the AVM: when the caller passes the deterministic
+ * in-house AVM figure (ScoutLead.rawPayload.avmFull, written by
+ * /cron/lead-appraise), the prompt asks the model to form its own ARV from
+ * the comparables FIRST and then agree or challenge the AVM. That is the
+ * point of putting a reasoning model over the AVM — it can see condition,
+ * refurb depth and listing text the hedonic model cannot.
+ *
+ * Cost: ~£0.06 per appraisal on Sonnet with prompt caching on the system
+ * prompt; open-weights routes are typically 5-20x cheaper. Returns null
+ * when no LLM key is configured (caller falls back to the AVM-only path).
  */
 
 import 'server-only';
 
-import { createAnthropic } from '@ai-sdk/anthropic';
-import { generateObject } from 'ai';
 import { z } from 'zod';
 
 import {
@@ -34,7 +46,11 @@ import {
   getPropertyDataValuation,
   realTransactions,
 } from '@repo/property-data';
-import { keys } from '@repo/ai/keys';
+import {
+  CLAUDE_SONNET,
+  callClaudeForObject,
+  hasLlmProvider,
+} from '@repo/ai/claude';
 
 // ───────────────────────────────────────────────────────────────────────────
 // Output schema — what Claude must return
@@ -98,6 +114,19 @@ export const DeepAppraisalSchema = z.object({
     reasoning: z.string().describe('1 paragraph triangulation reasoning'),
   }),
 
+  avmCrossCheck: z.object({
+    avmPointEstimatePence: z.number().int().nullable().describe(
+      'The in-house AVM point estimate you were given, echoed back in pence; null if none was supplied',
+    ),
+    deltaPercent: z.number().nullable().describe(
+      '(your ARV − AVM) / AVM × 100, 1 decimal. Positive = you are above the AVM. null if no AVM',
+    ),
+    verdict: z.enum(['agree', 'avm_too_high', 'avm_too_low', 'no_avm']),
+    reasoning: z.string().describe(
+      '2-3 sentences: which signal you trust more and the specific evidence (comp quality, condition, data gaps) behind that',
+    ),
+  }).describe('Second opinion on the deterministic in-house AVM figure'),
+
   condition: z.object({
     greenFlags: z.array(z.string()),
     amberFlags: z.array(z.string()),
@@ -157,9 +186,36 @@ export interface DeepAppraisalInput {
   estateValuePence?: number;
   /** Optional photo URLs for vision-aware condition assessment (v2). */
   photoUrls?: string[];
+  /**
+   * The deterministic in-house AVM for this property, if one has run. The
+   * model is asked to challenge it, not anchor on it. Shape mirrors the
+   * `avmFull` blob /cron/lead-appraise writes to ScoutLead.rawPayload.
+   */
+  avmCrossCheck?: AvmCrossCheckInput;
 }
 
-const MODEL = 'claude-sonnet-4-5';
+export interface AvmCrossCheckInput {
+  pointEstimatePence: number;
+  lowPence?: number | null;
+  highPence?: number | null;
+  finalOfferPence?: number | null;
+  confidenceLevel?: string | null;
+  comparableCount?: number | null;
+  riskScore?: number | null;
+  refurbEstimatePence?: number | null;
+  conditionVisual?: string | null;
+  conditionFlags?: string[] | null;
+}
+
+/** Feature tag: the routing-table key and the LlmCallLog bucket. */
+export const DEEP_APPRAISAL_FEATURE = 'deep_appraisal';
+
+/**
+ * Structured output of this size takes 20-60s on Sonnet and longer on some
+ * OpenRouter hosts. The shared client's default per-attempt budget (8s) is
+ * sized for short extractions, so we set our own.
+ */
+const ATTEMPT_TIMEOUT_MS = 180_000;
 
 const SYSTEM_PROMPT = `You are a senior UK property appraiser preparing a bid-or-walk recommendation for Bellwood Ventures. The audience is a founder making a binding decision in the next 24-72 hours.
 
@@ -179,6 +235,7 @@ Content rules:
 - preAuctionActions: numbered checklist. Mark blocking=true for anything that would change the bid cap if discovered.
 - confidence: estimatedErrorPercent reflects your honest uncertainty about the ARV point estimate. ≥7% = low confidence. 4-7% = moderate. <4% = high.
 - escalations: only items the CEO/founder must approve before action. Empty array if none.
+- avmCrossCheck: if an IN-HOUSE AVM section is supplied, it is a deterministic hedonic model on the same HMLR data. It cannot see condition, refurb depth or the listing text — you can. Form your own ARV from the comparables FIRST, then compare. Do NOT anchor on the AVM. verdict 'agree' when your ARV is within ±5% of it; 'avm_too_high' or 'avm_too_low' otherwise. In reasoning name which signal you trust more and the specific evidence. If no AVM section is supplied: verdict 'no_avm', avmPointEstimatePence and deltaPercent null.
 
 Don't hallucinate floor areas or EPC ratings if the data wasn't supplied — put them in confidence.drivers and unverified[].
 
@@ -277,22 +334,63 @@ function buildUserPrompt(input: DeepAppraisalInput, data: AssembledData): string
   lines.push('=== EXTERNAL CROSS-CHECK ===');
   lines.push(data.externalAvmSummary);
   lines.push('');
+  lines.push('=== IN-HOUSE AVM (deterministic, same HMLR data) ===');
+  lines.push(formatAvmCrossCheck(input.avmCrossCheck));
+  lines.push('');
   lines.push('Produce the structured appraisal now.');
 
   return lines.join('\n');
 }
 
+const pounds = (pence: number) =>
+  `£${Math.round(pence / 100).toLocaleString('en-GB')}`;
+
+/** Render the in-house AVM as a prompt section. Exported for tests. */
+export function formatAvmCrossCheck(avm: AvmCrossCheckInput | undefined): string {
+  if (!avm || typeof avm.pointEstimatePence !== 'number' || avm.pointEstimatePence <= 0) {
+    return 'No in-house AVM has run for this property yet. Set avmCrossCheck.verdict = "no_avm".';
+  }
+  const lines = [`Point estimate: ${pounds(avm.pointEstimatePence)}`];
+  if (avm.lowPence != null && avm.highPence != null) {
+    lines.push(`Range: ${pounds(avm.lowPence)} – ${pounds(avm.highPence)}`);
+  }
+  if (avm.confidenceLevel) {
+    lines.push(`AVM confidence: ${avm.confidenceLevel}`);
+  }
+  if (avm.comparableCount != null) {
+    lines.push(`Comparables the AVM used: ${avm.comparableCount}`);
+  }
+  if (avm.riskScore != null) {
+    lines.push(`AVM risk score: ${avm.riskScore}/100`);
+  }
+  if (avm.finalOfferPence != null) {
+    lines.push(`Policy offer derived from it: ${pounds(avm.finalOfferPence)}`);
+  }
+  if (avm.refurbEstimatePence != null) {
+    lines.push(`Refurb estimate: ${pounds(avm.refurbEstimatePence)}`);
+  }
+  if (avm.conditionVisual) {
+    const flags = avm.conditionFlags?.length ? ` (${avm.conditionFlags.join(', ')})` : '';
+    lines.push(`Photo-read condition: ${avm.conditionVisual}${flags}`);
+  }
+  return lines.join('\n');
+}
+
 /**
- * Main entry. Returns a fully-structured DeepAppraisal or null on missing
- * ANTHROPIC_API_KEY / failed Claude call. Caller persists as FounderAction.
+ * Main entry. Returns a fully-structured DeepAppraisal or null when no LLM
+ * key is configured or the routed call fails. Caller persists as
+ * FounderAction. Model, provider and shadow challenger come from the
+ * routing table (feature 'deep_appraisal'); Sonnet is the code default.
  */
 export async function runDeepAppraisal(
   input: DeepAppraisalInput,
 ): Promise<DeepAppraisal | null> {
-  const env = keys();
-  if (!env.ANTHROPIC_API_KEY) {
+  // Cheap pre-check before we spend PropertyData credits in gatherData: the
+  // shared client returns null on a missing key anyway, but by then the
+  // data fetch has already cost money.
+  if (!hasLlmProvider()) {
     console.warn(
-      '[deep-appraisal] no ANTHROPIC_API_KEY — caller should fall back to AVM-only',
+      '[deep-appraisal] no LLM provider keyed — caller should fall back to AVM-only',
     );
     return null;
   }
@@ -305,20 +403,15 @@ export async function runDeepAppraisal(
     return null;
   }
 
-  const anthropic = createAnthropic({ apiKey: env.ANTHROPIC_API_KEY });
-
-  try {
-    const { object } = await generateObject({
-      model: anthropic(MODEL),
-      schema: DeepAppraisalSchema,
-      system: SYSTEM_PROMPT,
-      prompt: buildUserPrompt(input, data),
-      maxTokens: 4000,
-      temperature: 0.3,
-    });
-    return object;
-  } catch (err) {
-    console.error('[deep-appraisal] Claude call failed', err);
-    return null;
-  }
+  // Never throws; null on any failure, already logged to LlmCallLog.
+  return callClaudeForObject({
+    system: SYSTEM_PROMPT,
+    user: buildUserPrompt(input, data),
+    schema: DeepAppraisalSchema,
+    maxTokens: 4000,
+    temperature: 0.3,
+    model: CLAUDE_SONNET,
+    feature: DEEP_APPRAISAL_FEATURE,
+    attemptTimeoutMs: ATTEMPT_TIMEOUT_MS,
+  });
 }

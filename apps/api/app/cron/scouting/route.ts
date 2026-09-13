@@ -269,6 +269,11 @@ export const POST = async (request: Request) => {
     evalConfigVersion,
     // Reuse the scanned-area postcodes to look for short leases.
     scanShortLeases,
+    // Read every listing's description for motivation the text states
+    // (executor sale, cash buyers only…). Runs before the shortlist so it
+    // changes which leads get paid enrichment. ~30 Haiku calls a day;
+    // feature 'listing_motivation_read' on Settings → AI models.
+    readMotivationLlm: true,
     // Skip the slow, low-yield planning / HMO / dissolved-company sources.
     // Their mandatory rate-limit sleeps (~80–120s) were pushing the run past
     // the function budget so persist + founder-surfacing never ran. Every

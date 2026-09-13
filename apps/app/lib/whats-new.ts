@@ -45,6 +45,180 @@ export const WHATS_NEW: WhatsNewEntry[] = [
     cta: { label: 'Open scouting areas', href: '/settings/scouting' },
   },
   {
+    id: '2026-09-12-scout-reads-desk-drafts',
+    date: '2026-09-12',
+    emoji: '🔍',
+    title: 'The scout now reads the listing. The desk now drafts your call.',
+    intro:
+      'Sam said "action everything in the report, scout first". Five things landed in one go.',
+    bullets: [
+      {
+        emoji: '📖',
+        text: 'Every listing description is **read for motivation** — executor sale, cash buyers only, relocation. It can **lift the lead type** and the score, and the quote is on the lead page.',
+      },
+      {
+        emoji: '🔨',
+        text: '**Savills and Clive Emson** auction lots now come in. Watch the first Monday scan.',
+      },
+      {
+        emoji: '🗂️',
+        text: 'Every card on the **Action Centre** opens with a **suggested call and the why**, ranked. The morning briefing leads with #1.',
+      },
+      {
+        emoji: '📱',
+        text: '**WhatsApp leads** are scored by the same scorer as the rest of the inbox, so the numbers finally compare.',
+      },
+      {
+        emoji: '🎛️',
+        text: 'Photo screening and WhatsApp parsing are now rows on **Settings → AI models** too.',
+      },
+    ],
+    cta: { label: 'Open the Action Centre', href: '/actions' },
+  },
+  {
+    id: '2026-09-12-deep-appraisal-second-opinion',
+    date: '2026-09-12',
+    emoji: '🧠',
+    title:
+      'The full appraisal now argues with the AVM — and you pick the brain',
+    intro:
+      'Sam asked "if we put an LLM over the AVM, would it not make sense for some reasoning to look at it?" Yes. It now does, and the model behind it is yours to choose.',
+    bullets: [
+      {
+        emoji: '⚖️',
+        text: 'Every deep appraisal now gets the **in-house AVM figure** and must **agree or challenge it** — with the evidence. Look for "vs in-house AVM" under ARV.',
+      },
+      {
+        emoji: '🎛️',
+        text: 'Deep appraisal is now a row on **Settings → AI models**. Point it at an **open-weights model via OpenRouter** for a fraction of the cost, no deploy.',
+      },
+      {
+        emoji: '👥',
+        text: 'Use the **shadow model** column to run a challenger silently first. Compare cost and quality on the usage stats before you flip it.',
+      },
+    ],
+    cta: { label: 'Open AI models', href: '/settings/ai' },
+  },
+  {
+    id: '2026-09-12-openrouter-first',
+    date: '2026-09-12',
+    emoji: '🔀',
+    title:
+      'AI calls now go through OpenRouter, and an empty balance no longer stops them',
+    intro:
+      'The Anthropic account ran dry and four features went quiet for days: deep appraisal, the photo screener, the morning briefing and the marketer. That failure mode is gone.',
+    bullets: [
+      {
+        emoji: '💳',
+        text: 'One bill. Set OPENROUTER_API_KEY in Vercel and every AI feature routes through it, Claude included.',
+      },
+      {
+        emoji: '🛟',
+        text: 'Out of credits, rate-limited or provider down? The call falls through to the next model instead of failing.',
+      },
+      {
+        emoji: '🧪',
+        text: 'Test open-weight models: pick a shadow model per feature in Settings → AI models, then compare on the LLM usage page. Suggested ids are pre-filled.',
+      },
+    ],
+    cta: { label: 'Open AI models', href: '/settings/ai' },
+  },
+  {
+    id: '2026-09-12-batch-upload-big-number',
+    date: '2026-09-12',
+    emoji: '📄',
+    title: 'Fixed: a batch upload no longer dies on one oversized figure',
+    intro:
+      'The 11 Sep pipeline sheet had one Acceptable Trade Offer cell of 110,000,000 — a hundred times too big for the database. The whole upload failed silently before a batch was created, so "Run appraisals" never appeared.',
+    bullets: [
+      {
+        emoji: '✅',
+        text: 'Upload the same sheet again — every row now loads. The bad cell is left blank and that row shows as "no benchmark" so you can spot it.',
+      },
+      {
+        emoji: '🔎',
+        text: 'The limit is about £21.4m per cell. Anything above it is skipped, never guessed — fix the cell in the sheet and re-upload.',
+      },
+    ],
+    cta: { label: 'Open Batch', href: '/batch' },
+  },
+  {
+    id: '2026-09-12-price-per-square-foot',
+    date: '2026-09-12',
+    emoji: '📐',
+    title: 'Square footage is in — and the AVM now prices by it',
+    intro:
+      'Sam asked why size was not part of the valuation. It is now. Every lead shows its floor area in sqft, and the AVM checks the whole-house comps against what nearby sold homes fetched per square foot.',
+    bullets: [
+      {
+        emoji: '📏',
+        text: "Leads list: **sqft on every card** — EPC-verified when the AVM has matched the house number, the listing's own figure before that, each labelled.",
+      },
+      {
+        emoji: '💷',
+        text: 'Appraised leads show **£/sqft for this house** next to the **nearby sold £/sqft** — sold comps matched to their own EPC floor areas, never a postcode average.',
+      },
+      {
+        emoji: '⚖️',
+        text: "The AVM now has a **size pillar**: rate × this house's sqft carries 25–30% of the blend when 2+ comps match. A house 40% bigger than its street no longer prices like its neighbours.",
+      },
+      {
+        emoji: '🔍',
+        text: 'Lead page: a **£/sqft panel** under the comps — ¼-mile vs ½-mile rates, the size-based value, and how far it sits from the whole-house comps.',
+      },
+    ],
+    cta: { label: 'See the leads', href: '/leads' },
+  },
+  {
+    id: '2026-09-12-two-doors-have-pages',
+    date: '2026-09-12',
+    emoji: '🚪',
+    title: 'The two new doors now open onto their own pages',
+    intro:
+      'Both new reasons on /sell now lead somewhere: a page for the property with a problem or one that needs work, and a page for everyone whose reason is something else. Same template as probate and chain-break, same four steps, same honest version.',
+    bullets: [
+      {
+        emoji: '🏠',
+        text: '/problem-property: what buyers and lenders walk away from, we price and carry. Nothing to fix first, no lender to say no, honest about the price.',
+      },
+      {
+        emoji: '🤫',
+        text: '/your-situation: quickly, quietly, discreetly. No board, no listing, one visit, your date. Its honest version points to StepChange and Citizens Advice.',
+      },
+      {
+        emoji: '📣',
+        text: 'Organic only for now. Counsel reads the your-situation page before any ads point at it, as the marketing plan asks.',
+      },
+    ],
+  },
+  {
+    id: '2026-09-06-equity-proxy-flip',
+    date: '2026-09-06',
+    emoji: '⚖️',
+    title: 'Fixed: the score no longer rewards the OPPOSITE of a discount',
+    intro:
+      'Sam asked "is anything else being marked down that should score up?" — and yes. Before appraisal, a house priced 50% ABOVE its street scored 15 points while one 40% UNDER it scored 3. That is now the right way round.',
+    bullets: [
+      {
+        emoji: '💎',
+        text: 'A discount WITH a condition reason (EPC evidence, unmodernised badge, dated heating) now scores top of the range: the deeper the explained discount, the more points.',
+      },
+      {
+        emoji: '⚠️',
+        text: 'A discount with NO reason keeps the honest treatment: low points and "check why" — an unexplained cheap house usually hides an unfixable problem.',
+      },
+      {
+        emoji: '🚫',
+        text: 'A price under 40% of the street earns a token whatever the evidence — that is usually a flat wearing a house’s postcode.',
+      },
+      {
+        emoji: '🎛️',
+        text: 'All eight weights are founder-tunable in the scorer config. The sourcing-gate calibration is unchanged: 285/285 tests green.',
+      },
+    ],
+    cta: { label: 'See the leads', href: '/leads' },
+  },
+  {
     id: '2026-09-06-ripe-for-modernisation',
     date: '2026-09-06',
     emoji: '🔧',
@@ -81,19 +255,19 @@ export const WHATS_NEW: WhatsNewEntry[] = [
     emoji: '🚪',
     title: 'Two more doors on the front page',
     intro:
-      'The "why are you selling?" list on /sell now speaks to two more sellers: the property with a problem that buyers or lenders walk away from, and the person who needs the money for what comes next. Each has its own card, and its own answer in the form.',
+      'The "why are you selling?" list on /sell now speaks to two more sellers: the property that has a problem or needs work, and anyone whose situation is something else and needs handling quickly, quietly and discreetly. Each has its own card, and its own answer in the form.',
     bullets: [
       {
         emoji: '🏠',
-        text: 'Problem property: short lease, cladding, knotweed, subsidence, a lender that says no. The form records it as problem_property.',
+        text: 'Problem or needs work: major refurbishments, structural issues, knotweed. The form records it as problem_property.',
       },
       {
-        emoji: '🧭',
-        text: 'Your next step: the money card links to StepChange and Citizens Advice, as the marketing plan asks. The form records it as other, with its own trigger label.',
+        emoji: '🤫',
+        text: 'Something else? A tailored process for whatever the situation is. The form records it as other.',
       },
       {
         emoji: '📄',
-        text: 'Their own pages are still to build. Counsel reads the money page before any ads point at it.',
+        text: 'Their own pages are still to build. Counsel reads any financial-pressure page before ads point at it.',
       },
     ],
   },

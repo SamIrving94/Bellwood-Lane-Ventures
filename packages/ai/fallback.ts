@@ -45,13 +45,49 @@ export type CallWithFallbackOpts<T> = {
 };
 
 /**
- * Default recoverable-error detection. We're conservative — only
- * rate-limit (429), 5xx upstream, network/abort/timeout errors are
- * retried. 4xx auth or validation errors hit the same wall on
- * OpenRouter so are surfaced as primary failures.
+ * Wording the providers use for "your account has no money". Anthropic
+ * sends it as HTTP 400 invalid_request_error, OpenAI as 429
+ * insufficient_quota, OpenRouter as 402. None of these are the caller's
+ * fault and every one of them is exactly what another provider can serve.
+ * Sept 2026: an empty Anthropic balance took down deep appraisal, the
+ * photo screener, the morning briefing and the marketer for days because
+ * a 400 was treated as non-recoverable and the fallback never ran.
+ */
+const BILLING_SIGNATURES = [
+  'credit balance',
+  'insufficient_quota',
+  'insufficient credits',
+  'exceeded your current quota',
+  'payment required',
+  'billing',
+];
+
+/**
+ * True when the error says the provider's account is out of money or
+ * quota — retry elsewhere rather than failing the feature.
+ */
+export function isBillingError(err: unknown): boolean {
+  if (!err) return false;
+  const status =
+    (err as { statusCode?: unknown })?.statusCode ??
+    (err as { status?: unknown })?.status;
+  if (status === 402) return true;
+  const message = err instanceof Error ? err.message : String(err);
+  const body = (err as { responseBody?: unknown })?.responseBody;
+  const text =
+    `${message} ${typeof body === 'string' ? body : ''}`.toLowerCase();
+  return BILLING_SIGNATURES.some((sig) => text.includes(sig));
+}
+
+/**
+ * Default recoverable-error detection. We're conservative — rate-limit
+ * (429), 5xx upstream, network/abort/timeout and billing/quota errors
+ * are retried. Other 4xx (auth, validation, unknown model) hit the same
+ * wall on the next provider so are surfaced as primary failures.
  */
 export function isRecoverableProviderError(err: unknown): boolean {
   if (!err) return false;
+  if (isBillingError(err)) return true;
   // Network / abort / timeout signatures
   if (err instanceof Error) {
     const msg = err.message?.toLowerCase() ?? '';
@@ -85,7 +121,7 @@ export function isRecoverableProviderError(err: unknown): boolean {
 async function withTimeout<T>(
   p: Promise<T>,
   ms: number,
-  label: string,
+  label: string
 ): Promise<T> {
   let timer: ReturnType<typeof setTimeout> | undefined;
   const timeout = new Promise<never>((_, reject) => {
@@ -111,7 +147,7 @@ async function withTimeout<T>(
  * at the call site if a nullable surface is preferred.
  */
 export async function callWithFallback<T>(
-  opts: CallWithFallbackOpts<T>,
+  opts: CallWithFallbackOpts<T>
 ): Promise<FallbackResult<T>> {
   const recoverable = opts.isRecoverable ?? isRecoverableProviderError;
   const attemptTimeoutMs = opts.attemptTimeoutMs ?? 5000;
@@ -121,9 +157,14 @@ export async function callWithFallback<T>(
     const value = await withTimeout(
       opts.primary.call(),
       attemptTimeoutMs,
-      opts.primary.provider,
+      opts.primary.provider
     );
-    return { ok: true, value, viaFallback: false, provider: opts.primary.provider };
+    return {
+      ok: true,
+      value,
+      viaFallback: false,
+      provider: opts.primary.provider,
+    };
   } catch (primaryErr) {
     if (!recoverable(primaryErr) || !opts.fallbacks?.length) {
       return { ok: false, error: primaryErr, provider: opts.primary.provider };
@@ -133,7 +174,11 @@ export async function callWithFallback<T>(
     let lastProvider = opts.primary.provider;
     for (const fb of opts.fallbacks) {
       try {
-        const value = await withTimeout(fb.call(), attemptTimeoutMs, fb.provider);
+        const value = await withTimeout(
+          fb.call(),
+          attemptTimeoutMs,
+          fb.provider
+        );
         return { ok: true, value, viaFallback: true, provider: fb.provider };
       } catch (err) {
         lastErr = err;

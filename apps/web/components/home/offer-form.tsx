@@ -53,11 +53,10 @@ const SITUATIONS = [
   { label: 'My buyer pulled out', value: 'chain_break' },
   { label: 'Relocating', value: 'relocation' },
   { label: 'Separation', value: 'other' },
-  // Founder direction, 5 Sep 2026: the two new front-door reasons. The
-  // property one is a real intake value; the money one rides on `other`
-  // and is told apart by its trigger label.
-  { label: 'A problem with the property', value: 'problem_property' },
-  { label: 'I need the money for what’s next', value: 'other' },
+  // Founder direction, 5 and 9 Sep 2026: the front door's "problem or needs
+  // work" door is a real intake value. Its "Something else?" door is the
+  // existing catch-all chip below.
+  { label: 'It has a problem or needs work', value: 'problem_property' },
   { label: 'Something else', value: 'other' },
 ] as const;
 

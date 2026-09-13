@@ -33,7 +33,7 @@ export function SiteHeader() {
             </Link>
           ))}
           <Button href="/sell#offer" className="px-5 py-2 text-sm">
-            Get an offer
+            Send us your details
           </Button>
         </nav>
         {/* Mobile menu — CSS-only disclosure, no client JS */}
@@ -60,7 +60,7 @@ export function SiteHeader() {
               href="/sell#offer"
               className="mt-1 rounded-full bg-leaf px-4 py-3 text-center font-semibold text-[15px] text-white"
             >
-              Get an offer
+              Send us your details
             </Link>
           </nav>
         </details>

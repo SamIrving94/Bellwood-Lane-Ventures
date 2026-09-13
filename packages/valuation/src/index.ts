@@ -56,14 +56,34 @@ export type {
   ConfidenceLevel,
 } from './base-valuation';
 export { getDistanceWeightedValuation } from './distance-comps';
+export {
+  buildSqftEvidence,
+  triangulationWeights,
+  sqmToSqft,
+  SQFT_PER_SQM,
+} from './sqft-comps';
+export type {
+  SqftEvidence,
+  MatchedSqftComp,
+  SqftEvidenceSource,
+} from './sqft-comps';
 export type {
   DistanceWeightedValuation,
   WeightedComp,
   DistanceCompInput,
 } from './distance-comps';
 export { generateCompRationale } from './comp-rationale-llm';
-export { runDeepAppraisal, DeepAppraisalSchema } from './deep-appraisal';
-export type { DeepAppraisal, DeepAppraisalInput } from './deep-appraisal';
+export {
+  DEEP_APPRAISAL_FEATURE,
+  DeepAppraisalSchema,
+  formatAvmCrossCheck,
+  runDeepAppraisal,
+} from './deep-appraisal';
+export type {
+  AvmCrossCheckInput,
+  DeepAppraisal,
+  DeepAppraisalInput,
+} from './deep-appraisal';
 export type {
   RadonCategory,
   CoalMiningZone,
@@ -191,6 +211,10 @@ export interface AvmResultJson {
   floorAreaSource: 'caller' | 'propertydata' | null;
   /** Address the floor area was matched to (carries the house number). */
   resolvedAddress: string | null;
+  /** floorAreaSqm in square feet — the unit the founder reads. */
+  floorAreaSqft: number | null;
+  /** Point estimate ÷ floor area, £/sqft. Null without a verified size. */
+  pricePerSqft: number | null;
   bedrooms?: number;
   epcRating: string | null;
   buildEra: string | null;
@@ -211,8 +235,31 @@ export interface AvmResultJson {
     date: string;
     monthsAgo: number;
     distanceMiles: number | null;
+    /** EPC floor area of the comp (m²) when a register row matched. */
+    floorAreaSqm: number | null;
+    /** Time-adjusted £/sqft of the comp when its size is known. */
+    pricePerSqft: number | null;
   }[];
   avmSources: string;
+  /**
+   * The size pillar — nearby sold £/sqft (comps matched to EPC floor areas)
+   * and the estimate it gives for this house. Null when the lookup was
+   * skipped; present-but-thin (matchedCount 0) when nothing matched.
+   */
+  sqftEvidence: {
+    poundsPerSqft: number | null;
+    nearMedianPerSqft: number | null;
+    farMedianPerSqft: number | null;
+    matchedCount: number;
+    benchmarkPerSqft: number | null;
+    /** Rate × subject sqft, in POUNDS. */
+    sqftEstimate: number | null;
+    source: 'matched_comps' | 'area_benchmark' | null;
+    /** Subject size vs the median matched comp, as a fraction (+0.25). */
+    sizeVsCompsPct: number | null;
+    /** Weight the size estimate carried in the triangulation (0–1). */
+    weight: number;
+  } | null;
 
   // Environmental risk
   environmentalBand: string;
@@ -360,6 +407,8 @@ export async function runAVM(input: AvmInput): Promise<AvmResultPayload> {
     floorAreaSqm: baseValuation.floorAreaSqm,
     floorAreaSource: baseValuation.floorAreaSource,
     resolvedAddress: baseValuation.resolvedAddress,
+    floorAreaSqft: baseValuation.floorAreaSqft,
+    pricePerSqft: baseValuation.pricePerSqft,
     bedrooms,
     epcRating: bld.epcBand,
     buildEra: bld.buildEra,
@@ -382,8 +431,23 @@ export async function runAVM(input: AvmInput): Promise<AvmResultPayload> {
       date: c.date,
       monthsAgo: c.monthsAgo,
       distanceMiles: c.distanceMiles,
+      floorAreaSqm: c.floorAreaSqm,
+      pricePerSqft: c.pricePerSqft,
     })),
     avmSources: baseValuation.source,
+    sqftEvidence: baseValuation.sqft
+      ? {
+          poundsPerSqft: baseValuation.sqft.poundsPerSqft,
+          nearMedianPerSqft: baseValuation.sqft.nearMedianPerSqft,
+          farMedianPerSqft: baseValuation.sqft.farMedianPerSqft,
+          matchedCount: baseValuation.sqft.matchedCount,
+          benchmarkPerSqft: baseValuation.sqft.benchmarkPerSqft,
+          sqftEstimate: baseValuation.sqft.sqftEstimate,
+          source: baseValuation.sqft.source,
+          sizeVsCompsPct: baseValuation.sqft.sizeVsCompsPct,
+          weight: baseValuation.sqftWeight,
+        }
+      : null,
 
     environmentalBand: env.envBand,
     envScoreTotal: env.totalEnvScore,

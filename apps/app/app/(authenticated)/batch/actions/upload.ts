@@ -3,11 +3,18 @@
 import { getFounderSession } from '@repo/auth/server';
 import { database } from '@repo/database';
 import { revalidatePath } from 'next/cache';
-import { mapPropertyType } from '../../../../lib/batch/property-type';
 import { parseSheet } from '../../../../lib/batch/parse-sheet';
+import { mapPropertyType } from '../../../../lib/batch/property-type';
 
 export type UploadResult =
-  | { ok: true; batchId: string; totalItems: number; unmappedHeaders: string[] }
+  | {
+      ok: true;
+      batchId: string;
+      totalItems: number;
+      unmappedHeaders: string[];
+      /** Cells we had to blank (e.g. out-of-range money) — see parseSheet. */
+      warnings: string[];
+    }
   | { ok: false; error: string };
 
 /**
@@ -36,12 +43,22 @@ export async function uploadBatch(formData: FormData): Promise<UploadResult> {
     buf = Buffer.from(await file.arrayBuffer());
     parsed = parseSheet(buf);
   } catch (e) {
-    return { ok: false, error: `Could not read the spreadsheet: ${(e as Error).message}` };
+    return {
+      ok: false,
+      error: `Could not read the spreadsheet: ${(e as Error).message}`,
+    };
   }
 
   if (parsed.rows.length === 0) {
-    return { ok: false, error: 'No property rows found. Is "Opportunity Name" the first column?' };
+    return {
+      ok: false,
+      error: 'No property rows found. Is "Opportunity Name" the first column?',
+    };
   }
+  // Logged so a blanked cell is findable in Vercel logs even though the form
+  // navigates straight to the review page (where the row shows as flagged).
+  for (const w of parsed.warnings)
+    console.warn(`[batch/upload] ${file.name}: ${w}`);
 
   // Prior batch for week-over-week diffing.
   const priorBatch = await database.propertyBatch.findFirst({
@@ -55,10 +72,11 @@ export async function uploadBatch(formData: FormData): Promise<UploadResult> {
       })
     : [];
   const priorByKey = new Map(
-    priorItems.map((p) => [p.dedupeKey, p.acceptableTradeOfferPence]),
+    priorItems.map((p) => [p.dedupeKey, p.acceptableTradeOfferPence])
   );
 
-  const label = file.name.replace(/\.(xlsx?|csv)$/i, '').trim() || 'Pipeline batch';
+  const label =
+    file.name.replace(/\.(xlsx?|csv)$/i, '').trim() || 'Pipeline batch';
 
   const batch = await database.propertyBatch.create({
     data: {
@@ -106,5 +124,6 @@ export async function uploadBatch(formData: FormData): Promise<UploadResult> {
     batchId: batch.id,
     totalItems: parsed.rows.length,
     unmappedHeaders: parsed.unmappedHeaders,
+    warnings: parsed.warnings,
   };
 }
