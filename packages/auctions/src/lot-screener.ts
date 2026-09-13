@@ -9,29 +9,28 @@
  * have to eyeball it. `screenAuctionLot` is the original auction-named entry
  * point and now delegates to the generic `screenPropertyCondition`.
  *
- * TODO: wire this into LlmCallLog via setLlmLogger (or whatever the
- * canonical observability hook is in @repo/ai) so vision spend is tracked
- * alongside other Claude usage. For now we emit a single console.warn on
- * failure and rely on the caller to count successes.
- *
- * NOTE on implementation: the original spec called for Vercel AI SDK
- * `generateObject` with `@ai-sdk/anthropic`. That provider is not
- * currently installed in this monorepo (only `@ai-sdk/openai` is). To
- * avoid a lockfile install in this worktree we use the official
- * `@anthropic-ai/sdk` directly with Zod-driven validation — the exact
- * pattern already in use by `@repo/whatsapp-parser`. The public
- * `screenAuctionLot` signature matches the spec so a future swap to
- * `generateObject` is a localised refactor.
+ * Routed through @repo/ai (callClaudeWithMeta with image parts) so vision
+ * spend lands in LlmCallLog under feature `property_vision`, the model can
+ * be overridden from Settings → AI models, and an empty balance on one
+ * provider falls through to the next. Pick a VISION-CAPABLE model for this
+ * feature (Claude tiers, moonshotai/kimi-k2.6, meta-llama/llama-4-maverick).
  */
 
 import 'server-only';
 
-import Anthropic from '@anthropic-ai/sdk';
+import {
+  CLAUDE_SONNET,
+  callClaudeWithMeta,
+  hasLlmProvider,
+} from '@repo/ai/claude';
 import { z } from 'zod';
 
 import type { VisualAssessment, VisualCondition, VisualFlag } from './types';
 
-const MODEL = 'claude-sonnet-4-5';
+const MODEL = CLAUDE_SONNET;
+const FEATURE = 'property_vision';
+// Photos in, JSON out — vision calls are slow; give each provider a minute.
+const ATTEMPT_TIMEOUT_MS = 60_000;
 const MAX_PHOTOS = 10;
 // Per-image fetch budget. Public auction CDNs are normally <1MB; cap at 5MB
 // to avoid pathological responses (Anthropic also rejects images > ~5MB).
@@ -123,10 +122,9 @@ export async function screenPropertyCondition(input: {
     return null;
   }
 
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) {
+  if (!hasLlmProvider()) {
     console.warn(
-      '[@repo/auctions/lot-screener] ANTHROPIC_API_KEY not set — skipping vision screen for',
+      '[@repo/auctions/lot-screener] no LLM provider key set — skipping vision screen for',
       ref
     );
     return null;
@@ -150,46 +148,30 @@ export async function screenPropertyCondition(input: {
 
   const userText = `Ref: ${ref}\nAddress: ${address}\nPhotos provided: ${fetched.length} of ${photoUrls.length} available.\n\nAssess the property condition from these photos and return the JSON object.`;
 
-  const client = new Anthropic({ apiKey });
-
   try {
-    const response = await client.messages.create({
-      model: MODEL,
-      max_tokens: 600,
+    const result = await callClaudeWithMeta({
       system: SYSTEM_PROMPT,
-      messages: [
-        {
-          role: 'user',
-          content: [
-            ...fetched.map(
-              (img) =>
-                ({
-                  type: 'image' as const,
-                  source: {
-                    type: 'base64' as const,
-                    media_type: img.mediaType,
-                    data: img.data,
-                  },
-                }) as const
-            ),
-            { type: 'text' as const, text: userText },
-          ],
-        },
-      ],
-      // Feature tag for downstream log routing once setLlmLogger is wired.
-      metadata: { user_id: `property_vision:${ref}` },
+      user: userText,
+      images: fetched.map((img) => ({
+        data: img.data,
+        mediaType: img.mediaType,
+      })),
+      model: MODEL,
+      feature: FEATURE,
+      maxTokens: 600,
+      temperature: 0.2,
+      attemptTimeoutMs: ATTEMPT_TIMEOUT_MS,
     });
 
-    const textBlock = response.content.find((c) => c.type === 'text');
-    if (!textBlock || textBlock.type !== 'text') {
+    if (!result.text) {
       console.warn(
-        '[@repo/auctions/lot-screener] no text block in response for',
+        '[@repo/auctions/lot-screener] no text in response for',
         ref
       );
       return null;
     }
 
-    const raw = extractJson(textBlock.text);
+    const raw = extractJson(result.text);
     if (!raw) {
       console.warn(
         '[@repo/auctions/lot-screener] could not extract JSON for',
@@ -218,11 +200,11 @@ export async function screenPropertyCondition(input: {
       rationale: parsed.data.rationale,
       photoCount: fetched.length,
       confidence: parsed.data.confidence,
-      modelUsed: MODEL,
+      modelUsed: result.model,
     };
   } catch (err) {
     console.error(
-      '[@repo/auctions/lot-screener] Claude vision call failed for',
+      '[@repo/auctions/lot-screener] vision call failed for',
       ref,
       err
     );

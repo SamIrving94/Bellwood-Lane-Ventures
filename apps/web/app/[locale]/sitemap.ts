@@ -5,7 +5,7 @@ const protocol = env.VERCEL_PROJECT_PRODUCTION_URL?.startsWith('https')
   ? 'https'
   : 'http';
 const base = new URL(
-  `${protocol}://${env.VERCEL_PROJECT_PRODUCTION_URL || 'bellwoodslane.co.uk'}`,
+  `${protocol}://${env.VERCEL_PROJECT_PRODUCTION_URL || 'bellwoodslane.co.uk'}`
 );
 
 const sitemap = async (): Promise<MetadataRoute.Sitemap> => [
@@ -15,6 +15,8 @@ const sitemap = async (): Promise<MetadataRoute.Sitemap> => [
   { url: new URL('/chain-break', base).href, lastModified: new Date() },
   { url: new URL('/separation', base).href, lastModified: new Date() },
   { url: new URL('/relocation', base).href, lastModified: new Date() },
+  { url: new URL('/problem-property', base).href, lastModified: new Date() },
+  { url: new URL('/your-situation', base).href, lastModified: new Date() },
   { url: new URL('/agents', base).href, lastModified: new Date() },
   { url: new URL('/save-the-sale', base).href, lastModified: new Date() },
   {

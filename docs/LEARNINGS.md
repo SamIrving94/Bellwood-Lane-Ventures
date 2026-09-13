@@ -6,6 +6,66 @@ the scout, the AVM, or any PropertyData call.
 
 ---
 
+## 2026-09-12 — One empty Anthropic balance took four features down for days
+
+**What broke.** Deep appraisal, the auction/lead photo screener, the morning
+briefing and the marketer all failed from ~9 Sep with `Your credit balance
+is too low to access the Anthropic API`. Nobody noticed until the founder
+asked why the batch tool "wasn't running" — which turned out to be an
+unrelated spreadsheet overflow (PR #111). Two separate outages, one visible
+symptom.
+
+**Root causes.**
+
+- `isRecoverableProviderError` treated every 4xx except 429 as fatal.
+  Anthropic reports an empty balance as HTTP **400**, so the OpenRouter
+  fallback never ran.
+- The fallback chain named `anthropic/claude-sonnet-4-5` (hyphen).
+  OpenRouter's id is `anthropic/claude-sonnet-4.5` (dot). Even with a key
+  set, the chain would have 404'd.
+- Three features bypassed `@repo/ai` and called the Anthropic SDK directly
+  (deep appraisal, WhatsApp parser, photo screener): no routing, no
+  fallback, no `LlmCallLog` row — so the usage dashboard showed nothing
+  wrong.
+
+**Rules.**
+
+- Every LLM call goes through `@repo/ai/claude`. No direct SDK imports in
+  packages or apps. `hasLlmProvider()` replaces `if (!ANTHROPIC_API_KEY)`.
+- Billing/quota errors are recoverable (`isBillingError`). A provider with
+  no money is the textbook case for trying the next one.
+- Model ids are verified against the provider's live list before they are
+  written into code or the routing table (`scripts/llm-bakeoff.mts --list`).
+- Routing is OpenRouter-first with Anthropic direct and two open-weight
+  models behind it (`docs/LLM-ROUTING.md`). Set `OPENROUTER_API_KEY` on
+  **both** Vercel projects.
+
+## 2026-09-12 — PropertyData: eleven endpoints never returned a value
+
+**What we found.** While reading the api logs for the outage above: every
+call to `/demand`, `/flood-risk`, `/agents`, `/sold-prices`, `/yields`,
+`/growth`, `/council-tax`, `/floor-areas`, `/prices-per-sqf`, `/freeholds`
+and `/energy-efficiency` ends in `SCHEMA DRIFT — response validated but
+carries none of the expected fields`. The logged top-level keys
+(`status, postcode, postcode_type, data, process_time`, or `demand_rating`,
+`flood_risk`, `known_floor_areas`, `council_tax`…) show the API returns
+its fields at the **top level** or under `data`, while our Zod schemas
+read everything from a `result` object that does not exist. The drift
+guard (added with the durable cache) is doing exactly its job; the
+schemas were written from memory, not from a response, and have never
+matched. The credits are still spent on every run.
+
+**Not fixed here — on purpose.** propertydata.co.uk is unreachable from
+the build sandbox, and the inner shapes (what is inside `data`) cannot be
+verified from the logs. Guessing them would repeat the original mistake.
+`scripts/propertydata-probe.mts` captures one real response per endpoint
+(~30 credits) and prints the shape against what the code expects; the
+schemas get rewritten from those files, with a fixture test each.
+
+**Rule.** A PropertyData schema is written from a saved real response and
+ships with a fixture test of that response. `hasContent` must name a field
+that the saved response actually carries.
+
 ## 2026-08-29 — Keyhole shipped with its premise un-challenged (process, not prod)
 
 **What broke.** Nothing in production — the framing. Keyhole Phase 0 was

@@ -76,6 +76,17 @@ const LeadDetailPage = async ({
 
   // Unpack rich data from rawPayload
   const raw = (lead.rawPayload ?? {}) as Record<string, unknown>;
+  // Pre-appraisal floor-area reads (see the Floor area fact for the order).
+  const listingSqft =
+    typeof (raw.propertyData as Record<string, unknown> | undefined)
+      ?.listingSqft === 'number'
+      ? ((raw.propertyData as Record<string, unknown>).listingSqft as number)
+      : null;
+  const propertyEpcFloorAreaSqm =
+    typeof (raw.propertyEpc as Record<string, unknown> | undefined)
+      ?.floorAreaSqm === 'number'
+      ? ((raw.propertyEpc as Record<string, unknown>).floorAreaSqm as number)
+      : null;
   const pd = raw.propertyData as Record<string, unknown> | undefined;
   const planning = raw.planning as Record<string, unknown> | undefined;
   const hmo = raw.hmo as Record<string, unknown> | undefined;
@@ -95,6 +106,18 @@ const LeadDetailPage = async ({
         reasons: string[];
       }
     | undefined;
+  // What the listing text itself said about the seller (LLM read, closed
+  // vocabulary — see @repo/scouting motivation-llm.ts). Quote shown verbatim.
+  const motivationRead = raw.motivationRead as
+    | {
+        level: 'strong' | 'some' | 'none';
+        signals: string[];
+        leadType: string | null;
+        evidence: string;
+      }
+    | undefined;
+  const motivationShown =
+    motivationRead && motivationRead.level !== 'none' ? motivationRead : null;
   type ScoreFactor = {
     label: string;
     points: number;
@@ -360,6 +383,10 @@ const LeadDetailPage = async ({
       date: string;
       monthsAgo: number;
       distanceMiles: number | null;
+      /** EPC floor area of the comp (m²) when a register row matched. */
+      floorAreaSqm?: number | null;
+      /** Time-adjusted £/sqft of the comp when its size is known. */
+      pricePerSqft?: number | null;
     }[];
     requiresReview: boolean;
     riskScore: number | null;
@@ -367,6 +394,21 @@ const LeadDetailPage = async ({
     /** Verified internal floor area (m²) + where it came from. */
     floorAreaSqm?: number | null;
     floorAreaSource?: 'caller' | 'propertydata' | null;
+    /** The same size in sqft, and this house's £/sqft at the AVM. */
+    floorAreaSqft?: number | null;
+    pricePerSqft?: number | null;
+    /** Size pillar: nearby sold £/sqft (comps × EPC areas) and its estimate. */
+    sqftEvidence?: {
+      poundsPerSqft: number | null;
+      nearMedianPerSqft: number | null;
+      farMedianPerSqft: number | null;
+      matchedCount: number;
+      benchmarkPerSqft: number | null;
+      sqftEstimatePence: number | null;
+      source: 'matched_comps' | 'area_benchmark' | null;
+      sizeVsCompsPct: number | null;
+      weight: number;
+    } | null;
     /** EPC-matched address for the size (carries the house number). */
     resolvedAddress?: string | null;
     /** True when refurb used a default size because none was verified. */
@@ -526,19 +568,37 @@ const LeadDetailPage = async ({
                     <span className="font-medium">{daysOnMarket}d</span>
                   </div>
                 )}
-                {/* Floor area — verified real size only. No verified size ⇒
-                    say so rather than show a fabricated/assumed number. */}
+                {/* Floor area — verified real size first (EPC record matched
+                    to the house number), in sqft with m² alongside. Before
+                    appraisal, fall back to the listing's own figure or the
+                    scout's EPC read, each labelled so nobody mistakes it for
+                    verified. Nothing at all ⇒ say so. */}
                 <div>
                   <span className="text-muted-foreground">Floor area: </span>
                   {avmFull?.floorAreaSource && avmFull.floorAreaSqm ? (
                     <span className="font-medium">
-                      {Math.round(avmFull.floorAreaSqm)} m²
+                      {Math.round(avmFull.floorAreaSqm * 10.7639).toLocaleString('en-GB')} sqft
                       <span className="ml-1 text-[11px] text-muted-foreground">
-                        (EPC
+                        ({Math.round(avmFull.floorAreaSqm)} m² · EPC
                         {avmFull.floorAreaSource === 'caller'
                           ? ', entered'
                           : ''}
                         )
+                      </span>
+                    </span>
+                  ) : typeof listingSqft === 'number' ? (
+                    <span className="font-medium">
+                      {listingSqft.toLocaleString('en-GB')} sqft
+                      <span className="ml-1 text-[11px] text-muted-foreground">
+                        (listing says · not EPC-verified)
+                      </span>
+                    </span>
+                  ) : typeof propertyEpcFloorAreaSqm === 'number' ? (
+                    <span className="font-medium">
+                      {Math.round(propertyEpcFloorAreaSqm * 10.7639).toLocaleString('en-GB')} sqft
+                      <span className="ml-1 text-[11px] text-muted-foreground">
+                        ({Math.round(propertyEpcFloorAreaSqm)} m² · EPC, address
+                        search — not verified to the house number)
                       </span>
                     </span>
                   ) : (
@@ -547,6 +607,23 @@ const LeadDetailPage = async ({
                     </span>
                   )}
                 </div>
+                {typeof avmFull?.pricePerSqft === 'number' && (
+                  <div>
+                    <span className="text-muted-foreground">£/sqft: </span>
+                    <span className="font-medium">
+                      £{avmFull.pricePerSqft.toLocaleString('en-GB')}
+                    </span>
+                    {avmFull.sqftEvidence?.poundsPerSqft ? (
+                      <span className="ml-1 text-[11px] text-muted-foreground">
+                        (nearby sold £
+                        {avmFull.sqftEvidence.poundsPerSqft.toLocaleString(
+                          'en-GB'
+                        )}
+                        /sqft)
+                      </span>
+                    ) : null}
+                  </div>
+                )}
               </div>
 
               {/* Score + verdict block */}
@@ -760,6 +837,12 @@ const LeadDetailPage = async ({
                   <th className="py-2 text-right font-medium">Adj.</th>
                   <th className="py-2 text-right font-medium">Date</th>
                   <th className="py-2 text-right font-medium">Dist.</th>
+                  <th
+                    className="py-2 text-right font-medium"
+                    title="Time-adjusted price ÷ the comp's EPC floor area. Blank when no EPC record matched the address."
+                  >
+                    £/sqft
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y">
@@ -801,9 +884,21 @@ const LeadDetailPage = async ({
                           year: 'numeric',
                         })}
                       </td>
-                      <td className="py-2 text-right text-muted-foreground">
+                      <td className="py-2 pr-3 text-right text-muted-foreground">
                         {typeof c.distanceMiles === 'number'
                           ? `${c.distanceMiles} mi`
+                          : '—'}
+                      </td>
+                      <td
+                        className="py-2 text-right font-mono tabular-nums"
+                        title={
+                          typeof c.floorAreaSqm === 'number'
+                            ? `${Math.round(c.floorAreaSqm * 10.7639).toLocaleString('en-GB')} sqft (EPC)`
+                            : undefined
+                        }
+                      >
+                        {typeof c.pricePerSqft === 'number'
+                          ? `£${c.pricePerSqft.toLocaleString('en-GB')}`
                           : '—'}
                       </td>
                     </tr>
@@ -811,6 +906,14 @@ const LeadDetailPage = async ({
                 })}
               </tbody>
             </table>
+            {avmFull.sqftEvidence ? (
+              <SqftEvidencePanel
+                evidence={avmFull.sqftEvidence}
+                floorAreaSqft={avmFull.floorAreaSqft ?? null}
+                pricePerSqft={avmFull.pricePerSqft ?? null}
+                pointEstimatePence={avmFull.pointEstimatePence ?? null}
+              />
+            ) : null}
           </div>
         ) : null}
 
@@ -934,7 +1037,11 @@ const LeadDetailPage = async ({
             The founder's question is "should I chase this, and why?".
             Answer it up top: plain rationale + what this lead is + score.
             The full factor breakdown stays lower as supporting detail. */}
-        {(rationale || summary || planningProposal || primeOpportunity) && (
+        {(rationale ||
+          summary ||
+          planningProposal ||
+          primeOpportunity ||
+          motivationShown) && (
           <section className="rounded-2xl border-2 border-slate-200 bg-white p-5">
             <div className="flex items-start justify-between gap-4">
               <div className="min-w-0 flex-1">
@@ -982,6 +1089,31 @@ const LeadDetailPage = async ({
                           margin. The strategy needs both.
                         </p>
                       )}
+                  </div>
+                )}
+                {motivationShown && (
+                  <div
+                    className={`mt-3 rounded-xl border p-3 ${
+                      motivationShown.level === 'strong'
+                        ? 'border-amber-300 bg-amber-50'
+                        : 'border-slate-200 bg-slate-50'
+                    }`}
+                  >
+                    <p className="font-mono text-[10px] text-muted-foreground uppercase tracking-[0.18em]">
+                      {motivationShown.level === 'strong'
+                        ? 'The listing says they need to sell'
+                        : 'The listing hints at motivation'}
+                    </p>
+                    <p className="mt-1.5 text-slate-800 text-sm leading-snug">
+                      {motivationShown.signals
+                        .map((sig) => sig.replace(/_/g, ' '))
+                        .join(' · ')}
+                    </p>
+                    {motivationShown.evidence && (
+                      <p className="mt-1 text-muted-foreground text-xs italic">
+                        “{motivationShown.evidence}”
+                      </p>
+                    )}
                   </div>
                 )}
                 {(positiveFactors.length > 0 || negativeFactors.length > 0) && (
@@ -1788,3 +1920,118 @@ const LeadDetailPage = async ({
 };
 
 export default LeadDetailPage;
+
+// ── Size pillar — what nearby sold homes fetched per square foot ───────────
+// The founder's "highest indicator": the AVM re-prices this house by its
+// EPC floor area against the £/sqft of sold comps matched to THEIR EPC
+// records. This panel shows the rate, where it came from, the estimate it
+// gives, and how much of the final number it carried — so a size-driven
+// disagreement with the whole-house comps is visible, not buried.
+function SqftEvidencePanel({
+  evidence,
+  floorAreaSqft,
+  pricePerSqft,
+  pointEstimatePence,
+}: {
+  evidence: {
+    poundsPerSqft: number | null;
+    nearMedianPerSqft: number | null;
+    farMedianPerSqft: number | null;
+    matchedCount: number;
+    benchmarkPerSqft: number | null;
+    sqftEstimatePence: number | null;
+    source: 'matched_comps' | 'area_benchmark' | null;
+    sizeVsCompsPct: number | null;
+    weight: number;
+  };
+  floorAreaSqft: number | null;
+  pricePerSqft: number | null;
+  pointEstimatePence: number | null;
+}) {
+  const fmt = (n: number) => `£${n.toLocaleString('en-GB')}`;
+  const noSize = !floorAreaSqft;
+  const sizeDelta =
+    typeof evidence.sizeVsCompsPct === 'number'
+      ? Math.round(evidence.sizeVsCompsPct * 100)
+      : null;
+  return (
+    <div className="mt-4 rounded-lg border border-dashed bg-muted/30 p-4">
+      <p className="font-mono text-[10px] text-muted-foreground uppercase tracking-[0.18em]">
+        Price per square foot
+      </p>
+      <div className="mt-2 grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <div>
+          <p className="text-[11px] text-muted-foreground">Nearby sold</p>
+          <p className="font-mono font-semibold text-lg tabular-nums">
+            {evidence.poundsPerSqft ? `${fmt(evidence.poundsPerSqft)}/sqft` : '—'}
+          </p>
+          <p className="text-[11px] text-muted-foreground">
+            {evidence.matchedCount > 0
+              ? `${evidence.matchedCount} comp${evidence.matchedCount === 1 ? '' : 's'} matched to EPC size`
+              : 'no comp matched an EPC record'}
+          </p>
+        </div>
+        <div>
+          <p className="text-[11px] text-muted-foreground">This house</p>
+          <p className="font-mono font-semibold text-lg tabular-nums">
+            {pricePerSqft ? `${fmt(pricePerSqft)}/sqft` : '—'}
+          </p>
+          <p className="text-[11px] text-muted-foreground">
+            {floorAreaSqft
+              ? `${floorAreaSqft.toLocaleString('en-GB')} sqft (EPC)`
+              : 'no verified size'}
+          </p>
+        </div>
+        <div>
+          <p className="text-[11px] text-muted-foreground">Size-based value</p>
+          <p className="font-mono font-semibold text-lg tabular-nums">
+            {evidence.sqftEstimatePence
+              ? formatGBP(evidence.sqftEstimatePence)
+              : '—'}
+          </p>
+          <p className="text-[11px] text-muted-foreground">
+            {evidence.source === 'matched_comps'
+              ? `${Math.round(evidence.weight * 100)}% of the AVM`
+              : evidence.source === 'area_benchmark'
+                ? `area benchmark £${evidence.benchmarkPerSqft}/sqft · ${Math.round(evidence.weight * 100)}% of the AVM`
+                : noSize
+                  ? 'needs a verified size'
+                  : 'not enough matched comps'}
+          </p>
+        </div>
+        <div>
+          <p className="text-[11px] text-muted-foreground">Size vs comps</p>
+          <p className="font-mono font-semibold text-lg tabular-nums">
+            {sizeDelta === null
+              ? '—'
+              : `${sizeDelta > 0 ? '+' : ''}${sizeDelta}%`}
+          </p>
+          <p className="text-[11px] text-muted-foreground">
+            {sizeDelta === null
+              ? ''
+              : Math.abs(sizeDelta) >= 20
+                ? 'big gap — whole-house comps mislead here'
+                : 'similar size to the comps'}
+          </p>
+        </div>
+      </div>
+      {evidence.nearMedianPerSqft && evidence.farMedianPerSqft ? (
+        <p className="mt-2 text-[11px] text-muted-foreground">
+          Within ¼ mile {fmt(evidence.nearMedianPerSqft)}/sqft · ¼–½ mile{' '}
+          {fmt(evidence.farMedianPerSqft)}/sqft, blended 60/40 like the comps.
+        </p>
+      ) : null}
+      {pointEstimatePence && evidence.sqftEstimatePence ? (
+        <p className="mt-1 text-[11px] text-muted-foreground">
+          Whole-house comps and the size-based value differ by{' '}
+          {Math.round(
+            (Math.abs(evidence.sqftEstimatePence - pointEstimatePence) /
+              pointEstimatePence) *
+              100
+          )}
+          %.
+        </p>
+      ) : null}
+    </div>
+  );
+}

@@ -78,6 +78,15 @@ export interface ScorerConfig {
   /** Short-lease marriage-value motivation (base + urgency-scaled). */
   marriageValueBase: number;
   marriageValueUrgencyMax: number;
+  /**
+   * Points for motivation the LISTING TEXT states (motivation-llm.ts):
+   * `strong` = an outright reason to sell fast or cheap, `some` = a softer
+   * signal only. Applied once per lead, on top of the lead-type points, so
+   * "reduced listing that turns out to be an executor sale" is separable
+   * from "reduced listing". Set both to 0 to switch the factor off without
+   * a deploy.
+   */
+  motivationSignalPoints: { strong: number; some: number };
 
   // ── Pillar 2: ROI / deal quality (applied at appraisal) ───────────────
   /** BMV discount bands: (1 - offer/AVM) as a %, high → low. */
@@ -227,6 +236,7 @@ export const DEFAULT_SCORER_CONFIG: ScorerConfig = {
   commercialPenalty: -12,
   marriageValueBase: 10,
   marriageValueUrgencyMax: 8,
+  motivationSignalPoints: { strong: 8, some: 3 },
 
   // Pillar 2 — ROI / deal quality
   bmvBands: [
@@ -352,6 +362,15 @@ export function mergeScorerConfig(raw: unknown): ScorerConfig {
       raw.marriageValueUrgencyMax,
       d.marriageValueUrgencyMax
     ),
+    motivationSignalPoints: (() => {
+      const mp = isRecord(raw.motivationSignalPoints)
+        ? raw.motivationSignalPoints
+        : {};
+      return {
+        strong: num(mp.strong, d.motivationSignalPoints.strong),
+        some: num(mp.some, d.motivationSignalPoints.some),
+      };
+    })(),
     bmvBands: mergeBands(raw.bmvBands, d.bmvBands),
     roiBands: mergeBands(raw.roiBands, d.roiBands),
     equityProxy: (() => {

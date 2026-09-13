@@ -1,8 +1,9 @@
-import Anthropic from '@anthropic-ai/sdk';
+import {
+  CLAUDE_SONNET,
+  callClaudeForJson,
+  hasLlmProvider,
+} from '@repo/ai/claude';
 import { z } from 'zod';
-import { keys } from './keys';
-
-const env = keys();
 
 export type SellerSituation =
   | 'probate'
@@ -64,7 +65,8 @@ const ParsedLeadSchema = z.object({
   confidence: z.number().optional(),
 });
 
-const MODEL = 'claude-sonnet-4-5';
+const MODEL = CLAUDE_SONNET;
+const FEATURE = 'whatsapp_parse';
 
 const SYSTEM_PROMPT = `You are a structured-data extractor for UK property investment leads shared in WhatsApp groups.
 
@@ -96,42 +98,35 @@ Schema:
 }`;
 
 /**
- * Parse a raw WhatsApp message into a structured lead using Claude.
+ * Parse a raw WhatsApp message into a structured lead with the shared LLM
+ * client (feature `whatsapp_parse` — routable from Settings → AI models,
+ * OpenRouter first, provider fallback on outage or empty balance). This
+ * prompt carries vendor names and numbers: tick PII-safe pinning on the
+ * route if you move it to an open-weight model.
  *
- * Graceful: if ANTHROPIC_API_KEY is not set, returns { confidence: 0, rawNotes }
- * so callers can route the intake to manual review.
+ * Graceful: with no LLM provider keyed, or on any failure, returns
+ * { confidence: 0, rawNotes } so callers route the intake to manual review.
  */
 export async function parseWhatsAppMessage(
   rawText: string
 ): Promise<ParsedLead> {
-  if (!env.ANTHROPIC_API_KEY) {
+  if (!hasLlmProvider()) {
     console.warn(
-      '[@repo/whatsapp-parser] no ANTHROPIC_API_KEY set — skipping parse, returning manual-review placeholder'
+      '[@repo/whatsapp-parser] no LLM provider key set — skipping parse, returning manual-review placeholder'
     );
     return { confidence: 0, rawNotes: rawText };
   }
 
-  const client = new Anthropic({ apiKey: env.ANTHROPIC_API_KEY });
-
   try {
-    const response = await client.messages.create({
-      model: MODEL,
-      max_tokens: 1024,
+    const parsed = await callClaudeForJson<Record<string, unknown>>({
       system: SYSTEM_PROMPT,
-      messages: [
-        {
-          role: 'user',
-          content: `Extract the property lead from this WhatsApp message. Return JSON only.\n\n---\n${rawText}\n---`,
-        },
-      ],
+      user: `Extract the property lead from this WhatsApp message. Return JSON only.\n\n---\n${rawText}\n---`,
+      model: MODEL,
+      feature: FEATURE,
+      maxTokens: 1024,
+      temperature: 0.2,
+      attemptTimeoutMs: 20_000,
     });
-
-    const textBlock = response.content.find((c) => c.type === 'text');
-    if (!textBlock || textBlock.type !== 'text') {
-      return { confidence: 0, rawNotes: rawText };
-    }
-
-    const parsed = extractJson(textBlock.text);
     if (!parsed) {
       return { confidence: 0, rawNotes: rawText };
     }
@@ -157,31 +152,10 @@ export async function parseWhatsAppMessage(
       confidence,
     } as ParsedLead;
   } catch (err) {
-    console.error('[@repo/whatsapp-parser] Claude parse failed', err);
+    console.error('[@repo/whatsapp-parser] parse failed', err);
     return {
       confidence: 0,
       rawNotes: rawText,
     };
-  }
-}
-
-// Some responses may have stray code fences or prose; tolerate gracefully.
-function extractJson(text: string): Record<string, unknown> | null {
-  const trimmed = text.trim();
-
-  // Strip ```json ... ``` fences if present
-  const fenced = trimmed.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
-  const candidate = fenced ? fenced[1] : trimmed;
-
-  // Find first { ... last }
-  const start = candidate.indexOf('{');
-  const end = candidate.lastIndexOf('}');
-  if (start === -1 || end === -1 || end <= start) return null;
-
-  const jsonStr = candidate.slice(start, end + 1);
-  try {
-    return JSON.parse(jsonStr);
-  } catch {
-    return null;
   }
 }
