@@ -1,6 +1,6 @@
 # LLM routing — OpenRouter first, open-weight challengers, one bill
 
-_Last verified against the code: 2026-09-12_
+_Last verified against the code: 2026-09-13_
 
 ## How a call is routed
 
@@ -79,3 +79,47 @@ Rules of thumb:
 Prices in `/admin/llm-usage` are a hardcoded table (`PRICING`) — refresh
 it when a new model enters the routing table; unknown ids are costed as
 Sonnet.
+
+## Tactic — September 2026 (founder decision, 13 Sep: "go the OpenRouter route")
+
+Route by the JOB, not by one model for everything. Four jobs, four rows.
+Every change goes in as a **shadow** first and moves to **Model** only
+when the usage page shows the challenger holding up for a fortnight.
+
+| Job | Features | Primary | Shadow (try in this order) |
+|:--|:--|:--|:--|
+| Bulk reads — cheap, strict JSON | `listing_motivation_read`, `auction_lot_extract`, `dealbreaker_screen`, `whatsapp_parse`, `founder_desk`, `morning_briefing`, `vendor_reply_triage` | `deepseek/deepseek-v4-flash` | `qwen/qwen3.8-27b`, then Hunyuan Hy3 (`--list tencent/` for the id) |
+| Photos | `property_vision` | `minimax/minimax-m3` | `qwen/qwen3.8-27b` |
+| Reasoning over money | `deep_appraisal`, `comp_rationale`, `offer_narrative` | Claude Sonnet (5 once its slug is verified, else 4.5) | `z-ai/glm-5.2`, then Hunyuan Hy4 Preview |
+| Vendor-facing words | `agent_outreach_draft`, `blog_draft`, `solicitor_outreach`, `paid_ad_copy`, `ig_post_draft` | Claude Sonnet | none yet — the Beth Sims bar is a human read |
+
+Why the split: bulk reads are pennies on an open-weight model and only
+need JSON discipline, which the bake-off measures; photos need a vision
+model and MiniMax M3 is the cheapest good one; the appraisal cross-check
+is a binding-offer input, so the frontier model stays until the shadow
+data says otherwise; outreach copy must meet the tone bar.
+
+**What the money looks like.** At V4 Flash prices the full daily listing
+read costs pennies. Screening every lead's photos on M3 costs pounds a
+month. Fifty deep appraisals a day on GLM 5.2 costs under a pound a day.
+Cost is no longer the lever; the sources are.
+
+**Sequence.**
+
+1. Locally, with the key: `pnpm tsx scripts/llm-bakeoff.mts`. It rejects
+   any id that is not on OpenRouter's live list, so run
+   `--list anthropic/,tencent/` first to confirm the Sonnet 5 and Hunyuan
+   slugs — neither could be verified from the build sandbox.
+2. Settings → AI models: set the shadow column per the table. Tick
+   PII-safe pinning on `whatsapp_parse`, `vendor_reply_triage` and the
+   outreach drafts.
+3. After two weeks on /admin/llm-usage: flip primaries where the shadow
+   held (contract pass rate at or near the Claude baseline, no `__shadow`
+   failure streaks).
+4. Once the Claude 5 slugs are verified, flip `ANTHROPIC_SONNET` /
+   `ANTHROPIC_OPUS` in `packages/ai/routing.ts` to the 5-generation ids
+   (constants are already there) and the price table follows.
+
+Ids in this section: `minimax/minimax-m3` and `qwen/qwen3.8-27b` are
+taken from their openrouter.ai model pages (13 Sep 2026); the rest are
+the 12 Sep verified set. Prices in `/admin/llm-usage` updated the same day.

@@ -36,6 +36,11 @@ const MODEL_SUGGESTIONS = [
   'z-ai/glm-5.2',
   'moonshotai/kimi-k2.6',
   'meta-llama/llama-4-maverick',
+  // Sep 2026 tactic (docs/LLM-ROUTING.md § Tactic): vision on a budget and
+  // a dense open-weight JSON worker. Ids from the openrouter.ai model pages,
+  // 13 Sep 2026 — shadow first, as always.
+  'minimax/minimax-m3',
+  'qwen/qwen3.8-27b',
 ];
 
 export function RoutingTable({ initialRows }: { initialRows: Row[] }) {

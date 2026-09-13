@@ -19,6 +19,11 @@ describe('toOpenRouterId', () => {
     expect(toOpenRouterId('claude-opus-4-7')).toBe('anthropic/claude-opus-4.7');
   });
 
+  it('maps the Claude 5 generation without inventing a dot', () => {
+    expect(toOpenRouterId('claude-sonnet-5')).toBe('anthropic/claude-sonnet-5');
+    expect(toOpenRouterId('claude-opus-5')).toBe('anthropic/claude-opus-5');
+  });
+
   it('passes slash ids through untouched and dots unknown Claude versions', () => {
     expect(toOpenRouterId('z-ai/glm-5.2')).toBe('z-ai/glm-5.2');
     expect(toOpenRouterId('claude-sonnet-5-0')).toBe(
