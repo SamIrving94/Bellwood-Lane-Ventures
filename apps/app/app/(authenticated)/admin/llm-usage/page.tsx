@@ -29,6 +29,13 @@ const PRICING: Record<string, { in: number; out: number }> = {
   'z-ai/glm-5.2': { in: 0.4875, out: 1.56 },
   'moonshotai/kimi-k2.6': { in: 0.5795, out: 2.44 },
   'meta-llama/llama-4-maverick': { in: 0.2, out: 0.696 },
+  // Added 13 Sep 2026 (openrouter.ai model pages / Anthropic price list).
+  'minimax/minimax-m3': { in: 0.3, out: 1.2 },
+  'qwen/qwen3.8-27b': { in: 0.15, out: 2 },
+  'claude-sonnet-5': { in: 2, out: 10 },
+  'claude-opus-5': { in: 5, out: 25 },
+  'anthropic/claude-sonnet-5': { in: 2, out: 10 },
+  'anthropic/claude-opus-5': { in: 5, out: 25 },
 };
 
 function estimateUsdCost(

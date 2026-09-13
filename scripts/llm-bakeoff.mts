@@ -39,6 +39,9 @@ const DEFAULT_MODELS = [
   'z-ai/glm-5.2',
   'moonshotai/kimi-k2.6',
   'meta-llama/llama-4-maverick',
+  // Sep 2026 tactic candidates (docs/LLM-ROUTING.md § Tactic).
+  'minimax/minimax-m3',
+  'qwen/qwen3.8-27b',
 ];
 
 // ── env ─────────────────────────────────────────────────────────────────────

@@ -110,6 +110,17 @@ export function openRouterProviderPrefs(
 export const ANTHROPIC_HAIKU = 'claude-haiku-4-5';
 export const ANTHROPIC_SONNET = 'claude-sonnet-4-5';
 export const ANTHROPIC_OPUS = 'claude-opus-4-7';
+/**
+ * The current Anthropic generation (Sep 2026 price list: Sonnet 5 $2/$10,
+ * Opus 5 $5/$25 per 1M — cheaper than the 4.x tiers above and better).
+ * Not yet the code defaults: their OpenRouter slugs could not be verified
+ * from the build sandbox, and an unknown slug on the primary route is a
+ * hard 400 that takes the feature down. Verify with
+ * `pnpm tsx scripts/llm-bakeoff.mts --list anthropic/`, then either flip
+ * the defaults here or set them per feature on Settings → AI models.
+ */
+export const ANTHROPIC_SONNET_5 = 'claude-sonnet-5';
+export const ANTHROPIC_OPUS_5 = 'claude-opus-5';
 
 /**
  * OpenRouter's ids for the same models. OpenRouter puts a DOT in the
@@ -123,6 +134,10 @@ export const OPENROUTER_CLAUDE_IDS: Record<string, string> = {
   [ANTHROPIC_HAIKU]: 'anthropic/claude-haiku-4.5',
   [ANTHROPIC_SONNET]: 'anthropic/claude-sonnet-4.5',
   [ANTHROPIC_OPUS]: 'anthropic/claude-opus-4.7',
+  // Single-digit versions carry no dot; listed so the mapping is explicit
+  // even though the generic rule below produces the same id.
+  [ANTHROPIC_SONNET_5]: 'anthropic/claude-sonnet-5',
+  [ANTHROPIC_OPUS_5]: 'anthropic/claude-opus-5',
 };
 
 /** Map a bare Anthropic id to its OpenRouter id; slash ids pass through. */
