@@ -71,6 +71,12 @@
 - `ANTHROPIC_API_KEY` — optional; first fallback. Its balance ran dry in Sep 2026 and took four features down — never the only key again
 - `LLM_PRIMARY_PROVIDER` / `LLM_FALLBACK_CHAIN` — optional overrides, documented in the routing doc
 
+### Per-project gotcha (Vercel)
+- `OPENAI_API_KEY` must be set on **both** Vercel projects. The dashboard
+  (`bellwood-app`) needs it for voice-note transcription (`/api/transcribe`,
+  Whisper). Missing on the app project = "Transcription not configured" in
+  the feedback panel (seen in prod 8 Sep 2026).
+
 ### Not yet set
 - `RESEND_TOKEN` + `RESEND_FROM` — for real email sending
 - `CALENDLY_API_TOKEN` + `CALENDLY_EVENT_URL` — for booking links
