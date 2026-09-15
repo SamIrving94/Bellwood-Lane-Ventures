@@ -1,5 +1,6 @@
 'use server';
 
+import { getCronSecret } from '@/lib/cron-secret';
 import { getFounderSession } from '@repo/auth/server';
 import { database } from '@repo/database';
 import { findPlaces } from '@repo/property-data/src/os-places';
@@ -654,7 +655,7 @@ export async function triggerScoutNow(): Promise<{
 }> {
   const userId = (await getFounderSession())?.userId;
   if (!userId) return { ok: false, error: 'Unauthorized' };
-  const cronSecret = process.env.CRON_SECRET;
+  const cronSecret = getCronSecret();
   if (!cronSecret) return { ok: false, error: 'CRON_SECRET not configured' };
   try {
     const res = await fetch('https://bellwood-api.vercel.app/cron/scouting', {
