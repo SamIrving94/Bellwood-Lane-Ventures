@@ -1,3 +1,4 @@
+import { getCronSecret } from '@/lib/cron-secret';
 import { isFounder } from '@repo/auth/server';
 import { database } from '@repo/database';
 import { NextResponse } from 'next/server';
@@ -21,7 +22,7 @@ export const dynamic = 'force-dynamic';
 
 async function isAuthorised(request: Request): Promise<boolean> {
   const authHeader = request.headers.get('authorization');
-  const secret = process.env.CRON_SECRET;
+  const secret = getCronSecret();
   if (secret && authHeader === `Bearer ${secret}`) return true;
   return isFounder();
 }

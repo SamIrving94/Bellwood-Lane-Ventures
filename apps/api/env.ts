@@ -8,6 +8,20 @@ import { keys as propertyData } from '@repo/property-data/keys';
 import { createEnv } from '@t3-oss/env-nextjs';
 import { z } from 'zod';
 
+/**
+ * Strip a leading UTF-8 byte order mark (U+FEFF) and surrounding whitespace
+ * from a secret. Sep 2026: CRON_SECRET on the dashboard project carried a
+ * BOM from the file it was pasted from, which is invisible in the Vercel UI
+ * but made every "Bearer <secret>" header invalid. Cleaning here means the
+ * value the dashboard sends and the value this app compares against agree
+ * even if one copy of the env var was pasted with the BOM.
+ */
+const cleanSecret = (raw: string | undefined): string | undefined => {
+  if (raw === undefined) return undefined;
+  const cleaned = raw.replace(/^\uFEFF/, '').trim();
+  return cleaned.length > 0 ? cleaned : undefined;
+};
+
 export const env = createEnv({
   extends: [
     auth(),
@@ -47,9 +61,9 @@ export const env = createEnv({
   },
   client: {},
   runtimeEnv: {
-    CRON_SECRET: process.env.CRON_SECRET,
-    BELLWOOD_API_KEY: process.env.BELLWOOD_API_KEY,
-    PAPERCLIP_API_KEY: process.env.PAPERCLIP_API_KEY,
+    CRON_SECRET: cleanSecret(process.env.CRON_SECRET),
+    BELLWOOD_API_KEY: cleanSecret(process.env.BELLWOOD_API_KEY),
+    PAPERCLIP_API_KEY: cleanSecret(process.env.PAPERCLIP_API_KEY),
     CH_STREAM_KEY: process.env.CH_STREAM_KEY,
     AGENT_PROSPECTING_POSTCODES: process.env.AGENT_PROSPECTING_POSTCODES,
     AGENT_PROSPECTING_REPORT_EMAIL: process.env.AGENT_PROSPECTING_REPORT_EMAIL,
