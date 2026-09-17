@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { __clearMemoryCache, getFloodRisk } from '../propertydata';
 import { __resetRateLimiter } from '../rate-limiter';
-import { setPersistentStore, type PersistentCacheStore } from '../store';
+import { type PersistentCacheStore, setPersistentStore } from '../store';
 
 // The durable cache is the #1 lever against wasted PropertyData credits (and a
 // compounding cause of the lead-appraise 504s): a cold-started instance, with an
@@ -9,9 +9,11 @@ import { setPersistentStore, type PersistentCacheStore } from '../store';
 // store instead of re-buying it. Exercised end-to-end through getFloodRisk (a
 // simple endpoint that routes through fetchPropertyData); the network is stubbed.
 
+// The real /flood-risk shape (captured 2026-09-13): one top-level string.
 const VALID_BODY = JSON.stringify({
-  status: 'ok',
-  result: { rivers_and_sea: 'Low', surface_water: 'Low' },
+  status: 'success',
+  postcode: 'SW1A 2AA',
+  flood_risk: 'Low',
 });
 
 function okResponse() {

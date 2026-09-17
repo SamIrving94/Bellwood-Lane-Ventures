@@ -26,6 +26,37 @@ export type WhatsNewEntry = {
 /** Newest first. The popup shows index 0. */
 export const WHATS_NEW: WhatsNewEntry[] = [
   {
+    id: '2026-09-17-propertydata-signals-live',
+    date: '2026-09-17',
+    emoji: '🔌',
+    title: 'Flood, demand, yield and sold comps now live on batch rows',
+    intro:
+      'Eleven PropertyData feeds were plugged into the wrong socket since day one — paid for on every run, never read. They are wired to the real responses now.',
+    bullets: [
+      {
+        emoji: '🌊',
+        text: '**Flood, demand and yield** fill in on every batch-appraised row. Upload the pipeline sheet again and the three columns populate.',
+      },
+      {
+        emoji: '🏘️',
+        text: '**Sold comps by distance** now feed the AVM — real Land Registry sales within half a mile, not the postcode fallback.',
+      },
+      {
+        emoji: '📐',
+        text: '**Real floor areas** from the EPC register match by house number. Sizes arrive in square feet and are converted once, properly.',
+      },
+      {
+        emoji: '🕵️',
+        text: '**Agent prospecting** lists who is actually selling in each postcode, by live instruction count.',
+      },
+      {
+        emoji: '🔒',
+        text: '**Tenure stays honest.** PropertyData has no per-address lease data, so the short-lease screen says "not performed" rather than guessing. Every quote still lands with a person.',
+      },
+    ],
+    cta: { label: 'Open the batch tool', href: '/batch' },
+  },
+  {
     id: '2026-09-12-appraisal-signals-and-size',
     date: '2026-09-12',
     emoji: '🫀',
