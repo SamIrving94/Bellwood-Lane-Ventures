@@ -6,6 +6,54 @@ the scout, the AVM, or any PropertyData call.
 
 ---
 
+## 2026-09-17 — PropertyData: the eleven schemas rewritten from real responses
+
+**What was done.** Follow-through on the 2026-09-12 entry below. The probe
+(`scripts/propertydata-probe.mts --postcode "DL2 3JP"`, ~30 credits) captured
+one real body per endpoint; every schema, `hasContent` and reader in
+`packages/property-data/src/propertydata.ts` was rewritten from those files,
+and each endpoint now ships with a fixture test of its saved response
+(`src/__tests__/propertydata-shapes.test.ts`, fixtures in
+`src/__tests__/fixtures/propertydata-responses.ts`). The `SCHEMA DRIFT` log
+lines should stop; the responses now cache, so credits per cron run drop.
+
+**What the API actually sends — and what we had assumed.** None of the eleven
+carries a `result` object. Beyond that, four assumptions were simply false:
+
+- `/demand` has **no 0-100 score**. It publishes a text `demand_rating`
+  ("Balanced market"), `days_on_market`, stock and turnover figures. We do not
+  map the rating to a number; the preflight temperature now leans on growth.
+- `/freeholds` has **no addresses, no tenure, no lease lengths**. It returns
+  freehold title polygons with a `leaseholds` count each. Per-address tenure
+  therefore has NO source: `getTenureByPostcodeResult` reports `failed` with
+  the reason, spends nothing, and the preflight keeps routing to a person
+  ("short-lease screen NOT performed"). The titles are exposed as
+  `getFreeholdTitles` so nothing is wasted.
+- `/floor-areas` is in **square feet** (`square_feet`), not the m² the reader
+  assumed, and carries no bedrooms or property type. Converted once at the
+  boundary; the type+bedrooms matching path is gone because it could never fire.
+- `/agents` has **no phone or website**. It ranks agents per portal by live
+  instructions (`units_offered`) with branch towns.
+
+Also: `/energy-efficiency` returns JSON again (the "retired, returns HTML"
+note in the 2026-08 entry below is out of date); `/growth` is a tuple array of
+yearly rows with no forecast; `/yields` and `/growth` percentages and
+`/council-tax` pound figures arrive as **strings**.
+
+**Rules (additive to 2026-09-12).**
+
+- Every PropertyData reader is typed. No caller reads the raw body — the
+  `.result` reach-ins in `signals.ts`, the prospecting cron, scouting and the
+  snapshot builder are gone. Add a field to the reading, not to the caller.
+- A field the API does not publish stays on the public type as `null` with a
+  comment saying so (e.g. `demandScore`, `medianPricePence`, `forecastGrowthPct`)
+  so persisted snapshots and their readers keep their shape. Do not fill it
+  from a look-alike.
+- Not probed, still on the old `result` shape: `/valuation-sale`, `/listings`,
+  `/account/credits`, `/demographics`, `/george`. They were not in the
+  production drift logs, but they were also written from memory. Probe before
+  trusting.
+
 ## 2026-09-12 — One empty Anthropic balance took four features down for days
 
 **What broke.** Deep appraisal, the auction/lead photo screener, the morning

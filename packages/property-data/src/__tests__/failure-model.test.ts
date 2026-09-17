@@ -8,7 +8,7 @@ import {
   runPreflightChecks,
 } from '../propertydata';
 import { __resetRateLimiter } from '../rate-limiter';
-import { setPersistentStore, type PersistentCacheStore } from '../store';
+import { type PersistentCacheStore, setPersistentStore } from '../store';
 
 // The bug these lock down: every failure mode collapsed to `null`, and callers
 // read `null` as "the register holds nothing for this address". A 429 on
@@ -24,37 +24,53 @@ function jsonResponse(body: unknown, status = 200) {
   });
 }
 
+// Bodies follow the REAL shapes captured on 2026-09-13 (see
+// fixtures/propertydata-responses.ts): /energy-efficiency lists rows under a
+// top-level `energy_efficiency`, /flood-risk is one top-level `flood_risk`
+// string, /demand and /growth are top-level fields / a tuple array.
 const EPC_BODY = {
-  status: 'ok',
-  result: {
-    properties: [
-      { address: '12 Test Street', current_energy_rating: 'F' },
-    ],
-  },
+  status: 'success',
+  postcode: 'M14 5XY',
+  energy_efficiency: [{ address: '12 Test Street', score: 30, rating: 'F' }],
 };
 
-/** Upstream renamed `properties` → `dwellings`. Still passes the all-optional schema. */
+/** Upstream renamed `energy_efficiency` → `dwellings`. Still passes the tolerant schema. */
 const EPC_DRIFT_BODY = {
-  status: 'ok',
-  result: { dwellings: [{ address: '12 Test Street' }] },
+  status: 'success',
+  postcode: 'M14 5XY',
+  dwellings: [{ address: '12 Test Street' }],
 };
 
-const EMPTY_POSTCODE_BODY = { status: 'ok', result: { properties: [] } };
+const EMPTY_POSTCODE_BODY = {
+  status: 'success',
+  postcode: 'M14 5XY',
+  energy_efficiency: [],
+};
 
 /**
- * Endpoint-aware stub for the four calls runPreflightChecks fans out to. Every
- * one returns a well-formed body that simply holds no records — the case that
- * must NOT read as degraded.
+ * Endpoint-aware stub for the calls runPreflightChecks fans out to. Every one
+ * returns a well-formed body that simply holds no records — the case that must
+ * NOT read as degraded. (Tenure never reaches the network: /freeholds carries
+ * no per-address tenure, so that source reports itself unavailable up front.)
  */
 function preflightEmptyResponse(url: string) {
   if (url.includes('/demand')) {
     return jsonResponse({
-      status: 'ok',
-      result: { sales_demand_score: 50, days_on_market_average: 60 },
+      status: 'success',
+      postcode: 'M14 5XY',
+      demand_rating: 'Balanced market',
+      days_on_market: 60,
     });
   }
   if (url.includes('/growth')) {
-    return jsonResponse({ status: 'ok', result: { annual_growth: 0 } });
+    return jsonResponse({
+      status: 'success',
+      postcode: 'M14 5XY',
+      data: [
+        ['Sep 2025', 200000, null],
+        ['Sep 2026', 200000, '0.0%'],
+      ],
+    });
   }
   return jsonResponse(EMPTY_POSTCODE_BODY);
 }
@@ -108,7 +124,7 @@ describe('a failed lookup is not an absence', () => {
     fetchMock.mockResolvedValue(jsonResponse({ error: 'boom' }, 500));
 
     await expect(getEpcByPostcode('M14 5XY')).rejects.toBeInstanceOf(
-      PropertyDataUnavailableError,
+      PropertyDataUnavailableError
     );
   });
 
@@ -136,17 +152,17 @@ describe('a failed lookup is not an absence', () => {
     expect(pre.epc.isLowEpc).toBe(false);
     expect(pre.offerAdjustment).toBe(0);
     expect(pre.reasoning.join('\n')).not.toContain(
-      'no certificate matched on this address',
+      'no certificate matched on this address'
     );
     expect(pre.reasoning.join('\n')).toContain('EPC: lookup UNAVAILABLE');
     expect(pre.reasoning.join('\n')).toContain(
-      'short-lease screen NOT performed',
+      'short-lease screen NOT performed'
     );
   });
 
-  it('does not mark the preflight degraded when the registers are simply empty', async () => {
+  it('reads empty registers as empty, not as failures', async () => {
     fetchMock.mockImplementation(async (url: string) =>
-      preflightEmptyResponse(url),
+      preflightEmptyResponse(url)
     );
 
     const pre = await runPreflightChecks({
@@ -154,11 +170,18 @@ describe('a failed lookup is not an absence', () => {
       address: '12 Test Street',
     });
 
-    expect(pre.degraded).toBe(false);
-    expect(pre.failedSources).toEqual([]);
+    // EPC, demand and growth all answered. Tenure is the one source that is
+    // unavailable BY DESIGN until a per-address tenure feed exists — and it
+    // must keep saying so rather than clearing the short-lease flag.
+    expect(pre.failedSources).toEqual(['tenure']);
+    expect(pre.degraded).toBe(true);
     expect(pre.epc.status).toBe('ok');
+    expect(pre.marketTemperature.status).toBe('ok');
     expect(pre.reasoning.join('\n')).toContain(
-      'EPC: no certificate matched on this address',
+      'EPC: no certificate matched on this address'
+    );
+    expect(pre.reasoning.join('\n')).toContain(
+      'short-lease screen NOT performed'
     );
   });
 });
@@ -196,36 +219,38 @@ describe('the durable tier revalidates what it serves', () => {
   it('treats a schema-mismatched durable row as a miss and invalidates it', async () => {
     const { store, map } = makeMockStore();
     // A row written by an older code version against an older upstream shape:
-    // `rivers_and_sea` used to be numeric. It survives deploys and is shared
-    // across instances, and the durable path used to hand it back as `T`.
+    // `flood_risk` as a number. It survives deploys and is shared across
+    // instances, and the durable path used to hand it back as `T`.
     const key = '/flood-risk:{"postcode":"M145XY"}';
     map.set(key, {
-      value: { status: 'ok', result: { rivers_and_sea: 42 } },
+      value: { status: 'success', flood_risk: 42 },
       expiresAt: Date.now() + 60_000,
     });
     setPersistentStore(store);
     fetchMock.mockResolvedValue(
-      jsonResponse({ status: 'ok', result: { rivers_and_sea: 'Low' } }),
+      jsonResponse({ status: 'success', flood_risk: 'Low' })
     );
 
     const res = await getFloodRisk('M14 5XY');
 
     // Bought fresh instead of served stale-and-wrong.
     expect(fetchMock).toHaveBeenCalledTimes(1);
-    expect(res?.result?.rivers_and_sea).toBe('Low');
+    expect(res?.floodRisk).toBe('Low');
     expect(store.delete).toHaveBeenCalledWith(key);
   });
 
   it('treats a durable row that validates but is hollow as a miss', async () => {
     const { store, map } = makeMockStore();
     const key = '/flood-risk:{"postcode":"M145XY"}';
+    // The pre-Sep-2026 code cached exactly this: the old `result`-wrapped
+    // shape, which the tolerant schema still accepts but which carries nothing.
     map.set(key, {
-      value: { status: 'ok', result: {} },
+      value: { status: 'ok', result: { rivers_and_sea: 'Low' } },
       expiresAt: Date.now() + 60_000,
     });
     setPersistentStore(store);
     fetchMock.mockResolvedValue(
-      jsonResponse({ status: 'ok', result: { surface_water: 'Very Low' } }),
+      jsonResponse({ status: 'success', flood_risk: 'Very Low' })
     );
 
     await getFloodRisk('M14 5XY');
@@ -237,7 +262,7 @@ describe('the durable tier revalidates what it serves', () => {
   it('still serves a durable row that revalidates cleanly', async () => {
     const { store, map } = makeMockStore();
     map.set('/flood-risk:{"postcode":"M145XY"}', {
-      value: { status: 'ok', result: { rivers_and_sea: 'High' } },
+      value: { status: 'success', flood_risk: 'High' },
       expiresAt: Date.now() + 60_000,
     });
     setPersistentStore(store);
@@ -245,7 +270,7 @@ describe('the durable tier revalidates what it serves', () => {
     const res = await getFloodRisk('M14 5XY');
 
     expect(fetchMock).not.toHaveBeenCalled();
-    expect(res?.result?.rivers_and_sea).toBe('High');
+    expect(res?.floodRisk).toBe('High');
     expect(store.delete).not.toHaveBeenCalled();
   });
 });
@@ -253,7 +278,7 @@ describe('the durable tier revalidates what it serves', () => {
 describe('cache keys are postcode-case-insensitive', () => {
   it('bills "m14 5xy" and "M14 5XY" as one entry, not two', async () => {
     fetchMock.mockResolvedValue(
-      jsonResponse({ status: 'ok', result: { rivers_and_sea: 'Low' } }),
+      jsonResponse({ status: 'success', flood_risk: 'Low' })
     );
 
     await getFloodRisk('m14 5xy');

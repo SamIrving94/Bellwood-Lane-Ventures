@@ -47,13 +47,13 @@ import {
 import { fetchGazetteProbateNotices } from './gazette';
 import { matchProbateAddressToSale } from './hmlr-match';
 import { leadTypeForListing } from './lead-type';
+import { assessModernisation } from './modernisation';
 import { readListingMotivation } from './motivation-llm';
 import {
   type MotivationRead,
   type MotivationSignal,
   strongerLeadType,
 } from './motivation-signals';
-import { assessModernisation } from './modernisation';
 import { fetchPlanningConsentLeads } from './planning-consents';
 import { fetchProbateGrants } from './probate-data';
 import { enrichRationaleWithLlm } from './rationale-llm';
@@ -1647,10 +1647,7 @@ export async function runScoutingPipeline(
         }),
       ]);
 
-      const floodResult = (flood as { result?: Record<string, string> } | null)
-        ?.result;
-      const floodBand =
-        floodResult?.rivers_and_sea ?? floodResult?.surface_water ?? null;
+      const floodBand = flood?.floodRisk ?? null;
 
       // Average EPC rating across known records in this postcode.
       const epcRatings = epcs

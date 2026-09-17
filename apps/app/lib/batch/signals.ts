@@ -7,6 +7,10 @@
  * to fail appraisal, so every fetch is wrapped and any rejection/null is
  * treated as "no signal". The underlying wrappers are cached internally, so
  * calling them per item is cheap.
+ *
+ * Reads the TYPED readings from @repo/property-data, never the raw response —
+ * the raw shape is the package's business (see the Sep 2026 schema fix: this
+ * file used to reach into `.result`, which the API never sent).
  */
 
 import 'server-only';
@@ -14,16 +18,21 @@ import 'server-only';
 import { getFloodRisk, getMarketDemand, getYields } from '@repo/property-data';
 
 export type BatchSignals = {
-  /** Short human flood-risk string (e.g. "Rivers/sea: High"), else null. */
+  /** PropertyData's flood band for the postcode (e.g. "Very Low"), else null. */
   floodRisk: string | null;
-  /** Short human demand string (e.g. "Demand 72/100"), else null. */
+  /** PropertyData's demand rating (e.g. "Balanced market"), else null. */
   demandRating: string | null;
-  /** Average gross rental yield %, else null. */
+  /** Long-let gross rental yield %, else null. */
   grossYieldPct: number | null;
-  /** Raw-ish values we derived from, kept for future use. */
+  /** The readings we derived from, kept for future use. */
   signalsJson: {
-    flood: { riversAndSea: string | null; surfaceWater: string | null } | null;
-    demand: { score: number | null; daysOnMarketAvg: number | null } | null;
+    flood: { floodRisk: string } | null;
+    demand: {
+      rating: string | null;
+      daysOnMarket: number | null;
+      totalForSale: number | null;
+      monthsOfInventory: number | null;
+    } | null;
     yields: {
       averageYieldPct: number | null;
       lowYieldPct: number | null;
@@ -44,7 +53,9 @@ const EMPTY_SIGNALS: BatchSignals = {
  * failing endpoint never breaks the others — and the whole thing is wrapped
  * so a thrown error degrades to empty signals.
  */
-export async function fetchBatchSignals(postcode: string): Promise<BatchSignals> {
+export async function fetchBatchSignals(
+  postcode: string
+): Promise<BatchSignals> {
   try {
     const [floodRes, demandRes, yieldsRes] = await Promise.allSettled([
       getFloodRisk(postcode),
@@ -52,36 +63,12 @@ export async function fetchBatchSignals(postcode: string): Promise<BatchSignals>
       getYields(postcode),
     ]);
 
-    // ── Flood ────────────────────────────────────────────────────────────
-    const flood =
-      floodRes.status === 'fulfilled' ? floodRes.value?.result ?? null : null;
-    const riversAndSea =
-      typeof flood?.rivers_and_sea === 'string' ? flood.rivers_and_sea : null;
-    const surfaceWater =
-      typeof flood?.surface_water === 'string' ? flood.surface_water : null;
-    // Prefer the rivers/sea reading; fall back to surface water.
-    const floodReading = riversAndSea ?? surfaceWater;
-    const floodRisk = floodReading
-      ? `${riversAndSea ? 'Rivers/sea' : 'Surface water'}: ${floodReading}`
-      : null;
+    const flood = floodRes.status === 'fulfilled' ? floodRes.value : null;
+    const demand = demandRes.status === 'fulfilled' ? demandRes.value : null;
+    const yields = yieldsRes.status === 'fulfilled' ? yieldsRes.value : null;
 
-    // ── Demand ───────────────────────────────────────────────────────────
-    const demand =
-      demandRes.status === 'fulfilled' ? demandRes.value?.result ?? null : null;
-    const demandScore =
-      typeof demand?.sales_demand_score === 'number'
-        ? demand.sales_demand_score
-        : null;
-    const daysOnMarketAvg =
-      typeof demand?.days_on_market_average === 'number'
-        ? demand.days_on_market_average
-        : null;
-    const demandRating =
-      demandScore !== null ? `Demand ${demandScore}/100` : null;
-
-    // ── Yields ───────────────────────────────────────────────────────────
-    const yields =
-      yieldsRes.status === 'fulfilled' ? yieldsRes.value ?? null : null;
+    const floodRisk = flood?.floodRisk ?? null;
+    const demandRating = demand?.demandRating ?? null;
     const grossYieldPct =
       typeof yields?.averageYieldPct === 'number'
         ? yields.averageYieldPct
@@ -92,20 +79,23 @@ export async function fetchBatchSignals(postcode: string): Promise<BatchSignals>
       demandRating,
       grossYieldPct,
       signalsJson: {
-        flood: floodReading
-          ? { riversAndSea, surfaceWater }
-          : null,
-        demand:
-          demandScore !== null || daysOnMarketAvg !== null
-            ? { score: demandScore, daysOnMarketAvg }
-            : null,
-        yields: grossYieldPct !== null
+        flood: floodRisk ? { floodRisk } : null,
+        demand: demand
           ? {
-              averageYieldPct: grossYieldPct,
-              lowYieldPct: yields?.lowYieldPct ?? null,
-              highYieldPct: yields?.highYieldPct ?? null,
+              rating: demand.demandRating,
+              daysOnMarket: demand.daysOnMarket,
+              totalForSale: demand.totalForSale,
+              monthsOfInventory: demand.monthsOfInventory,
             }
           : null,
+        yields:
+          grossYieldPct !== null
+            ? {
+                averageYieldPct: grossYieldPct,
+                lowYieldPct: yields?.lowYieldPct ?? null,
+                highYieldPct: yields?.highYieldPct ?? null,
+              }
+            : null,
       },
     };
   } catch (error) {

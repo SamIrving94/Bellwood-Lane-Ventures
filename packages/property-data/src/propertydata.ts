@@ -12,16 +12,16 @@
  */
 
 import 'server-only';
-import { acquireRateSlot } from './rate-limiter';
-import { getPersistentStore, type PersistentCacheStore } from './store';
 import { type PropertyDataType, toPropertyDataType } from './property-type';
+import { acquireRateSlot } from './rate-limiter';
+import { type PersistentCacheStore, getPersistentStore } from './store';
 
 export { toPropertyDataType };
 export type { PropertyDataType };
 
 import { z } from 'zod';
 import { keys } from '../keys';
-import { buildMarketSignals, type MarketSignals } from './market-signals';
+import { type MarketSignals, buildMarketSignals } from './market-signals';
 
 const env = keys();
 
@@ -183,6 +183,41 @@ function normalisePostcodeParam(value: string | number): string {
   return String(value).replace(/\s+/g, '').toUpperCase();
 }
 
+// ---------------------------------------------------------------------------
+// Value parsers for the formats PropertyData actually sends. Several endpoints
+// return numbers as strings: percentages ("2.8%", "-3.9%"), pounds with
+// thousands separators ("1,748.10"), and plain decimals ("9.1", "0.45"). Each
+// parser returns null for anything it cannot read — never 0, never NaN.
+// ---------------------------------------------------------------------------
+
+/** "2.8%" → 2.8, "-3.9%" → -3.9, "11%" → 11. Null for anything else. */
+function parsePercentString(value: unknown): number | null {
+  if (typeof value !== 'string') return null;
+  const m = value.trim().match(/^(-?\d+(?:\.\d+)?)\s*%$/);
+  if (!m?.[1]) return null;
+  const n = Number(m[1]);
+  return Number.isFinite(n) ? n : null;
+}
+
+/** "1,748.10" → 1748.1, "£2,622" → 2622. Null for anything else. */
+function parsePoundsString(value: unknown): number | null {
+  if (typeof value !== 'string') return null;
+  const cleaned = value.trim().replace(/^£/, '').replace(/,/g, '');
+  if (!/^-?\d+(?:\.\d+)?$/.test(cleaned)) return null;
+  const n = Number(cleaned);
+  return Number.isFinite(n) ? n : null;
+}
+
+/** A number, or a plain decimal string ("9.1", "54.579"). Null otherwise. */
+function toNumber(value: unknown): number | null {
+  if (typeof value === 'number') return Number.isFinite(value) ? value : null;
+  if (typeof value !== 'string') return null;
+  const trimmed = value.trim();
+  if (!/^-?\d+(?:\.\d+)?$/.test(trimmed)) return null;
+  const n = Number(trimmed);
+  return Number.isFinite(n) ? n : null;
+}
+
 type FetchOptions<T> = {
   ttlMs: number;
   estimatedCredits: number;
@@ -201,6 +236,14 @@ type FetchOptions<T> = {
    * cacheable.
    */
   hasContent: (value: T) => boolean;
+  /**
+   * Per-endpoint request budget. Most endpoints answer in well under a second,
+   * but a few do a live portal scrape on the way (`process_time` of ~9s on
+   * /yields and ~8s on /agents in the 2026-09-13 probe) and were timing out
+   * against the 10s default — every /yields call in production failed that
+   * way. Defaults to REQUEST_TIMEOUT_MS.
+   */
+  timeoutMs?: number;
 };
 
 async function fetchPropertyData<T>(
@@ -282,8 +325,9 @@ async function fetchPropertyData<T>(
   // Respect PropertyData's 4-calls/10s limit before every live fetch.
   await acquireRateSlot();
 
+  const timeoutMs = options.timeoutMs ?? REQUEST_TIMEOUT_MS;
   const controller = new AbortController();
-  let timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  let timer = setTimeout(() => controller.abort(), timeoutMs);
 
   try {
     let res = await fetch(url.toString(), {
@@ -298,7 +342,7 @@ async function fetchPropertyData<T>(
       await new Promise((r) => setTimeout(r, 2500));
       await acquireRateSlot();
       clearTimeout(timer);
-      timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+      timer = setTimeout(() => controller.abort(), timeoutMs);
       res = await fetch(url.toString(), {
         method: 'GET',
         signal: controller.signal,
@@ -366,12 +410,10 @@ async function fetchPropertyData<T>(
       };
     }
     if ((error as { name?: string })?.name === 'AbortError') {
-      console.warn(
-        `[propertydata] ${endpoint} timed out after ${REQUEST_TIMEOUT_MS}ms`
-      );
+      console.warn(`[propertydata] ${endpoint} timed out after ${timeoutMs}ms`);
       return {
         outcome: 'failed',
-        error: `${endpoint} timed out after ${REQUEST_TIMEOUT_MS}ms`,
+        error: `${endpoint} timed out after ${timeoutMs}ms`,
       };
     }
     console.warn(`[propertydata] ${endpoint} failed`, error);
@@ -472,28 +514,37 @@ export async function getPropertyDataValuation(input: {
 // Endpoint: /floor-areas
 // ---------------------------------------------------------------------------
 
-const FloorAreasSchema = z.object({
-  status: z.string().optional(),
-  result: z
-    .object({
-      properties: z
-        .array(
-          z.object({
+/**
+ * Real shape (captured 2026-09-13): a top-level `known_floor_areas[]` of
+ * `{ inspection_date, address, square_feet, habitable_rooms }`. The unit is
+ * SQUARE FEET — the field says so — not the m² the old schema assumed. There
+ * is no bedrooms count, no property type and no postcode average.
+ */
+const FloorAreasSchema = z
+  .object({
+    status: z.string().optional(),
+    postcode: z.string().optional(),
+    known_floor_areas: z
+      .array(
+        z
+          .object({
+            inspection_date: z.string().optional(),
             address: z.string().optional(),
-            total_floor_area: z.number().optional(),
-            bedrooms: z.number().optional(),
-            property_type: z.string().optional(),
+            square_feet: z.number().optional(),
+            habitable_rooms: z.number().optional(),
           })
-        )
-        .optional(),
-      average_floor_area: z.number().optional(),
-    })
-    .partial()
-    .optional(),
-});
+          .partial()
+          .passthrough()
+      )
+      .optional(),
+  })
+  .passthrough();
+
+/** 1 sq ft in m². Applied once, at the boundary, so every caller sees m². */
+const SQFT_TO_SQM = 0.09290304;
 
 /**
- * EPC-derived floor area + bedrooms by postcode. ~2 credits per call.
+ * EPC-derived floor areas by postcode. ~2 credits per call.
  * Critical for the agent quick-form path where we don't ask for sqft.
  * 90-day cache.
  */
@@ -507,7 +558,7 @@ export async function getFloorAreas(postcode: string) {
         ttlMs: 90 * 24 * 60 * 60 * 1000,
         estimatedCredits: 2,
         schema: FloorAreasSchema,
-        hasContent: (d) => Array.isArray(d.result?.properties),
+        hasContent: (d) => Array.isArray(d.known_floor_areas),
       }
     )
   );
@@ -516,11 +567,43 @@ export async function getFloorAreas(postcode: string) {
 /** One EPC floor-area row, as the £/sqft comp matcher consumes it. */
 export type FloorAreaRow = {
   address: string;
-  /** Real EPC-derived internal floor area, m². Rows without one are dropped. */
+  /** Real EPC-derived internal floor area, m² (converted from `square_feet`). */
   floorAreaSqm: number;
+  /** Always null — the endpoint does not publish bedrooms. */
   bedrooms: number | null;
+  /** Always null — not on this endpoint. */
   propertyType: string | null;
+  /** Habitable rooms as recorded on the certificate. */
+  habitableRooms: number | null;
+  inspectionDate: string | null;
 };
+
+/** Rows with a real, positive floor area, in m². */
+function floorAreaRows(
+  data: Awaited<ReturnType<typeof getFloorAreas>>
+): FloorAreaRow[] {
+  const out: FloorAreaRow[] = [];
+  for (const p of data?.known_floor_areas ?? []) {
+    if (
+      typeof p.address !== 'string' ||
+      typeof p.square_feet !== 'number' ||
+      p.square_feet <= 0
+    ) {
+      continue;
+    }
+    out.push({
+      address: p.address,
+      floorAreaSqm: Math.round(p.square_feet * SQFT_TO_SQM * 10) / 10,
+      bedrooms: null,
+      propertyType: null,
+      habitableRooms:
+        typeof p.habitable_rooms === 'number' ? p.habitable_rooms : null,
+      inspectionDate:
+        typeof p.inspection_date === 'string' ? p.inspection_date : null,
+    });
+  }
+  return out;
+}
 
 /**
  * Every EPC floor-area row the register holds for a postcode — the whole-
@@ -530,7 +613,7 @@ export type FloorAreaRow = {
  * a key or on failure — the caller sees "no rows", never invented ones.
  */
 export async function getFloorAreaRows(
-  postcode: string,
+  postcode: string
 ): Promise<FloorAreaRow[]> {
   let data: Awaited<ReturnType<typeof getFloorAreas>>;
   try {
@@ -538,28 +621,11 @@ export async function getFloorAreaRows(
   } catch (err) {
     console.warn(
       `[propertydata] /floor-areas unavailable for ${postcode} — no £/sqft rows`,
-      err,
+      err
     );
     return [];
   }
-  const out: FloorAreaRow[] = [];
-  for (const p of data?.result?.properties ?? []) {
-    if (
-      typeof p.address !== 'string' ||
-      typeof p.total_floor_area !== 'number' ||
-      p.total_floor_area <= 0
-    ) {
-      continue;
-    }
-    out.push({
-      address: p.address,
-      floorAreaSqm: p.total_floor_area,
-      bedrooms: typeof p.bedrooms === 'number' ? p.bedrooms : null,
-      propertyType:
-        typeof p.property_type === 'string' ? p.property_type : null,
-    });
-  }
-  return out;
+  return floorAreaRows(data);
 }
 
 // ---------------------------------------------------------------------------
@@ -571,7 +637,11 @@ export interface PropertyFloorArea {
   floorAreaSqm: number;
   /** The matched EPC address (includes the house number). */
   matchedAddress: string;
-  /** How the row was matched — surfaced in the UI for transparency. */
+  /**
+   * How the row was matched — surfaced in the UI for transparency.
+   * 'unique_type_match' is kept for persisted results; it cannot be produced
+   * any more (the register rows carry neither type nor bedrooms).
+   */
   matchSource: 'house_number' | 'unique_type_match';
 }
 
@@ -592,16 +662,15 @@ function houseIdentifier(address: string): string | null {
 
 /**
  * Resolve a single property's REAL floor area from PropertyData's /floor-areas
- * (EPC register) for the postcode. Matching, in priority order:
- *
- *   1. Exact house-number match against the supplied address.
- *   2. If the address has no number, a UNIQUE match on property type +
- *      bedrooms (only when exactly one such row exists — still a real record,
- *      not an average).
+ * (EPC register) for the postcode, by exact house-number match against the
+ * supplied address.
  *
  * Returns null when no unambiguous real row matches. We deliberately never
- * fall back to `average_floor_area` — a postcode average is a guess, and the
- * house-of-record could be half or double it (the M14 doubling bug).
+ * fall back to a postcode average — that is a guess, and the house-of-record
+ * could be half or double it (the M14 doubling bug). The old second path (a
+ * unique match on property type + bedrooms for street-only addresses) is gone:
+ * the register rows carry neither field, so it could never fire. `propertyType`
+ * and `bedrooms` stay on the input so callers need not change.
  */
 export async function getPropertyFloorArea(input: {
   postcode: string;
@@ -609,82 +678,51 @@ export async function getPropertyFloorArea(input: {
   propertyType?: string;
   bedrooms?: number;
 }): Promise<PropertyFloorArea | null> {
-  const data = await getFloorAreas(input.postcode);
-  const properties = (data?.result?.properties ?? []).filter(
-    (
-      p
-    ): p is {
-      address?: string;
-      total_floor_area: number;
-      bedrooms?: number;
-      property_type?: string;
-    } => typeof p.total_floor_area === 'number' && p.total_floor_area > 0
-  );
-  if (properties.length === 0) return null;
+  const rows = floorAreaRows(await getFloorAreas(input.postcode));
+  if (rows.length === 0) return null;
 
-  // 1. House-number match (the precise path).
   const wanted = input.address ? houseIdentifier(input.address) : null;
-  if (wanted) {
-    const hit = properties.find(
-      (p) => p.address && houseIdentifier(p.address) === wanted
-    );
-    if (hit) {
-      return {
-        floorAreaSqm: Math.round(hit.total_floor_area),
-        matchedAddress: hit.address ?? input.address ?? '',
-        matchSource: 'house_number',
-      };
-    }
-    // Had a number but it isn't in the register → don't guess.
-    return null;
-  }
+  // No house number → nothing to match on → no size (real data or nothing).
+  if (!wanted) return null;
 
-  // 2. Street-only address: only accept a UNIQUE type+bedroom match.
-  const wantType = input.propertyType?.toLowerCase();
-  const wantBeds = input.bedrooms;
-  if (wantType && typeof wantBeds === 'number') {
-    const matches = properties.filter((p) => {
-      const t = p.property_type?.toLowerCase();
-      return (
-        t !== undefined &&
-        t.includes(wantType.split('-')[0] ?? wantType) &&
-        p.bedrooms === wantBeds
-      );
-    });
-    if (matches.length === 1 && matches[0]) {
-      return {
-        floorAreaSqm: Math.round(matches[0].total_floor_area),
-        matchedAddress: matches[0].address ?? '',
-        matchSource: 'unique_type_match',
-      };
-    }
-  }
-
-  // Ambiguous or unmatched → no size (real data or nothing).
-  return null;
+  const hit = rows.find((p) => houseIdentifier(p.address) === wanted);
+  if (!hit) return null; // Had a number but it isn't in the register → don't guess.
+  return {
+    floorAreaSqm: Math.round(hit.floorAreaSqm),
+    matchedAddress: hit.address,
+    matchSource: 'house_number',
+  };
 }
 
 // ---------------------------------------------------------------------------
 // Endpoint: /flood-risk
 // ---------------------------------------------------------------------------
 
-const FloodRiskSchema = z.object({
-  status: z.string().optional(),
-  result: z
-    .object({
-      rivers_and_sea: z.string().optional(),
-      surface_water: z.string().optional(),
-    })
-    .partial()
-    .optional(),
-});
+/**
+ * Real shape (captured 2026-09-13): a single top-level `flood_risk` string
+ * ("Very Low"). No `result` object and no rivers-vs-surface-water split.
+ */
+const FloodRiskSchema = z
+  .object({
+    status: z.string().optional(),
+    postcode: z.string().optional(),
+    flood_risk: z.string().optional(),
+  })
+  .passthrough();
+
+export type FloodRiskReading = {
+  /** PropertyData's band as published, e.g. "Very Low", "Low", "Medium", "High". */
+  floodRisk: string;
+};
 
 /**
  * Flood risk by postcode (England only). ~2 credits.
  * 90-day cache — postcode-level risk barely changes.
  */
-export async function getFloodRisk(postcode: string) {
-  return unwrap(
+export async function getFloodRisk(
+  postcode: string
+): Promise<FloodRiskReading | null> {
+  const data = unwrap(
     '/flood-risk',
     await fetchPropertyData(
       '/flood-risk',
@@ -693,36 +731,60 @@ export async function getFloodRisk(postcode: string) {
         ttlMs: 90 * 24 * 60 * 60 * 1000,
         estimatedCredits: 2,
         schema: FloodRiskSchema,
-        hasContent: (d) =>
-          d.result?.rivers_and_sea !== undefined ||
-          d.result?.surface_water !== undefined,
+        hasContent: (d) => typeof d.flood_risk === 'string',
       }
     )
   );
+  if (!data || typeof data.flood_risk !== 'string') return null;
+  return { floodRisk: data.flood_risk };
 }
 
 // ---------------------------------------------------------------------------
 // Endpoint: /demand
 // ---------------------------------------------------------------------------
 
-const DemandSchema = z.object({
-  status: z.string().optional(),
-  result: z
-    .object({
-      sales_demand_score: z.number().optional(),
-      days_on_market_average: z.number().optional(),
-    })
-    .partial()
-    .optional(),
-});
+/**
+ * Real shape (captured 2026-09-13): everything is TOP-LEVEL —
+ * `total_for_sale` (19), `average_sales_per_month` (2), `turnover_per_month`
+ * ("11%"), `months_of_inventory` ("9.1"), `days_on_market` (277) and
+ * `demand_rating` ("Balanced market"), plus `radius`. There is no `result`
+ * object and no 0-100 `sales_demand_score`.
+ */
+const DemandSchema = z
+  .object({
+    status: z.string().optional(),
+    postcode: z.string().optional(),
+    radius: z.union([z.string(), z.number()]).optional(),
+    total_for_sale: z.number().optional(),
+    average_sales_per_month: z.number().optional(),
+    turnover_per_month: z.union([z.string(), z.number()]).optional(),
+    months_of_inventory: z.union([z.string(), z.number()]).optional(),
+    days_on_market: z.number().optional(),
+    demand_rating: z.string().optional(),
+  })
+  .passthrough();
+
+export type DemandReading = {
+  /** PropertyData's text rating, e.g. "Balanced market". */
+  demandRating: string | null;
+  /** Average days a listing sits before selling. */
+  daysOnMarket: number | null;
+  totalForSale: number | null;
+  averageSalesPerMonth: number | null;
+  /** Share of stock that sells each month, %. */
+  turnoverPerMonthPct: number | null;
+  monthsOfInventory: number | null;
+};
 
 /**
  * How fast does this postcode sell? Drives our either-outcome
  * conversation: in low-demand postcodes our offer is more compelling.
  * ~2 credits, 7-day cache.
  */
-export function getMarketDemandResult(postcode: string) {
-  return fetchPropertyData(
+export async function getMarketDemandResult(
+  postcode: string
+): Promise<PropertyDataResult<DemandReading>> {
+  const res = await fetchPropertyData(
     '/demand',
     { postcode },
     {
@@ -730,13 +792,37 @@ export function getMarketDemandResult(postcode: string) {
       estimatedCredits: 2,
       schema: DemandSchema,
       hasContent: (d) =>
-        d.result?.sales_demand_score !== undefined ||
-        d.result?.days_on_market_average !== undefined,
+        typeof d.demand_rating === 'string' ||
+        typeof d.days_on_market === 'number',
     }
   );
+  if (res.outcome !== 'ok') return res;
+  const d = res.value;
+  return {
+    outcome: 'ok',
+    value: {
+      demandRating:
+        typeof d.demand_rating === 'string' ? d.demand_rating : null,
+      daysOnMarket:
+        typeof d.days_on_market === 'number' ? d.days_on_market : null,
+      totalForSale:
+        typeof d.total_for_sale === 'number' ? d.total_for_sale : null,
+      averageSalesPerMonth:
+        typeof d.average_sales_per_month === 'number'
+          ? d.average_sales_per_month
+          : null,
+      turnoverPerMonthPct:
+        typeof d.turnover_per_month === 'number'
+          ? d.turnover_per_month
+          : parsePercentString(d.turnover_per_month),
+      monthsOfInventory: toNumber(d.months_of_inventory),
+    },
+  };
 }
 
-export async function getMarketDemand(postcode: string) {
+export async function getMarketDemand(
+  postcode: string
+): Promise<DemandReading | null> {
   return unwrap('/demand', await getMarketDemandResult(postcode));
 }
 
@@ -744,33 +830,86 @@ export async function getMarketDemand(postcode: string) {
 // Endpoint: /agents (PROSPECTING)
 // ---------------------------------------------------------------------------
 
-const AgentsSchema = z.object({
-  status: z.string().optional(),
-  result: z
-    .object({
-      agents: z
-        .array(
-          z.object({
-            name: z.string().optional(),
-            phone: z.string().optional(),
+/**
+ * Real shape (captured 2026-09-13): `data` is keyed by PORTAL
+ * ("zoopla.co.uk", "onthemarket.com"), each holding `sale[]` and `rent[]`
+ * rankings of `{ rank, agent, branches[], units_offered, total_value,
+ * average_value, recent_instructions[] }` (rent rows add `unit:
+ * "gbp_per_week"`). Money is pounds. There is no phone, address or website
+ * for the agent — the old schema's fields never existed.
+ */
+const AgentRowSchema = z
+  .object({
+    rank: z.number().optional(),
+    agent: z.string().optional(),
+    branches: z.array(z.string()).optional(),
+    units_offered: z.number().optional(),
+    total_value: z.number().optional(),
+    average_value: z.number().optional(),
+    unit: z.string().optional(),
+    recent_instructions: z
+      .array(
+        z
+          .object({
             address: z.string().optional(),
-            number_of_listings: z.number().optional(),
-            url: z.string().optional(),
+            lat: z.number().optional(),
+            lng: z.number().optional(),
+            price: z.number().optional(),
+            link: z.string().optional(),
           })
-        )
-        .optional(),
-    })
-    .partial()
-    .optional(),
-});
+          .partial()
+          .passthrough()
+      )
+      .optional(),
+  })
+  .partial()
+  .passthrough();
+
+const AgentsSchema = z
+  .object({
+    status: z.string().optional(),
+    postcode: z.string().optional(),
+    radius: z.union([z.string(), z.number()]).optional(),
+    data: z
+      .record(
+        z.string(),
+        z
+          .object({
+            sale: z.array(AgentRowSchema).optional(),
+            rent: z.array(AgentRowSchema).optional(),
+          })
+          .partial()
+          .passthrough()
+      )
+      .optional(),
+  })
+  .passthrough();
+
+export type AgentReading = {
+  /** Agent brand as PropertyData names it, e.g. "Hunters". */
+  name: string;
+  /** Which portal's ranking this row came from, e.g. "zoopla.co.uk". */
+  portal: string;
+  market: 'sale' | 'rent';
+  rank: number | null;
+  /** Branch towns as listed, e.g. ["Bishop Auckland"]. */
+  branches: string[];
+  /** Live instructions on that portal. */
+  unitsOffered: number | null;
+  /** Pounds (sale) or pounds per week (rent). */
+  totalValue: number | null;
+  averageValue: number | null;
+};
 
 /**
- * Live agent rankings by postcode, ranked by listing volume.
- * This is the killer prospecting endpoint — feeds the weekly outreach
- * cron. ~3 credits, 7-day cache.
+ * Live agent rankings by postcode, per portal and per market, ranked by
+ * listing volume. Feeds the weekly prospecting cron. ~3 credits, 7-day cache.
+ * Returns [] for an empty postcode; throws on a failed lookup.
  */
-export async function getAgentsByPostcode(postcode: string) {
-  return unwrap(
+export async function getAgentsByPostcode(
+  postcode: string
+): Promise<AgentReading[]> {
+  const data = unwrap(
     '/agents',
     await fetchPropertyData(
       '/agents',
@@ -779,10 +918,81 @@ export async function getAgentsByPostcode(postcode: string) {
         ttlMs: 7 * 24 * 60 * 60 * 1000,
         estimatedCredits: 3,
         schema: AgentsSchema,
-        hasContent: (d) => Array.isArray(d.result?.agents),
+        hasContent: (d) => d.data !== undefined,
+        // ~8s upstream (portal scrape); too close to the 10s default.
+        timeoutMs: 30_000,
       }
     )
   );
+  const out: AgentReading[] = [];
+  for (const [portal, markets] of Object.entries(data?.data ?? {})) {
+    for (const market of ['sale', 'rent'] as const) {
+      for (const row of markets[market] ?? []) {
+        if (typeof row.agent !== 'string' || !row.agent.trim()) continue;
+        out.push({
+          name: row.agent.trim(),
+          portal,
+          market,
+          rank: typeof row.rank === 'number' ? row.rank : null,
+          branches: (row.branches ?? []).filter(
+            (b): b is string => typeof b === 'string'
+          ),
+          unitsOffered:
+            typeof row.units_offered === 'number' ? row.units_offered : null,
+          totalValue:
+            typeof row.total_value === 'number' ? row.total_value : null,
+          averageValue:
+            typeof row.average_value === 'number' ? row.average_value : null,
+        });
+      }
+    }
+  }
+  return out;
+}
+
+/**
+ * Collapse the per-portal sale rankings into one list of agents, most active
+ * first. The same brand appears on several portals, usually with the same
+ * stock listed on each — so we take the LARGEST units figure rather than
+ * summing (a sum would double-count a listing syndicated to both portals).
+ */
+export function topSaleAgents(
+  rows: AgentReading[],
+  limit = Number.POSITIVE_INFINITY
+): Array<{ name: string; branches: string[]; unitsOffered: number | null }> {
+  const byName = new Map<
+    string,
+    { name: string; branches: Set<string>; unitsOffered: number | null }
+  >();
+  for (const r of rows) {
+    if (r.market !== 'sale') continue;
+    const key = r.name.toLowerCase();
+    const existing = byName.get(key);
+    if (existing) {
+      for (const b of r.branches) existing.branches.add(b);
+      if (
+        r.unitsOffered !== null &&
+        (existing.unitsOffered === null ||
+          r.unitsOffered > existing.unitsOffered)
+      ) {
+        existing.unitsOffered = r.unitsOffered;
+      }
+    } else {
+      byName.set(key, {
+        name: r.name,
+        branches: new Set(r.branches),
+        unitsOffered: r.unitsOffered,
+      });
+    }
+  }
+  return [...byName.values()]
+    .sort((a, b) => (b.unitsOffered ?? -1) - (a.unitsOffered ?? -1))
+    .slice(0, limit)
+    .map((a) => ({
+      name: a.name,
+      branches: [...a.branches],
+      unitsOffered: a.unitsOffered,
+    }));
 }
 
 // ---------------------------------------------------------------------------
@@ -1235,9 +1445,7 @@ export async function getSourcedPropertiesMulti(
       for (const p of props) {
         const key =
           p.id ?? `${p.address.toLowerCase()}|${p.postcode.toLowerCase()}`;
-        if (!seen.has(key)) {
-          seen.set(key, p);
-        } else {
+        if (seen.has(key)) {
           // Stronger signal wins (earlier in SOURCED_LIST_TYPES = higher signal)
           const existing = seen.get(key)!;
           const existingRank = SOURCED_LIST_TYPES.indexOf(
@@ -1249,6 +1457,8 @@ export async function getSourcedPropertiesMulti(
           if (newRank >= 0 && (existingRank < 0 || newRank < existingRank)) {
             seen.set(key, p);
           }
+        } else {
+          seen.set(key, p);
         }
       }
     } catch (err) {
@@ -1308,36 +1518,39 @@ export async function getSubjectMarketSignals(input: {
 // Endpoint: /energy-efficiency (EPC ratings) — RICE B
 // ---------------------------------------------------------------------------
 
-const EpcSchema = z.object({
-  status: z.string().optional(),
-  result: z
-    .object({
-      properties: z
-        .array(
-          z
-            .object({
-              address: z.string().optional(),
-              current_energy_rating: z.string().optional(),
-              current_energy_efficiency: z.number().optional(),
-              potential_energy_rating: z.string().optional(),
-              property_type: z.string().optional(),
-              total_floor_area: z.number().optional(),
-              inspection_date: z.string().optional(),
-            })
-            .partial()
-        )
-        .optional(),
-      average_rating: z.string().optional(),
-    })
-    .partial()
-    .optional(),
-});
+/**
+ * Real shape (captured 2026-09-13): a top-level `energy_efficiency[]` of
+ * `{ inspection_date, address, score, rating }` — one row per certificate in
+ * the postcode. No `result`, no potential rating, no property type, no floor
+ * area (that lives on /floor-areas).
+ */
+const EpcSchema = z
+  .object({
+    status: z.string().optional(),
+    postcode: z.string().optional(),
+    energy_efficiency: z
+      .array(
+        z
+          .object({
+            inspection_date: z.string().optional(),
+            address: z.string().optional(),
+            score: z.number().optional(),
+            rating: z.string().optional(),
+          })
+          .partial()
+          .passthrough()
+      )
+      .optional(),
+  })
+  .passthrough();
 
 export type EpcReading = {
   address: string;
   rating: string | null; // A-G
   efficiency: number | null; // 0-100
+  /** Always null — the endpoint publishes the current rating only. */
   potentialRating: string | null;
+  /** Always null — not on this endpoint. */
   propertyType: string | null;
   inspectionDate: string | null;
 };
@@ -1359,11 +1572,11 @@ export async function getEpcByPostcodeResult(
       ttlMs: 90 * 24 * 60 * 60 * 1000,
       estimatedCredits: 2,
       schema: EpcSchema,
-      hasContent: (d) => Array.isArray(d.result?.properties),
+      hasContent: (d) => Array.isArray(d.energy_efficiency),
     }
   );
   if (res.outcome !== 'ok') return res;
-  return { outcome: 'ok', value: readEpcRows(res.value) };
+  return { outcome: 'ok', value: readEpcRows(res.value.energy_efficiency) };
 }
 
 export async function getEpcByPostcode(
@@ -1374,31 +1587,19 @@ export async function getEpcByPostcode(
   );
 }
 
-function readEpcRows(data: unknown): EpcReading[] {
-  const rows = (data as { result?: { properties?: unknown[] } } | null)?.result
-    ?.properties;
-  if (!Array.isArray(rows)) return [];
+function readEpcRows(
+  rows: z.infer<typeof EpcSchema>['energy_efficiency']
+): EpcReading[] {
   const out: EpcReading[] = [];
-  for (const raw of rows) {
-    const p = raw as Record<string, unknown>;
+  for (const p of rows ?? []) {
     const address = typeof p.address === 'string' ? p.address : null;
     if (!address) continue;
     out.push({
       address,
-      rating:
-        typeof p.current_energy_rating === 'string'
-          ? p.current_energy_rating.toUpperCase()
-          : null,
-      efficiency:
-        typeof p.current_energy_efficiency === 'number'
-          ? p.current_energy_efficiency
-          : null,
-      potentialRating:
-        typeof p.potential_energy_rating === 'string'
-          ? p.potential_energy_rating.toUpperCase()
-          : null,
-      propertyType:
-        typeof p.property_type === 'string' ? p.property_type : null,
+      rating: typeof p.rating === 'string' ? p.rating.toUpperCase() : null,
+      efficiency: typeof p.score === 'number' ? p.score : null,
+      potentialRating: null,
+      propertyType: null,
       inspectionDate:
         typeof p.inspection_date === 'string' ? p.inspection_date : null,
     });
@@ -1410,27 +1611,103 @@ function readEpcRows(data: unknown): EpcReading[] {
 // Endpoint: /freeholds (tenure detection) — RICE B
 // ---------------------------------------------------------------------------
 
-const FreeholdsSchema = z.object({
-  status: z.string().optional(),
-  result: z
-    .object({
-      properties: z
-        .array(
-          z
-            .object({
-              address: z.string().optional(),
-              tenure: z.string().optional(),
-              lease_remaining_years: z.number().optional(),
-              ground_rent: z.number().optional(),
-              service_charge: z.number().optional(),
-            })
-            .partial()
-        )
-        .optional(),
-    })
-    .partial()
-    .optional(),
-});
+/**
+ * Real shape (captured 2026-09-13): `data[]` is a list of registered
+ * FREEHOLD TITLES near the postcode — `title_number`, `class` ("Absolute
+ * freehold title"), `num_polygons` and `polygons[]` of `{ id, lat, lng,
+ * distance, num_points, leaseholds }` where `leaseholds` counts the leasehold
+ * titles registered against that polygon. Plus `result_count` and
+ * `api_calls_cost`. There are NO addresses, NO per-property tenure and NO
+ * lease lengths — the fields the old schema read never existed.
+ */
+const FreeholdsSchema = z
+  .object({
+    status: z.string().optional(),
+    postcode: z.string().optional(),
+    url: z.string().optional(),
+    result_count: z.number().optional(),
+    api_calls_cost: z.number().optional(),
+    data: z
+      .array(
+        z
+          .object({
+            title_number: z.string().optional(),
+            class: z.string().optional(),
+            num_polygons: z.number().optional(),
+            polygons: z
+              .array(
+                z
+                  .object({
+                    id: z.number().optional(),
+                    lat: z.number().optional(),
+                    lng: z.number().optional(),
+                    distance: z.union([z.string(), z.number()]).optional(),
+                    num_points: z.number().optional(),
+                    leaseholds: z.number().optional(),
+                  })
+                  .partial()
+                  .passthrough()
+              )
+              .optional(),
+          })
+          .partial()
+          .passthrough()
+      )
+      .optional(),
+  })
+  .passthrough();
+
+export type FreeholdTitle = {
+  titleNumber: string;
+  /** HMLR class as published, e.g. "Absolute freehold title". */
+  titleClass: string | null;
+  polygons: Array<{
+    lat: number | null;
+    lng: number | null;
+    /** Distance from the queried postcode, miles. */
+    distanceMiles: number | null;
+    /** Leasehold titles registered against this polygon (0 = none). */
+    leaseholds: number | null;
+  }>;
+};
+
+/**
+ * Registered freehold titles near a postcode, with the count of leaseholds
+ * carved out of each. This is what /freeholds actually returns. ~1 credit
+ * per call (`api_calls_cost`), 30-day cache.
+ */
+export async function getFreeholdTitles(
+  postcode: string
+): Promise<FreeholdTitle[]> {
+  const data = unwrap(
+    '/freeholds',
+    await fetchPropertyData(
+      '/freeholds',
+      { postcode },
+      {
+        ttlMs: 30 * 24 * 60 * 60 * 1000,
+        estimatedCredits: 1,
+        schema: FreeholdsSchema,
+        hasContent: (d) => Array.isArray(d.data),
+      }
+    )
+  );
+  const out: FreeholdTitle[] = [];
+  for (const t of data?.data ?? []) {
+    if (typeof t.title_number !== 'string') continue;
+    out.push({
+      titleNumber: t.title_number,
+      titleClass: typeof t.class === 'string' ? t.class : null,
+      polygons: (t.polygons ?? []).map((p) => ({
+        lat: typeof p.lat === 'number' ? p.lat : null,
+        lng: typeof p.lng === 'number' ? p.lng : null,
+        distanceMiles: toNumber(p.distance),
+        leaseholds: typeof p.leaseholds === 'number' ? p.leaseholds : null,
+      })),
+    });
+  }
+  return out;
+}
 
 export type TenureReading = {
   address: string;
@@ -1440,64 +1717,37 @@ export type TenureReading = {
   serviceChargePerYear: number | null;
 };
 
+const TENURE_UNAVAILABLE_REASON =
+  '/freeholds carries no per-address tenure or lease length (verified against a real response, 2026-09-13) — the short-lease screen needs another source';
+
+let tenureUnavailableLogged = false;
+
 /**
- * Tenure data per address in a postcode. Identifies leaseholds and surfaces
- * remaining lease years — critical for offer accuracy and avoiding nasty
- * post-survey surprises. ~3 credits, 30-day cache.
+ * Per-address tenure + remaining lease years. There is currently NO source for
+ * this: the /freeholds endpoint this was written against returns title
+ * polygons, not addresses (see FreeholdsSchema). Rather than return an empty
+ * register — which every caller reads as "no leasehold here" and which cleared
+ * the short-lease flag before — this reports `failed` with the reason, spends
+ * no credits, and lets the preflight route the offer to a person. Swap the body
+ * for a real lookup (HMLR Registered Leases, or a PropertyData endpoint that
+ * has been probed) when one exists.
  */
 export async function getTenureByPostcodeResult(
-  postcode: string
+  _postcode: string
 ): Promise<PropertyDataResult<TenureReading[]>> {
-  const res = await fetchPropertyData(
-    '/freeholds',
-    { postcode },
-    {
-      ttlMs: 30 * 24 * 60 * 60 * 1000,
-      estimatedCredits: 3,
-      schema: FreeholdsSchema,
-      hasContent: (d) => Array.isArray(d.result?.properties),
-    }
-  );
-  if (res.outcome !== 'ok') return res;
-  return { outcome: 'ok', value: readTenureRows(res.value) };
+  if (!tenureUnavailableLogged) {
+    tenureUnavailableLogged = true;
+    console.warn(
+      `[propertydata] tenure lookup unavailable: ${TENURE_UNAVAILABLE_REASON}`
+    );
+  }
+  return { outcome: 'failed', error: TENURE_UNAVAILABLE_REASON };
 }
 
 export async function getTenureByPostcode(
   postcode: string
 ): Promise<TenureReading[]> {
   return unwrap('/freeholds', await getTenureByPostcodeResult(postcode)) ?? [];
-}
-
-function readTenureRows(data: unknown): TenureReading[] {
-  const rows = (data as { result?: { properties?: unknown[] } } | null)?.result
-    ?.properties;
-  if (!Array.isArray(rows)) return [];
-  const out: TenureReading[] = [];
-  for (const raw of rows) {
-    const p = raw as Record<string, unknown>;
-    const address = typeof p.address === 'string' ? p.address : null;
-    if (!address) continue;
-    const rawTenure =
-      typeof p.tenure === 'string' ? p.tenure.toLowerCase() : 'unknown';
-    const tenure: TenureReading['tenure'] = rawTenure.includes('lease')
-      ? 'leasehold'
-      : rawTenure.includes('free')
-        ? 'freehold'
-        : 'unknown';
-    out.push({
-      address,
-      tenure,
-      remainingLeaseYears:
-        typeof p.lease_remaining_years === 'number'
-          ? p.lease_remaining_years
-          : null,
-      groundRentPerYear:
-        typeof p.ground_rent === 'number' ? p.ground_rent : null,
-      serviceChargePerYear:
-        typeof p.service_charge === 'number' ? p.service_charge : null,
-    });
-  }
-  return out;
 }
 
 // ---------------------------------------------------------------------------
@@ -1601,30 +1851,48 @@ export async function getActiveListings(
 // Endpoint: /growth (price growth + forecast) — RICE C
 // ---------------------------------------------------------------------------
 
-const GrowthSchema = z.object({
-  status: z.string().optional(),
-  result: z
-    .object({
-      annual_growth: z.number().optional(),
-      five_year_growth: z.number().optional(),
-      ten_year_growth: z.number().optional(),
-      forecast_growth: z.number().optional(),
-      forecast_period_months: z.number().optional(),
-    })
-    .partial()
-    .optional(),
-});
+/**
+ * Real shape (captured 2026-09-13): `data` is an ARRAY of yearly rows, each a
+ * 3-tuple `[label, averagePricePounds, growthPctString | null]`, e.g.
+ * `["Sep 2021", 231365, "7.9%"]`, oldest first, seven rows ending in the
+ * current month. The first row's growth is null (nothing to compare to). No
+ * `result` object and no named `annual_growth` / `forecast_growth` fields.
+ */
+const GrowthSchema = z
+  .object({
+    status: z.string().optional(),
+    postcode: z.string().optional(),
+    url: z.string().optional(),
+    data: z
+      .array(z.array(z.union([z.string(), z.number(), z.null()])))
+      .optional(),
+  })
+  .passthrough();
+
+export type GrowthSeriesPoint = {
+  /** Row label as published, e.g. "Sep 2021". */
+  label: string;
+  averagePricePence: number;
+  /** Change vs the previous row, %; null on the first row. */
+  growthPct: number | null;
+};
 
 export type GrowthReading = {
+  /** Change over the latest 12-month row, % (the last row's own figure). */
   annualGrowthPct: number | null;
+  /** Price change from the row five years before the latest one, %. */
   fiveYearGrowthPct: number | null;
+  /** Always null — the endpoint publishes history only, no forecast. */
   forecastGrowthPct: number | null;
+  /** Always null — see above. */
   forecastPeriodMonths: number | null;
+  /** The published yearly series, oldest first. */
+  series: GrowthSeriesPoint[];
 };
 
 /**
- * Local price growth + forward forecast. Used by Appraiser to adjust
- * offer % of AVM based on market trajectory. ~2 credits, 30-day cache.
+ * Local price history by year. Used by Appraiser to adjust offer % of AVM
+ * based on market trajectory. ~2 credits, 30-day cache.
  */
 export async function getGrowthResult(
   postcode: string
@@ -1636,14 +1904,11 @@ export async function getGrowthResult(
       ttlMs: 30 * 24 * 60 * 60 * 1000,
       estimatedCredits: 2,
       schema: GrowthSchema,
-      hasContent: (d) =>
-        d.result?.annual_growth !== undefined ||
-        d.result?.five_year_growth !== undefined ||
-        d.result?.forecast_growth !== undefined,
+      hasContent: (d) => Array.isArray(d.data),
     }
   );
   if (res.outcome !== 'ok') return res;
-  return { outcome: 'ok', value: readGrowth(res.value) };
+  return { outcome: 'ok', value: readGrowth(res.value.data ?? []) };
 }
 
 export async function getGrowth(
@@ -1652,20 +1917,34 @@ export async function getGrowth(
   return unwrap('/growth', await getGrowthResult(postcode)) ?? null;
 }
 
-function readGrowth(data: unknown): GrowthReading | null {
-  const r = (data as { result?: Record<string, unknown> } | null)?.result;
-  if (!r) return null;
+function readGrowth(
+  rows: Array<Array<string | number | null>>
+): GrowthReading | null {
+  const series: GrowthSeriesPoint[] = [];
+  for (const row of rows) {
+    const [label, price, pct] = row;
+    if (typeof label !== 'string' || typeof price !== 'number') continue;
+    series.push({
+      label,
+      averagePricePence: Math.round(price * 100),
+      growthPct: typeof pct === 'number' ? pct : parsePercentString(pct),
+    });
+  }
+  if (series.length === 0) return null;
+  const latest = series[series.length - 1];
+  const fiveBack = series.length >= 6 ? series[series.length - 6] : undefined;
+  const fiveYearGrowthPct =
+    latest && fiveBack && fiveBack.averagePricePence > 0
+      ? Math.round(
+          (latest.averagePricePence / fiveBack.averagePricePence - 1) * 1000
+        ) / 10
+      : null;
   return {
-    annualGrowthPct:
-      typeof r.annual_growth === 'number' ? r.annual_growth : null,
-    fiveYearGrowthPct:
-      typeof r.five_year_growth === 'number' ? r.five_year_growth : null,
-    forecastGrowthPct:
-      typeof r.forecast_growth === 'number' ? r.forecast_growth : null,
-    forecastPeriodMonths:
-      typeof r.forecast_period_months === 'number'
-        ? r.forecast_period_months
-        : null,
+    annualGrowthPct: latest?.growthPct ?? null,
+    fiveYearGrowthPct,
+    forecastGrowthPct: null,
+    forecastPeriodMonths: null,
+    series,
   };
 }
 
@@ -1700,7 +1979,10 @@ export type PreflightChecks = {
     status: PreflightSourceStatus;
   };
   marketTemperature: {
-    demandScore: number | null; // 0-100 from /demand
+    /** Always null — /demand has no numeric score. See `demandRating`. */
+    demandScore: number | null;
+    /** PropertyData's text rating for the postcode, e.g. "Balanced market". */
+    demandRating: string | null;
     daysOnMarketAvg: number | null;
     annualGrowthPct: number | null;
     forecastGrowthPct: number | null;
@@ -1807,30 +2089,23 @@ export async function runPreflightChecks(input: {
     typeof remainingLeaseYears === 'number' &&
     remainingLeaseYears < 80;
 
-  const demandResult = (demand as { result?: Record<string, unknown> } | null)
-    ?.result;
-  const demandScore =
-    typeof demandResult?.sales_demand_score === 'number'
-      ? demandResult.sales_demand_score
-      : null;
-  const daysOnMarketAvg =
-    typeof demandResult?.days_on_market_average === 'number'
-      ? demandResult.days_on_market_average
-      : null;
+  // /demand publishes a text rating ("Balanced market") and days on market,
+  // not a 0-100 score (verified against a real response, Sep 2026). We do not
+  // map the rating to a number — the observed vocabulary is one value wide, and
+  // an invented scale would be exactly the kind of guess this module bans.
+  const demandScore: number | null = null;
+  const demandRating = demand?.demandRating ?? null;
+  const daysOnMarketAvg = demand?.daysOnMarket ?? null;
 
   const annualGrowthPct = growth?.annualGrowthPct ?? null;
   const forecastGrowthPct = growth?.forecastGrowthPct ?? null;
 
-  // Combined temperature index. Weights chosen so that:
-  //   strong demand (score 80+) + positive forecast → +0.5+ (hot)
-  //   neutral both → 0
-  //   weak demand + falling forecast → -0.5+ (cold)
+  // Temperature index. With no numeric demand score the only component is
+  // growth: the latest 12-month price change (the endpoint publishes no
+  // forecast either — `forecastGrowthPct` is kept for the day it does).
+  //   +10% or better → +1 (hot) … −10% or worse → −1 (cold)
   let temperatureIndex: number | null = null;
   const components: number[] = [];
-  if (typeof demandScore === 'number') {
-    // demandScore is 0-100; normalise to -1..+1 around midpoint 50
-    components.push((demandScore - 50) / 50);
-  }
   if (typeof forecastGrowthPct === 'number') {
     // forecastGrowthPct typical range -10..+10 — normalise
     components.push(Math.max(-1, Math.min(1, forecastGrowthPct / 10)));
@@ -1908,7 +2183,7 @@ export async function runPreflightChecks(input: {
   }
   if (band) {
     reasoning.push(
-      `Market: ${band}${typeof demandScore === 'number' ? ` (demand ${demandScore}/100)` : ''}${typeof forecastGrowthPct === 'number' ? `, forecast ${forecastGrowthPct > 0 ? '+' : ''}${forecastGrowthPct.toFixed(1)}%` : ''} — offer adjusted ${tempAdj > 0 ? '+' : ''}${(tempAdj * 100).toFixed(1)}%${marketFailed ? ' (PARTIAL — one market source unavailable)' : ''}`
+      `Market: ${band}${demandRating ? ` (${demandRating.toLowerCase()}${typeof daysOnMarketAvg === 'number' ? `, ${Math.round(daysOnMarketAvg)} days on market` : ''})` : ''}${typeof forecastGrowthPct === 'number' ? `, forecast ${forecastGrowthPct > 0 ? '+' : ''}${forecastGrowthPct.toFixed(1)}%` : typeof annualGrowthPct === 'number' ? `, 12-month change ${annualGrowthPct > 0 ? '+' : ''}${annualGrowthPct.toFixed(1)}%` : ''} — offer adjusted ${tempAdj > 0 ? '+' : ''}${(tempAdj * 100).toFixed(1)}%${marketFailed ? ' (PARTIAL — one market source unavailable)' : ''}`
     );
   } else if (marketFailed) {
     reasoning.push(
@@ -1940,6 +2215,7 @@ export async function runPreflightChecks(input: {
     },
     marketTemperature: {
       demandScore,
+      demandRating,
       daysOnMarketAvg,
       annualGrowthPct,
       forecastGrowthPct,
@@ -2351,46 +2627,91 @@ export async function getDemographics(
 // Endpoint: /sold-prices — recent comparable sales
 // ---------------------------------------------------------------------------
 
-const SoldPricesSchema = z.object({
-  status: z.string().optional(),
-  result: z
-    .object({
-      average_price: z.number().optional(),
-      median_price: z.number().optional(),
-      transactions: z
-        .array(
-          z
-            .object({
-              address: z.string().optional(),
-              postcode: z.string().optional(),
-              price: z.number().optional(),
-              date: z.string().optional(),
-              property_type: z.string().optional(),
-              new_build: z.boolean().optional(),
-              tenure: z.string().optional(),
-            })
-            .partial()
-        )
-        .optional(),
-    })
-    .partial()
-    .optional(),
-});
+/**
+ * Real shape (captured 2026-09-13): `data.average` (pounds) and
+ * `data.raw_data[]` of sales — `date`, `address` (ends with the full
+ * postcode), `price` (pounds), `lat`/`lng`, `bedrooms` (may be null),
+ * `type` ("terraced_house"…), `tenure`, `class`, `distance` (miles, string),
+ * `url`. Also `points_analysed`, `radius`, `date_earliest`, `date_latest`.
+ * There is no `result`, no `median` and no per-sale `postcode` field.
+ */
+const SoldPricesSchema = z
+  .object({
+    status: z.string().optional(),
+    postcode: z.string().optional(),
+    url: z.string().optional(),
+    max_age: z.number().optional(),
+    data: z
+      .object({
+        points_analysed: z.number().optional(),
+        radius: z.union([z.string(), z.number()]).optional(),
+        date_earliest: z.string().optional(),
+        date_latest: z.string().optional(),
+        average: z.number().optional(),
+        raw_data: z
+          .array(
+            z
+              .object({
+                date: z.string().optional(),
+                address: z.string().optional(),
+                price: z.number().optional(),
+                lat: z.union([z.number(), z.string()]).optional(),
+                lng: z.union([z.number(), z.string()]).optional(),
+                bedrooms: z.number().nullable().optional(),
+                type: z.string().optional(),
+                tenure: z.string().optional(),
+                class: z.string().optional(),
+                distance: z.union([z.string(), z.number()]).optional(),
+                url: z.string().optional(),
+              })
+              .partial()
+              .passthrough()
+          )
+          .optional(),
+      })
+      .partial()
+      .passthrough()
+      .optional(),
+  })
+  .passthrough();
 
 export type SoldTransaction = {
   address: string;
+  /** Parsed from the tail of `address` — the endpoint has no postcode field. */
   postcode: string | null;
   pricePence: number;
   date: string;
+  /** PropertyData's own type value, e.g. "terraced_house". */
   propertyType: string | null;
   tenure: string | null;
+  /** Coordinates the endpoint supplies for the sale. */
+  lat: number | null;
+  lng: number | null;
+  bedrooms: number | null;
+  /** Distance from the queried postcode, miles. */
+  distanceMiles: number | null;
 };
 
 export type SoldPrices = {
   averagePricePence: number | null;
+  /** Always null — the endpoint publishes an average only. */
   medianPricePence: number | null;
   transactions: SoldTransaction[];
 };
+
+/**
+ * Full UK postcode at the end of an address string ("…, DL2 3LD"). Strict on
+ * purpose: a partial match would invent a postcode, and postcodes here feed
+ * geocoding in the distance-weighted comps.
+ */
+const TRAILING_POSTCODE = /\b([A-Z]{1,2}\d[A-Z\d]?\s*\d[A-Z]{2})\s*$/i;
+
+function postcodeFromAddress(address: string): string | null {
+  const m = address.trim().match(TRAILING_POSTCODE);
+  if (!m?.[1]) return null;
+  const compact = m[1].replace(/\s+/g, '').toUpperCase();
+  return `${compact.slice(0, -3)} ${compact.slice(-3)}`;
+}
 
 export type SoldPricesOptions = {
   /** Sale-age window in months. PropertyData allows 3-84; default 18. */
@@ -2443,40 +2764,36 @@ export async function getSoldPrices(
         estimatedCredits: 2,
         schema: SoldPricesSchema,
         hasContent: (d) =>
-          Array.isArray(d.result?.transactions) ||
-          d.result?.average_price !== undefined ||
-          d.result?.median_price !== undefined,
+          Array.isArray(d.data?.raw_data) ||
+          typeof d.data?.average === 'number',
       }
     )
   );
-  const r = (data as { result?: Record<string, unknown> } | null)?.result;
+  const r = data?.data;
   if (!r) return null;
   const transactions: SoldTransaction[] = [];
-  for (const raw of (r.transactions as unknown[] | undefined) ?? []) {
-    const t = raw as Record<string, unknown>;
+  for (const t of r.raw_data ?? []) {
     const address = typeof t.address === 'string' ? t.address : null;
     const price = typeof t.price === 'number' ? t.price : null;
     const date = typeof t.date === 'string' ? t.date : null;
     if (!address || !price || !date) continue;
     transactions.push({
       address,
-      postcode: typeof t.postcode === 'string' ? t.postcode : null,
+      postcode: postcodeFromAddress(address),
       pricePence: Math.round(price * 100),
       date,
-      propertyType:
-        typeof t.property_type === 'string' ? t.property_type : null,
+      propertyType: typeof t.type === 'string' ? t.type : null,
       tenure: typeof t.tenure === 'string' ? t.tenure : null,
+      lat: toNumber(t.lat),
+      lng: toNumber(t.lng),
+      bedrooms: typeof t.bedrooms === 'number' ? t.bedrooms : null,
+      distanceMiles: toNumber(t.distance),
     });
   }
   return {
     averagePricePence:
-      typeof r.average_price === 'number'
-        ? Math.round(r.average_price * 100)
-        : null,
-    medianPricePence:
-      typeof r.median_price === 'number'
-        ? Math.round(r.median_price * 100)
-        : null,
+      typeof r.average === 'number' ? Math.round(r.average * 100) : null,
+    medianPricePence: null,
     transactions,
   };
 }
@@ -2485,22 +2802,39 @@ export async function getSoldPrices(
 // Endpoint: /yields — rental yield for area
 // ---------------------------------------------------------------------------
 
-const YieldsSchema = z.object({
-  status: z.string().optional(),
-  result: z
-    .object({
-      yield_average: z.number().optional(),
-      gross_yield: z.number().optional(),
-      yield_low: z.number().optional(),
-      yield_high: z.number().optional(),
-    })
-    .partial()
-    .optional(),
-});
+/**
+ * Real shape (captured 2026-09-13): `data.long_let.gross_yield` is a percent
+ * STRING ("2.8%"), with `points_analysed` and `radius` beside it. No low/high
+ * band, no `result` object.
+ */
+const YieldsSchema = z
+  .object({
+    status: z.string().optional(),
+    postcode: z.string().optional(),
+    url: z.string().optional(),
+    data: z
+      .object({
+        long_let: z
+          .object({
+            points_analysed: z.number().optional(),
+            radius: z.union([z.string(), z.number()]).optional(),
+            gross_yield: z.union([z.string(), z.number()]).optional(),
+          })
+          .partial()
+          .passthrough()
+          .optional(),
+      })
+      .partial()
+      .passthrough()
+      .optional(),
+  })
+  .passthrough();
 
 export type YieldsReading = {
   averageYieldPct: number | null;
+  /** Always null — the endpoint publishes a single long-let gross yield. */
   lowYieldPct: number | null;
+  /** Always null — see above. */
   highYieldPct: number | null;
 };
 
@@ -2516,24 +2850,20 @@ export async function getYields(
         ttlMs: 30 * 24 * 60 * 60 * 1000,
         estimatedCredits: 2,
         schema: YieldsSchema,
-        hasContent: (d) =>
-          d.result?.yield_average !== undefined ||
-          d.result?.gross_yield !== undefined,
+        hasContent: (d) => d.data?.long_let?.gross_yield !== undefined,
+        // ~9s upstream (live rental scrape); 10s default timed out every call.
+        timeoutMs: 30_000,
       }
     )
   );
-  const r = (data as { result?: Record<string, unknown> } | null)?.result;
-  if (!r) return null;
-  const avg =
-    typeof r.yield_average === 'number'
-      ? r.yield_average
-      : typeof r.gross_yield === 'number'
-        ? r.gross_yield
-        : null;
+  const longLet = data?.data?.long_let;
+  if (!longLet) return null;
+  const gross = longLet.gross_yield;
   return {
-    averageYieldPct: avg,
-    lowYieldPct: typeof r.yield_low === 'number' ? r.yield_low : null,
-    highYieldPct: typeof r.yield_high === 'number' ? r.yield_high : null,
+    averageYieldPct:
+      typeof gross === 'number' ? gross : parsePercentString(gross),
+    lowYieldPct: null,
+    highYieldPct: null,
   };
 }
 
@@ -2541,22 +2871,55 @@ export async function getYields(
 // Endpoint: /prices-per-sqf — local £/sqft benchmarks
 // ---------------------------------------------------------------------------
 
-const PricesPerSqfSchema = z.object({
-  status: z.string().optional(),
-  result: z
-    .object({
-      average: z.number().optional(),
-      median: z.number().optional(),
-      low: z.number().optional(),
-      high: z.number().optional(),
-    })
-    .partial()
-    .optional(),
-});
+/**
+ * Real shape (captured 2026-09-13): everything lives under `data` —
+ * `average` (£ per sq ft, e.g. 210), `points_analysed`, `radius` (miles, as
+ * a string), the `70pc_range`…`100pc_range` pairs and `raw_data[]` of the
+ * asking-price listings analysed (`sqf`, `price_per_sqf`, `price`, `type`…).
+ * The unit is confirmed by the field names (`sqf`, `price_per_sqf`). There is
+ * no `median`.
+ */
+const PricesPerSqfSchema = z
+  .object({
+    status: z.string().optional(),
+    postcode: z.string().optional(),
+    url: z.string().optional(),
+    data: z
+      .object({
+        points_analysed: z.number().optional(),
+        radius: z.union([z.string(), z.number()]).optional(),
+        average: z.number().optional(),
+        raw_data: z
+          .array(
+            z
+              .object({
+                address: z.string().optional(),
+                price: z.number().optional(),
+                bedrooms: z.number().nullable().optional(),
+                type: z.string().optional(),
+                sqf: z.number().optional(),
+                price_per_sqf: z.number().optional(),
+                distance: z.union([z.string(), z.number()]).optional(),
+                days_on_market: z.number().optional(),
+                portal: z.string().optional(),
+              })
+              .partial()
+              .passthrough()
+          )
+          .optional(),
+      })
+      .partial()
+      .passthrough()
+      .optional(),
+  })
+  .passthrough();
 
 export type PricesPerSqf = {
   averagePerSqft: number | null;
+  /** Always null — the endpoint publishes an average only. */
   medianPerSqft: number | null;
+  /** How many asking-price listings the average was drawn from. */
+  pointsAnalysed: number | null;
 };
 
 export async function getPricesPerSqf(
@@ -2572,15 +2935,18 @@ export async function getPricesPerSqf(
         estimatedCredits: 2,
         schema: PricesPerSqfSchema,
         hasContent: (d) =>
-          d.result?.average !== undefined || d.result?.median !== undefined,
+          typeof d.data?.average === 'number' ||
+          Array.isArray(d.data?.raw_data),
       }
     )
   );
-  const r = (data as { result?: Record<string, unknown> } | null)?.result;
+  const r = data?.data;
   if (!r) return null;
   return {
     averagePerSqft: typeof r.average === 'number' ? r.average : null,
-    medianPerSqft: typeof r.median === 'number' ? r.median : null,
+    medianPerSqft: null,
+    pointsAnalysed:
+      typeof r.points_analysed === 'number' ? r.points_analysed : null,
   };
 }
 
@@ -2588,23 +2954,54 @@ export async function getPricesPerSqf(
 // Endpoint: /council-tax — average council tax bills
 // ---------------------------------------------------------------------------
 
-const CouncilTaxSchema = z.object({
-  status: z.string().optional(),
-  result: z
-    .object({
-      band: z.string().optional(),
-      bands: z.record(z.string(), z.unknown()).optional(),
-      average_annual_bill: z.number().optional(),
-    })
-    .partial()
-    .optional(),
-});
+/**
+ * Real shape (captured 2026-09-13, scripts/propertydata-probe.mts): the
+ * council's band table sits at the top level under `council_tax` as
+ * `band_a`…`band_h` → "1,748.10" (pounds, comma-grouped strings), plus a
+ * `properties[]` list of `{ address, band }` for the postcode. There is no
+ * `result` object, no postcode-level `band` and no `average_annual_bill`.
+ */
+const CouncilTaxSchema = z
+  .object({
+    status: z.string().optional(),
+    postcode: z.string().optional(),
+    council: z.string().optional(),
+    council_rating: z.string().optional(),
+    year: z.string().optional(),
+    council_tax: z
+      .record(z.string(), z.union([z.string(), z.number()]))
+      .optional(),
+    note: z.string().optional(),
+    properties: z
+      .array(
+        z
+          .object({
+            address: z.string().optional(),
+            band: z.string().optional(),
+          })
+          .partial()
+          .passthrough()
+      )
+      .optional(),
+  })
+  .passthrough();
 
 export type CouncilTaxReading = {
+  /**
+   * Always null: the endpoint publishes the band table and per-address bands,
+   * not an average bill. Kept for persisted snapshots and their readers.
+   */
   averageAnnualBill: number | null;
+  /** Always null at postcode level — see `propertyBands` for per-address bands. */
   band: string | null;
-  /** Map of band letter → annual £ */
+  /** Map of band letter (A–H) → annual £ for the council's current year. */
   bandsByLetter: Record<string, number>;
+  /** Billing authority, e.g. "Durham". */
+  council: string | null;
+  /** Tax year the band table applies to, e.g. "2026/27". */
+  year: string | null;
+  /** Per-address bands the endpoint lists for the postcode. */
+  propertyBands: Array<{ address: string; band: string }>;
 };
 
 export async function getCouncilTax(
@@ -2620,34 +3017,31 @@ export async function getCouncilTax(
         estimatedCredits: 2,
         schema: CouncilTaxSchema,
         hasContent: (d) =>
-          d.result?.band !== undefined ||
-          d.result?.bands !== undefined ||
-          d.result?.average_annual_bill !== undefined,
+          d.council_tax !== undefined || Array.isArray(d.properties),
       }
     )
   );
-  const r = (data as { result?: Record<string, unknown> } | null)?.result;
-  if (!r) return null;
+  if (!data) return null;
   const bands: Record<string, number> = {};
-  const bandsRaw = r.bands as Record<string, unknown> | undefined;
-  if (bandsRaw) {
-    for (const [letter, val] of Object.entries(bandsRaw)) {
-      if (typeof val === 'number') bands[letter.toUpperCase()] = val;
-      else if (val && typeof val === 'object') {
-        const v = val as Record<string, unknown>;
-        const amount =
-          (typeof v.amount === 'number' && v.amount) ||
-          (typeof v.annual === 'number' && v.annual) ||
-          (typeof v.value === 'number' && v.value);
-        if (typeof amount === 'number') bands[letter.toUpperCase()] = amount;
-      }
+  for (const [key, val] of Object.entries(data.council_tax ?? {})) {
+    // Keys arrive as `band_a` … `band_h`; values as "1,748.10" (pounds).
+    const letter = key.replace(/^band_/i, '').toUpperCase();
+    const amount = typeof val === 'number' ? val : parsePoundsString(val);
+    if (letter.length === 1 && amount !== null) bands[letter] = amount;
+  }
+  const propertyBands: CouncilTaxReading['propertyBands'] = [];
+  for (const p of data.properties ?? []) {
+    if (typeof p.address === 'string' && typeof p.band === 'string') {
+      propertyBands.push({ address: p.address, band: p.band.toUpperCase() });
     }
   }
   return {
-    averageAnnualBill:
-      typeof r.average_annual_bill === 'number' ? r.average_annual_bill : null,
-    band: typeof r.band === 'string' ? r.band : null,
+    averageAnnualBill: null,
+    band: null,
     bandsByLetter: bands,
+    council: typeof data.council === 'string' ? data.council : null,
+    year: typeof data.year === 'string' ? data.year : null,
+    propertyBands,
   };
 }
 
@@ -2674,16 +3068,21 @@ export type PropertySnapshot = {
   yields: YieldsReading | null;
   /** Asking price per sqft benchmark */
   pricesPerSqf: PricesPerSqf | null;
-  /** Sales demand 0-100 */
+  /**
+   * Always null: /demand returns no numeric score (verified Sep 2026). Kept so
+   * persisted snapshots and their readers keep their shape; use `demandRating`.
+   */
   demandScore: number | null;
+  /** PropertyData's text demand rating, e.g. "Balanced market". */
+  demandRating: string | null;
   /** Days-on-market average */
   daysOnMarketAvg: number | null;
-  /** 5yr forecast growth */
+  /** Price growth series + derived annual / 5-year change */
   growth: GrowthReading | null;
   /** Council tax band info */
   councilTax: CouncilTaxReading | null;
-  /** Flood-risk band */
-  flood: { riversAndSea: string | null; surfaceWater: string | null } | null;
+  /** Flood-risk band for the postcode, e.g. "Very Low" */
+  flood: { floodRisk: string } | null;
   /** EPC matched to the address (if address provided) — same wrapper we use in preflight */
   epc: { rating: string | null; matchedAddress: string | null } | null;
   /** Tenure matched to address */
@@ -2793,20 +3192,13 @@ export async function getPropertySnapshot(input: {
     getPricesPerSqf(input.postcode)
   );
   await sleep(DELAY);
-  const demandRaw = await safe('demand', () => getMarketDemand(input.postcode));
-  const demandScore =
-    typeof (demandRaw as { result?: { sales_demand_score?: number } } | null)
-      ?.result?.sales_demand_score === 'number'
-      ? (demandRaw as { result: { sales_demand_score: number } }).result
-          .sales_demand_score
-      : null;
-  const daysOnMarketAvg =
-    typeof (
-      demandRaw as { result?: { days_on_market_average?: number } } | null
-    )?.result?.days_on_market_average === 'number'
-      ? (demandRaw as { result: { days_on_market_average: number } }).result
-          .days_on_market_average
-      : null;
+  const demand = await safe('demand', () => getMarketDemand(input.postcode));
+  // /demand carries no 0-100 score (verified against a real response, Sep
+  // 2026) — only a text rating and days on market. `demandScore` stays on the
+  // snapshot for old readers and is always null now; the rating is the signal.
+  const demandScore: number | null = null;
+  const demandRating = demand?.demandRating ?? null;
+  const daysOnMarketAvg = demand?.daysOnMarket ?? null;
   await sleep(DELAY);
   const growthRes = await safe('growth', () => getGrowth(input.postcode));
   await sleep(DELAY);
@@ -2814,17 +3206,8 @@ export async function getPropertySnapshot(input: {
     getCouncilTax(input.postcode)
   );
   await sleep(DELAY);
-  const floodRaw = await safe('flood', () => getFloodRisk(input.postcode));
-  const flood = floodRaw
-    ? {
-        riversAndSea:
-          ((floodRaw as { result?: { rivers_and_sea?: string } } | null)?.result
-            ?.rivers_and_sea as string | undefined) ?? null,
-        surfaceWater:
-          ((floodRaw as { result?: { surface_water?: string } } | null)?.result
-            ?.surface_water as string | undefined) ?? null,
-      }
-    : null;
+  const floodReading = await safe('flood', () => getFloodRisk(input.postcode));
+  const flood = floodReading ? { floodRisk: floodReading.floodRisk } : null;
   await sleep(DELAY);
   // EPC + tenure already pulled in preflight per postcode. Re-pull cheaply
   // (cached at 90d/30d respectively).
@@ -2869,27 +3252,20 @@ export async function getPropertySnapshot(input: {
     }
   }
   await sleep(DELAY);
-  const agentsRaw = await safe('agents', () =>
+  const agentRows = await safe('agents', () =>
     getAgentsByPostcode(input.postcode)
   );
-  const agents: PropertySnapshot['agents'] = [];
-  const agentsList = (agentsRaw as { result?: { agents?: unknown[] } } | null)
-    ?.result?.agents;
-  if (Array.isArray(agentsList)) {
-    for (const raw of agentsList.slice(0, 5)) {
-      const a = raw as Record<string, unknown>;
-      if (typeof a.name !== 'string') continue;
-      agents.push({
-        name: a.name,
-        phone: typeof a.phone === 'string' ? a.phone : null,
-        listings:
-          typeof a.number_of_listings === 'number'
-            ? a.number_of_listings
-            : null,
-        url: typeof a.url === 'string' ? a.url : null,
-      });
-    }
-  }
+  // Top sale agents by listing volume. /agents carries no phone or website
+  // (verified Sep 2026) — those fields stay on the snapshot for old readers.
+  const agents: PropertySnapshot['agents'] = topSaleAgents(
+    agentRows ?? [],
+    5
+  ).map((a) => ({
+    name: a.name,
+    phone: null,
+    listings: a.unitsOffered,
+    url: null,
+  }));
 
   return {
     avm,
@@ -2897,6 +3273,7 @@ export async function getPropertySnapshot(input: {
     yields: yieldsRes ?? null,
     pricesPerSqf,
     demandScore,
+    demandRating,
     daysOnMarketAvg,
     growth: growthRes ?? null,
     councilTax,
