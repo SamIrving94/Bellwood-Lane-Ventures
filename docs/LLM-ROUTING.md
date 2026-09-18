@@ -1,6 +1,6 @@
 # LLM routing — OpenRouter first, open-weight challengers, one bill
 
-_Last verified against the code: 2026-09-13_
+_Last verified against the code: 2026-09-17_
 
 ## How a call is routed
 
@@ -88,7 +88,7 @@ when the usage page shows the challenger holding up for a fortnight.
 
 | Job | Features | Primary | Shadow (try in this order) |
 |:--|:--|:--|:--|
-| Bulk reads — cheap, strict JSON | `listing_motivation_read`, `auction_lot_extract`, `dealbreaker_screen`, `whatsapp_parse`, `founder_desk`, `morning_briefing`, `vendor_reply_triage` | `deepseek/deepseek-v4-flash` | `qwen/qwen3.8-27b`, then Hunyuan Hy3 (`--list tencent/` for the id) |
+| Bulk reads — cheap, strict JSON | `listing_motivation_read`, `auction_lot_extract`, `dealbreaker_screen`, `whatsapp_parse`, `founder_desk`, `morning_briefing`, `vendor_reply_triage`, `guide_topic_pick` | `deepseek/deepseek-v4-flash` | `qwen/qwen3.8-27b`, then Hunyuan Hy3 (`--list tencent/` for the id) |
 | Photos | `property_vision` | `minimax/minimax-m3` | `qwen/qwen3.8-27b` |
 | Reasoning over money | `deep_appraisal`, `comp_rationale`, `offer_narrative` | Claude Sonnet (5 once its slug is verified, else 4.5) | `z-ai/glm-5.2`, then Hunyuan Hy4 Preview |
 | Vendor-facing words | `agent_outreach_draft`, `blog_draft`, `solicitor_outreach`, `paid_ad_copy`, `ig_post_draft` | Claude Sonnet | none yet — the Beth Sims bar is a human read |

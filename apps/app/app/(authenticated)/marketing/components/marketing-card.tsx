@@ -5,10 +5,16 @@ import {
   CheckCircleIcon,
   ChevronDownIcon,
   ChevronUpIcon,
+  GlobeIcon,
   XCircleIcon,
 } from 'lucide-react';
 import { useState, useTransition } from 'react';
 import { resolveAction } from '@/app/actions/founder-actions/resolve';
+import {
+  approveGuide,
+  archiveGuide,
+  publishGuide,
+} from '@/app/actions/guides/publish';
 import {
   asMeta,
   getObjectArray,
@@ -101,9 +107,27 @@ export function MarketingCard({ action }: { action: MarketingAction }) {
   const publishNotBefore = readPublishNotBefore(meta);
   const isGated = publishNotBefore && publishNotBefore.getTime() > Date.now();
 
+  // A weekly guide carries its GuidePost id. Approve/Dismiss then move the
+  // guide row too (approved/archived) and resolve the action through it, so
+  // the queue card and /marketing/guides never disagree.
+  const guidePostId = getString(meta, 'guidePostId');
+
   const handleResolve = (resolution: 'completed' | 'dismissed') => {
     startTransition(async () => {
+      if (guidePostId) {
+        await (resolution === 'completed' ? approveGuide : archiveGuide)(
+          guidePostId
+        );
+        return;
+      }
       await resolveAction(action.id, resolution);
+    });
+  };
+
+  const handlePublish = () => {
+    if (!guidePostId) return;
+    startTransition(async () => {
+      await publishGuide(guidePostId);
     });
   };
 
@@ -126,7 +150,8 @@ export function MarketingCard({ action }: { action: MarketingAction }) {
           <h3 className="font-medium leading-tight">{action.title}</h3>
           <p className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
             <span className="capitalize">
-              {MARKETING_TYPE_LABELS[action.type] ?? action.type.replace(/_/g, ' ')}
+              {MARKETING_TYPE_LABELS[action.type] ??
+                action.type.replace(/_/g, ' ')}
             </span>
             <span>&middot;</span>
             <span>{timeAgo(action.createdAt)}</span>
@@ -152,7 +177,12 @@ export function MarketingCard({ action }: { action: MarketingAction }) {
 
       {/* Per-type body */}
       <div className="mt-3">
-        <TypeBody type={action.type} meta={meta} expanded={expanded} action={action} />
+        <TypeBody
+          type={action.type}
+          meta={meta}
+          expanded={expanded}
+          action={action}
+        />
       </div>
 
       {/* Resolve actions — always available, even on gated cards (founder
@@ -171,6 +201,7 @@ export function MarketingCard({ action }: { action: MarketingAction }) {
         </Button>
         <Button
           size="sm"
+          variant={guidePostId ? 'outline' : 'default'}
           onClick={() => handleResolve('completed')}
           disabled={isPending || isGated}
           title={isGated ? 'Locked until publish window opens' : undefined}
@@ -178,6 +209,17 @@ export function MarketingCard({ action }: { action: MarketingAction }) {
           <CheckCircleIcon className="mr-1 h-3 w-3" />
           Approve
         </Button>
+        {guidePostId && (
+          <Button
+            size="sm"
+            onClick={handlePublish}
+            disabled={isPending || isGated}
+            title="Publish to /guides on the public site"
+          >
+            <GlobeIcon className="mr-1 h-3 w-3" />
+            Publish
+          </Button>
+        )}
       </div>
     </div>
   );
@@ -199,7 +241,13 @@ function TypeBody({
     case 'approve_case_study':
       return <ImageCaptionBody meta={meta} />;
     case 'approve_blog_draft':
-      return <BlogBody meta={meta} expanded={expanded} description={action.description} />;
+      return (
+        <BlogBody
+          meta={meta}
+          expanded={expanded}
+          description={action.description}
+        />
+      );
     case 'approve_linkedin_post':
       return <LinkedInBody meta={meta} />;
     case 'approve_solicitor_outreach':
@@ -208,7 +256,9 @@ function TypeBody({
     case 'approve_paid_ad_copy':
       return <PaidAdBody meta={meta} />;
     default:
-      return <GenericBody description={action.description} expanded={expanded} />;
+      return (
+        <GenericBody description={action.description} expanded={expanded} />
+      );
   }
 }
 
@@ -258,8 +308,10 @@ function BlogBody({
 }) {
   const title = getString(meta, 'title');
   const metaDescription = getString(meta, 'metaDescription');
-  const body = getString(meta, 'body') ?? getString(meta, 'draft') ?? description ?? '';
-  const truncated = body.length > 300 && !expanded ? `${body.slice(0, 300)}…` : body;
+  const body =
+    getString(meta, 'body') ?? getString(meta, 'draft') ?? description ?? '';
+  const truncated =
+    body.length > 300 && !expanded ? `${body.slice(0, 300)}…` : body;
 
   return (
     <div className="space-y-2">
@@ -278,7 +330,8 @@ function LinkedInBody({ meta }: { meta: ReturnType<typeof asMeta> }) {
   // metadata.topics is the canonical shape — array of { topic, hook } objects.
   // Fall back to a flat string[] if topics are simple strings.
   const topics = getObjectArray(meta, 'topics');
-  const stringTopics = topics.length === 0 ? getStringArray(meta, 'topics') : [];
+  const stringTopics =
+    topics.length === 0 ? getStringArray(meta, 'topics') : [];
 
   if (topics.length === 0 && stringTopics.length === 0) {
     return (
@@ -291,10 +344,14 @@ function LinkedInBody({ meta }: { meta: ReturnType<typeof asMeta> }) {
   return (
     <ol className="space-y-2 text-sm">
       {topics.map((t, i) => {
-        const topic = getString(t, 'topic') ?? getString(t, 'title') ?? `Topic ${i + 1}`;
+        const topic =
+          getString(t, 'topic') ?? getString(t, 'title') ?? `Topic ${i + 1}`;
         const hook = getString(t, 'hook') ?? getString(t, 'opener');
         return (
-          <li key={i} className="rounded border-l-2 border-blue-300 bg-slate-50/50 px-3 py-2 dark:bg-slate-900/30">
+          <li
+            key={i}
+            className="rounded border-l-2 border-blue-300 bg-slate-50/50 px-3 py-2 dark:bg-slate-900/30"
+          >
             <p className="font-medium">{topic}</p>
             {hook && (
               <p className="mt-0.5 text-xs text-muted-foreground">{hook}</p>
@@ -317,7 +374,8 @@ function LinkedInBody({ meta }: { meta: ReturnType<typeof asMeta> }) {
 function OutreachBody({ meta }: { meta: ReturnType<typeof asMeta> }) {
   const subject = getString(meta, 'subject') ?? getString(meta, 'emailSubject');
   const body = getString(meta, 'body') ?? getString(meta, 'emailBody') ?? '';
-  const linkedinDm = getString(meta, 'linkedinDm') ?? getString(meta, 'linkedInDm');
+  const linkedinDm =
+    getString(meta, 'linkedinDm') ?? getString(meta, 'linkedInDm');
 
   const truncatedBody = body.length > 150 ? `${body.slice(0, 150)}…` : body;
 
@@ -353,7 +411,8 @@ function OutreachBody({ meta }: { meta: ReturnType<typeof asMeta> }) {
 function PaidAdBody({ meta }: { meta: ReturnType<typeof asMeta> }) {
   const headlines = getStringArray(meta, 'headlines');
   const bodyCopies = getStringArray(meta, 'bodyCopies');
-  const bodies = bodyCopies.length > 0 ? bodyCopies : getStringArray(meta, 'bodies');
+  const bodies =
+    bodyCopies.length > 0 ? bodyCopies : getStringArray(meta, 'bodies');
   const variants = getObjectArray(meta, 'variants');
 
   // Prefer explicit headline × body matrix when both present
@@ -433,11 +492,11 @@ function GenericBody({
   expanded: boolean;
 }) {
   if (!description) return null;
-  const text = expanded || description.length <= 240
-    ? description
-    : `${description.slice(0, 240)}…`;
+  const text =
+    expanded || description.length <= 240
+      ? description
+      : `${description.slice(0, 240)}…`;
   return (
     <p className="whitespace-pre-wrap text-sm text-muted-foreground">{text}</p>
   );
 }
-

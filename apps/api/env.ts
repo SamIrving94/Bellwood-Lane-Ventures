@@ -44,6 +44,14 @@ export const env = createEnv({
     POSTMARK_INBOUND_PASS: z.string().min(1).optional(),
     /** Comma-separated email addresses allowed to forward documents to docs@. */
     EMAIL_FORWARD_ALLOWLIST: z.string().optional(),
+    /**
+     * Reddit "script" app credentials for /cron/guide-research. Reddit
+     * blocks anonymous JSON, so without these the Reddit source is skipped
+     * and the weekly brief says so. Register at reddit.com/prefs/apps.
+     */
+    REDDIT_CLIENT_ID: z.string().min(1).optional(),
+    REDDIT_CLIENT_SECRET: z.string().min(1).optional(),
+    REDDIT_USER_AGENT: z.string().min(1).optional(),
   },
   client: {},
   runtimeEnv: {
@@ -56,5 +64,8 @@ export const env = createEnv({
     POSTMARK_INBOUND_USER: process.env.POSTMARK_INBOUND_USER,
     POSTMARK_INBOUND_PASS: process.env.POSTMARK_INBOUND_PASS,
     EMAIL_FORWARD_ALLOWLIST: process.env.EMAIL_FORWARD_ALLOWLIST,
+    REDDIT_CLIENT_ID: process.env.REDDIT_CLIENT_ID,
+    REDDIT_CLIENT_SECRET: process.env.REDDIT_CLIENT_SECRET,
+    REDDIT_USER_AGENT: process.env.REDDIT_USER_AGENT,
   },
 });

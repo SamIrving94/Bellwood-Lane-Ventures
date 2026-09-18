@@ -4,6 +4,7 @@ import { callClaude, callClaudeForJson } from '@repo/ai/claude';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { validateAgentAuth, unauthorizedResponse } from '../../_lib/auth';
+import { slugify } from '../../../cron/_lib/guides/slug';
 
 /**
  * POST /agents/marketer/draft-blog
@@ -57,6 +58,40 @@ const Body = z.object({
   supportingKeywords: z.array(z.string().min(2).max(60)).max(5).optional(),
   /** Free-text founder context — e.g. specific data point to include, audience nuance. */
   audienceNotes: z.string().max(500).optional(),
+  /**
+   * Set by /cron/guide-research. The evergreen question this guide answers;
+   * a GuidePost row is created when present so the founder can publish it
+   * from /marketing/guides. Ad-hoc drafts without it stay action-only.
+   */
+  questionKey: z.string().min(1).max(80).optional(),
+  /** This week's opening hook, grounded in one of `sources`. */
+  hook: z.string().max(600).optional(),
+  /** Only sources the research cron actually fetched. The model cites nothing else. */
+  sources: z
+    .array(
+      z.object({
+        title: z.string().min(1).max(300),
+        url: z.string().url(),
+        source: z.string().min(1).max(120),
+        publishedAt: z.string().optional(),
+      })
+    )
+    .max(12)
+    .optional(),
+  /** The runner-up questions, shown on the review card so the founder can swap. */
+  candidates: z
+    .array(
+      z.object({
+        key: z.string(),
+        question: z.string(),
+        why: z.string(),
+        hook: z.string().nullable().optional(),
+      })
+    )
+    .max(5)
+    .optional(),
+  /** Research run detail for the card: what was checked and what failed. */
+  research: z.record(z.unknown()).optional(),
 });
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -92,6 +127,8 @@ FORMAT.
 - Lead with the reader's situation, not Kept.
 - Where the topic touches financial difficulty, signpost StepChange and Citizens Advice in the body.
 - One clear CTA at the end, pointing to the landing page named in the segment brief. Never a route that is not named there.
+- If a HOOK is given, open with it or a close paraphrase; do not bury it. If SOURCES are given, you may cite them inline as a markdown link on the claim they support, and only them. A claim with no source in the list is written as an honest general statement, not a statistic. Never invent a source, a figure or a quote.
+- The guide answers the question in the topic line. Answer it in the first two paragraphs, then explain. Readers arrive from a search and leave if the answer is not near the top.
 
 You MUST return JSON only, no markdown fences, no preamble. Schema:
 
@@ -198,6 +235,15 @@ export async function POST(request: Request) {
       ? `Supporting keywords: ${input.supportingKeywords.join(', ')}`
       : null,
     input.audienceNotes ? `Founder notes: ${input.audienceNotes}` : null,
+    input.hook ? `HOOK (this week's opening): ${input.hook}` : null,
+    input.sources?.length
+      ? `SOURCES (the only citable ones):\n${input.sources
+          .map(
+            (s) =>
+              `- ${s.title} (${s.source}${s.publishedAt ? `, ${s.publishedAt.slice(0, 10)}` : ''}) ${s.url}`
+          )
+          .join('\n')}`
+      : 'SOURCES: none this week. Make no numeric claims that would need one.',
     '',
     'Draft the post per the system rules. JSON only.',
   ]
@@ -255,6 +301,11 @@ export async function POST(request: Request) {
         ? 'low'
         : 'medium';
 
+  // The CTA href is the landing route named in the brief, never one the
+  // model chose: the brief is the allow-list.
+  const ctaHref =
+    segmentBrief.match(/Landing page: (\/[a-z0-9/-]*)/)?.[1] ?? '/sell';
+
   const action = await database.founderAction
     .create({
       data: {
@@ -262,7 +313,9 @@ export async function POST(request: Request) {
         priority,
         status: 'pending',
         agent: 'marketer',
-        title: `Approve blog draft: ${draft.title}`,
+        title: input.questionKey
+          ? `This week's guide: ${draft.title}`
+          : `Approve blog draft: ${draft.title}`,
         description: [
           `**Segment:** ${input.segment}`,
           `**Counsel verdict:** ${compliance?.overallVerdict ?? '(audit unavailable)'}`,
@@ -272,16 +325,29 @@ export async function POST(request: Request) {
           '',
           `**Draft length:** ~${draft.bodyMarkdown.split(/\s+/).length} words`,
           `**Meta description:** ${draft.metaDescription}`,
+          input.hook ? `**Hook:** ${input.hook}` : null,
+          input.sources?.length
+            ? `**Sources:** ${input.sources.length} (${input.sources.map((s) => s.source).join(', ')})`
+            : null,
+          input.candidates?.length
+            ? `**Also considered:** ${input.candidates.map((c) => c.question).join(' · ')}`
+            : null,
           '',
-          'Full draft + compliance report in metadata. Open the action to review.',
-        ].join('\n'),
+          input.questionKey
+            ? 'Approve to keep it, Publish to put it live at /guides. Full draft, sources and compliance report in metadata.'
+            : 'Full draft + compliance report in metadata. Open the action to review.',
+        ]
+          .filter((l): l is string => l !== null)
+          .join('\n'),
         // Cast — Prisma's Json input type requires an index signature, but
         // our BlogDraft / ComplianceReport interfaces are strictly shaped.
         // Round-trip via JSON to satisfy InputJsonValue at the boundary.
         metadata: JSON.parse(
           JSON.stringify({
             assignedToAgent: 'counsel',
-            workflow: 'review_then_publish',
+            workflow: input.questionKey
+              ? 'guide_review_then_publish'
+              : 'review_then_publish',
             input,
             draft,
             compliance: compliance ?? null,
@@ -294,9 +360,78 @@ export async function POST(request: Request) {
       return null;
     });
 
+  // A guide gets a GuidePost row: the content the founder publishes. The
+  // action is the review card; the row is what apps/web renders.
+  let guidePostId: string | null = null;
+  if (input.questionKey) {
+    const base = slugify(draft.slug || draft.title) || `guide-${Date.now()}`;
+    for (let attempt = 0; attempt < 5 && !guidePostId; attempt++) {
+      const slug = attempt === 0 ? base : `${base}-${attempt + 1}`;
+      const row = await database.guidePost
+        .create({
+          data: {
+            slug,
+            questionKey: input.questionKey,
+            segment: input.segment,
+            title: draft.title,
+            h1: draft.h1 || draft.title,
+            metaDescription: draft.metaDescription,
+            bodyMarkdown: draft.bodyMarkdown,
+            ctaLine: draft.ctaLine,
+            ctaHref,
+            primaryKeyword: input.primaryKeyword ?? null,
+            hook: input.hook ?? null,
+            sources: input.sources
+              ? JSON.parse(JSON.stringify(input.sources))
+              : undefined,
+            internalLinks: draft.internalLinks
+              ? JSON.parse(JSON.stringify(draft.internalLinks))
+              : undefined,
+            compliance: compliance
+              ? JSON.parse(JSON.stringify(compliance))
+              : undefined,
+            founderActionId: action?.id ?? null,
+          },
+          select: { id: true },
+        })
+        .catch((err: unknown) => {
+          const code = (err as { code?: string })?.code;
+          // P2002 = unique clash on slug; try the next suffix. Anything
+          // else is logged and the draft still returns (the action exists).
+          if (code !== 'P2002')
+            console.warn('[draft-blog] GuidePost create failed', err);
+          return code === 'P2002' ? null : { id: null };
+        });
+      if (row?.id) guidePostId = row.id;
+      if (row?.id === null) break;
+    }
+    if (guidePostId && action) {
+      await database.founderAction
+        .update({
+          where: { id: action.id },
+          data: {
+            metadata: JSON.parse(
+              JSON.stringify({
+                assignedToAgent: 'counsel',
+                workflow: 'guide_review_then_publish',
+                guidePostId,
+                input,
+                draft,
+                compliance: compliance ?? null,
+              })
+            ),
+          },
+        })
+        .catch((err) =>
+          console.warn('[draft-blog] action metadata update failed', err)
+        );
+    }
+  }
+
   return NextResponse.json({
     success: true,
     actionId: action?.id ?? null,
+    guidePostId,
     draft,
     compliance: compliance ?? {
       overallVerdict: 'edit_required',

@@ -22,7 +22,8 @@ export type CronName =
   | 'legal-chaser'
   | 'deep-appraisal'
   | 'ch-stream'
-  | 'avm-backtest';
+  | 'avm-backtest'
+  | 'guide-research';
 
 // Max age (hours) between successful runs before the watchdog alerts. Tuned to
 // the documented daily schedules with head-room for timezone/retry jitter.
@@ -47,6 +48,9 @@ export const CRON_MAX_STALENESS_HOURS: Partial<Record<CronName, number>> = {
   // Monthly (28th). 35 days clears one skipped run before the watchdog
   // shouts; two silent months is a real failure.
   'avm-backtest': 35 * 24,
+  // Weekly (Saturday 06:00). Nine days clears one late run; two silent
+  // Saturdays means no guide drafted for a fortnight, which is a failure.
+  'guide-research': 9 * 24,
 };
 
 export type CronHeartbeat = {
