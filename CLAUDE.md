@@ -97,7 +97,9 @@ This is the most important custom surface. Two families of route handlers:
 (Vercel cron). Examples: `pipeline-appraise`, `pipeline-outreach`,
 `pipeline-summary`, `sla-alerts`, `auction-scan`, `marketer-daily/weekly/monthly`,
 `event-poller`, `deep-appraisal`, `agent-prospecting`, `quote-ops`, `keep-alive`,
-`weekly-patterns`, `avm-backtest` (monthly, 28th). **Exception:** `scouting` has NO schedule (founder decision,
+`weekly-patterns`, `avm-backtest` (monthly, 28th), `guide-research` (Saturdays;
+drafts one evergreen guide a week into `GuidePost`, published by hand from
+/marketing/guides). **Exception:** `scouting` has NO schedule (founder decision,
 27 Aug 2026) — it is founder-triggered from Settings → Scouting ("Run scout
 now") to control PropertyData spend; same route, same CRON_SECRET auth.
 - **Auth:** `Authorization: Bearer <CRON_SECRET>` (checked inline in each route).

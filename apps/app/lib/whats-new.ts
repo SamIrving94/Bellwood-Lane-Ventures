@@ -26,6 +26,33 @@ export type WhatsNewEntry = {
 /** Newest first. The popup shows index 0. */
 export const WHATS_NEW: WhatsNewEntry[] = [
   {
+    id: '2026-09-17-guides-pipeline',
+    date: '2026-09-17',
+    emoji: '📚',
+    title: 'One guide a week, written for Google, published by you',
+    intro:
+      'Every Saturday the marketer listens to the UK property press and the housing forums, picks the evergreen question they point at, and drafts the answer in Kept voice. You read it, you press Publish, it is live.',
+    bullets: [
+      {
+        emoji: '🎧',
+        text: '**Listens first.** Trade feeds and HM Land Registry news every week; Reddit’s UK housing subs once the key is set.',
+      },
+      {
+        emoji: '🧭',
+        text: '**Evergreen questions only.** “What happens to a house after probate is granted?” ranks in March and in September. The news supplies the opening line, never the topic.',
+      },
+      {
+        emoji: '🖱️',
+        text: '**Publish is a click.** New **Guides** tab in Marketing. Approve keeps it, Publish puts it at wearekept.co.uk/guides in five minutes, Unpublish pulls it back.',
+      },
+      {
+        emoji: '🧾',
+        text: '**Sources you can check.** Every guide lists what it cited. The model cannot cite anything it was not shown.',
+      },
+    ],
+    cta: { label: 'Open Guides', href: '/marketing/guides' },
+  },
+  {
     id: '2026-09-17-marketer-kept-voice',
     date: '2026-09-17',
     emoji: '🪶',

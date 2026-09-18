@@ -15,6 +15,7 @@
     "@repo/ai": "workspace:*",
     "@repo/auctions": "workspace:*",
     "@repo/auth": "workspace:*",
+    "@repo/brand": "workspace:*",
     "@repo/calendly": "workspace:*",
     "@repo/database": "workspace:*",
     "@repo/deal-updates": "workspace:*",

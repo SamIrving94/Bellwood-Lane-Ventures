@@ -83,6 +83,10 @@
     {
       "path": "/cron/avm-backtest",
       "schedule": "0 6 28 * *"
+    },
+    {
+      "path": "/cron/guide-research",
+      "schedule": "0 6 * * 6"
     }
   ]
 }

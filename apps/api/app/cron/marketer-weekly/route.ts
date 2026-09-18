@@ -1,5 +1,4 @@
 import { env } from '@/env';
-import { selfOrigin } from '../_lib/self-origin';
 import { KEPT_VOICE_RULES } from '@repo/ai/brand-voice';
 import { callClaudeForJson, CLAUDE_HAIKU } from '@repo/ai/claude';
 import { database } from '@repo/database';
@@ -8,20 +7,17 @@ import { NextResponse } from 'next/server';
 /**
  * Weekly marketer cron (Sundays 18:30 UTC).
  *
- * Two passes inside one cron:
+ * One pass:
  *
- *   Pass 1 — LinkedIn topic basket
+ *   LinkedIn topic basket
  *     Asks Claude for 5 educational topics for the week ahead, anchored to
  *     UK property news of the past 7 days. Persists ONE `approve_linkedin_post`
  *     FounderAction containing all 5 — the founder picks/edits 1-2 in a
  *     single review.
  *
- *   Pass 2 — Two blog drafts (via /agents/marketer/draft-blog)
- *     Looks at the most recent 2 distinct `sellerType` values from completed
- *     deals in the last 30 days and asks the existing blog-draft endpoint to
- *     draft a post for each. That endpoint creates its own
- *     `approve_blog_draft` FounderActions + audits, so we don't duplicate
- *     here.
+ *   (Pass 2, the two weekly blog drafts on fixed topics, moved to
+ *   /cron/guide-research on 17 Sep 2026: one evergreen guide a week, picked
+ *   from live signals, with a GuidePost row the founder can publish.)
  *
  * NEVER auto-publishes anything. Always founder-approved.
  */
@@ -70,20 +66,16 @@ export const POST = async (request: Request) => {
   // ─── Pass 1: LinkedIn topic basket ───────────────────────────────────
   const linkedInResult = await draftLinkedInTopics(runDate);
 
-  // ─── Pass 2: Two blog drafts via /agents/marketer/draft-blog ─────────
-  const blogResult = await draftSegmentBlogs(request);
-
   // ── Log an AgentEvent so the morning briefing can pick it up.
   await database.agentEvent
     .create({
       data: {
         agent: 'marketer',
         eventType: 'marketer_weekly',
-        summary: `Marketer weekly: ${linkedInResult.topicsDrafted} LI topics + ${blogResult.blogsRequested} blog drafts requested`,
-        count: linkedInResult.topicsDrafted + blogResult.blogsRequested,
+        summary: `Marketer weekly: ${linkedInResult.topicsDrafted} LI topics`,
+        count: linkedInResult.topicsDrafted,
         payload: {
           linkedIn: linkedInResult,
-          blogs: blogResult,
         },
       },
     })
@@ -95,7 +87,6 @@ export const POST = async (request: Request) => {
     success: true,
     runDate: runDate.toISOString(),
     linkedIn: linkedInResult,
-    blogs: blogResult,
   });
 };
 
@@ -196,168 +187,3 @@ async function draftLinkedInTopics(runDate: Date): Promise<{
     fallback: false,
   };
 }
-
-// ────────────────────────────────────────────────────────────────────────────
-// Pass 2 — Two blog drafts via /agents/marketer/draft-blog
-// ────────────────────────────────────────────────────────────────────────────
-
-// SellerType values that map to a valid /agents/marketer/draft-blog segment.
-// Keep in step with the `segment` enum in that route.
-type BlogSegment =
-  | 'probate'
-  | 'chain_break'
-  | 'separation'
-  | 'relocation'
-  | 'distress'
-  | 'problem_property'
-  | 'agent';
-
-const SELLER_TYPE_TO_SEGMENT: Record<string, BlogSegment> = {
-  probate: 'probate',
-  chain_break: 'chain_break',
-  repossession: 'distress',
-  relocation: 'relocation',
-  short_lease: 'problem_property',
-  standard: 'chain_break',
-};
-
-async function draftSegmentBlogs(request: Request): Promise<{
-  blogsRequested: number;
-  segments: string[];
-  fallback: boolean;
-}> {
-  const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-
-  // Pull the most recent distinct sellerTypes from completions in last 30 days.
-  // groupBy keeps it cheap; we pick the 2 most recent by max(acquiredAt).
-  const recent = await database.deal
-    .findMany({
-      where: {
-        status: 'completed',
-        acquiredAt: { gte: thirtyDaysAgo },
-      },
-      orderBy: { acquiredAt: 'desc' },
-      select: { sellerType: true },
-      take: 50,
-    })
-    .catch(() => [] as Array<{ sellerType: string }>);
-
-  const seen = new Set<string>();
-  const orderedSegments: string[] = [];
-  for (const row of recent) {
-    const segment = SELLER_TYPE_TO_SEGMENT[row.sellerType];
-    if (!segment) continue;
-    if (seen.has(segment)) continue;
-    seen.add(segment);
-    orderedSegments.push(segment);
-    if (orderedSegments.length === 2) break;
-  }
-
-  // Fallback to probate + chain_break if no recent completions
-  if (orderedSegments.length < 2) {
-    const defaults: Array<'probate' | 'chain_break'> = [
-      'probate',
-      'chain_break',
-    ];
-    for (const d of defaults) {
-      if (orderedSegments.length === 2) break;
-      if (!seen.has(d)) {
-        seen.add(d);
-        orderedSegments.push(d);
-      }
-    }
-  }
-
-  if (!env.PAPERCLIP_API_KEY && !env.BELLWOOD_API_KEY) {
-    console.warn(
-      '[marketer-weekly] no PAPERCLIP_API_KEY / BELLWOOD_API_KEY — skipping blog drafts'
-    );
-    return { blogsRequested: 0, segments: orderedSegments, fallback: true };
-  }
-
-  // Server-controlled origin: this request carries the agent key.
-  const url = `${selfOrigin()}/agents/marketer/draft-blog`;
-  const bearer = env.BELLWOOD_API_KEY ?? env.PAPERCLIP_API_KEY ?? '';
-
-  let blogsRequested = 0;
-  const topicBySegment: Record<
-    string,
-    { topic: string; primaryKeyword: string }
-  > = {
-    probate: {
-      topic: 'Selling an empty inherited property without dragging the estate',
-      primaryKeyword: 'sell inherited property uk',
-    },
-    chain_break: {
-      topic: 'What to do when your buyer pulls out',
-      primaryKeyword: 'buyer pulled out uk',
-    },
-    separation: {
-      topic:
-        'Selling a shared home after a separation without a long fight over the sale',
-      primaryKeyword: 'selling house after separation uk',
-    },
-    relocation: {
-      topic:
-        'Selling your home to a fixed date when you are relocating for work',
-      primaryKeyword: 'sell house quickly relocating uk',
-    },
-    distress: {
-      topic:
-        'Selling a house in financial difficulty without going through repossession',
-      primaryKeyword: 'sell house repossession uk',
-    },
-    problem_property: {
-      topic: 'Selling a property with knotweed, cladding or a short lease',
-      primaryKeyword: 'sell problem property uk',
-    },
-    agent: {
-      topic:
-        'How estate agents can save fall-through deals without losing the listing',
-      primaryKeyword: 'fall through deal estate agent',
-    },
-  };
-
-  for (const segment of orderedSegments) {
-    const profile = topicBySegment[segment];
-    if (!profile) continue;
-    try {
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: {
-          'content-type': 'application/json',
-          authorization: `Bearer ${bearer}`,
-        },
-        body: JSON.stringify({
-          topic: profile.topic,
-          segment,
-          primaryKeyword: profile.primaryKeyword,
-          audienceNotes:
-            'Weekly auto-request from marketer-weekly cron — anchor to recent completions in this segment.',
-        }),
-      });
-      if (response.ok) {
-        blogsRequested++;
-      } else {
-        console.warn(
-          `[marketer-weekly] draft-blog ${segment} returned ${response.status}`
-        );
-      }
-    } catch (err) {
-      console.warn(
-        `[marketer-weekly] draft-blog ${segment} request failed`,
-        err
-      );
-    }
-  }
-
-  return {
-    blogsRequested,
-    segments: orderedSegments,
-    fallback: blogsRequested === 0,
-  };
-}
-
-// Vercel cron sends GET by default. Accept either method so a manual
-// POST and an automated GET both reach the same handler.
-export const GET = POST;

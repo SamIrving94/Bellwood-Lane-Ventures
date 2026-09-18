@@ -166,6 +166,9 @@ importers:
       '@repo/auth':
         specifier: workspace:*
         version: link:../../packages/auth
+      '@repo/brand':
+        specifier: workspace:*
+        version: link:../../packages/brand
       '@repo/calendly':
         specifier: workspace:*
         version: link:../../packages/calendly
@@ -490,6 +493,9 @@ importers:
       react-dom:
         specifier: 19.0.0
         version: 19.0.0(react@19.0.0)
+      react-markdown:
+        specifier: ^9.1.0
+        version: 9.1.0(@types/react@19.0.10)(react@19.0.0)
       sharp:
         specifier: ^0.33.5
         version: 0.33.5
