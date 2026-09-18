@@ -26,6 +26,33 @@ export type WhatsNewEntry = {
 /** Newest first. The popup shows index 0. */
 export const WHATS_NEW: WhatsNewEntry[] = [
   {
+    id: '2026-09-17-marketer-kept-voice',
+    date: '2026-09-17',
+    emoji: '🪶',
+    title: 'The marketer now writes like Kept',
+    intro:
+      'Every blog, Instagram, LinkedIn, paid-ad and outreach draft now starts from the same voice rules as the homepage. The Beth Sims bar, in code, in one place.',
+    bullets: [
+      {
+        emoji: '🤝',
+        text: '**Only the real promise.** No more "24-hour cash backup", "4-hour SLA" or "8 weeks" in any draft. Two working days after viewing, held for a week, weeks not months.',
+      },
+      {
+        emoji: '🕊️',
+        text: '**Probate copy has no numbers.** No tax clock, no carrying costs. Closure, not a deadline.',
+      },
+      {
+        emoji: '🔗',
+        text: '**Blog CTAs link to pages that exist.** Plus two new segments: **separation** and **relocation**.',
+      },
+      {
+        emoji: '🧭',
+        text: '**One rulebook.** Change the voice in one file and all five drafters follow. Drafts are still held for your review, always.',
+      },
+    ],
+    cta: { label: 'Open your actions', href: '/actions' },
+  },
+  {
     id: '2026-09-12-appraisal-signals-and-size',
     date: '2026-09-12',
     emoji: '🫀',

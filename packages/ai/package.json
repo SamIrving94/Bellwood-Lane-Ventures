@@ -5,7 +5,8 @@
   "exports": {
     ".": "./index.ts",
     "./claude": "./claude.ts",
-    "./keys": "./keys.ts"
+    "./keys": "./keys.ts",
+    "./brand-voice": "./brand-voice.ts"
   },
   "scripts": {
     "clean": "git clean -xdf .cache .turbo dist node_modules",
@@ -17,6 +18,7 @@
     "@ai-sdk/openai": "^1.2.0",
     "@anthropic-ai/sdk": "^0.32.1",
     "@openrouter/ai-sdk-provider": "^0.4.0",
+    "@repo/brand": "workspace:*",
     "@t3-oss/env-nextjs": "^0.12.0",
     "ai": "^4.1.52",
     "react": "^19.0.0",

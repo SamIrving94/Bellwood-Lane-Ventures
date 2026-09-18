@@ -1,4 +1,9 @@
 import { env } from '@/env';
+import {
+  KEPT_AGENT_PROPOSITION,
+  KEPT_SIGN_OFF,
+  KEPT_VOICE_RULES,
+} from '@repo/ai/brand-voice';
 import { callClaudeForJson } from '@repo/ai/claude';
 import { database } from '@repo/database';
 import { sendEmail } from '@repo/email';
@@ -72,12 +77,17 @@ async function targetPostcodes(): Promise<string[]> {
     });
     if (setting && Array.isArray(setting.value)) {
       const list = (setting.value as unknown[])
-        .filter((v): v is string => typeof v === 'string' && v.trim().length > 0)
+        .filter(
+          (v): v is string => typeof v === 'string' && v.trim().length > 0
+        )
         .map((p) => p.trim().toUpperCase());
       if (list.length > 0) return list;
     }
   } catch (err) {
-    console.warn('[cron/agent-prospecting] failed to read postcodes from DB', err);
+    console.warn(
+      '[cron/agent-prospecting] failed to read postcodes from DB',
+      err
+    );
   }
   const fromEnv = env.AGENT_PROSPECTING_POSTCODES;
   if (fromEnv) {
@@ -119,7 +129,7 @@ export const POST = async (request: Request) => {
       failedPostcodes.push(postcode);
       console.warn(
         `[cron/agent-prospecting] /agents unavailable for ${postcode}`,
-        err,
+        err
       );
       return null;
     });
@@ -175,7 +185,7 @@ export const POST = async (request: Request) => {
         (t) =>
           !t.startsWith('listings:') &&
           !t.startsWith('postcode:') &&
-          t !== SOURCE_TAG,
+          t !== SOURCE_TAG
       );
       await database.contact.update({
         where: { id: existing.id },
@@ -220,10 +230,13 @@ export const POST = async (request: Request) => {
   const draftCandidates = await selectDraftCandidates(surfaced);
   const draftsCreated = await draftAndPersistOutreach(draftCandidates);
 
-  const summary = `Prospecting run scanned ${postcodes.length} postcodes, ` +
+  const summary =
+    `Prospecting run scanned ${postcodes.length} postcodes, ` +
     `surfaced ${surfaced.length} agent records ` +
     `(${newCount} new, ${updatedCount} refreshed)` +
-    (draftsCreated > 0 ? `, drafted ${draftsCreated} personalised outreach pairs.` : '.') +
+    (draftsCreated > 0
+      ? `, drafted ${draftsCreated} personalised outreach pairs.`
+      : '.') +
     (failedPostcodes.length > 0
       ? ` ⚠ ${failedPostcodes.length} of ${postcodes.length} postcodes could not be looked up (${failedPostcodes.slice(0, 5).join(', ')}) — those are unchecked, not empty.`
       : '');
@@ -235,32 +248,32 @@ export const POST = async (request: Request) => {
         (a) =>
           `· ${a.name} (${a.postcode}) — ${a.numberOfListings ?? '?'} listings${
             a.phone ? ` — ${a.phone}` : ''
-          }`,
+          }`
       )
       .join('\n');
     // "0 new firms surfaced" is not an action — don't create a card for it.
     if (newCount > 0)
-    await database.founderAction.create({
-      data: {
-        type: 'general',
-        priority: 'medium',
-        status: 'pending',
-        agent: 'scout',
-        // Nothing-to-do weeks create no card; this one dies in 7 days if
-        // not actioned rather than piling up.
-        expiresAt: new Date(Date.now() + 7 * 24 * 3600_000),
-        title: `Weekly agent prospecting: ${newCount} new firm${newCount === 1 ? '' : 's'} surfaced`,
-        description: `${summary}\n\nTop new firms by listing volume:\n${topNewLines || '(none new this run)'}\n\nReview in /contacts (filter type=estate_agent).`,
-        metadata: {
-          runDate: startedAt.toISOString(),
-          postcodes,
-          surfaced: surfaced.length,
-          new: newCount,
-          updated: updatedCount,
-          link: '/contacts',
+      await database.founderAction.create({
+        data: {
+          type: 'general',
+          priority: 'medium',
+          status: 'pending',
+          agent: 'scout',
+          // Nothing-to-do weeks create no card; this one dies in 7 days if
+          // not actioned rather than piling up.
+          expiresAt: new Date(Date.now() + 7 * 24 * 3600_000),
+          title: `Weekly agent prospecting: ${newCount} new firm${newCount === 1 ? '' : 's'} surfaced`,
+          description: `${summary}\n\nTop new firms by listing volume:\n${topNewLines || '(none new this run)'}\n\nReview in /contacts (filter type=estate_agent).`,
+          metadata: {
+            runDate: startedAt.toISOString(),
+            postcodes,
+            surfaced: surfaced.length,
+            new: newCount,
+            updated: updatedCount,
+            link: '/contacts',
+          },
         },
-      },
-    });
+      });
   } catch (err) {
     console.warn('[agent-prospecting] founder-action create failed', err);
   }
@@ -272,7 +285,7 @@ export const POST = async (request: Request) => {
       const topNewLines = topNew
         .map(
           (a) =>
-            `- ${a.name} (${a.postcode}) — ${a.numberOfListings ?? '?'} listings${a.phone ? ` — ${a.phone}` : ''}`,
+            `- ${a.name} (${a.postcode}) — ${a.numberOfListings ?? '?'} listings${a.phone ? ` — ${a.phone}` : ''}`
         )
         .join('\n');
       await sendEmail({
@@ -319,29 +332,30 @@ export const POST = async (request: Request) => {
 
 const OUTREACH_SYSTEM_PROMPT = `You write peer-to-peer outreach for Kept, a UK property-buying firm specialising in fall-through deals, probate, and distressed sales.
 
-You are writing to branch managers and partners at independent estate agents — busy professionals who get 5+ cold outreach messages a day. Most go straight to bin. Yours must NOT.
+You are writing to branch managers and partners at independent estate agents: busy professionals who get 5+ cold outreach messages a day. Most go straight to bin. Yours must not.
 
-Voice: peer-to-peer, professional, slightly dry, specific. Closer to a working surveyor than a sales rep. Short sentences. No marketing fluff. No countdown urgency. No "synergy" or "revolutionise". UK spelling.
+${KEPT_VOICE_RULES}
+
+Peer-to-peer register: a working surveyor writing to an agent, not a sales rep. No "synergy" or "revolutionise".
 
 You will receive a structured profile of one firm. Produce a JSON object containing TWO drafts:
 
 {
   "email": {
     "subject": string,              // ≤ 7 words, specific, no clickbait
-    "bodyPlainText": string         // 3 short paragraphs, ≤ 110 words total. Sign off as "Sam — Kept, hello@bellwoodslane.co.uk".
+    "bodyPlainText": string         // 3 short paragraphs, ≤ 110 words total. Sign off exactly as "${KEPT_SIGN_OFF}".
   },
   "linkedInDm": {
     "openingHook": string,          // 1 sentence, ≤ 18 words, references something specific about their firm or patch
     "bodyPlainText": string         // 2 short paragraphs, ≤ 80 words total. Sign off as "Sam".
   },
-  "personalisedHook": string        // 1 sentence, ≤ 25 words. WHY this firm specifically — e.g. "M14 listing volume signals chain-break exposure"
+  "personalisedHook": string        // 1 sentence, ≤ 25 words. WHY this firm specifically, e.g. "M14 listing volume signals chain-break exposure"
 }
 
 Iron rules:
-- Lead with what's in it for THEM: 24-hour cash backup when a chain breaks, agreed introducer fee, no listing sacrificed.
+- Lead with what's in it for THEM: when an ordinary sale cannot proceed, Kept is a credible alternative for their client. ${KEPT_AGENT_PROPOSITION}
+- Timing only as the promise states: we view, confirm a written offer within two working days of viewing, hold it for a week, complete in weeks not months. No "24-hour" or any faster figure.
 - NAME the firm + their patch + (if known) their listing volume so it doesn't read as a template.
-- NEVER promise "we will buy any house" — we are selective; that's the brand.
-- NEVER use "AI", "machine learning", "algorithm" — peer language only.
 - The LinkedIn DM is SHORTER than the email. Different opening from the email subject.
 - Output ONLY the JSON object, no markdown fences, no prose.`;
 
@@ -359,7 +373,7 @@ async function selectDraftCandidates(
     address?: string;
     numberOfListings?: number;
     url?: string;
-  }>,
+  }>
 ): Promise<typeof surfaced> {
   // Only NEW firms (no Contact yet) get drafts — refreshing the same firm
   // every Monday would create churny duplicate actions.
@@ -386,7 +400,7 @@ async function draftAndPersistOutreach(
     address?: string;
     numberOfListings?: number;
     url?: string;
-  }>,
+  }>
 ): Promise<number> {
   if (candidates.length === 0) return 0;
 
@@ -398,11 +412,16 @@ async function draftAndPersistOutreach(
       `Target postcode: ${firm.postcode}`,
     ];
     if (typeof firm.numberOfListings === 'number') {
-      lines.push(`Active listings (PropertyData snapshot): ${firm.numberOfListings}`);
+      lines.push(
+        `Active listings (PropertyData snapshot): ${firm.numberOfListings}`
+      );
     }
     if (firm.address) lines.push(`Branch address: ${firm.address}`);
     if (firm.url) lines.push(`Public profile / listings page: ${firm.url}`);
-    lines.push('', 'Draft the email + LinkedIn DM per the system rules. JSON only.');
+    lines.push(
+      '',
+      'Draft the email + LinkedIn DM per the system rules. JSON only.'
+    );
 
     const draft = await callClaudeForJson<OutreachDraft>({
       system: OUTREACH_SYSTEM_PROMPT,
@@ -412,7 +431,10 @@ async function draftAndPersistOutreach(
       feature: 'agent_outreach_draft',
       cacheSystemPrompt: true,
     }).catch((err) => {
-      console.warn(`[agent-prospecting] LLM draft failed for ${firm.name}`, err);
+      console.warn(
+        `[agent-prospecting] LLM draft failed for ${firm.name}`,
+        err
+      );
       return null;
     });
 
@@ -459,7 +481,10 @@ async function draftAndPersistOutreach(
       });
       created++;
     } catch (err) {
-      console.warn(`[agent-prospecting] FounderAction create failed for ${firm.name}`, err);
+      console.warn(
+        `[agent-prospecting] FounderAction create failed for ${firm.name}`,
+        err
+      );
     }
   }
 
