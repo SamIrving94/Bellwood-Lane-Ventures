@@ -7,6 +7,7 @@ import {
   type ConditionLevel,
   appraiseDealFromAvm,
   estimateRefurb,
+  isInsufficientEvidence,
   mapVisualConditionToLevel,
   mergeOfferConfig,
   mergeValuationConfig,
@@ -26,6 +27,11 @@ export const maxDuration = 800;
 // How many leads to appraise per run. Each is ~1 AVM + 1 snapshot (~22 PD
 // credits) + 1 vision call, so this bounds both time and spend.
 const MAX_APPRAISALS_PER_RUN = 8;
+
+// A lead the AVM declined to value (no sold evidence from any source) waits
+// this long before the cron tries again — new Land Registry rows land
+// monthly, so daily retries only spend credits on the same answer.
+const NO_VALUATION_RETRY_MS = 7 * 24 * 60 * 60 * 1000;
 
 type PropertyType =
   | 'detached'
@@ -110,8 +116,27 @@ export const POST = async (request: Request) => {
 
   const pending = candidates.filter((lead) => {
     const raw = (lead.rawPayload ?? {}) as Record<string, unknown>;
-    const avm = raw.avmFull as { pointEstimatePence?: unknown } | undefined;
-    return typeof avm?.pointEstimatePence !== 'number';
+    const avm = raw.avmFull as
+      | {
+          pointEstimatePence?: unknown;
+          noValuationReason?: unknown;
+          fetchedAt?: unknown;
+        }
+      | undefined;
+    if (typeof avm?.pointEstimatePence === 'number') return false;
+    // A lead the AVM declined to value (no sold evidence anywhere) is not
+    // re-tried every run — that would burn PropertyData credits on the same
+    // answer. Retry after a week, when new Land Registry rows may exist.
+    if (typeof avm?.noValuationReason === 'string') {
+      const at =
+        typeof avm.fetchedAt === 'string'
+          ? Date.parse(avm.fetchedAt)
+          : Number.NaN;
+      if (Number.isFinite(at) && Date.now() - at < NO_VALUATION_RETRY_MS) {
+        return false;
+      }
+    }
+    return true;
   });
 
   // Founder-tuned offer policy (highest active avm_confidence EvalConfig).
@@ -130,6 +155,7 @@ export const POST = async (request: Request) => {
   const valuationConfig = mergeValuationConfig(valuationRow?.value ?? null);
 
   let appraised = 0;
+  let declined = 0;
   const errors: string[] = [];
 
   for (const lead of pending) {
@@ -173,7 +199,45 @@ export const POST = async (request: Request) => {
         sellerType: resolveSellerType(lead.leadType) as never,
         offerConfig,
       };
-      const avm = await runAVM(avmInput);
+      let avm: Awaited<ReturnType<typeof runAVM>>;
+      try {
+        avm = await runAVM(avmInput);
+      } catch (err) {
+        if (!isInsufficientEvidence(err)) throw err;
+        // No sold evidence from any source. Record the refusal so the lead
+        // page says "no valuation" instead of showing a placeholder number,
+        // and so this run's filter above stops re-trying it daily.
+        await database.scoutLead.update({
+          where: { id: lead.id },
+          data: {
+            rawPayload: {
+              ...raw,
+              snapshot,
+              avmFull: {
+                pointEstimatePence: null,
+                lowPence: null,
+                highPence: null,
+                finalOfferPence: null,
+                offerDiscountPct: null,
+                confidenceLevel: null,
+                comparableCount: 0,
+                comparables: [],
+                avmSources: null,
+                noValuationReason: err.reason,
+                noValuationDetail: err.message,
+                noValuationTried: err.tried,
+                requiresReview: true,
+                riskScore: null,
+                assumedPropertyType: normalised ? null : avmPropertyType,
+                hmoLikely: (bedrooms ?? 0) >= 5,
+                fetchedAt: new Date().toISOString(),
+              },
+            } as Prisma.InputJsonValue,
+          },
+        });
+        declined++;
+        continue;
+      }
       // Freeze the appraisal for the monthly Land Registry backtest.
       await saveAvmSnapshot(database, {
         input: avmInput,
@@ -196,6 +260,10 @@ export const POST = async (request: Request) => {
         confidenceLevel: r.confidenceLevel ?? null,
         comparableCount: r.comparableCount ?? null,
         comparables: r.comparables ?? [],
+        // Which comp source produced the number — shown on the lead page so
+        // a sector-level or thin valuation is never mistaken for a street one.
+        avmSources: r.avmSources ?? null,
+        noValuationReason: null,
         requiresReview: Boolean(r.requiresCeoEscalation || r.discountCapped),
         // Size economics: implied £/m², area £/sqft benchmark, and whether
         // the size anchor joined the triangulation.
@@ -394,7 +462,7 @@ export const POST = async (request: Request) => {
   }
 
   await recordCronHeartbeat('lead-appraise', {
-    note: `appraised ${appraised}/${pending.length}`,
+    note: `appraised ${appraised}/${pending.length}${declined ? `, ${declined} declined (no evidence)` : ''}`,
   });
 
   return NextResponse.json({
@@ -402,6 +470,7 @@ export const POST = async (request: Request) => {
     candidates: candidates.length,
     pending: pending.length,
     appraised,
+    declined,
     errors,
   });
 };

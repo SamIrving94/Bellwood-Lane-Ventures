@@ -61,6 +61,8 @@ export type {
   ConfidenceLevel,
 } from './base-valuation';
 export { getDistanceWeightedValuation } from './distance-comps';
+export { InsufficientEvidenceError, isInsufficientEvidence } from './evidence';
+export type { NoEvidenceReason } from './evidence';
 export {
   buildSqftEvidence,
   triangulationWeights,

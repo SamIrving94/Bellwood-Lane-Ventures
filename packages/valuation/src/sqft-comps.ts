@@ -524,7 +524,7 @@ const WEIGHT_TABLE: Record<string, TriangulationWeights> = {
 
 /** Look up the blend for this valuation's evidence mix. */
 export function triangulationWeights(
-  csaSource: 'distance' | 'hmlr' | 'fallback',
+  csaSource: 'distance' | 'hmlr' | 'sector' | 'fallback',
   hasExternal: boolean,
   sqftSource: SqftEvidenceSource | null
 ): TriangulationWeights {

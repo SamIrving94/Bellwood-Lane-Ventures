@@ -26,6 +26,37 @@ export type WhatsNewEntry = {
 /** Newest first. The popup shows index 0. */
 export const WHATS_NEW: WhatsNewEntry[] = [
   {
+    id: '2026-09-20-avm-evidence-gate',
+    date: '2026-09-20',
+    emoji: '🧾',
+    title: 'The AVM now shows its receipts',
+    intro:
+      'A 3-bed semi in SW16 got “valued” at £345k with zero sold comps behind it. That number was a placeholder. No more: every valuation now says where it came from, and with no evidence there is no number at all.',
+    bullets: [
+      {
+        emoji: '🚫',
+        text: '**No comps, no number.** With nothing sold nearby the AVM now says **“No valuation”** and blocks the offer, instead of pricing off an area average.',
+      },
+      {
+        emoji: '🗺️',
+        text: '**New evidence source.** When the half-mile and postcode come up empty, it widens to same-type **Land Registry sales across the postcode sector** — free, no credits, flagged as wide.',
+      },
+      {
+        emoji: '🧾',
+        text: '**Source on every valuation.** Under Confidence you now see **which feed** priced it and **how many comps** at what radius. **0 sold comps** shows in red.',
+      },
+      {
+        emoji: '⚖️',
+        text: '**“Above market” now checks itself.** A low-confidence AVM can no longer rule a lead out on its own — it says **verify** instead.',
+      },
+      {
+        emoji: '🗣️',
+        text: '**The agent’s blurb is labelled.** The listing description under The Verdict is now marked **“From the agent’s listing”** — it was never our assessment.',
+      },
+    ],
+    cta: { label: 'Re-appraise a thin lead', href: '/leads' },
+  },
+  {
     id: '2026-09-12-appraisal-signals-and-size',
     date: '2026-09-12',
     emoji: '🫀',
