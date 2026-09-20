@@ -189,6 +189,13 @@ Run a task for one workspace with a filter, e.g.
   (60-second figures, 4-hour signed offers) in vendor-facing, agent-facing,
   or marketing copy — internal ops targets may be faster but are never
   advertised. If docs and the live site disagree, the live site wins.
+  **Agent side (co-founder decision, 20 Sep 2026):** never promise agents
+  the resale instruction ("when we resell, you list it") — we source
+  properties on and cannot guarantee it. The only agent promise is their
+  commission on the sale, agreed in writing per deal. No worked example of
+  our margin, no indicative figure on screen for agents either, no Kept
+  Score link, and no AML-offload promise (the agent has run those checks).
+  The fall-through stat on the site is ~1 in 4 (Quick Move Now, 2025).
 - **Tone of voice — the Beth Sims bar** (founder direction, 22 Aug 2026).
   The signed-off homepage copy is the standard all new copy must meet: people
   first, cut what adds nothing, neutral precision over drama, verify claims

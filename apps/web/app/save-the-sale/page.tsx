@@ -7,7 +7,7 @@ import { AgentQuickForm } from '../agents/components/agent-quick-form';
 export const metadata: Metadata = {
   title: 'Sale fallen through? · Kept',
   description:
-    'Buyer pulled out, mortgage refused, survey down-valued or chain broken? An indicative cash figure on screen, fast. We make a signed offer within two working days of viewing. For UK estate agents.',
+    'Buyer pulled out, mortgage refused, survey down-valued or chain broken? Same-day response, and a signed offer within two working days of viewing. For UK estate agents.',
   openGraph: {
     title: 'Sale fallen through? · Kept',
     description:
@@ -62,10 +62,9 @@ export default async function SaveTheSalePage({
             </h1>
             <p className="mt-7 max-w-md text-lg text-stone-600 leading-relaxed">
               Buyer pulled out, mortgage refused, survey down-valued, chain
-              broken. Whatever&rsquo;s collapsed, we step in with an indicative
-              figure on screen, fast (drawn from HM Land Registry comps), and
-              we make a signed offer within two working days of viewing the
-              property.
+              broken. Whatever&rsquo;s collapsed, we come back to you the same
+              day, view the property, and make a signed offer within two
+              working days of viewing.
             </p>
             <ul className="mt-8 space-y-3 text-[14px] text-stone-700">
               <li className="flex items-start gap-3">
@@ -82,18 +81,18 @@ export default async function SaveTheSalePage({
                   <strong className="text-forest">
                     You keep your commission.
                   </strong>{' '}
-                  You keep your commission on the sale, and when we resell
-                  through the market we instruct you.
+                  You keep your commission on the sale, agreed in writing per
+                  deal and disclosed to the seller.
                 </span>
               </li>
               <li className="flex items-start gap-3">
                 <span className="mt-1 inline-block h-1.5 w-1.5 shrink-0 rounded-md bg-leaf" />
                 <span>
                   <strong className="text-forest">
-                    WhatsApp-able vendor link.
+                    One timeline, everyone sees it.
                   </strong>{' '}
-                  After you submit, you get a link you can WhatsApp the vendor
-                  in two taps. No PDF download, no login on their end.
+                  Once the deal is running, seller, agent and solicitor share
+                  one live timeline link. No portal, no login on their end.
                 </span>
               </li>
             </ul>

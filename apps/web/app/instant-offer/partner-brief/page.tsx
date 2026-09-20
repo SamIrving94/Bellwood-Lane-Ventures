@@ -77,9 +77,8 @@ export default function PartnerBriefPage() {
         </h2>
         <p className="mt-3 text-sm text-stone-600">
           Your terms are agreed in writing per deal. You keep your commission on
-          the sale, and when we resell we instruct you. Exact figures are
-          confirmed before the deal proceeds and disclosed to the seller in
-          writing per NTSELAT guidance.
+          the sale. Exact figures are confirmed before the deal proceeds and
+          disclosed to the seller in writing per NTSELAT guidance.
         </p>
       </section>
 
@@ -88,20 +87,20 @@ export default function PartnerBriefPage() {
         <ol className="mt-4 space-y-4 text-sm text-stone-700">
           {[
             {
-              t: '1. Indicative offer, fast',
-              b: 'Submit the property details and receive an indicative offer range based on comparable sales and PropertyData. We confirm an offer in writing within two working days of viewing the property.',
+              t: '1. Same-day response',
+              b: 'Submit the property details and we come back to you the same day, Monday to Friday. We view the property, then confirm an offer in writing within two working days of viewing.',
             },
             {
               t: '2. No price cuts',
               b: 'The price we confirm is the price we complete at. Adjustable only for the three documented exceptions: structural survey defect, title issue at conveyancing, or materially incorrect information disclosed by the seller.',
             },
             {
-              t: '3. AML handled',
-              b: 'We conduct KYC, source-of-funds checks, and HMRC-compliant AML on the seller. You receive a signed compliance receipt for your file.',
+              t: '3. Held for a week',
+              b: 'The written offer is binding upon Kept for a week from issue, so your client has time to take advice before deciding.',
             },
             {
-              t: '4. Resale instruction',
-              b: 'When we resell the property, we instruct you. One referral, two transactions on your books.',
+              t: '4. Weeks, not months',
+              b: 'We instruct our solicitors straight away and complete in weeks not months, as little as two weeks, or paced to suit the seller.',
             },
           ].map((p) => (
             <li key={p.t} className="rounded-xl bg-soft p-5">
@@ -144,11 +143,11 @@ export default function PartnerBriefPage() {
         <ol className="mt-4 space-y-3 text-sm text-stone-700">
           <li>
             <strong>1.</strong> Send us the property address + seller situation
-            by email, WhatsApp, or via our indicative offer tool.
+            by email, WhatsApp, or the form at /agents.
           </li>
           <li>
-            <strong>2.</strong> We send you the indicative offer, and we
-            confirm the price in writing within two working days of viewing.
+            <strong>2.</strong> We view the property, and we confirm the price
+            in writing within two working days of viewing.
           </li>
           <li>
             <strong>3.</strong> You present the offer to your seller using our

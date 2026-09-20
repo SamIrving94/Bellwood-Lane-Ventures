@@ -1,6 +1,6 @@
 # Kept. — brand & design system
 
-_Last verified against the live site: 2026-09-05._
+_Last verified against the live site: 2026-09-20._
 
 **Status:** exploration approved by both founders, July 2026. Domain secured:
 **wearekept.co.uk**. Legal/trading structure TBC (trademark class 36 search
@@ -87,6 +87,24 @@ The set, unchanged by the hosting move:
   probably not the right answer" section, but it is **no longer shown as a
   worked example, and not on every page**.
 
+**Retired, 20 Sep 2026 (co-founder copy review) — do not reintroduce:**
+
+- ~~The commission docket~~ — the `/agents` hero artefact (sale fee + resale
+  instruction, "up to £7,280"). Replaced by the threshold photograph and
+  seal, the same artefact as the `/sell` hero.
+- ~~The £280k chain-break worked example~~ — put our buy-below, resell-at-
+  market maths on the page in numbers. Gone from `/agents`.
+- ~~The resale-instruction promise~~ — "when we resell, you list it" / "one
+  referral, two transactions". We source properties on, so we cannot
+  promise it. Removed from `/agents`, `/save-the-sale`, the partner brief
+  and the sample offer document. The agent promise is now only: your
+  commission on the sale, agreed in writing per deal.
+- ~~Kept Score~~ — the `/agents` nav tab and the portal card. It returned an
+  indicative range, which the rule below forbids. The route is orphaned,
+  noindexed, pending deletion.
+- ~~The AML-offload promise to agents~~ — "we carry the load", the
+  compliance receipt. The agent has already run those checks.
+
 ## Motion
 
 - The dot lands (drop + settle, ~0.8s, `cubic-bezier(.3,1.5,.4,1)`) once
@@ -145,6 +163,13 @@ targets. See CLAUDE.md "Public promises".
 Also binding, from the Aug 2026 founder review:
 
 - **No indicative offers**, and no generated figure shown on screen anywhere.
+  This includes the agent side: the `/agents` and `/save-the-sale` forms
+  confirm receipt and nothing more, and the `/agents` process is four steps
+  with no indicative-offer step (20 Sep 2026).
+- **No resale-instruction promise to agents.** We source properties on;
+  "when we resell, you list it" is retired everywhere (20 Sep 2026).
+- **The fall-through stat is ~1 in 4** (Quick Move Now 2025 data), not
+  ~1 in 3, on `/sell`, `/chain-break` and anywhere else it appears.
 - **No em dashes** in any copy, on the site or in documents. Comma, colon, or
   split the sentence. En dashes in number ranges (24–48) are fine.
 - **Never "advice"** — we are not FCA authorised. Use "an honest steer".
