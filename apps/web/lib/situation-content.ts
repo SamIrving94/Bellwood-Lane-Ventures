@@ -177,7 +177,7 @@ export const SITUATION_CONTENT: Record<SituationKey, SituationContent> = {
     sub: 'Months of work, undone weeks from the finish. Tell us the address today. We view the property, then we confirm an offer in writing within two working days of that viewing, and the price we write down is the price we complete at.',
     fitTitle: 'We step in where your buyer stepped out.',
     fitBody:
-      'Roughly a third of agreed sales in England and Wales never reach completion. When yours is one of them, the question is no longer what the house is worth in six months, it is whether your onward move survives the next three weeks.',
+      'Roughly a quarter of agreed sales in England and Wales never reach completion. When yours is one of them, the question is no longer what the house is worth in six months, it is whether your onward move survives the next three weeks.',
     cards: [
       {
         t: 'No chain to collapse',

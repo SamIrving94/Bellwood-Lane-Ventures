@@ -159,12 +159,13 @@ Ask them to:
 
 We learn what's broken before we open the gates.
 
-### 6. Build the resale workflow
+### 6. ~~Build the resale workflow~~ (withdrawn, 20 Sep 2026)
 
-Our pitch says *"when we resell the property, you list it."*
-- We have **no operational workflow** for this yet
-- Need: a resale-instruction record, agent contract, listing price guidance
-- Half a day of build, plus a one-page contract template
+The pitch used to say *"when we resell the property, you list it."* That
+promise was withdrawn at the co-founder copy review on 20 Sep 2026: we
+source properties on, so we cannot guarantee a resale instruction. It has
+been removed from every agent-facing surface (`/agents`, `/save-the-sale`,
+the partner brief). No resale workflow is needed for the agent pitch.
 
 ### 7. Customer database / CRM
 

@@ -9,6 +9,7 @@ import {
 } from '@/components/brand';
 import { ProofBand } from '@/components/proof-band';
 import { TimelineMock } from '@/components/timeline-mock';
+import Image from 'next/image';
 import Link from 'next/link';
 import { AgentQuickForm } from './components/agent-quick-form';
 
@@ -21,19 +22,19 @@ const FAQ: Array<{ q: string; a: string }> = [
   },
   {
     q: 'My buyer’s mortgage was just refused. Can you replace them at the same price?',
-    a: 'Almost certainly not at the original asking price. Our offer is below open-market in exchange for cash and certainty. But for a vendor whose buyer just collapsed, that trade-off is often worth it: a quick completion at a price that reflects the speed and certainty of the transaction, instead of 4–8 months of re-marketing with no guarantee.',
+    a: 'Almost certainly not at the original asking price. Our offer is below open-market in exchange for cash and certainty. But for a vendor whose buyer just collapsed, that trade-off is often worth it: a quick completion at a price that reflects the speed and certainty of the transaction, instead of months of re-marketing with no guarantee.',
   },
   {
     q: 'The survey came back and the buyer wants a £15k reduction. What now?',
-    a: 'If the buyer has held the price down, we’ll quote independently against the same comparables their surveyor used. Often we land within £5k of where the renegotiation was heading anyway, but with a fixed completion date and no further wobbles. Send us the property + the survey notes.',
+    a: 'If the buyer has held the price down, we’ll quote independently against the same comparables their surveyor used, and provide a price with a fixed completion date and no further wobbles. Send us the property and the survey notes.',
   },
   {
     q: 'When and how do I get paid?',
-    a: 'On completion of our purchase from your client. You keep your commission on the sale, agreed in writing per deal, with a separate sale instruction when we resell. All disclosed to the seller in writing per NTSELAT guidance.',
+    a: 'On completion of our purchase from your client. You keep your commission on the sale, agreed in writing per deal. All disclosed to the seller in writing per NTSELAT guidance.',
   },
   {
     q: 'How are you different from other cash buyers?',
-    a: 'Three ways. (1) You keep your commission, agreed in writing per deal; most national cash buyers cut the agent out entirely. (2) The price we confirm is the price we complete at, with no renegotiation. (3) When we resell the property, we instruct you. National cash buyers flip through their own channels and the property never comes back to you.',
+    a: 'Two ways. (1) You keep your commission, agreed in writing per deal; most national cash buyers cut the agent out entirely. (2) The price we confirm is the price we complete at, with no renegotiation.',
   },
   {
     q: 'What if you cut the price before completion?',
@@ -44,78 +45,12 @@ const FAQ: Array<{ q: string; a: string }> = [
     a: 'No problem. You instruct the property as normal. There’s no contract with us and nothing to unwind — you simply carry on, and we wish your client the best.',
   },
   {
-    q: 'What about my AML obligations on the seller?',
-    a: 'We carry the load. Kept is HMRC-registered for AML supervision. We run KYC and source-of-funds checks, then issue a written compliance receipt for your file.',
-  },
-  {
     q: 'Are you regulated?',
     a: 'Cash property buying is unregulated by the FCA. We are members of the Property Redress Scheme (PRS) — a government-approved independent redress body — voluntarily follow The Property Ombudsman code, are HMRC-registered for AML supervision, and ICO-registered as a data controller. See our regulatory disclosure for full detail.',
   },
 ];
 
 /** A signed cash-offer document — rendered as a real letter, not a web card. */
-/** The two-commission docket — the agent's hero artifact. The economics of
- *  the referral rendered as a typed document, matching the /sell letter's
- *  craft language: paper gradient, courier labels, dotted leaders, a solid
- *  wax seal with weight. */
-function CommissionDocket() {
-  return (
-    <div className="rotate-[1.4deg] relative w-[300px] rounded-[2px] border border-hair bg-[linear-gradient(175deg,#fdfaf2_0%,#f7f2e6_70%,#f3edde_100%)] p-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.85),0_1px_2px_rgba(36,28,26,0.08),0_30px_56px_-26px_rgba(36,28,26,0.55)]">
-      <div className="-right-5 -top-5 absolute hidden rotate-[-6deg] sm:block">
-        <div
-          className="flex h-14 w-14 items-center justify-center bg-wax shadow-[inset_0_2px_3px_rgba(255,255,255,0.35),inset_0_-3px_4px_rgba(0,0,0,0.3),0_3px_6px_rgba(36,28,26,0.35)]"
-          style={{ borderRadius: '52% 48% 46% 54% / 48% 54% 46% 52%' }}
-        >
-          <span className="flex h-10 w-10 items-center justify-center rounded-full border border-white/40 font-bold font-serif text-[17px] text-cream">
-            k.
-          </span>
-        </div>
-      </div>
-      <div className="flex items-baseline justify-between gap-4">
-        <p className="font-bold font-serif text-[17px] text-brand-deep tracking-[0.01em]">
-          Kept
-        </p>
-        <p className="text-[10.5px] text-stone-400 [font-family:var(--font-courier)]">
-          Partner docket
-        </p>
-      </div>
-      <p className="mt-0.5 text-[10.5px] text-stone-400 [font-family:var(--font-courier)]">
-        Worked example &middot; £280,000 sale
-      </p>
-      <dl className="mt-4 space-y-2.5 border-stone-300/60 border-t border-dashed pt-3.5 text-[12px] text-stone-600 [font-family:var(--font-courier)]">
-        <div className="flex items-baseline gap-2">
-          <dt className="shrink-0">Sale fee</dt>
-          <span
-            aria-hidden
-            className="mb-[3px] flex-1 border-stone-400/50 border-b border-dotted"
-          />
-          <dd className="shrink-0 text-forest">£2,800</dd>
-        </div>
-        <div className="flex items-baseline gap-2">
-          <dt className="shrink-0">Resale instruction</dt>
-          <span
-            aria-hidden
-            className="mb-[3px] flex-1 border-stone-400/50 border-b border-dotted"
-          />
-          <dd className="shrink-0 text-forest">£4,480</dd>
-        </div>
-      </dl>
-      <div className="mt-4 border-stone-300/60 border-t border-dashed pt-3">
-        <p className="text-[10.5px] text-brand tracking-[0.08em] [font-family:var(--font-courier)]">
-          YOUR TOTAL EARNINGS
-        </p>
-        <p className="mt-1 font-bold font-serif text-[38px] text-forest leading-none tracking-[-0.01em]">
-          Up to £7,280
-        </p>
-      </div>
-      <p className="mt-4 border-stone-300/60 border-t border-dashed pt-3 text-[10px] text-stone-500 leading-relaxed [font-family:var(--font-courier)]">
-        All figures + VAT. Resale fee conditional on resale. Disclosed to the
-        seller in writing per NTSELAT guidance.
-      </p>
-    </div>
-  );
-}
-
 function SampleOfferDocument() {
   return (
     <div className="-rotate-[1.2deg] relative mx-auto w-full max-w-md rounded-[2px] border border-hair bg-[linear-gradient(175deg,#fdfaf2_0%,#f7f2e6_70%,#f3edde_100%)] p-8 shadow-[inset_0_1px_0_rgba(255,255,255,0.85),0_1px_2px_rgba(36,28,26,0.08),0_30px_60px_-30px_rgba(36,28,26,0.6)]">
@@ -158,7 +93,7 @@ function SampleOfferDocument() {
           £244,000
         </p>
         <p className="mt-2 inline-block rotate-[-1.5deg] border border-wax/60 px-2 py-0.5 text-[10px] text-wax tracking-[0.14em] [font-family:var(--font-courier)]">
-          LOCKED · 72 HOURS
+          HELD · ONE WEEK
         </p>
       </div>
 
@@ -167,7 +102,6 @@ function SampleOfferDocument() {
           ['Completion', 'Weeks not months'],
           ['Price changes', 'Documented exceptions only'],
           ['Your commission', 'Agreed per deal, in writing'],
-          ['Resale instruction', 'Back to your firm'],
         ].map(([k, v]) => (
           <div key={k} className="flex items-baseline gap-2">
             <dt className="shrink-0">{k}</dt>
@@ -213,8 +147,10 @@ function SampleOfferDocument() {
   );
 }
 
+// Co-founder note, 20 Sep 2026: the Kept Score tab is gone. It offered an
+// indicative range, which the no-indicative-offers rule (Aug 2026) forbids
+// on every surface. The route still exists, noindexed, until it is deleted.
 const NAV = [
-  { href: '/agents/score', label: 'Kept Score' },
   { href: '#how', label: 'How it works' },
   { href: '#faq', label: 'FAQ' },
   { href: '/sell', label: 'For sellers' },
@@ -262,10 +198,15 @@ export default function AgentsPage() {
 
       {/* ————— HERO —————
           Same structural grammar as /sell (the anti-template composition):
-          courier dateline row, giant full-width Caslon headline, a typed
-          artifact laid over the composition, hairline baseline. The agent's
-          artifact is the commission docket — the number that makes the
-          referral rational, as a document rather than a claim. */}
+          courier dateline row, giant full-width Caslon headline, an artefact
+          laid over the composition, hairline baseline.
+
+          Co-founder note, 20 Sep 2026: the commission docket (sale fee plus
+          resale instruction, "up to £7,280") is retired and must not be
+          reinstated. We source properties on, so we cannot promise the agent
+          the resale instruction, and the page no longer mentions one
+          anywhere. The artefact is now the same threshold photograph and
+          seal as the /sell hero. */}
       <section className="relative overflow-hidden px-6 pt-10 pb-16 md:px-12 md:pt-12 md:pb-20">
         <div className="relative mx-auto max-w-6xl">
           {/* Dateline — the page opens like a document */}
@@ -297,11 +238,19 @@ export default function AgentsPage() {
                 <StatusNote>Five fields. No portal login.</StatusNote>
               </div>
             </div>
-            <figure className="flex flex-col items-center md:items-end lg:-mt-16 xl:-mt-32">
-              <CommissionDocket />
-              <figcaption className="mt-6 max-w-[300px] text-center font-serif text-[13px] text-stone-500 md:text-right">
-                One referral, two transactions on your books.
-              </figcaption>
+            <figure className="relative m-0 mx-auto w-full max-w-[340px] md:mx-0 md:w-[300px] lg:-mt-16 lg:w-[340px] xl:-mt-32">
+              <div className="overflow-hidden rounded-[2px] border border-hair">
+                <Image
+                  src="/home/threshold.webp"
+                  alt="An open front door on a wet afternoon, hall light on, a packing box just inside"
+                  width={1100}
+                  height={1375}
+                  priority
+                  sizes="(max-width: 768px) 100vw, 340px"
+                  className="block h-auto w-full"
+                />
+              </div>
+              <Seal className="-bottom-[18px] -left-[18px] absolute h-[72px] w-[72px] bg-cream shadow-[0_14px_30px_-14px_rgba(36,28,26,0.45)] lg:-bottom-[24px] lg:-left-[24px] lg:h-[84px] lg:w-[84px]" />
             </figure>
           </div>
           {/* Hairline baseline */}
@@ -337,7 +286,7 @@ export default function AgentsPage() {
                 n: 'Option one',
                 t: 'Re-market the property',
                 pts: [
-                  '4–8 months on average to find a new buyer',
+                  'Potentially months to find a new buyer',
                   'Vendor confidence is already cratered',
                   'You start the chain-build from zero',
                   'Your commission is delayed by months',
@@ -350,7 +299,6 @@ export default function AgentsPage() {
                   'Well below market value, no negotiation',
                   'Last-minute price cuts are endemic',
                   'You’re out of the picture, so no commission',
-                  'You never see the property again on resale',
                 ],
               },
             ].map((o) => (
@@ -375,8 +323,8 @@ export default function AgentsPage() {
               we&rsquo;re trying to be option three
             </Eyebrow>
             <h3 className="mt-4 max-w-3xl font-semibold font-serif text-3xl leading-[1.1] md:text-4xl">
-              Speed without renegotiation. Commission on the sale, and again on
-              the resale.
+              Speed without renegotiation. Your commission on the sale, agreed
+              in writing.
             </h3>
             <p className="mt-6 text-[11px] text-white/40 leading-relaxed">
               Sources: TwentyCi (2025 fall-through rate), Santander
@@ -388,74 +336,46 @@ export default function AgentsPage() {
         </div>
       </section>
 
-      {/* ————— THE WEDGE: TWO COMMISSIONS ————— */}
+      {/* ————— WHY WE EXIST — the seller page's "Kept does things
+          differently", in the agent's frame —————
+          Co-founder note, 20 Sep 2026: this replaces the two-commissions
+          wedge and its £280k worked example. Both are retired: the worked
+          example put our buy-below-market, resell-at-market maths on the
+          page in numbers, and the resale instruction is no longer something
+          we can promise. The first two paragraphs are the signed-off /sell
+          copy with "you" turned to "your client"; the closing line is new.
+          For Beth's review. */}
       <section id="how" className="scroll-mt-24 px-3 py-4 md:px-6">
         <div className="mx-auto max-w-[1500px] rounded-[20px] bg-white md:rounded-[28px]">
-        <div className="mx-auto grid max-w-6xl grid-cols-1 gap-12 px-6 py-24 md:px-12 md:py-28 lg:grid-cols-[1fr_1.2fr] lg:gap-20">
-          <div>
-            <SectionNumber>02</SectionNumber>
-            <Eyebrow className="mt-5">the honest version</Eyebrow>
-            <h2 className="mt-4 font-semibold font-serif text-4xl leading-[1.05] tracking-[-0.02em] md:text-5xl">
-              You don&rsquo;t lose a commission.{' '}
-              <span className="font-normal text-brand">
-                You earn two.
-              </span>
-            </h2>
-            <p className="mt-6 text-[15px] text-stone-600 leading-relaxed">
-              When a client goes to a national cash buyer directly, the agent is
-              usually out of the picture entirely. Refer them to us instead and
-              the instruction stays yours: you earn your commission on the sale,
-              and again on the re-listing.
-            </p>
-            <p className="mt-4 text-[15px] text-stone-600 leading-relaxed">
-              We solve that one explicit way:{' '}
-              <strong className="font-medium text-forest">
-                when we resell the property, you list it.
-              </strong>{' '}
-              One referral, two transactions on your books.
-            </p>
-          </div>
-          <div className="rounded-sm border border-hair bg-white p-8 md:p-10">
-            <p className="font-serif text-sm text-stone-500">
-              Worked example &middot; £280k chain-break sale
-            </p>
-            <dl className="mt-6 space-y-5">
-              <div className="flex items-baseline justify-between gap-6 border-hair border-b pb-4">
-                <dt>
-                  <p className="font-serif text-[17px]">Sale fee</p>
-                  <p className="text-[12px] text-stone-500">
-                    Paid on our purchase completion
-                  </p>
-                </dt>
-                <dd className="font-semibold font-serif text-2xl text-forest">
-                  £2,800
-                </dd>
-              </div>
-              <div className="flex items-baseline justify-between gap-6 border-hair border-b pb-4">
-                <dt>
-                  <p className="font-serif text-[17px]">Resale instruction</p>
-                  <p className="text-[12px] text-stone-500">
-                    Paid on resale &mdash; conditional
-                  </p>
-                </dt>
-                <dd className="font-semibold font-serif text-2xl text-stone-400">
-                  £4,480
-                </dd>
-              </div>
-              <div className="flex items-baseline justify-between gap-6 pt-2">
-                <dt className="font-serif text-brand text-sm">
-                  Total earnings
-                </dt>
-                <dd className="font-semibold font-serif text-3xl text-brand">
-                  Up to £7,280
-                </dd>
-              </div>
-            </dl>
-            <p className="mt-6 text-[11px] text-stone-500 leading-relaxed">
-              All figures + VAT. All disclosed to the seller in writing per
-              NTSELAT guidance.
-            </p>
-          </div>
+        <div className="mx-auto max-w-6xl px-6 py-24 md:px-12 md:py-28">
+          <SectionNumber>02</SectionNumber>
+          <Eyebrow className="mt-5">why we exist</Eyebrow>
+          <h2 className="mt-4 max-w-3xl font-semibold font-serif text-4xl leading-[1.05] tracking-[-0.02em] md:text-5xl">
+            Kept does things{' '}
+            <span className="font-normal text-brand">differently.</span>
+          </h2>
+          <p className="mt-6 max-w-[62ch] text-[#44403c] text-[17px] leading-[1.75]">
+            We know there&rsquo;s more to your client&rsquo;s home than bricks
+            and mortar. Every property comes with lives lived, memories made
+            and reasons for moving on. That&rsquo;s why we built Kept: because
+            we don&rsquo;t just care about homes, we care about people.
+          </p>
+          <p className="mt-4 max-w-[62ch] text-[#44403c] text-[17px] leading-[1.75]">
+            When selling on the open market isn&rsquo;t right for your client,
+            we&rsquo;re here to make things simpler. We&rsquo;ll treat them
+            with honesty and respect, give them a clear cash offer in writing
+            and never reduce it at the last minute. You keep your commission
+            on the sale, agreed in writing per deal. That&rsquo;s our promise:
+            a promise made is a promise Kept.
+          </p>
+          <p className="mt-6 text-[15px]">
+            <Link
+              href="/about"
+              className="text-forest underline decoration-leaf/50 underline-offset-4 hover:decoration-leaf"
+            >
+              Read Kept&rsquo;s story here →
+            </Link>
+          </p>
         </div>
         </div>
       </section>
@@ -526,45 +446,39 @@ export default function AgentsPage() {
           <SectionNumber>04</SectionNumber>
           <Eyebrow className="mt-5">how the process actually runs</Eyebrow>
           <h2 className="mt-4 font-semibold font-serif text-4xl leading-[1.05] tracking-[-0.02em] md:text-5xl">
-            Five steps.{' '}
+            Four steps.{' '}
             <span className="font-normal text-brand">
               Honest about what each one means.
             </span>
           </h2>
           <p className="mt-6 max-w-2xl text-[15px] text-stone-600 leading-relaxed">
             We never describe our offers as &ldquo;instant&rdquo; or
-            &ldquo;guaranteed&rdquo; at enquiry. The indicative offer is a
-            starting point, the confirmed offer comes after we&rsquo;ve viewed.
-            Here&rsquo;s exactly what happens, in order.
+            &ldquo;guaranteed&rdquo;. No figure reaches your client until we
+            have viewed the property. Here&rsquo;s exactly what happens, in
+            order.
           </p>
           <ol className="mt-12 divide-y divide-hair border-hair border-y">
             {[
               {
                 n: '01',
                 t: 'Acknowledgement',
-                sla: 'Straight away',
-                d: 'Seller or agent submits the property. We acknowledge receipt and may ask clarifying questions. Where we can pull from public records (Land Registry, EPC register, planning portal), we do. We only ask the seller for what we genuinely need.',
+                sla: 'Same day',
+                d: 'Seller or agent submits the property. We come back the same day, Monday to Friday, and may ask clarifying questions. Where we can pull from public records (Land Registry, EPC register, planning portal), we do. We only ask the seller for what we genuinely need.',
               },
               {
                 n: '02',
-                t: 'Indicative offer',
-                sla: 'After desk research',
-                d: 'We send an indicative offer range based on comparable sales, PropertyData valuation, and public property records. Clearly labelled INDICATIVE. Our honest starting point — not a number we intend to change, but one that must be confirmed after viewing.',
-              },
-              {
-                n: '03',
                 t: 'Property viewing',
-                sla: 'Required before confirmed offer',
+                sla: 'Before any figure',
                 d: 'We physically view every property before issuing a confirmed offer. We assess overall condition, visible defects, and anything not clear from public records. We tell the seller in advance what we are looking for.',
               },
               {
-                n: '04',
+                n: '03',
                 t: 'Confirmed offer in writing',
                 sla: 'Within two working days of viewing',
                 d: 'After viewing, we issue our confirmed purchase price in writing. This is the price we complete at. We share the survey notes that informed it. Held for a week so your client can take advice.',
               },
               {
-                n: '05',
+                n: '04',
                 t: 'Conveyancing and completion',
                 sla: 'Weeks not months',
                 d: 'We instruct our solicitors straight away. The seller instructs theirs; we can recommend firms accustomed to working on expedited timelines. We provide regular updates through to exchange and completion, surfaced on the live timeline page the seller can share with anyone.',
@@ -670,9 +584,9 @@ export default function AgentsPage() {
             Send the address.
           </h2>
           <p className="mt-5 max-w-2xl text-[15px] text-stone-600 leading-relaxed">
-            Five fields. An indicative figure appears as soon as you submit,
-            pulled from HM Land Registry comps. We then view the property and
-            confirm a signed offer within two working days of viewing.
+            Five fields. We come back to you the same day, Monday to Friday.
+            We then view the property and confirm a signed offer within two
+            working days of viewing.
           </p>
           <div className="mt-10">
             <AgentQuickForm />

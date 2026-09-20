@@ -1,6 +1,5 @@
 import { Button, Eyebrow, LogoLockup, Seal } from '@/components/brand';
 import type { Metadata } from 'next';
-import Image from 'next/image';
 import Link from 'next/link';
 
 export const revalidate = 300;
@@ -14,11 +13,16 @@ export const metadata: Metadata = {
 /**
  * /about — "Kept's story". The homepage's founder section was removed on
  * editorial advice and replaced with a link here (Aug 2026 handoff), so this
- * page carries what that section carried: Anthony's photograph, the
- * "software does the maths, a person makes the promise" argument, and the
- * people-business framing. Copy is assembled from the signed-off homepage
- * strings; it makes no customer-outcome claims because there are none to
- * make yet.
+ * page carries what that section carried: the "software does the maths, a
+ * person makes the promise" argument and the people-business framing. Copy
+ * is assembled from the signed-off homepage strings; it makes no
+ * customer-outcome claims because there are none to make yet.
+ *
+ * 20 Sep 2026 (co-founder notes): Anthony's photograph removed at his
+ * request, and a second story paragraph added between the two homepage
+ * paragraphs so the page says more than /sell already does. That paragraph
+ * is new copy awaiting Beth's editorial pass; the two around it are
+ * signed-off and must not be paraphrased.
  */
 export default function AboutPage() {
   return (
@@ -61,6 +65,14 @@ export default function AboutPage() {
             moving on. That&rsquo;s why we built Kept: because we don&rsquo;t
             just care about homes, we care about people.
           </p>
+          {/* New paragraph, 20 Sep 2026. Co-founder draft, for Beth's review. */}
+          <p className="mt-4 max-w-[58ch] text-[#44403c] text-[17px] leading-[1.75]">
+            In our property business, we have transacted on dozens of
+            properties where the seller had to move on quickly for countless
+            unique reasons. In doing so, we consistently received the same
+            feedback: sellers wanted more transparency, certainty, and respect
+            than they were frequently receiving in the quick sale market.
+          </p>
           <p className="mt-4 max-w-[58ch] text-[#44403c] text-[17px] leading-[1.75]">
             When selling on the open market isn&rsquo;t right for you,
             we&rsquo;re here to make things simpler. We&rsquo;ll treat you with
@@ -71,21 +83,7 @@ export default function AboutPage() {
         </section>
 
         {/* ————— A PERSON, NOT A PIPELINE ————— */}
-        <section className="grid grid-cols-1 items-center gap-10 pt-[72px] md:grid-cols-[260px_1fr] md:gap-14">
-          <figure className="mx-auto w-[220px] md:w-full">
-            <div className="overflow-hidden rounded-[2px] border border-hair shadow-[0_24px_48px_-28px_rgba(36,28,26,0.45)]">
-              <Image
-                src="/team/anthony-taylor.jpg"
-                alt="Anthony Taylor of Kept"
-                width={900}
-                height={1349}
-                className="h-auto w-full"
-              />
-            </div>
-            <figcaption className="mt-3 text-center font-serif text-[13px] text-stone-500 md:text-left">
-              Anthony Taylor &middot; Kept
-            </figcaption>
-          </figure>
+        <section className="max-w-3xl pt-[72px]">
           <div>
             <Eyebrow tone="muted">a person, not a pipeline</Eyebrow>
             <h2

@@ -197,7 +197,9 @@ export default async function PortalPage() {
         </section>
       )}
 
-      {/* Tools — the two things an agent actually uses day-to-day */}
+      {/* Tools — the one thing an agent actually uses day-to-day. The Kept
+          Score card went with the /agents nav tab (co-founder note, 20 Sep
+          2026): it showed an indicative range, which we no longer do. */}
       <section className="mt-10 grid grid-cols-1 gap-4 md:grid-cols-2">
         <Link
           href="/save-the-sale"
@@ -205,18 +207,8 @@ export default async function PortalPage() {
         >
           <p className="font-semibold font-serif text-lg">Save a sale →</p>
           <p className="mt-2 text-sm text-stone-600">
-            Sale collapsed? Send the address — an indicative figure on screen,
-            credited to your referral code.
-          </p>
-        </Link>
-        <Link
-          href="/agents/score"
-          className="rounded-[2px] border-2 border-leaf/40 bg-white p-6 transition hover:border-leaf"
-        >
-          <p className="font-semibold font-serif text-lg">Kept Score →</p>
-          <p className="mt-2 text-sm text-stone-600">
-            An indicative range to show a seller before you leave their living
-            room.
+            Sale collapsed? Send the address. Same-day response, credited to
+            your referral code.
           </p>
         </Link>
       </section>

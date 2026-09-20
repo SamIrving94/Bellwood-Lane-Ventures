@@ -41,10 +41,13 @@ const REASONS = [
 
 const STATS = [
   {
-    stat: '~1 in 3',
+    // Founder note, 20 Sep 2026: revised from "~1 in 3" (TwentyCi 2025) to
+    // "~1 in 4" on the 2025 Quick Move Now fall-through data cited in the
+    // marketing report. Footnote 1 and the chain-break page track this.
+    stat: '~1 in 4',
     t: 'agreed sales collapse',
     note: '1',
-    d: 'Roughly a third of sales agreed in England and Wales never reach completion.',
+    d: 'Roughly a quarter of sales agreed in England and Wales never reach completion.',
   },
   {
     stat: '4–6 months',
@@ -363,7 +366,7 @@ export default function SellPage() {
             </dl>
 
             <p className="mt-10 max-w-[62ch] text-[#44403c] text-[17px] leading-[1.7]">
-              Months of uncertainty. A fee for the privilege. And a one in three
+              Months of uncertainty. A fee for the privilege. And a one in four
               chance that after all of it, you are back where you started.
             </p>
             {/* Founder direction, 12 Sep 2026: the cash-buyer concern comes
@@ -408,7 +411,7 @@ export default function SellPage() {
             </div>
 
             <ol className="mt-9 flex list-none flex-col gap-1 border-hair border-t p-0 pt-[18px] text-[11px] text-stone-500 leading-[1.6]">
-              <li>1. TwentyCi fall-through data, 2025.</li>
+              <li>1. Quick Move Now fall-through data, 2025.</li>
               <li>
                 2. Typical UK residential conveyancing timeline from offer
                 accepted to completion; your own transaction may be faster or

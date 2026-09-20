@@ -24,16 +24,15 @@ const TRIGGERS: Array<Trigger> = [
   { ui: 'Other', api: 'other' },
 ];
 
+/**
+ * What we keep from the /api/quote response. The quote is still generated
+ * and stored for founder review, but nothing priced is shown here: no
+ * indicative offer, no AVM range, no vendor share link carrying a figure
+ * (founder decision, Aug 2026; co-founder note, 20 Sep 2026). The written
+ * offer follows the viewing, by email.
+ */
 type OfferResult = {
   quoteId: string;
-  estimatedMarketValueMinPence?: number;
-  estimatedMarketValueMaxPence?: number;
-  offerPence?: number;
-  offerPercentOfAvm?: number;
-  completionDays?: number;
-  lockedUntil?: string;
-  requiresReview?: boolean;
-  trackUrl?: string | null;
   agentAccount?: {
     referralCode: string;
     contactName: string;
@@ -44,7 +43,7 @@ type OfferResult = {
 type SubmitState =
   | { kind: 'idle' }
   | { kind: 'submitting' }
-  | { kind: 'success'; offer: OfferResult; vendorEmail: string }
+  | { kind: 'success'; offer: OfferResult; agentEmail: string }
   | { kind: 'error'; message: string };
 
 type AgentQuickFormProperties = {
@@ -56,11 +55,6 @@ type AgentQuickFormProperties = {
   defaultAddress?: string;
   defaultPostcode?: string;
 };
-
-function formatGBP(pence?: number) {
-  if (!pence) return '—';
-  return `£${Math.round(pence / 100).toLocaleString('en-GB')}`;
-}
 
 function findTrigger(label?: string, api?: string): Trigger {
   return (
@@ -147,7 +141,7 @@ export function AgentQuickForm({
       setState({
         kind: 'success',
         offer: data,
-        vendorEmail: contactEmail.trim(),
+        agentEmail: contactEmail.trim(),
       });
     } catch (error) {
       setState({
@@ -253,7 +247,7 @@ export function AgentQuickForm({
         </label>
         <label className="block md:col-span-2">
           <span className="font-serif text-[13px] text-stone-500">
-            Work mobile{' '}
+            Mobile{' '}
             <span className="text-stone-400 normal-case tracking-normal">
               (WhatsApp · optional but faster)
             </span>
@@ -276,7 +270,7 @@ export function AgentQuickForm({
 
       <div className="mt-7 flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
         <p className="text-stone-500 text-xs">
-          Indicative offer on screen, fast.
+          We come back to you the same day, Monday to Friday.
           <br />
           We confirm a price in writing within two working days of viewing.
         </p>
@@ -286,8 +280,8 @@ export function AgentQuickForm({
           className="inline-flex items-center gap-2 rounded-md bg-leaf px-7 py-3 font-medium text-sm text-white transition hover:bg-leaf-dark disabled:opacity-50"
         >
           {state.kind === 'submitting'
-            ? 'Pulling comps\u2026'
-            : 'See the number'}
+            ? 'Sending\u2026'
+            : 'Submit the details'}
           <span aria-hidden>→</span>
         </button>
       </div>
@@ -298,89 +292,29 @@ export function AgentQuickForm({
 function SuccessView({
   state,
 }: {
-  state: { kind: 'success'; offer: OfferResult; vendorEmail: string };
+  state: { kind: 'success'; offer: OfferResult; agentEmail: string };
 }) {
-  const { offer, vendorEmail } = state;
-  const trackUrl =
-    offer.trackUrl ||
-    (typeof window !== 'undefined'
-      ? `${window.location.origin}/instant-offer/offer/${offer.quoteId}`
-      : '');
-
-  if (offer.requiresReview) {
-    return (
-      <div className="rounded-3xl border border-leaf/40 bg-white p-10 shadow-sm">
-        <p className="font-serif text-[13px] text-leaf">Manual review</p>
-        <h3 className="mt-3 font-semibold font-serif text-3xl text-forest">
-          This one needs a human look.
-        </h3>
-        <p className="mt-5 max-w-lg text-[15px] text-stone-700 leading-relaxed">
-          We have your details. Our senior appraiser will personally verify
-          before issuing a binding figure. We will email a written offer to{' '}
-          <strong>{vendorEmail}</strong>, no obligation.
-        </p>
-      </div>
-    );
-  }
-
+  const { offer, agentEmail } = state;
   return (
     <div className="space-y-5">
-      <div className="rounded-3xl border-2 border-leaf/50 bg-white p-7 shadow-md md:p-9">
+      <div className="rounded-3xl border border-leaf/40 bg-white p-7 shadow-sm md:p-9">
         <div className="flex items-baseline justify-between">
-          <p className="font-serif text-[13px] text-leaf">
-            Indicative offer
-          </p>
+          <p className="font-serif text-[13px] text-leaf">Details received</p>
           <p className="font-serif text-[13px] text-stone-400">
             Ref {offer.quoteId?.slice(-8).toUpperCase()}
           </p>
         </div>
-        <p
-          className="mt-3 font-semibold font-serif text-forest tracking-[-0.025em]"
-          style={{ fontSize: 'clamp(48px, 8vw, 88px)', lineHeight: 1 }}
-        >
-          {formatGBP(offer.offerPence)}
-        </p>
-        <div className="mt-6 grid grid-cols-2 gap-6 text-sm md:grid-cols-3">
-          <div>
-            <p className="font-serif text-[13px] text-stone-400">
-              AVM range
-            </p>
-            <p className="mt-1 text-stone-700">
-              {formatGBP(offer.estimatedMarketValueMinPence)} —{' '}
-              {formatGBP(offer.estimatedMarketValueMaxPence)}
-            </p>
-          </div>
-          <div>
-            <p className="font-serif text-[13px] text-stone-400">
-              Completion
-            </p>
-            <p className="mt-1 text-stone-700">
-              {offer.completionDays ?? 21} days
-            </p>
-          </div>
-          <div>
-            <p className="font-serif text-[13px] text-stone-400">
-              Locked
-            </p>
-            <p className="mt-1 text-stone-700">A week from now</p>
-          </div>
-        </div>
-        <p className="mt-6 rounded-xl bg-soft px-5 py-4 text-[13px] text-stone-700 leading-relaxed">
-          This is the indicative figure from our AVM (HM Land Registry comps,
-          last 24 months, adjusted for HPI). We'll be in touch to arrange a
-          viewing, and we send the confirmed price in writing to{' '}
-          <strong>{vendorEmail}</strong> within two working days of the
-          viewing. The price we confirm is the price we complete at.
+        <h3 className="mt-3 font-semibold font-serif text-3xl text-forest">
+          Thank you. We will be in touch.
+        </h3>
+        <p className="mt-5 max-w-lg text-[15px] text-stone-700 leading-relaxed">
+          One of us will come back to you the same day, Monday to Friday, to
+          talk through the situation and arrange a time to view the property.
+          No figure until we have stood in the house; once we have, the
+          written offer goes to <strong>{agentEmail}</strong> within two
+          working days, for you to take to your client.
         </p>
       </div>
-
-      {trackUrl && (
-        <VendorShareCard
-          trackUrl={trackUrl}
-          offerPence={offer.offerPence}
-          completionDays={offer.completionDays ?? 21}
-        />
-      )}
 
       {offer.agentAccount?.referralCode && (
         <p className="text-center text-[12px] text-stone-500">
@@ -392,107 +326,5 @@ function SuccessView({
         </p>
       )}
     </div>
-  );
-}
-
-function VendorShareCard({
-  trackUrl,
-  offerPence,
-  completionDays,
-}: {
-  trackUrl: string;
-  offerPence?: number;
-  completionDays: number;
-}) {
-  const figure = formatGBP(offerPence);
-  const emailSubject = encodeURIComponent('A cash offer for your property');
-  const emailBody = encodeURIComponent(
-    [
-      'Hi,',
-      '',
-      `Following our conversation, I have a cash offer for the property:`,
-      '',
-      `Indicative cash price: ${figure}`,
-      `Completion: as fast as ${completionDays} days, or paced to suit you.`,
-      `No fees, no chain.`,
-      '',
-      `You can see the offer document and the methodology here:`,
-      trackUrl,
-      '',
-      'Have a read - happy to walk you through it on a call when you have a moment.',
-      '',
-      'Best,',
-    ].join('\n')
-  );
-  const whatsAppBody = encodeURIComponent(
-    `Hi — I have a cash offer of ${figure} for the property. ${completionDays}-day completion, no fees, no chain. Full details + methodology here: ${trackUrl}`
-  );
-
-  return (
-    <div className="rounded-2xl border border-stone-200 bg-white p-6">
-      <p className="font-serif text-[13px] text-leaf">
-        Share with your vendor
-      </p>
-      <p className="mt-2 text-[14px] text-stone-600 leading-relaxed">
-        One link, no login. Your vendor sees the offer and our methodology. Most
-        agents send via WhatsApp.
-      </p>
-      <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
-        <a
-          href={`https://api.whatsapp.com/send?text=${whatsAppBody}`}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex items-center justify-center gap-2 rounded-xl border-2 border-leaf bg-soft px-4 py-3 font-medium text-forest text-sm transition hover:bg-leaf/10"
-        >
-          <span aria-hidden>📱</span>
-          WhatsApp vendor
-        </a>
-        <a
-          href={`mailto:?subject=${emailSubject}&body=${emailBody}`}
-          className="flex items-center justify-center gap-2 rounded-xl border border-stone-200 bg-white px-4 py-3 font-medium text-forest text-sm transition hover:border-leaf hover:bg-soft"
-        >
-          <span aria-hidden>✉</span>
-          Email vendor
-        </a>
-        <CopyButton value={trackUrl} label="Copy link" copiedLabel="Copied ✓" />
-      </div>
-      <details className="mt-4 text-stone-500 text-xs">
-        <summary className="cursor-pointer">Show the raw link</summary>
-        <p className="mt-2 break-all font-mono text-[11px] text-stone-600">
-          {trackUrl}
-        </p>
-      </details>
-    </div>
-  );
-}
-
-function CopyButton({
-  value,
-  label = 'Copy link',
-  copiedLabel = 'Copied \u2713',
-}: {
-  value: string;
-  label?: string;
-  copiedLabel?: string;
-}) {
-  const [copied, setCopied] = useState(false);
-  const handleCopy = async () => {
-    try {
-      await navigator.clipboard.writeText(value);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1500);
-    } catch {
-      /* ignore */
-    }
-  };
-  return (
-    <button
-      type="button"
-      onClick={handleCopy}
-      className="flex items-center justify-center gap-2 rounded-xl border border-stone-200 bg-white px-4 py-3 font-medium text-forest text-sm transition hover:border-leaf hover:bg-soft"
-    >
-      <span aria-hidden>🔗</span>
-      {copied ? copiedLabel : label}
-    </button>
   );
 }
