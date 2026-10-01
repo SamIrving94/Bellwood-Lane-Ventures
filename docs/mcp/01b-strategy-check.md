@@ -77,3 +77,11 @@ If the plugin never gets suggested, we still have the page. Nothing is wasted.
 1. **Aim:** B (inherited homes) first? Or keep generic Option C?
 2. **Does Kept buy tenanted homes?** (Decides C2.)
 3. **Web page first, plugin second?**
+
+## Founder answers (1 Oct 2026)
+
+1. **Aim: B** (inherited homes).
+2. **Kept does not buy tenanted homes.** C2 is dropped.
+3. **The web pages already exist** (`/probate`, `/chain-break`, `/problem-property`, Keyhole). The plugin points to them. No new pages.
+
+Ranking continues in `02-ranking.md`.

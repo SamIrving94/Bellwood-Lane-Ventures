@@ -222,8 +222,8 @@ Auth bugs:
 | 3 | `clearNewLeadsInbox` → `requireFounder()` | Data loss | No |
 | 4 | Set `FOUNDER_USER_IDS` / `FOUNDER_EMAIL_ALLOWLIST` in prod | Auth fallback | No |
 | 5 | Token-gate `/instant-offer/offer/[id]`; make offer PDFs private | Public figures | No |
-| 6 | **Capture real PropertyData responses for `/rents`, `/demand-rent`, `/yields`** (probe script, ~6–9 credits for these 3 — approved 1 Oct, see section 11) | No rent data = no sell-or-let | **Yes** |
-| 7 | **Check PropertyData terms for redistribution in a third-party AI plugin** | Licence | **Yes** |
+| 6 | Capture real PropertyData responses for `/rents`, `/demand-rent`, `/yields` (probe script) | Internal schema drift | **No** — licence bars public display, so the plugin uses user-entered rent (Phase 2) |
+| 7 | PropertyData terms for public display | **Answered: internal use only** (`keyhole/report.ts:8`) | Decided — no PropertyData in the plugin |
 | 8 | Rebuild MCP server on current SDK + HTTP transport, no PII tools | Doesn't run | **Yes** |
 | 9 | Add HMLR attribution where we show Land Registry data | OGL condition | Yes (for the plugin) |
 | 10 | Rate limiter: fail closed on paid routes | Cost risk | Yes (ChatGPT traffic is spiky) |
@@ -282,3 +282,5 @@ The brief says the plugin "turns home sellers into **landlord leads**". With no 
   ```
 
 - Then share the console output (shapes only, no addresses). Raw files save to `scratch/propertydata-probe/`, which is gitignored.
+
+**Update (Phase 2): the probe is not needed for the plugin.** Our PropertyData licence covers internal use only, not public display (`apps/web/lib/keyhole/report.ts:8`). So the plugin cannot show PropertyData rents; the user enters their own. The probe is still useful for fixing the internal schema drift.
