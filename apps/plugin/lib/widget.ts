@@ -53,6 +53,7 @@ export const WIDGET_HTML = `<!doctype html>
   .big { font: 600 22px/1.1 Georgia, serif; margin: 4px 0 8px; }
   .muted { color: var(--body); font-size: 13px; }
   .line { display: flex; justify-content: space-between; gap: 8px; font-size: 13px; color: var(--body); }
+  .line span:last-child { white-space: nowrap; }
   ul { margin: 6px 0 0; padding-left: 18px; }
   li { margin: 4px 0; }
   .chip { display: inline-block; font: 11px "Courier New", monospace; padding: 1px 6px;

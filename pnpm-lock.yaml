@@ -333,6 +333,9 @@ importers:
       '@repo/database':
         specifier: workspace:*
         version: link:../../packages/database
+      '@repo/deal-updates':
+        specifier: workspace:*
+        version: link:../../packages/deal-updates
       '@repo/email':
         specifier: workspace:*
         version: link:../../packages/email

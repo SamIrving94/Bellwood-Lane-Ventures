@@ -13,6 +13,7 @@
     "@modelcontextprotocol/server": "^2.2.0",
     "@repo/brand": "workspace:*",
     "@repo/database": "workspace:*",
+    "@repo/deal-updates": "workspace:*",
     "@repo/email": "workspace:*",
     "@repo/kept-tools": "workspace:*",
     "@repo/next-config": "workspace:*",
