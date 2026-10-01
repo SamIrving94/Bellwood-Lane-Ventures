@@ -1,4 +1,5 @@
 import { env } from '@/env';
+import { SITE_MAP } from '@/lib/site-map';
 import type { MetadataRoute } from 'next';
 
 const protocol = env.VERCEL_PROJECT_PRODUCTION_URL?.startsWith('https')
@@ -8,30 +9,13 @@ const base = new URL(
   `${protocol}://${env.VERCEL_PROJECT_PRODUCTION_URL || 'bellwoodslane.co.uk'}`
 );
 
-const sitemap = async (): Promise<MetadataRoute.Sitemap> => [
-  { url: new URL('/sell', base).href, lastModified: new Date() },
-  { url: new URL('/about', base).href, lastModified: new Date() },
-  { url: new URL('/probate', base).href, lastModified: new Date() },
-  { url: new URL('/chain-break', base).href, lastModified: new Date() },
-  { url: new URL('/separation', base).href, lastModified: new Date() },
-  { url: new URL('/relocation', base).href, lastModified: new Date() },
-  { url: new URL('/problem-property', base).href, lastModified: new Date() },
-  { url: new URL('/your-situation', base).href, lastModified: new Date() },
-  { url: new URL('/agents', base).href, lastModified: new Date() },
-  { url: new URL('/save-the-sale', base).href, lastModified: new Date() },
-  {
-    url: new URL('/why-we-wont-buy-any-home', base).href,
-    lastModified: new Date(),
-  },
-  {
-    url: new URL('/instant-offer/methodology', base).href,
-    lastModified: new Date(),
-  },
-  {
-    url: new URL('/legal/fca-disclosure', base).href,
-    lastModified: new Date(),
-  },
-  { url: new URL('/legal/privacy', base).href, lastModified: new Date() },
-];
+// Derived from the IA so the footer and the sitemap can't drift apart.
+const sitemap = async (): Promise<MetadataRoute.Sitemap> =>
+  SITE_MAP.flatMap((group) => group.links)
+    .filter((link) => link.sitemap !== false)
+    .map((link) => ({
+      url: new URL(link.href, base).href,
+      lastModified: new Date(),
+    }));
 
 export default sitemap;

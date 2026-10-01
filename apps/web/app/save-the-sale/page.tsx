@@ -1,4 +1,5 @@
 import { LogoLockup } from '@/components/brand';
+import { SiteFooter } from '@/components/site-footer';
 import { sansDocFont, serifDocFont } from '@repo/design-system/lib/fonts';
 import type { Metadata } from 'next';
 import Link from 'next/link';
@@ -119,26 +120,7 @@ export default async function SaveTheSalePage({
         </div>
       </section>
 
-      {/* ————— TRUST FOOTER ————— */}
-      <footer className="border-stone-200/60 border-t bg-white px-6 py-10 md:px-12">
-        <div className="mx-auto flex max-w-5xl flex-col items-start justify-between gap-4 md:flex-row md:items-center">
-          <p className="font-serif text-[13px] text-stone-500">
-            Property Redress Scheme (PRS) &middot; HMRC AML supervised &middot;
-            ICO registered
-          </p>
-          <nav className="flex flex-wrap items-center gap-6 text-[13px] text-stone-600">
-            <Link href="/agents">Partner programme</Link>
-            <Link href="/instant-offer/methodology">Methodology</Link>
-            <Link href="/legal/fca-disclosure">Regulatory</Link>
-            <Link href="/legal/privacy">Privacy</Link>
-          </nav>
-        </div>
-        <p className="mx-auto mt-8 max-w-5xl font-mono text-[10px] text-stone-400 leading-relaxed">
-          Kept is a UK cash property buyer, not an FCA-authorised firm. We do
-          not provide financial or legal advice. All offers are subject to
-          satisfactory survey and title searches.
-        </p>
-      </footer>
+      <SiteFooter />
     </div>
   );
 }

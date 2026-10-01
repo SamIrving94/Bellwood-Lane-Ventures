@@ -258,6 +258,12 @@ Rules:
   builds also ship dark (noindex, no outreach) until the premise survives
   one real user. Full account: `docs/LEARNINGS.md`, 2026-08-29.
 
+- **Public-site IA lives in `apps/web/lib/site-map.ts`.** The shared
+  `SiteFooter` renders it on every public page and `sitemap.xml` is derived
+  from it. A new public page goes in there, or it is an orphan. Private
+  token-bearing pages never go in it; add them to `PRIVATE_PATHS` in
+  `apps/web/components/cookie-consent.tsx` instead so GA never sees them.
+
 - **Announce shipped features in-app.** When you ship a founder-visible
   feature, add an entry to the TOP of `apps/app/lib/whats-new.ts` (fresh
   `id`, fun copy, one emoji per bullet). The dashboard shows the newest

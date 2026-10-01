@@ -1,3 +1,4 @@
+import { SiteFooter } from '@/components/site-footer';
 import { SiteHeader } from '@/components/site-header';
 import type { Metadata } from 'next';
 import Link from 'next/link';
@@ -164,6 +165,7 @@ export default function MethodologyPage() {
           </Link>
         </div>
       </article>
+      <SiteFooter />
     </>
   );
 }

@@ -1,3 +1,5 @@
+import { SiteFooter } from '@/components/site-footer';
+import { SiteHeader } from '@/components/site-header';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 
@@ -188,99 +190,103 @@ const SECTIONS: Array<{
 
 export default function FCADisclosurePage() {
   return (
-    <main className="min-h-screen bg-cream px-6 py-20 md:px-12 md:py-28">
-      <div className="mx-auto max-w-3xl">
-        <Link
-          href="/instant-offer"
-          className="inline-flex items-center gap-2 font-serif text-[13px] text-stone-500 transition hover:text-leaf"
-        >
-          <span aria-hidden>←</span> Back to indicative offer
-        </Link>
+    <>
+      <SiteHeader />
+      <main className="min-h-screen bg-cream px-6 py-20 md:px-12 md:py-28">
+        <div className="mx-auto max-w-3xl">
+          <Link
+            href="/instant-offer"
+            className="inline-flex items-center gap-2 font-serif text-[13px] text-stone-500 transition hover:text-leaf"
+          >
+            <span aria-hidden>←</span> Back to indicative offer
+          </Link>
 
-        <p className="mt-12 font-serif text-[13px] text-leaf">
-          Regulatory disclosure
-        </p>
-        <h1
-          className="mt-5 font-semibold font-serif text-forest leading-[1.02] tracking-[-0.025em]"
-          style={{ fontSize: 'clamp(44px, 6vw, 72px)' }}
-        >
-          Where we stand,
-          <br />
-          written plainly.
-        </h1>
-        <p className="mt-8 max-w-2xl text-[17px] text-stone-600 leading-relaxed">
-          Cash property buying is an unregulated corner of the market. That is
-          not a loophole we are exploiting — it is a fact we&rsquo;d rather you
-          understood up-front. This page sets out, in ordinary language, what it
-          means to do business with us.
-        </p>
-        <p className="mt-4 font-mono text-[11px] text-stone-400">
-          Last updated{' '}
-          {new Date().toLocaleDateString('en-GB', {
-            day: 'numeric',
-            month: 'long',
-            year: 'numeric',
-          })}{' '}
-          · version 1.0
-        </p>
-
-        <div className="mt-16 space-y-16">
-          {SECTIONS.map((s) => (
-            <section key={s.id} id={s.id}>
-              <p className="font-serif text-[13px] text-leaf">
-                {s.eyebrow}
-              </p>
-              <h2 className="mt-3 font-semibold font-serif text-3xl leading-[1.15] tracking-[-0.02em] md:text-4xl">
-                {s.title}
-              </h2>
-              <div className="prose prose-slate mt-5 max-w-none text-[16px] text-stone-700 leading-relaxed [&_a]:text-leaf [&_a]:underline [&_li]:my-2 [&_p]:mt-4 [&_ul]:mt-4 [&_ul]:list-disc [&_ul]:pl-5">
-                {s.body}
-              </div>
-            </section>
-          ))}
-        </div>
-
-        <hr className="my-20 border-stone-200" />
-
-        <section>
-          <p className="font-serif text-[13px] text-stone-500">
-            Company details
+          <p className="mt-12 font-serif text-[13px] text-leaf">
+            Regulatory disclosure
           </p>
-          <dl className="mt-5 grid grid-cols-1 gap-x-8 gap-y-3 text-[14px] sm:grid-cols-[160px_1fr]">
-            <dt className="font-serif text-[13px] text-stone-500">
-              Legal name
-            </dt>
-            <dd>Bellwoods Lane Ventures Ltd (trading as Kept)</dd>
-            <dt className="font-serif text-[13px] text-stone-500">
-              Registered in
-            </dt>
-            <dd>England &amp; Wales</dd>
-            <dt className="font-serif text-[13px] text-stone-500">
-              Company number
-            </dt>
-            <dd>16454416</dd>
-            <dt className="font-serif text-[13px] text-stone-500">
-              Registered office
-            </dt>
-            <dd>20 Wenlock Road, London N1 7GU</dd>
-            <dt className="font-serif text-[13px] text-stone-500">
-              Compliance contact
-            </dt>
-            <dd>
-              <a
-                className="underline"
-                href="mailto:anthony@bellwoodslane.co.uk"
-              >
-                anthony@bellwoodslane.co.uk
-              </a>
-            </dd>
-          </dl>
-        </section>
+          <h1
+            className="mt-5 font-semibold font-serif text-forest leading-[1.02] tracking-[-0.025em]"
+            style={{ fontSize: 'clamp(44px, 6vw, 72px)' }}
+          >
+            Where we stand,
+            <br />
+            written plainly.
+          </h1>
+          <p className="mt-8 max-w-2xl text-[17px] text-stone-600 leading-relaxed">
+            Cash property buying is an unregulated corner of the market. That is
+            not a loophole we are exploiting — it is a fact we&rsquo;d rather you
+            understood up-front. This page sets out, in ordinary language, what it
+            means to do business with us.
+          </p>
+          <p className="mt-4 font-mono text-[11px] text-stone-400">
+            Last updated{' '}
+            {new Date().toLocaleDateString('en-GB', {
+              day: 'numeric',
+              month: 'long',
+              year: 'numeric',
+            })}{' '}
+            · version 1.0
+          </p>
 
-        <p className="mt-16 font-serif text-[13px] text-stone-400">
-          Nothing on this page constitutes financial or legal advice.
-        </p>
-      </div>
-    </main>
+          <div className="mt-16 space-y-16">
+            {SECTIONS.map((s) => (
+              <section key={s.id} id={s.id}>
+                <p className="font-serif text-[13px] text-leaf">
+                  {s.eyebrow}
+                </p>
+                <h2 className="mt-3 font-semibold font-serif text-3xl leading-[1.15] tracking-[-0.02em] md:text-4xl">
+                  {s.title}
+                </h2>
+                <div className="prose prose-slate mt-5 max-w-none text-[16px] text-stone-700 leading-relaxed [&_a]:text-leaf [&_a]:underline [&_li]:my-2 [&_p]:mt-4 [&_ul]:mt-4 [&_ul]:list-disc [&_ul]:pl-5">
+                  {s.body}
+                </div>
+              </section>
+            ))}
+          </div>
+
+          <hr className="my-20 border-stone-200" />
+
+          <section>
+            <p className="font-serif text-[13px] text-stone-500">
+              Company details
+            </p>
+            <dl className="mt-5 grid grid-cols-1 gap-x-8 gap-y-3 text-[14px] sm:grid-cols-[160px_1fr]">
+              <dt className="font-serif text-[13px] text-stone-500">
+                Legal name
+              </dt>
+              <dd>Bellwoods Lane Ventures Ltd (trading as Kept)</dd>
+              <dt className="font-serif text-[13px] text-stone-500">
+                Registered in
+              </dt>
+              <dd>England &amp; Wales</dd>
+              <dt className="font-serif text-[13px] text-stone-500">
+                Company number
+              </dt>
+              <dd>16454416</dd>
+              <dt className="font-serif text-[13px] text-stone-500">
+                Registered office
+              </dt>
+              <dd>20 Wenlock Road, London N1 7GU</dd>
+              <dt className="font-serif text-[13px] text-stone-500">
+                Compliance contact
+              </dt>
+              <dd>
+                <a
+                  className="underline"
+                  href="mailto:anthony@bellwoodslane.co.uk"
+                >
+                  anthony@bellwoodslane.co.uk
+                </a>
+              </dd>
+            </dl>
+          </section>
+
+          <p className="mt-16 font-serif text-[13px] text-stone-400">
+            Nothing on this page constitutes financial or legal advice.
+          </p>
+        </div>
+      </main>
+      <SiteFooter />
+    </>
   );
 }

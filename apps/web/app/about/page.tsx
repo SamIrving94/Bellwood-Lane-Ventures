@@ -1,4 +1,5 @@
-import { Button, Eyebrow, LogoLockup, Seal } from '@/components/brand';
+import { Button, Eyebrow, LogoLockup } from '@/components/brand';
+import { SiteFooter } from '@/components/site-footer';
 import type { Metadata } from 'next';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -138,40 +139,7 @@ export default function AboutPage() {
         </section>
       </main>
 
-      {/* ————— FOOTER ————— */}
-      <footer className="border-hair border-t bg-white px-5 py-9 md:px-10">
-        <div className="mx-auto flex max-w-[1100px] flex-wrap items-center justify-between gap-6">
-          <div className="flex items-center gap-4">
-            <Seal className="h-14 w-14" />
-            <p className="m-0 font-serif text-[13px] text-stone-500">
-              Kept &middot; Direct-to-vendor property buyers &middot; UK
-            </p>
-          </div>
-          <nav className="flex flex-wrap items-center gap-x-[22px] gap-y-2 text-[13.5px] text-stone-600">
-            <Link href="/sell" className="hover:text-brand-deep">
-              For sellers
-            </Link>
-            <Link
-              href="/instant-offer/methodology"
-              className="hover:text-brand-deep"
-            >
-              Methodology
-            </Link>
-            <Link href="/agents" className="hover:text-brand-deep">
-              For agents
-            </Link>
-            <Link
-              href="/legal/fca-disclosure"
-              className="hover:text-brand-deep"
-            >
-              Regulatory
-            </Link>
-            <Link href="/legal/privacy" className="hover:text-brand-deep">
-              Privacy
-            </Link>
-          </nav>
-        </div>
-      </footer>
+      <SiteFooter />
     </>
   );
 }

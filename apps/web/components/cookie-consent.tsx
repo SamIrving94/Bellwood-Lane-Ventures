@@ -215,14 +215,20 @@ export function CookieConsent({ gaId }: { readonly gaId: string }) {
 }
 
 /** Re-opens the banner so a visitor can change their answer at any time. */
-export function CookieSettingsButton() {
+export function CookieSettingsButton({
+  label = 'Change your cookie choice',
+  className = 'text-leaf underline',
+}: {
+  readonly label?: string;
+  readonly className?: string;
+}) {
   return (
     <button
       type="button"
       onClick={() => window.dispatchEvent(new Event(OPEN_EVENT))}
-      className="text-leaf underline"
+      className={className}
     >
-      Change your cookie choice
+      {label}
     </button>
   );
 }

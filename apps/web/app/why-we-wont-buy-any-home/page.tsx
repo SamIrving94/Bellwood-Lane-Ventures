@@ -1,4 +1,4 @@
-import { Wordmark } from '@/components/brand';
+import { SiteFooter } from '@/components/site-footer';
 import { SiteHeader } from '@/components/site-header';
 import { sansDocFont, serifDocFont } from '@repo/design-system/lib/fonts';
 import type { Metadata } from 'next';
@@ -314,36 +314,7 @@ export default function WhyWeWontBuyAnyHomePage() {
         </div>
       </section>
 
-      {/* ————— FOOTER ————— */}
-      <footer className="bg-white px-6 py-14 md:px-12">
-        <div className="mx-auto max-w-6xl">
-          <div className="flex flex-col items-start justify-between gap-8 md:flex-row md:items-center">
-            <div>
-              <Wordmark className="text-xl" />
-              <p className="mt-2 text-sm text-stone-500">
-                Direct-to-vendor property buyers · UK
-              </p>
-            </div>
-            <nav className="flex flex-wrap items-center gap-6 text-sm text-stone-600">
-              <Link href="/sell">For sellers</Link>
-              <Link href="/agents">For agents</Link>
-              <Link href="/save-the-sale">Save a sale</Link>
-              <Link href="/instant-offer/methodology">Methodology</Link>
-              <Link href="/legal/fca-disclosure">Regulatory</Link>
-              <Link href="/legal/privacy">Privacy</Link>
-            </nav>
-          </div>
-          <p className="mt-10 font-mono text-[11px] text-stone-500 leading-relaxed">
-            Kept is a UK cash property buyer, not an FCA-authorised firm. We do
-            not provide financial or legal advice. Seek independent legal and
-            debt advice before accepting any offer. All offers are subject to
-            satisfactory survey and title searches.
-          </p>
-          <p className="mt-4 font-mono text-[11px] text-stone-400">
-            © {new Date().getFullYear()} Kept.
-          </p>
-        </div>
-      </footer>
+      <SiteFooter disclaimer="Kept is a UK cash property buyer, not an FCA-authorised firm. We do not provide financial or legal advice. Seek independent legal and debt advice before accepting any offer. All offers are subject to satisfactory survey and title searches." />
     </div>
   );
 }

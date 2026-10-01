@@ -1,5 +1,6 @@
 import { Button, Eyebrow, LogoLockup, Seal } from '@/components/brand';
 import { OfferForm } from '@/components/home/offer-form';
+import { SiteFooter } from '@/components/site-footer';
 import type { Metadata } from 'next';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -639,62 +640,7 @@ export default function SellPage() {
         </div>
       </section>
 
-      {/* ————— FOOTER — no "Est. 2026" strapline, removed deliberately ————— */}
-      <footer className="bg-cream px-6 py-14 md:px-10 md:pt-[60px] md:pb-[52px]">
-        <div className="mx-auto max-w-6xl">
-          <div className="flex flex-wrap items-center justify-between gap-8">
-            <div className="flex items-center gap-5">
-              <Seal />
-              <div>
-                <LogoLockup wordmarkClassName="text-base" />
-                <p className="mt-2 font-serif text-sm text-stone-500">
-                  Direct-to-vendor property buyers &middot; UK
-                </p>
-              </div>
-            </div>
-            <nav className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-stone-600">
-              <a href="#offer" className="hover:text-brand-deep">
-                Send us your details
-              </a>
-              <Link href="/about" className="hover:text-brand-deep">
-                Kept&rsquo;s story
-              </Link>
-              <Link
-                href="/instant-offer/methodology"
-                className="hover:text-brand-deep"
-              >
-                Methodology
-              </Link>
-              <Link href="/probate" className="hover:text-brand-deep">
-                Probate guide
-              </Link>
-              <Link href="/agents" className="hover:text-brand-deep">
-                For agents
-              </Link>
-              <Link
-                href="/legal/fca-disclosure"
-                className="hover:text-brand-deep"
-              >
-                Regulatory
-              </Link>
-              <Link href="/legal/privacy" className="hover:text-brand-deep">
-                Privacy
-              </Link>
-            </nav>
-          </div>
-          <div className="mt-11 border-hair border-t pt-6">
-            <p className="max-w-[96ch] text-[11px] text-stone-500 leading-[1.7]">
-              Kept is a UK cash property buyer, not an FCA-authorised firm. We
-              do not provide financial or legal advice. Seek independent legal
-              advice before accepting any offer. All offers are subject to
-              satisfactory survey and title searches.
-            </p>
-            <p className="mt-4 text-[11px] text-stone-400">
-              © {new Date().getFullYear()} Kept.
-            </p>
-          </div>
-        </div>
-      </footer>
+      <SiteFooter />
     </>
   );
 }

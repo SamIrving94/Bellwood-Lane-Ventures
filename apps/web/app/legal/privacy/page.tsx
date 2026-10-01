@@ -1,4 +1,5 @@
 import { CookieSettingsButton } from '@/components/cookie-consent';
+import { SiteFooter } from '@/components/site-footer';
 import { SiteHeader } from '@/components/site-header';
 import { brand } from '@repo/brand';
 import type { Metadata } from 'next';
@@ -391,6 +392,7 @@ export default function PrivacyPage() {
           </div>
         </div>
       </main>
+      <SiteFooter />
     </>
   );
 }
