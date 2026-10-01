@@ -15,15 +15,12 @@ Platform research (ChatGPT plugins + MCP) is in `00-platform-notes.md`.
 
 ## 1. Read this first — 5 things that change the plan
 
-1. **We have no lettings product.** ✅ verified
-   - The codebase is a **cash home-buyer** (sourced → appraised → offered → completed).
-   - There is no tenancy, rent collection or management code. There is no landlord page on the live site.
-   - "Landlord leads for Bellwoods" has **nowhere to land today**.
-   - **Founder confirmed (1 Oct): no lettings service exists.** See section 11.
-2. **We have no rent data.** ✅ verified
-   - PropertyData `/rents`, `/valuation-rent` and `/demand-rent` are **not wired up**.
-   - `/yields` is wired up but has **never returned a value**: our schema reads the wrong shape (LEARNINGS 2026-09-12).
-   - A "sell or let?" answer needs a rent figure. We can't produce one today.
+1. **Letting is out of scope.** ✅ founder decision, 1 Oct
+   - The codebase is a **cash home-buyer**. There is no lettings service, and Kept is not going down that route.
+   - So the plugin has **no rent, yield or "let it out" angle**. See `02-ranking.md`.
+2. **PropertyData can't be shown in public.** ✅ verified
+   - Our licence covers internal use only (`apps/web/lib/keyhole/report.ts:8`).
+   - Any AVM figure carries PropertyData comps, so the plugin uses open data and the user's own numbers only.
 3. **The MCP server does not start.** ✅ verified
    - `packages/mcp-server` crashes on boot (ESM/CJS import error).
    - It is stdio only, with no HTTP and no auth. A ChatGPT plugin needs HTTP.
@@ -90,7 +87,7 @@ Platform research (ChatGPT plugins + MCP) is in `00-platform-notes.md`.
 | Package | What it does | Works? | Main issues |
 |:--|:--|:--|:--|
 | **valuation** | `runAVM` (comps + HPI + EPC + PropertyData → value + offer). Flip ROI. Deep appraisal (LLM). Backtest snapshots. | ✅ | "Hedonic" pillar is mostly the comps figure again (`base-valuation.ts:269`). Fixed bands. Yield input never passed, so "investment grade" is always B. £250k hard-coded fallback (`:431`). |
-| **property-data** | Adapters for all sources above. ~25 PropertyData wrappers. Rate limiter (4/10s). Durable cache. | ⚠️ | No rent endpoints. `/yields` drift. Synthetic fallbacks. |
+| **property-data** | Adapters for all sources above. ~25 PropertyData wrappers. Rate limiter (4/10s). Durable cache. | ⚠️ | 11 endpoints with schema drift. Synthetic fallbacks. |
 | **instant-offer** | Public quote: AVM → range + offer + LLM narrative | ✅ | Ignores asking price. Condition changes confidence, not price. |
 | **scouting** | Probate / distress discovery + scoring | ✅ core | Dead sources (HMCTS, BatchData). |
 | **auctions** | Auction scrapers + vision screen | ⚠️ | ToS risk. Wrong domain in User-Agent. |
@@ -222,8 +219,8 @@ Auth bugs:
 | 3 | `clearNewLeadsInbox` → `requireFounder()` | Data loss | No |
 | 4 | Set `FOUNDER_USER_IDS` / `FOUNDER_EMAIL_ALLOWLIST` in prod | Auth fallback | No |
 | 5 | Token-gate `/instant-offer/offer/[id]`; make offer PDFs private | Public figures | No |
-| 6 | Capture real PropertyData responses for `/rents`, `/demand-rent`, `/yields` (probe script) | Internal schema drift | **No** — licence bars public display, so the plugin uses user-entered rent (Phase 2) |
-| 7 | PropertyData terms for public display | **Answered: internal use only** (`keyhole/report.ts:8`) | Decided — no PropertyData in the plugin |
+| 6 | PropertyData terms for public display | **Answered: internal use only** (`keyhole/report.ts:8`) | Decided — no PropertyData in the plugin |
+| 7 | Fix PropertyData schema drift (11 endpoints) with the probe script | Credits wasted daily | No — internal only |
 | 8 | Rebuild MCP server on current SDK + HTTP transport, no PII tools | Doesn't run | **Yes** |
 | 9 | Add HMLR attribution where we show Land Registry data | OGL condition | Yes (for the plugin) |
 | 10 | Rate limiter: fail closed on paid routes | Cost risk | Yes (ChatGPT traffic is spiky) |
@@ -232,55 +229,17 @@ Everything else in sections 7–8 is real but does not block this project. Sugge
 
 ---
 
-## 11. My honest view before Phase 2
+## 11. Outcome of the Phase 1 challenge
 
-I think the brief has a weak spot. Plainly:
+_This section first argued about a "sell or let?" plugin. That idea is closed. Only the short version stays here._
 
-- **We don't have the thing we'd sell.** Confirmed: no lettings or management service exists. A "let it" answer has nowhere to send the landlord.
-- **Conflict of interest.** We are a cash buyer. A buyer-owned "sell or let?" tool will look rigged whichever way it answers. Keyhole learned this lesson on 29 Aug (LEARNINGS.md).
-- **Regulation.** Letting agents must join a redress scheme and have client money protection. The Renters' Rights Act changes landlord economics a lot. A tool nudging people into landlording needs careful, neutral copy.
-- **Data.** We'd lean on PropertyData rent estimates we have never once parsed successfully.
-- **Platform.** UK availability of third-party plugins is **not verified**. Since DevDay (29 Sep), placement depends on usefulness and satisfaction — a tool that looks like a funnel will rank badly.
-
-What would make it strong:
-
-- A **neutral, open-data-first** comparison: sale proceeds (after costs) vs rental income (after tax, fees, voids, compliance). Show the maths. No verdict, no figure from our AVM.
-- The handoff is "talk it through with a person". **No offer, no price.**
-
-### Founder answers (1 Oct 2026)
-
-1. **Lettings service? No.**
-2. **Run the PropertyData probe? Yes.**
-
-### What answer 1 means — "challenge before building" (CLAUDE.md)
-
-The brief says the plugin "turns home sellers into **landlord leads**". With no lettings service, that loop is broken. Three ways forward:
-
-| Option | How it works | Problem |
-|:--|:--|:--|
-| **A. Build lettings** | We become a letting agent | Big, regulated (redress, CMP, Renters' Rights Act). A new business, not a plugin. |
-| **B. Refer landlords to partner agents** | "Let" answers go to a partner letting agent for a fee | Must disclose the fee. We already have an agent network (`AgentAccount`, prospecting). Still a funnel. |
-| **C. Flip the aim** | Neutral sell-vs-let calculator. Bellwoods earns from the **sellers** it surfaces — people who run the numbers and decide letting isn't for them. | Smaller lead volume. Same conflict-of-interest question, handled by showing the maths openly. |
-
-- **Strongest case against the whole idea:** a cash buyer's "sell or let?" tool is a funnel in disguise. Accidental landlords are exactly the people who distrust it. ChatGPT now ranks by satisfaction, so a funnel loses reach as well as trust.
-- **The assumption that kills it:** "people who ask ChatGPT 'should I sell or let?' are our sellers." Many are looking for permission to keep the house. They will never sell to a cash buyer at a discount.
-- **Who hates it and why:**
-  - Letting agents — we'd be talking their clients out of letting.
-  - Consumer groups — a buyer giving "advice".
-  - OpenAI reviewers — if it reads as lead-gen dressed up as a tool.
-
-**My recommendation: Option C, built dark** (developer mode only, no directory listing) until one real user tries it. Option B can be added later if partner agents want the referrals. I will score both framings in Phase 2.
-
-### What answer 2 means — probe status
-
-- **I couldn't run it from here.** propertydata.co.uk is blocked by the sandbox network, and the API key isn't in the sandbox (by design).
-- **The script is ready.** `/rents` and `/demand-rent` are added. `/valuation-rent` is left out on purpose: its required inputs aren't verified.
-- **Please run it locally** (3 endpoints, roughly 6–9 credits):
-
-  ```sh
-  npx tsx scripts/propertydata-probe.mts --postcode "M14 5AB" --endpoints rents,demand-rent,yields
-  ```
-
-- Then share the console output (shapes only, no addresses). Raw files save to `scratch/propertydata-probe/`, which is gitignored.
-
-**Update (Phase 2): the probe is not needed for the plugin.** Our PropertyData licence covers internal use only, not public display (`apps/web/lib/keyhole/report.ts:8`). So the plugin cannot show PropertyData rents; the user enters their own. The probe is still useful for fixing the internal schema drift.
+- **Founder answers (1 Oct):**
+  - No lettings service, and letting is not our route.
+  - Aim the plugin at people who **inherited a home** (B).
+  - Kept does not buy tenanted homes.
+  - The web pages already exist.
+- **What survives from the challenge:**
+  - A buyer-run tool reads as a funnel unless it is genuinely neutral (Keyhole, 29 Aug).
+  - So: the user's own numbers, open data, no Kept figure, and say plainly when Kept is wrong for them.
+  - Ship dark (developer mode only) until one real user has tried it.
+- **Next:** see `01b-strategy-check.md` (fit with the Kept strategy) and `02-ranking.md` (tools).

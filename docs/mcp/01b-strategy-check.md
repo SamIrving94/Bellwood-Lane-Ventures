@@ -1,5 +1,7 @@
 # Strategy check — does Option C fit Kept?
 
+> **Superseded (1 Oct 2026).** Option C was a sell-vs-**let** calculator. The founder has since ruled out letting entirely. This page is kept as the decision record: it is why the plugin now aims at inherited homes (B) and sale routes, with no letting. Current plan: `02-ranking.md`.
+
 _Written: 2026-10-01. Checked against `docs/DECISION-STACK.md`, `docs/brand/KEPT.md`, `docs/marketing/PLAN.md`, `docs/OCTOBER-LAUNCH.md`, `docs/LEARNINGS.md`._
 
 Founder chose **Option C** (neutral sell-vs-let calculator). This is the "one more message" the challenge rule asks for.
