@@ -8,7 +8,7 @@
  * effect at once.
  */
 
-import { database } from '@repo/database';
+import { db } from '../db';
 import type { Scope } from './config';
 
 export interface ProIdentity {
@@ -33,6 +33,7 @@ export async function findIdentity(
 ): Promise<ProIdentity | null> {
   const email = normaliseEmail(rawEmail);
   if (!email.includes('@') || email.length > 254) return null;
+  const database = await db();
 
   const [agent, investor] = await Promise.all([
     database.agentAccount.findFirst({

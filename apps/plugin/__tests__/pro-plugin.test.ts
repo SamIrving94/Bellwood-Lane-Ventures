@@ -18,9 +18,6 @@ vi.mock('@repo/email', () => ({
     }
   ),
 }));
-vi.mock('@repo/deal-updates', () => ({
-  SIGNED_OFFER_NOTIFIER: 'quote-ops:approve-and-send',
-}));
 
 import { GET as asMeta } from '@/app/.well-known/oauth-authorization-server/route';
 import { GET as prMeta } from '@/app/.well-known/oauth-protected-resource/pro/mcp/route';

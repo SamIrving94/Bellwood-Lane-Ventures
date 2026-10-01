@@ -424,7 +424,7 @@ export function registerPublicPlugin(server: McpServer): void {
           content: [
             {
               type: 'text' as const,
-              text: `EPC: ${report.epc.available ? `${report.epc.rating ?? 'rating not stated'}, ${report.epc.floorAreaSqm ? `${Math.round(report.epc.floorAreaSqm)} m²` : 'floor area not stated'}` : 'no certificate found'}. ${report.streetSales.length} recorded sales in ${report.postcode}${report.streetContext ? `, median £${report.streetContext.medianPricePounds.toLocaleString('en-GB')}` : ''}. Not a valuation; do not estimate this home's value from these sales. ${SOURCES.landRegistry.label}.`,
+              text: `EPC: ${report.epc.available ? `${report.epc.rating ?? 'rating not stated'}, ${report.epc.floorAreaSqm ? `${Math.round(report.epc.floorAreaSqm)} m²` : 'floor area not stated'}` : 'no certificate found (or the register could not be reached)'}. ${report.streetSales.length} recorded sales in ${report.postcode}${report.streetContext ? `, median £${report.streetContext.medianPricePounds.toLocaleString('en-GB')}` : ''}. Not a valuation; do not estimate this home's value from these sales. ${SOURCES.landRegistry.label}.`,
             },
           ],
         };

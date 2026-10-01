@@ -5,7 +5,7 @@
  * token, so /cron/rate-limit-sweep cleans it up like any other counter.
  */
 
-import { database } from '@repo/database';
+import { db } from '../db';
 
 const EPOCH = new Date(0);
 
@@ -14,6 +14,7 @@ async function increment(
   jti: string,
   expiresAtSeconds: number
 ): Promise<number> {
+  const database = await db();
   const row = await database.rateLimitCounter.upsert({
     where: {
       bucket_subject_windowStart: { bucket, subject: jti, windowStart: EPOCH },

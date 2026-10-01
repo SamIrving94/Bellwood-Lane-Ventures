@@ -16,9 +16,10 @@
 
 import type { McpServer, ServerContext } from '@modelcontextprotocol/server';
 import { brand } from '@repo/brand';
-import { database } from '@repo/database';
-import { SIGNED_OFFER_NOTIFIER } from '@repo/deal-updates';
+// Deep import: just the constant, without the database-backed package index.
+import { SIGNED_OFFER_NOTIFIER } from '@repo/deal-updates/src/constants';
 import { z } from 'zod';
+import { db } from './db';
 import type { Scope } from './oauth/config';
 import { type ProIdentity, findIdentity } from './oauth/identity';
 import { withUsageLogging } from './usage';
@@ -148,6 +149,7 @@ export function registerProPlugin(server: McpServer): void {
     async (args, ctx) => {
       const who = await requireScope(ctx, 'agent');
       if (!who.ok) return errorResult(who.message);
+      const database = await db();
       const agent = who.identity.agent;
       if (!agent) return errorResult('No partner account found.');
 
@@ -255,6 +257,7 @@ export function registerProPlugin(server: McpServer): void {
     async (args, ctx) => {
       const who = await requireScope(ctx, 'agent');
       if (!who.ok) return errorResult(who.message);
+      const database = await db();
       const agent = who.identity.agent;
       if (!agent) return errorResult('No partner account found.');
 
@@ -376,6 +379,7 @@ export function registerProPlugin(server: McpServer): void {
     async (args, ctx) => {
       const who = await requireScope(ctx, 'investor');
       if (!who.ok) return errorResult(who.message);
+      const database = await db();
 
       const deals = await database.deal.findMany({
         where: {
@@ -486,6 +490,7 @@ export function registerProPlugin(server: McpServer): void {
     async (args, ctx) => {
       const who = await requireScope(ctx, 'investor');
       if (!who.ok) return errorResult(who.message);
+      const database = await db();
       const investor = who.identity.investor;
       if (!investor) return errorResult('No investor access found.');
 

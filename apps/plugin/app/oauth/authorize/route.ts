@@ -40,6 +40,20 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
+  try {
+    return await handlePost(req);
+  } catch (err) {
+    // Most likely the Pro database or email settings are not configured on
+    // this deployment yet. Never show a stack trace on a sign-in page.
+    console.error('[plugin] authorize POST failed', err);
+    return htmlResponse(
+      errorPage('Sign-in is not available just now. Please try again later.'),
+      503
+    );
+  }
+}
+
+async function handlePost(req: Request): Promise<Response> {
   // Forms must come from our own pages.
   const origin = req.headers.get('origin');
   if (

@@ -38,14 +38,7 @@ export type {
 // Public API
 // ---------------------------------------------------------------------------
 
-/**
- * `notifiedBy` value on the timeline event a person writes when they approve
- * and send the signed offer (quote-ops sendSignedOffer). It is the ONLY event
- * that may reveal the offer figure to a seller: the founder rule is no figure
- * before a viewing, and every offer is checked by a person first. The track
- * page keys its offer card off it.
- */
-export const SIGNED_OFFER_NOTIFIER = 'quote-ops:approve-and-send';
+export { SIGNED_OFFER_NOTIFIER } from './constants';
 
 export type RecordUpdateInput = {
   /** Either a Deal id OR a QuoteRequest id (or both — they get linked) */

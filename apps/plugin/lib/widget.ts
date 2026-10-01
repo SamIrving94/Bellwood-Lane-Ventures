@@ -231,7 +231,7 @@ export const WIDGET_HTML = `<!doctype html>
       epc.appendChild(lineEl('Heating', r.epc.heatingType || 'Not stated'));
       epc.appendChild(lineEl('Inspected', r.epc.inspectionDate || 'Not stated'));
     } else {
-      epc.appendChild(el('p', 'muted', 'No certificate found. That is the honest answer, not an error.'));
+      epc.appendChild(el('p', 'muted', 'No certificate found, or the EPC register could not be reached just now.'));
     }
     root.appendChild(epc);
     var sales = el('div', 'card');
@@ -256,7 +256,7 @@ export const WIDGET_HTML = `<!doctype html>
           '. Context for a conversation, not a valuation of this home.'));
       }
     } else {
-      sales.appendChild(el('p', 'muted', 'No recorded sales found. That is the honest answer, not an error.'));
+      sales.appendChild(el('p', 'muted', 'No recorded sales found in this postcode, or the Land Registry could not be reached just now.'));
     }
     root.appendChild(sales);
   }

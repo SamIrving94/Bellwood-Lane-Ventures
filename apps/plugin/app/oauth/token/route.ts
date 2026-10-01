@@ -15,7 +15,16 @@ export async function POST(req: Request) {
   } else {
     form = new URLSearchParams(await req.text());
   }
-  const result = await exchangeToken(form);
+  let result: Awaited<ReturnType<typeof exchangeToken>>;
+  try {
+    result = await exchangeToken(form);
+  } catch (err) {
+    console.error('[plugin] token exchange failed', err);
+    return Response.json(
+      { error: 'temporarily_unavailable' },
+      { status: 503, headers: { 'cache-control': 'no-store' } }
+    );
+  }
   return Response.json(result.body, {
     status: result.ok ? 200 : result.status,
     headers: { 'cache-control': 'no-store', pragma: 'no-cache' },
