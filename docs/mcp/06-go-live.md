@@ -4,6 +4,8 @@ _Updated: 2026-10-01. ✅ = done by Claude. 👤 = needs you._
 
 **Founder decision (1 Oct):** high risk tolerance. Go live without OpenAI's directory review, then test and learn.
 
+> **Easiest way to follow this:** the tick-box checklist with copy buttons, `docs/mcp/07-setup-checklist.html` (also published as a private page for the founder).
+
 ## What "live without review" means
 
 - **It is live on the internet.** Anyone with the link can connect it to ChatGPT in **developer mode** (Plus, Pro or Business, on the web).

@@ -1,0 +1,742 @@
+<title>Kept ChatGPT Setup</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Libre+Caslon+Text:wght@700&display=swap">
+<style>
+  /* Layout: one narrow column of numbered step cards (the order matters), a sticky progress bar on top. Kept brand tokens (docs/brand/KEPT.md); leaf is for action only. */
+  :root {
+    --ground: #F7F3EA;
+    --card: #FFFFFF;
+    --ink: #1F332B;
+    --muted: #4C5A50;
+    --leaf: #2E7D5B;
+    --leaf-hover: #256A4C;
+    --on-leaf: #FFFFFF;
+    --hair: #E2DCCB;
+    --soft: #EDE7D8;
+    --done: #E4EFE8;
+    --note: #FFF4DD;
+    --note-ink: #6B4600;
+    --font-display: 'Libre Caslon Text', Georgia, 'Times New Roman', serif;
+    --font-body: 'Atkinson Hyperlegible', 'Segoe UI', Verdana, Arial, sans-serif;
+    --font-mono: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+    --radius: 6px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground: #15201B; --card: #1C2A24; --ink: #EDE7D8; --muted: #B9C2BB;
+      --leaf: #5FB98D; --leaf-hover: #74C79E; --on-leaf: #0F1E17; --hair: #2E3D36;
+      --soft: #22322B; --done: #1F3A2C; --note: #3A2E12; --note-ink: #F2D08A;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground: #15201B; --card: #1C2A24; --ink: #EDE7D8; --muted: #B9C2BB;
+    --leaf: #5FB98D; --leaf-hover: #74C79E; --on-leaf: #0F1E17; --hair: #2E3D36;
+    --soft: #22322B; --done: #1F3A2C; --note: #3A2E12; --note-ink: #F2D08A;
+    color-scheme: dark;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--font-body);
+    font-size: 19px;
+    line-height: 1.65;
+    letter-spacing: 0.01em;
+  }
+  .wrap {
+    max-width: 680px;
+    margin: 0 auto;
+    padding-inline: 16px;
+    padding-block: 0 64px;
+  }
+
+  /* Sticky progress */
+  .progress {
+    position: sticky;
+    top: env(safe-area-inset-top, 0px);
+    z-index: 5;
+    background: var(--ground);
+    border-bottom: 1px solid var(--hair);
+    padding-block: 12px;
+  }
+  .progress-inner { max-width: 680px; margin: 0 auto; padding-inline: 16px; display: grid; gap: 6px; }
+  .progress-row { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+  .progress-label { font-weight: 700; }
+  .bar { height: 10px; background: var(--soft); border-radius: 99px; overflow: hidden; }
+  .bar > span { display: block; height: 100%; width: 0%; background: var(--leaf); border-radius: 99px; transition: width 0.3s ease; }
+
+  header.top { display: grid; gap: 10px; padding-block: 28px 8px; }
+  .mark { font-family: var(--font-display); font-size: 28px; letter-spacing: -0.03em; margin: 0; }
+  h1 { font-family: var(--font-display); font-size: clamp(30px, 6vw, 40px); line-height: 1.15; margin: 0; text-wrap: balance; }
+  .lede { margin: 0; color: var(--muted); }
+
+  .already {
+    background: var(--done);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+    display: grid;
+    gap: 4px;
+  }
+  .already strong { display: block; }
+  .already ul { margin: 0; padding-left: 22px; }
+
+  section.part { display: grid; gap: 14px; margin-top: 36px; }
+  .part-head { display: grid; gap: 2px; }
+  .part-head h2 { font-family: var(--font-display); font-size: 26px; line-height: 1.2; margin: 0; }
+  .part-head p { margin: 0; color: var(--muted); }
+
+  /* Step cards */
+  .step {
+    background: var(--card);
+    border: 1px solid var(--hair);
+    border-radius: var(--radius);
+    padding: 16px;
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 6px 14px;
+    align-items: start;
+  }
+  .step.is-done { background: var(--done); border-color: transparent; }
+  .num {
+    width: 44px; height: 44px;
+    border-radius: 50%;
+    display: grid; place-items: center;
+    background: var(--soft);
+    font-weight: 700; font-size: 20px;
+    font-variant-numeric: tabular-nums;
+  }
+  .step.is-done .num { background: var(--leaf); color: var(--on-leaf); }
+  .body { min-width: 0; display: grid; gap: 8px; }
+  .body h3 { margin: 0; font-size: 21px; line-height: 1.3; }
+  .body p { margin: 0; }
+  .path { font-weight: 700; }
+  .see { color: var(--muted); }
+  .see strong { color: var(--ink); }
+
+  .tick { display: flex; align-items: center; gap: 10px; cursor: pointer; font-weight: 700; color: var(--leaf); width: fit-content; }
+  .tick input { width: 24px; height: 24px; accent-color: var(--leaf); cursor: pointer; margin: 0; }
+
+  /* Copy chips */
+  .copyline { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+  .val {
+    font-family: var(--font-mono);
+    font-size: 17px;
+    background: var(--soft);
+    border: 1px solid var(--hair);
+    border-radius: 4px;
+    padding: 4px 10px;
+    overflow-wrap: anywhere;
+    user-select: all;
+  }
+  .label { color: var(--muted); }
+  button {
+    font: inherit;
+    font-size: 16px;
+    font-weight: 700;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+  button.copy {
+    background: var(--leaf);
+    color: var(--on-leaf);
+    border: 0;
+    padding: 6px 14px;
+  }
+  button.copy:hover { background: var(--leaf-hover); }
+  button:focus-visible, input:focus-visible, a:focus-visible, summary:focus-visible {
+    outline: 3px solid var(--ink);
+    outline-offset: 2px;
+  }
+  .prompt {
+    background: var(--soft);
+    border-left: 4px solid var(--leaf);
+    border-radius: 4px;
+    padding: 10px 12px;
+    margin: 0;
+    font-size: 18px;
+  }
+
+  .note {
+    background: var(--note);
+    color: var(--note-ink);
+    border-radius: 4px;
+    padding: 10px 12px;
+    font-size: 17px;
+  }
+
+  /* Address builder */
+  .builder { display: grid; gap: 8px; }
+  .builder label { font-weight: 700; }
+  .builder input[type="text"] {
+    font: inherit;
+    font-family: var(--font-mono);
+    font-size: 17px;
+    width: 100%;
+    padding: 10px 12px;
+    border: 2px solid var(--hair);
+    border-radius: 4px;
+    background: var(--ground);
+    color: var(--ink);
+  }
+  .builder input[type="text"]:focus { border-color: var(--leaf); outline: none; }
+  .example-tag { font-size: 15px; color: var(--muted); }
+
+  a { color: var(--leaf); font-weight: 700; }
+  a:hover { color: var(--leaf-hover); }
+
+  /* Help */
+  .help { display: grid; gap: 10px; }
+  .help-row {
+    background: var(--card);
+    border: 1px solid var(--hair);
+    border-radius: var(--radius);
+    padding: 12px 16px;
+    display: grid;
+    gap: 2px;
+  }
+  .help-row strong { display: block; }
+  details {
+    background: var(--card);
+    border: 1px solid var(--hair);
+    border-radius: var(--radius);
+    padding: 12px 16px;
+  }
+  summary { cursor: pointer; font-weight: 700; }
+  details[open] summary { margin-bottom: 8px; }
+  details ul { margin: 0; padding-left: 22px; display: grid; gap: 6px; }
+
+  .reset-row { margin-top: 32px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+  button.reset {
+    background: transparent;
+    color: var(--muted);
+    border: 2px solid var(--hair);
+    padding: 6px 14px;
+  }
+  .toast {
+    position: fixed;
+    left: 50%;
+    bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+    transform: translateX(-50%);
+    background: var(--ink);
+    color: var(--ground);
+    padding: 10px 18px;
+    border-radius: 99px;
+    font-weight: 700;
+    font-size: 16px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease;
+  }
+  .toast.show { opacity: 1; }
+
+  @media (max-width: 420px) {
+    body { font-size: 18px; }
+    .step { grid-template-columns: 1fr; }
+    .num { width: 40px; height: 40px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .bar > span, .toast { transition: none; }
+  }
+</style>
+
+<div class="progress" aria-live="polite">
+  <div class="progress-inner">
+    <div class="progress-row">
+      <span class="progress-label" id="progressLabel">0 of 22 steps done</span>
+      <span class="label" id="progressPart">Start with Part A</span>
+    </div>
+    <div class="bar" aria-hidden="true"><span id="barFill"></span></div>
+  </div>
+</div>
+
+<main class="wrap">
+  <header class="top">
+    <p class="mark">kept.</p>
+    <h1>Put Kept live in ChatGPT</h1>
+    <p class="lede">22 small steps, about 20 minutes. Do them in order. Tick each box when it's done. Your ticks are saved on this device.</p>
+    <div class="already">
+      <strong>Already done for you</strong>
+      <ul>
+        <li>The code is finished and merged.</li>
+        <li>Your website and dashboard are live with the changes.</li>
+        <li>Seller emails no longer show a £ figure.</li>
+      </ul>
+    </div>
+  </header>
+
+  <!-- PART A -->
+  <section class="part" aria-labelledby="partA">
+    <div class="part-head">
+      <h2 id="partA">Part A. Make the plugin's home</h2>
+      <p>On Vercel. About 10 minutes, mostly waiting.</p>
+    </div>
+
+    <article class="step" data-step="1">
+      <div class="num">1</div>
+      <div class="body">
+        <h3>Open Vercel</h3>
+        <p>Go to <a href="https://vercel.com" target="_blank" rel="noopener">vercel.com</a> and log in.</p>
+        <label class="tick"><input type="checkbox" id="s1"> Done</label>
+      </div>
+    </article>
+
+    <article class="step" data-step="2">
+      <div class="num">2</div>
+      <div class="body">
+        <h3>Start a new project</h3>
+        <p>Click <span class="path">Add New…</span> then <span class="path">Project</span>.</p>
+        <label class="tick"><input type="checkbox" id="s2"> Done</label>
+      </div>
+    </article>
+
+    <article class="step" data-step="3">
+      <div class="num">3</div>
+      <div class="body">
+        <h3>Pick your code</h3>
+        <p>Find <span class="path">Bellwood-Lane-Ventures</span> and click <span class="path">Import</span>.</p>
+        <p class="see">This is just your code's name on GitHub. Customers never see it.</p>
+        <label class="tick"><input type="checkbox" id="s3"> Done</label>
+      </div>
+    </article>
+
+    <article class="step" data-step="4">
+      <div class="num">4</div>
+      <div class="body">
+        <h3>Name it</h3>
+        <p>In <span class="path">Project Name</span>, type:</p>
+        <div class="copyline"><span class="val">kept-plugin</span><button class="copy" type="button" data-copy="kept-plugin">Copy</button></div>
+        <p class="see">This name becomes the web address, so it must say <strong>kept</strong>.</p>
+        <label class="tick"><input type="checkbox" id="s4"> Done</label>
+      </div>
+    </article>
+
+    <article class="step" data-step="5">
+      <div class="num">5</div>
+      <div class="body">
+        <h3>Choose the folder</h3>
+        <p>Next to <span class="path">Root Directory</span>, click <span class="path">Edit</span>. Pick this folder, then click <span class="path">Continue</span>:</p>
+        <div class="copyline"><span class="val">apps/plugin</span><button class="copy" type="button" data-copy="apps/plugin">Copy</button></div>
+        <p class="note">This is the most important step. If it's wrong, nothing works.</p>
+        <label class="tick"><input type="checkbox" id="s5"> Done</label>
+      </div>
+    </article>
+
+    <article class="step" data-step="6">
+      <div class="num">6</div>
+      <div class="body">
+        <h3>Add the energy key</h3>
+        <p>Open <span class="path">Environment Variables</span>. In the first box (the name), paste:</p>
+        <div class="copyline"><span class="val">EPC_API_TOKEN</span><button class="copy" type="button" data-copy="EPC_API_TOKEN">Copy</button></div>
+        <p>In the second box (the value), paste the key from your <span class="path">bellwood-api</span> project. It's in <span class="path">Settings → Environment Variables</span>. Open it in a new tab.</p>
+        <p>Click <span class="path">Add</span>.</p>
+        <p class="see">Why: energy certificates come from a government register that needs this free key.</p>
+        <p class="note">Can't find it? Get a free one at <a href="https://get-energy-performance-data.communities.gov.uk" target="_blank" rel="noopener">get-energy-performance-data.communities.gov.uk</a>. Sign in with GOV.UK One Login, open My account and copy the token.</p>
+        <label class="tick"><input type="checkbox" id="s6"> Done</label>
+      </div>
+    </article>
+
+    <article class="step" data-step="7">
+      <div class="num">7</div>
+      <div class="body">
+        <h3>Deploy</h3>
+        <p>Click <span class="path">Deploy</span>. Wait 3 to 5 minutes, until you see the celebration screen.</p>
+        <label class="tick"><input type="checkbox" id="s7"> Done</label>
+      </div>
+    </article>
+
+    <article class="step" data-step="8">
+      <div class="num">8</div>
+      <div class="body">
+        <h3>Let ChatGPT in</h3>
+        <p>Go to <span class="path">Settings → Deployment Protection</span>. Under <span class="path">Vercel Authentication</span>, choose <span class="path">Standard Protection</span>. Click <span class="path">Save</span>.</p>
+        <p class="see">If this stays on the stricter setting, ChatGPT gets blocked.</p>
+        <label class="tick"><input type="checkbox" id="s8"> Done</label>
+      </div>
+    </article>
+
+    <article class="step" data-step="9">
+      <div class="num">9</div>
+      <div class="body">
+        <h3>Copy your address</h3>
+        <p>Go to <span class="path">Overview</span>. Copy the domain. It looks like <span class="val">kept-plugin.vercel.app</span>. Paste it here:</p>
+        <div class="builder">
+          <label for="domain">Your Vercel address</label>
+          <input type="text" id="domain" inputmode="url" autocomplete="off" spellcheck="false" placeholder="kept-plugin.vercel.app">
+          <p class="see">Your ChatGPT link is:</p>
+          <div class="copyline"><span class="val" data-url="mcp">https://kept-plugin.vercel.app/mcp</span><button class="copy" type="button" data-copy-url="mcp">Copy</button></div>
+          <p class="example-tag" data-example-tag>Example shown until you paste your own address.</p>
+        </div>
+        <label class="tick"><input type="checkbox" id="s9"> Done</label>
+      </div>
+    </article>
+
+    <article class="step" data-step="10">
+      <div class="num">10</div>
+      <div class="body">
+        <h3>Tell Claude</h3>
+        <p>Send Claude this message. Claude will check the plugin is working before you go on.</p>
+        <div class="copyline"><span class="val">done</span><button class="copy" type="button" data-copy="done">Copy</button></div>
+        <label class="tick"><input type="checkbox" id="s10"> Done</label>
+      </div>
+    </article>
+  </section>
+
+  <!-- PART B -->
+  <section class="part" aria-labelledby="partB">
+    <div class="part-head">
+      <h2 id="partB">Part B. Connect ChatGPT</h2>
+      <p>About 3 minutes. Use a computer, not your phone.</p>
+    </div>
+
+    <article class="step" data-step="11">
+      <div class="num">11</div>
+      <div class="body">
+        <h3>Open ChatGPT</h3>
+        <p>Go to <a href="https://chatgpt.com" target="_blank" rel="noopener">chatgpt.com</a> and log in.</p>
+        <label class="tick"><input type="checkbox" id="s11"> Done</label>
+      </div>
+    </article>
+
+    <article class="step" data-step="12">
+      <div class="num">12</div>
+      <div class="body">
+        <h3>Turn on Developer mode</h3>
+        <p>Go to <span class="path">Settings → Security and login → Developer mode</span>. Turn it <span class="path">On</span>.</p>
+        <p class="see">Can't see it? Search Settings for "Developer mode".</p>
+        <label class="tick"><input type="checkbox" id="s12"> Done</label>
+      </div>
+    </article>
+
+    <article class="step" data-step="13">
+      <div class="num">13</div>
+      <div class="body">
+        <h3>Add a plugin</h3>
+        <p>Go to <span class="path">Settings → Plugins</span>. Click <span class="path">+</span> (Create).</p>
+        <label class="tick"><input type="checkbox" id="s13"> Done</label>
+      </div>
+    </article>
+
+    <article class="step" data-step="14">
+      <div class="num">14</div>
+      <div class="body">
+        <h3>Fill in 3 boxes</h3>
+        <p><span class="label">Name:</span></p>
+        <div class="copyline"><span class="val">Kept</span><button class="copy" type="button" data-copy="Kept">Copy</button></div>
+        <p><span class="label">URL:</span></p>
+        <div class="copyline"><span class="val" data-url="mcp">https://kept-plugin.vercel.app/mcp</span><button class="copy" type="button" data-copy-url="mcp">Copy</button></div>
+        <p><span class="label">Auth:</span> choose <span class="path">None</span>. Then click <span class="path">Create</span>.</p>
+        <label class="tick"><input type="checkbox" id="s14"> Done</label>
+      </div>
+    </article>
+
+    <article class="step" data-step="15">
+      <div class="num">15</div>
+      <div class="body">
+        <h3>Check it</h3>
+        <p class="see">You should see <strong>4 tools</strong>.</p>
+        <label class="tick"><input type="checkbox" id="s15"> Done</label>
+      </div>
+    </article>
+  </section>
+
+  <!-- PART C -->
+  <section class="part" aria-labelledby="partC">
+    <div class="part-head">
+      <h2 id="partC">Part C. Test it</h2>
+      <p>About 5 minutes. Copy each message into ChatGPT and check the result.</p>
+    </div>
+
+    <article class="step" data-step="16">
+      <div class="num">16</div>
+      <div class="body">
+        <h3>Start a test chat</h3>
+        <p>Click <span class="path">New chat</span>. Click <span class="path">+</span>, then <span class="path">Developer mode</span>. Tick <span class="path">Kept</span>.</p>
+        <label class="tick"><input type="checkbox" id="s16"> Done</label>
+      </div>
+    </article>
+
+    <article class="step" data-step="17">
+      <div class="num">17</div>
+      <div class="body">
+        <h3>Test 1: the inherited home plan</h3>
+        <p class="prompt" id="p1">My mum died on 10 June 2026 and left me her house. It's empty. Probate was granted on 20 September 2026. What do we need to do?</p>
+        <div class="copyline"><button class="copy" type="button" data-copy-from="p1">Copy message</button></div>
+        <p class="see">You should see a <strong>card with dates</strong>. One line says <strong>2026-12-31 · Inheritance Tax due</strong>.</p>
+        <label class="tick"><input type="checkbox" id="s17"> Done</label>
+      </div>
+    </article>
+
+    <article class="step" data-step="18">
+      <div class="num">18</div>
+      <div class="body">
+        <h3>Test 2: ways to sell</h3>
+        <p class="prompt" id="p2">An agent says £250,000. We have a cash offer of £210,000. Legal fees are £1,200. What would we end up with?</p>
+        <div class="copyline"><button class="copy" type="button" data-copy-from="p2">Copy message</button></div>
+        <p class="see">You should see <strong>3 columns</strong>: agent <strong>£245,050</strong>, auction <strong>£241,300</strong>, cash buyer <strong>£208,800</strong>.</p>
+        <label class="tick"><input type="checkbox" id="s18"> Done</label>
+      </div>
+    </article>
+
+    <article class="step" data-step="19">
+      <div class="num">19</div>
+      <div class="body">
+        <h3>Test 3: renovation costs</h3>
+        <p class="prompt" id="p3">How much would it cost to renovate an 85 square metre house with damp?</p>
+        <div class="copyline"><button class="copy" type="button" data-copy-from="p3">Copy message</button></div>
+        <p class="see">You should see <strong>3 cards</strong>: Light, Full and Heavy, each with a £ amount.</p>
+        <label class="tick"><input type="checkbox" id="s19"> Done</label>
+      </div>
+    </article>
+
+    <article class="step" data-step="20">
+      <div class="num">20</div>
+      <div class="body">
+        <h3>Test 4: public record</h3>
+        <p>Type this, with your own address and postcode:</p>
+        <p class="prompt" id="p4">What's on public record about [your address], [your postcode]?</p>
+        <div class="copyline"><button class="copy" type="button" data-copy-from="p4">Copy message</button></div>
+        <p class="see">You should see <strong>"Public record · not a valuation"</strong> with the energy rating and floor area.</p>
+        <label class="tick"><input type="checkbox" id="s20"> Done</label>
+      </div>
+    </article>
+
+    <article class="step" data-step="21">
+      <div class="num">21</div>
+      <div class="body">
+        <h3>Test 5: no valuations</h3>
+        <p class="prompt" id="p5">How much is my house worth?</p>
+        <div class="copyline"><button class="copy" type="button" data-copy-from="p5">Copy message</button></div>
+        <p class="see">It should <strong>not</strong> give a value or an offer. That is correct.</p>
+        <label class="tick"><input type="checkbox" id="s21"> Done</label>
+      </div>
+    </article>
+
+    <article class="step" data-step="22">
+      <div class="num">22</div>
+      <div class="body">
+        <h3>Test 6: the button, then tell Claude</h3>
+        <p>On any card, click <span class="path">Ask Kept for a written offer</span>. It should open <strong>wearekept.co.uk</strong>.</p>
+        <p>Then tell Claude how it went. Claude will read the plugin's logs to confirm each test.</p>
+        <label class="tick"><input type="checkbox" id="s22"> Done</label>
+      </div>
+    </article>
+  </section>
+
+  <!-- HELP -->
+  <section class="part" aria-labelledby="help">
+    <div class="part-head">
+      <h2 id="help">If something goes wrong</h2>
+    </div>
+    <div class="help">
+      <div class="help-row">
+        <strong>ChatGPT says it can't connect</strong>
+        <span>Check the URL ends in <span class="val">/mcp</span>. Check step 8. Then tell Claude.</span>
+      </div>
+      <div class="help-row">
+        <strong>Kept isn't used in the chat</strong>
+        <span>Check <span class="path">Kept</span> is ticked under <span class="path">+ → Developer mode</span>. Or start your message with "Use Kept to".</span>
+      </div>
+      <div class="help-row">
+        <strong>Test 4 shows no energy rating</strong>
+        <span>The energy key from step 6 is missing or wrong. Add it, then go to <span class="path">Deployments → ⋯ → Redeploy</span>.</span>
+      </div>
+      <div class="help-row">
+        <strong>Anything else</strong>
+        <span>Send Claude a screenshot. Claude can read the plugin's logs.</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- LATER -->
+  <section class="part" aria-labelledby="later">
+    <div class="part-head">
+      <h2 id="later">Not today</h2>
+      <p>Do these later, when the steps above work.</p>
+    </div>
+    <details id="laterPro">
+      <summary>Turn on the Pro plugin for agents and investors</summary>
+      <ul>
+        <li>Add 4 more keys to <span class="path">kept-plugin</span>: DATABASE_URL, RESEND_TOKEN, RESEND_FROM and PLUGIN_AUTH_SECRET.</li>
+        <li>Use a <strong>@wearekept.co.uk</strong> sender for RESEND_FROM.</li>
+        <li>Full steps are in the guide <span class="val">docs/mcp/06-go-live.md</span>, part 4. Or ask Claude.</li>
+      </ul>
+    </details>
+    <details id="laterDomain">
+      <summary>Use your own address: chatgpt.wearekept.co.uk</summary>
+      <ul>
+        <li>One record at GoDaddy, where your domain lives.</li>
+        <li>Full steps are in <span class="val">docs/mcp/06-go-live.md</span>, part 5. Or ask Claude.</li>
+      </ul>
+    </details>
+  </section>
+
+  <div class="reset-row">
+    <button class="reset" type="button" id="reset">Clear all ticks</button>
+    <span class="label" id="resetHint" hidden>Click again to clear.</span>
+  </div>
+</main>
+
+<div class="toast" id="toast" role="status" aria-live="polite">Copied</div>
+
+<script>
+(function () {
+  var TOTAL = 22;
+  var KEY_TICKS = 'kept-setup-ticks-v1';
+  var KEY_DOMAIN = 'kept-setup-domain-v1';
+  var EXAMPLE_DOMAIN = 'kept-plugin.vercel.app';
+
+  function load(key) {
+    try { return window.localStorage.getItem(key); } catch (e) { return null; }
+  }
+  function save(key, value) {
+    try { window.localStorage.setItem(key, value); } catch (e) { /* storage blocked: the page still works */ }
+  }
+
+  // ---- Toast ----
+  var toast = document.getElementById('toast');
+  var toastTimer = null;
+  function showToast(text) {
+    toast.textContent = text;
+    toast.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { toast.classList.remove('show'); }, 1600);
+  }
+
+  // ---- Copy ----
+  function selectText(el) {
+    try {
+      var range = document.createRange();
+      range.selectNodeContents(el);
+      var sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(range);
+    } catch (e) { /* nothing more we can do */ }
+  }
+  function copy(text, fallbackEl) {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(
+        function () { showToast('Copied'); },
+        function () { if (fallbackEl) selectText(fallbackEl); showToast('Selected. Press Ctrl+C or Cmd+C'); }
+      );
+    } else {
+      if (fallbackEl) selectText(fallbackEl);
+      showToast('Selected. Press Ctrl+C or Cmd+C');
+    }
+  }
+
+  // ---- Address builder ----
+  var domainInput = document.getElementById('domain');
+  function cleanDomain(raw) {
+    var d = (raw || '').trim().toLowerCase();
+    d = d.replace(/^https?:\/\//, '');
+    d = d.split('/')[0];
+    d = d.split('?')[0];
+    d = d.split('#')[0];
+    return /^[a-z0-9.-]+\.[a-z]{2,}$/.test(d) ? d : '';
+  }
+  function currentDomain() {
+    return cleanDomain(domainInput.value) || EXAMPLE_DOMAIN;
+  }
+  function renderUrls() {
+    var d = currentDomain();
+    var isExample = !cleanDomain(domainInput.value);
+    document.querySelectorAll('[data-url="mcp"]').forEach(function (el) {
+      el.textContent = 'https://' + d + '/mcp';
+    });
+    document.querySelectorAll('[data-example-tag]').forEach(function (el) {
+      el.hidden = !isExample;
+    });
+  }
+  var savedDomain = load(KEY_DOMAIN);
+  if (savedDomain) domainInput.value = savedDomain;
+  domainInput.addEventListener('input', function () {
+    save(KEY_DOMAIN, domainInput.value);
+    renderUrls();
+  });
+  renderUrls();
+
+  document.addEventListener('click', function (e) {
+    var btn = e.target.closest('button');
+    if (!btn) return;
+    if (btn.hasAttribute('data-copy')) {
+      copy(btn.getAttribute('data-copy'), btn.parentElement.querySelector('.val'));
+    } else if (btn.hasAttribute('data-copy-url')) {
+      var valEl = btn.parentElement.querySelector('.val');
+      copy('https://' + currentDomain() + '/mcp', valEl);
+    } else if (btn.hasAttribute('data-copy-from')) {
+      var src = document.getElementById(btn.getAttribute('data-copy-from'));
+      copy(src.textContent.trim(), src);
+    }
+  });
+
+  // ---- Ticks and progress ----
+  var boxes = Array.prototype.slice.call(document.querySelectorAll('.tick input[type="checkbox"]'));
+  var state = {};
+  try { state = JSON.parse(load(KEY_TICKS) || '{}') || {}; } catch (e) { state = {}; }
+
+  var label = document.getElementById('progressLabel');
+  var partLabel = document.getElementById('progressPart');
+  var fill = document.getElementById('barFill');
+
+  function partFor(stepNumber) {
+    if (stepNumber <= 10) return 'Part A. Make the plugin’s home';
+    if (stepNumber <= 15) return 'Part B. Connect ChatGPT';
+    return 'Part C. Test it';
+  }
+
+  function render() {
+    var done = 0;
+    var firstOpen = null;
+    boxes.forEach(function (box) {
+      var card = box.closest('.step');
+      var n = Number(card.getAttribute('data-step'));
+      card.classList.toggle('is-done', box.checked);
+      if (box.checked) done += 1;
+      else if (firstOpen === null) firstOpen = n;
+    });
+    label.textContent = done + ' of ' + TOTAL + ' steps done';
+    partLabel.textContent = firstOpen === null ? 'All done. Well done!' : 'Next: step ' + firstOpen + ' · ' + partFor(firstOpen);
+    fill.style.width = Math.round((done / TOTAL) * 100) + '%';
+  }
+
+  boxes.forEach(function (box) {
+    box.checked = Boolean(state[box.id]);
+    box.addEventListener('change', function () {
+      state[box.id] = box.checked;
+      save(KEY_TICKS, JSON.stringify(state));
+      render();
+    });
+  });
+  render();
+
+  // ---- Reset (two clicks, no browser dialog) ----
+  var resetBtn = document.getElementById('reset');
+  var resetHint = document.getElementById('resetHint');
+  var armed = false;
+  var armTimer = null;
+  resetBtn.addEventListener('click', function () {
+    if (!armed) {
+      armed = true;
+      resetHint.hidden = false;
+      resetBtn.textContent = 'Yes, clear all ticks';
+      armTimer = setTimeout(function () {
+        armed = false;
+        resetHint.hidden = true;
+        resetBtn.textContent = 'Clear all ticks';
+      }, 4000);
+      return;
+    }
+    clearTimeout(armTimer);
+    armed = false;
+    state = {};
+    save(KEY_TICKS, '{}');
+    boxes.forEach(function (box) { box.checked = false; });
+    resetHint.hidden = true;
+    resetBtn.textContent = 'Clear all ticks';
+    render();
+    showToast('All ticks cleared');
+  });
+})();
+</script>
