@@ -14,8 +14,17 @@ export const env = createEnv({
     NEXT_PUBLIC_GA_MEASUREMENT_ID: z
       .union([z.string().startsWith('G-'), z.literal('')])
       .optional(),
+    // Advertising tags, same rule: unset or "" = not loaded, not asked about.
+    NEXT_PUBLIC_GOOGLE_ADS_ID: z
+      .union([z.string().startsWith('AW-'), z.literal('')])
+      .optional(),
+    NEXT_PUBLIC_META_PIXEL_ID: z
+      .union([z.string().regex(/^\d+$/), z.literal('')])
+      .optional(),
   },
   runtimeEnv: {
     NEXT_PUBLIC_GA_MEASUREMENT_ID: process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID,
+    NEXT_PUBLIC_GOOGLE_ADS_ID: process.env.NEXT_PUBLIC_GOOGLE_ADS_ID,
+    NEXT_PUBLIC_META_PIXEL_ID: process.env.NEXT_PUBLIC_META_PIXEL_ID,
   },
 });

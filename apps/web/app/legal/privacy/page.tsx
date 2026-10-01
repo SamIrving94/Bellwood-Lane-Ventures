@@ -26,14 +26,20 @@ export const metadata: Metadata = {
  * registration number. The registered-entity facts (company number,
  * registered office) are verified against Companies House, 2026-07-31.
  *
- * v1.1 (Oct 2026) adds Google Analytics. Its claims depend on GA property
- * settings, not just code — keep them true: data retention 2 months (GA4
- * default), Google signals OFF, no Google Ads link. Change any of those and
- * this page must change in the same breath. The consent gate and the
- * private-URL guard live in components/cookie-consent.tsx.
+ * v1.1 (Oct 2026) adds Google Analytics; v1.2 adds advertising cookies
+ * (Google Ads tag + Meta Pixel) for the paid channels. Some claims below
+ * depend on account settings, not just code — keep them true, or change
+ * this page in the same breath:
+ *   - GA4 data retention: 2 months (the default)
+ *   - GA4 Google signals: OFF
+ *   - Meta Events Manager → automatic advanced matching: OFF
+ *   - Google Ads → enhanced conversions: OFF
+ * The last two are what lets "they never see what you type into our forms"
+ * stay true. The consent gate and the private-URL guard live in
+ * components/cookie-consent.tsx.
  */
 const LAST_UPDATED = '1 October 2026';
-const VERSION = '1.1';
+const VERSION = '1.2';
 
 /** Verified against the Companies House register, 2026-07-31. */
 const REGISTERED_OFFICE = '20 Wenlock Road, London N1 7GU';
@@ -106,16 +112,25 @@ const SECTIONS: Array<{
           market data. That is about the building, not about your household.
         </p>
         <p>
-          If you agree to analytics cookies, Google Analytics records how you
-          use the site: the pages you view, roughly where you are (town or
-          region, not your address), your device and browser, and the site that
-          sent you. It does not see what you type into our forms, and it is
-          switched off on private pages such as offer and timeline links. If you
-          say no, none of this is collected.
+          <strong>If you accept analytics cookies</strong>, Google Analytics
+          records how you use the site: the pages you view, roughly where you
+          are (town or region, not your address), your device and browser, and
+          the site that sent you.
         </p>
         <p>
-          <strong>We do not</strong> buy marketing lists or place advertising
-          trackers.
+          <strong>If you accept advertising cookies</strong>, Google and Meta
+          record which of our pages you visit and which of our adverts, if any,
+          brought you here. They link this to cookies in your browser, which is
+          how they can later show you our adverts on their own sites and apps.
+        </p>
+        <p>
+          Neither sees what you type into our forms. Both are switched off on
+          private pages such as offer and timeline links. If you say no, none of
+          this is collected.
+        </p>
+        <p>
+          <strong>We do not</strong> buy marketing lists, and we never hand the
+          details you give us to an advertiser.
         </p>
       </>
     ),
@@ -144,9 +159,9 @@ const SECTIONS: Array<{
             overrides your rights; if you disagree, you can object (see below).
           </li>
           <li>
-            <strong>Your consent</strong> &mdash; for analytics cookies only.
-            You can withdraw it at any time, as easily as you gave it (see
-            Cookies).
+            <strong>Your consent</strong> &mdash; for analytics and advertising
+            cookies, each asked separately. You can withdraw either at any time,
+            as easily as you gave it (see Cookies).
           </li>
         </ul>
         <p>
@@ -156,7 +171,9 @@ const SECTIONS: Array<{
         </p>
         <p>
           <strong>
-            We do not sell your data, and we do not use it for advertising.
+            We do not sell your data. What you tell us when you ask for an offer
+            &mdash; your name, contact details, property and situation &mdash;
+            is never used for advertising.
           </strong>
         </p>
       </>
@@ -192,6 +209,31 @@ const SECTIONS: Array<{
           </li>
         </ul>
         <p>
+          <strong>
+            Advertising partners, only if you accept advertising cookies:
+          </strong>{' '}
+          Google (Google Ads) and Meta (Facebook and Instagram). These two are
+          not just working for us. Each also uses what its cookies collect for
+          its own advertising, under its own privacy policy (
+          <a
+            href="https://policies.google.com/privacy"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Google
+          </a>
+          ,{' '}
+          <a
+            href="https://www.facebook.com/privacy/policy/"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Meta
+          </a>
+          ). For collecting it on our site, we and each of them are jointly
+          responsible; you can exercise your rights with us or with them.
+        </p>
+        <p>
           If your sale proceeds, we share what is necessary with solicitors,
           surveyors, and any agent already involved, and with authorities where
           the law requires it. Where a deal has a live timeline link,{' '}
@@ -205,7 +247,8 @@ const SECTIONS: Array<{
           Agreement.
         </p>
         <p>
-          We never sell your data, and we never pass it to marketing companies.
+          We never sell your data, and we never pass the details you give us to
+          marketing companies.
         </p>
       </>
     ),
@@ -236,6 +279,11 @@ const SECTIONS: Array<{
             example, how many people visited a page in a month), which do not
             identify anyone.
           </li>
+          <li>
+            <strong>Advertising cookies</strong> — ours last up to 90 days. What
+            Google and Meta keep on their side is governed by their own privacy
+            policies.
+          </li>
         </ul>
         <p>
           The seven-year floor is a legal obligation, so we cannot delete
@@ -248,32 +296,43 @@ const SECTIONS: Array<{
   {
     id: 'cookies',
     eyebrow: 'Cookies',
-    title: 'One functional cookie, and analytics only if you say yes.',
+    title: 'One functional cookie. The rest only if you say yes.',
     body: (
       <>
         <p>
           <strong>Always on, because the site needs it.</strong> For agents who
           sign in to the partner portal, one cookie keeps you signed in. We also
-          remember your answer to the cookie question in your browser&rsquo;s
-          storage, so we don&rsquo;t ask on every page. Neither needs consent
-          and neither is used to profile you.
+          remember your cookie choices in your browser&rsquo;s storage, so we
+          don&rsquo;t ask on every page. Neither needs consent and neither is
+          used to profile you.
         </p>
         <p>
-          <strong>Only if you accept: Google Analytics.</strong> It helps us see
-          which pages are useful and which aren&rsquo;t. It sets two cookies,{' '}
+          <strong>Only if you accept analytics: Google Analytics.</strong> It
+          helps us see which pages are useful and which aren&rsquo;t. It sets{' '}
           <span className="font-mono text-[14px]">_ga</span> and{' '}
           <span className="font-mono text-[14px]">_ga_&lt;id&gt;</span>, which
           last up to two years and let it tell a returning visitor from a new
-          one. Until you press &ldquo;Accept&rdquo;, the Google Analytics code
-          is not loaded at all. We have not switched on Google&rsquo;s
-          advertising features, so this data is not used to show you ads.
+          one. We have not switched on Google signals, so this is not linked to
+          your Google account.
+        </p>
+        <p>
+          <strong>Only if you accept advertising: Google Ads and Meta.</strong>{' '}
+          They tell us which adverts lead to enquiries, so we stop paying for
+          the ones that don&rsquo;t, and let us show our adverts again to people
+          who have visited. Google sets{' '}
+          <span className="font-mono text-[14px]">_gcl_au</span>; Meta sets{' '}
+          <span className="font-mono text-[14px]">_fbp</span>, and{' '}
+          <span className="font-mono text-[14px]">_fbc</span> if you arrived
+          from one of its adverts. Each lasts up to 90 days. Both companies may
+          also read their own cookies on their own sites.
+        </p>
+        <p>
+          You choose each kind separately, and nothing is ticked for you. Until
+          you say yes, the code for that kind is not loaded at all.
         </p>
         <p>
           Changed your mind? <CookieSettingsButton />. If you withdraw, we stop
-          Google Analytics and delete its cookies from your browser.
-        </p>
-        <p>
-          We do not run advertising or cross-site tracking cookies on this site.
+          those tools straight away and delete their cookies from your browser.
         </p>
       </>
     ),

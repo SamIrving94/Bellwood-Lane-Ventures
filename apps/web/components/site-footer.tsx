@@ -1,6 +1,6 @@
 import { LogoLockup, Seal } from '@/components/brand';
 import { CookieSettingsButton } from '@/components/cookie-consent';
-import { env } from '@/env';
+import { hasConsentTags } from '@/lib/consent-tags';
 import { SITE_MAP } from '@/lib/site-map';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
@@ -12,8 +12,8 @@ import type { ReactNode } from 'react';
  * from anywhere. Visual base is the signed-off /sell footer (seal, lockup,
  * no "Est." strapline).
  *
- * "Cookie settings" only appears when GA is configured: with no measurement
- * ID there is no banner to reopen, and a dead button is worse than none.
+ * "Cookie settings" only appears when a tracking tag is configured: with
+ * none there is no banner to reopen, and a dead button is worse than none.
  */
 export function SiteFooter({
   disclaimer,
@@ -46,15 +46,14 @@ export function SiteFooter({
                     </Link>
                   </li>
                 ))}
-                {group.title === 'Legal' &&
-                  env.NEXT_PUBLIC_GA_MEASUREMENT_ID && (
-                    <li>
-                      <CookieSettingsButton
-                        label="Cookie settings"
-                        className="text-left hover:text-brand-deep"
-                      />
-                    </li>
-                  )}
+                {group.title === 'Legal' && hasConsentTags() && (
+                  <li>
+                    <CookieSettingsButton
+                      label="Cookie settings"
+                      className="text-left hover:text-brand-deep"
+                    />
+                  </li>
+                )}
               </ul>
             </nav>
           ))}

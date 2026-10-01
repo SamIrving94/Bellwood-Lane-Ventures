@@ -1,5 +1,5 @@
 import { CookieConsent } from '@/components/cookie-consent';
-import { env } from '@/env';
+import { consentTags, hasConsentTags } from '@/lib/consent-tags';
 import { fonts } from '@repo/design-system/lib/fonts';
 import { cn } from '@repo/design-system/lib/utils';
 import type { CSSProperties, ReactNode } from 'react';
@@ -25,10 +25,8 @@ export default function RootLayout({ children }: { children: ReactNode }) {
     >
       <body>
         {children}
-        {/* GA loads only after a visitor accepts — see cookie-consent.tsx. */}
-        {env.NEXT_PUBLIC_GA_MEASUREMENT_ID && (
-          <CookieConsent gaId={env.NEXT_PUBLIC_GA_MEASUREMENT_ID} />
-        )}
+        {/* Tags load only after a visitor accepts — see cookie-consent.tsx. */}
+        {hasConsentTags() && <CookieConsent {...consentTags()} />}
       </body>
     </html>
   );
