@@ -278,7 +278,7 @@ The brief says the plugin "turns home sellers into **landlord leads**". With no 
 - **Please run it locally** (3 endpoints, roughly 6–9 credits):
 
   ```sh
-  pnpm tsx scripts/propertydata-probe.mts --postcode "M14 5AB" --endpoints rents,demand-rent,yields
+  npx tsx scripts/propertydata-probe.mts --postcode "M14 5AB" --endpoints rents,demand-rent,yields
   ```
 
 - Then share the console output (shapes only, no addresses). Raw files save to `scratch/propertydata-probe/`, which is gitignored.
