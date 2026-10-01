@@ -1,6 +1,6 @@
 # Phase 1 — Audit
 
-_Audited: 2026-10-01 · branch `claude/bellwoods-chatgpt-mcp-app-nval4l`_
+_Audited: 2026-10-01 · updated 2026-10-01 after founder answers + DevDay · branch `claude/bellwoods-chatgpt-mcp-app-nval4l`_
 
 How this was checked:
 
@@ -9,7 +9,7 @@ How this was checked:
 - Vercel runtime errors were pulled for all 3 projects (last 7 days).
 - Key claims were re-checked by hand (marked ✅ verified).
 
-Platform research (OpenAI Apps SDK + MCP) is in `00-platform-notes.md`.
+Platform research (ChatGPT plugins + MCP) is in `00-platform-notes.md`.
 
 ---
 
@@ -19,13 +19,14 @@ Platform research (OpenAI Apps SDK + MCP) is in `00-platform-notes.md`.
    - The codebase is a **cash home-buyer** (sourced → appraised → offered → completed).
    - There is no tenancy, rent collection or management code. There is no landlord page on the live site.
    - "Landlord leads for Bellwoods" has **nowhere to land today**.
+   - **Founder confirmed (1 Oct): no lettings service exists.** See section 11.
 2. **We have no rent data.** ✅ verified
    - PropertyData `/rents`, `/valuation-rent` and `/demand-rent` are **not wired up**.
    - `/yields` is wired up but has **never returned a value**: our schema reads the wrong shape (LEARNINGS 2026-09-12).
    - A "sell or let?" answer needs a rent figure. We can't produce one today.
 3. **The MCP server does not start.** ✅ verified
    - `packages/mcp-server` crashes on boot (ESM/CJS import error).
-   - It is stdio only, with no HTTP and no auth. ChatGPT needs HTTP.
+   - It is stdio only, with no HTTP and no auth. A ChatGPT plugin needs HTTP.
    - It also returns lead **phone numbers and emails** to any caller.
 4. **P0 bug: every quote emails a price to the seller.** ✅ verified
    - `/api/quote` → `recordDealUpdate({kind:'offer_sent'})` with no `skipNotify`.
@@ -75,7 +76,7 @@ Platform research (OpenAI Apps SDK + MCP) is in `00-platform-notes.md`.
 | **Companies House** | Officers, charges, insolvency leads | ✅ with keys | OGL. Officer data is personal data. |
 | **The Gazette** | Probate / insolvency notices → leads | ✅ | OGL, but personal data. Outreach use needs legal check. |
 | **planning.data.gov.uk** | Stalled consents | ✅ | OGL |
-| **PropertyData** | AVM cross-check, comps, £/sqft, distress lists, flood, demand, **yields** | ⚠️ Partly. 11 endpoints never return values (schema drift). `/valuation-sale` sends the wrong param name. | **Paid. Terms generally bar redistributing raw data.** Must check before exposing in ChatGPT. |
+| **PropertyData** | AVM cross-check, comps, £/sqft, distress lists, flood, demand, **yields** | ⚠️ Partly. 11 endpoints never return values (schema drift). `/valuation-sale` sends the wrong param name. | **Paid. Terms generally bar redistributing raw data.** Must check before exposing in a plugin. |
 | **Auction sites** (AH-UK, Allsop, Savills, Clive Emson) | Lot discovery | ⚠️ AH-UK + Allsop live. Others unverified. | Scraped. robots.txt not checked. |
 | **HMCTS probate / ProbateData / BatchData** | Probate grants, contact append | ❌ Dead. HMCTS endpoint looks invented. BatchData is US-only. | — |
 | **WhatsApp (whatsapp-web.js)** | Intake | ✅ locally | ❌ Breaks WhatsApp terms. Ban risk. |
@@ -214,17 +215,17 @@ Auth bugs:
 
 ## 10. Fix list (ranked)
 
-| # | Fix | Why | Blocks the ChatGPT app? |
+| # | Fix | Why | Blocks the plugin? |
 |:--|:--|:--|:--|
 | 1 | Stop `/api/quote` emailing £ figures (`skipNotify` or new copy) | Breaks founder rule today, in prod | No — but fix now anyway |
 | 2 | Lock or delete `POST /intake` | Open PII write + cost risk | No |
 | 3 | `clearNewLeadsInbox` → `requireFounder()` | Data loss | No |
 | 4 | Set `FOUNDER_USER_IDS` / `FOUNDER_EMAIL_ALLOWLIST` in prod | Auth fallback | No |
 | 5 | Token-gate `/instant-offer/offer/[id]`; make offer PDFs private | Public figures | No |
-| 6 | **Capture real PropertyData responses for `/rents`, `/valuation-rent`, `/yields`** (probe script exists) | No rent data = no sell-or-let | **Yes** |
-| 7 | **Check PropertyData terms for redistribution in a third-party AI app** | Licence | **Yes** |
+| 6 | **Capture real PropertyData responses for `/rents`, `/demand-rent`, `/yields`** (probe script, ~6–9 credits for these 3 — approved 1 Oct, see section 11) | No rent data = no sell-or-let | **Yes** |
+| 7 | **Check PropertyData terms for redistribution in a third-party AI plugin** | Licence | **Yes** |
 | 8 | Rebuild MCP server on current SDK + HTTP transport, no PII tools | Doesn't run | **Yes** |
-| 9 | Add HMLR attribution where we show Land Registry data | OGL condition | Yes (for the app) |
+| 9 | Add HMLR attribution where we show Land Registry data | OGL condition | Yes (for the plugin) |
 | 10 | Rate limiter: fail closed on paid routes | Cost risk | Yes (ChatGPT traffic is spiky) |
 
 Everything else in sections 7–8 is real but does not block this project. Suggest a separate clean-up PR.
@@ -235,18 +236,49 @@ Everything else in sections 7–8 is real but does not block this project. Sugge
 
 I think the brief has a weak spot. Plainly:
 
-- **We don't have the thing we'd sell.** No lettings or management service exists in code, on the site, or in the docs. A "let it" answer needs somewhere to send the landlord. Is lettings live off-platform? If not, this tool generates leads for a business that doesn't exist yet.
+- **We don't have the thing we'd sell.** Confirmed: no lettings or management service exists. A "let it" answer has nowhere to send the landlord.
 - **Conflict of interest.** We are a cash buyer. A buyer-owned "sell or let?" tool will look rigged whichever way it answers. Keyhole learned this lesson on 29 Aug (LEARNINGS.md).
 - **Regulation.** Letting agents must join a redress scheme and have client money protection. The Renters' Rights Act changes landlord economics a lot. A tool nudging people into landlording needs careful, neutral copy.
 - **Data.** We'd lean on PropertyData rent estimates we have never once parsed successfully.
-- **Platform.** ChatGPT "apps" are now "plugins" (Jul 2026). UK availability of third-party plugins is **not verified**.
+- **Platform.** UK availability of third-party plugins is **not verified**. Since DevDay (29 Sep), placement depends on usefulness and satisfaction — a tool that looks like a funnel will rank badly.
 
 What would make it strong:
 
 - A **neutral, open-data-first** comparison: sale proceeds (after costs) vs rental income (after tax, fees, voids, compliance). Show the maths. No verdict, no figure from our AVM.
 - The handoff is "talk it through with a person". **No offer, no price.**
 
-**I need two answers before Phase 2:**
+### Founder answers (1 Oct 2026)
 
-1. Does Bellwoods / Kept run a lettings or management service today? (If yes: where do landlord leads go?)
-2. Are you OK with me running the PropertyData probe (~30 credits) to capture real rent responses?
+1. **Lettings service? No.**
+2. **Run the PropertyData probe? Yes.**
+
+### What answer 1 means — "challenge before building" (CLAUDE.md)
+
+The brief says the plugin "turns home sellers into **landlord leads**". With no lettings service, that loop is broken. Three ways forward:
+
+| Option | How it works | Problem |
+|:--|:--|:--|
+| **A. Build lettings** | We become a letting agent | Big, regulated (redress, CMP, Renters' Rights Act). A new business, not a plugin. |
+| **B. Refer landlords to partner agents** | "Let" answers go to a partner letting agent for a fee | Must disclose the fee. We already have an agent network (`AgentAccount`, prospecting). Still a funnel. |
+| **C. Flip the aim** | Neutral sell-vs-let calculator. Bellwoods earns from the **sellers** it surfaces — people who run the numbers and decide letting isn't for them. | Smaller lead volume. Same conflict-of-interest question, handled by showing the maths openly. |
+
+- **Strongest case against the whole idea:** a cash buyer's "sell or let?" tool is a funnel in disguise. Accidental landlords are exactly the people who distrust it. ChatGPT now ranks by satisfaction, so a funnel loses reach as well as trust.
+- **The assumption that kills it:** "people who ask ChatGPT 'should I sell or let?' are our sellers." Many are looking for permission to keep the house. They will never sell to a cash buyer at a discount.
+- **Who hates it and why:**
+  - Letting agents — we'd be talking their clients out of letting.
+  - Consumer groups — a buyer giving "advice".
+  - OpenAI reviewers — if it reads as lead-gen dressed up as a tool.
+
+**My recommendation: Option C, built dark** (developer mode only, no directory listing) until one real user tries it. Option B can be added later if partner agents want the referrals. I will score both framings in Phase 2.
+
+### What answer 2 means — probe status
+
+- **I couldn't run it from here.** propertydata.co.uk is blocked by the sandbox network, and the API key isn't in the sandbox (by design).
+- **The script is ready.** `/rents` and `/demand-rent` are added. `/valuation-rent` is left out on purpose: its required inputs aren't verified.
+- **Please run it locally** (3 endpoints, roughly 6–9 credits):
+
+  ```sh
+  pnpm tsx scripts/propertydata-probe.mts --postcode "M14 5AB" --endpoints rents,demand-rent,yields
+  ```
+
+- Then share the console output (shapes only, no addresses). Raw files save to `scratch/propertydata-probe/`, which is gitignored.

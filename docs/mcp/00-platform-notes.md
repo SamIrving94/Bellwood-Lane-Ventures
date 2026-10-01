@@ -1,8 +1,10 @@
-# Platform notes — ChatGPT plugins (Apps SDK) + MCP
+# Platform notes — ChatGPT plugins + MCP
 
-_Researched: 2026-10-01. Re-check before each phase — this changes often._
+_Researched: 2026-10-01 · updated for DevDay (29 Sep 2026). Re-check before each phase — this changes often._
 
-**Caveat:** the OpenAI docs sites are blocked from our build sandbox. Lines marked **[snippet]** come from search summaries, not the live page. npm package facts were read directly.
+**Caveat:** the OpenAI docs sites (incl. developers.openai.com/plugins) are blocked from our build sandbox. Lines marked **[snippet]** come from search summaries of the official pages, not the page itself. npm package facts were read directly.
+
+**Naming:** we say **plugin** everywhere. A plugin is built on MCP. "MCP Apps" below is the name of the open UI standard, not a ChatGPT product.
 
 ## Big changes in 2026
 
@@ -11,6 +13,7 @@ _Researched: 2026-10-01. Re-check before each phase — this changes often._
 - **27 Jul** — MCP TypeScript SDK **v2** (split packages).
 - **28 Jul** — MCP spec **2026-07-28**: stateless, no session id, SSE transport deprecated.
 - **Sep** — OpenAI plans to retire custom GPTs into plugins.
+- **29 Sep (DevDay)** — plugin **extensions** (sidebar, panels, settings), **Plugin Creator**, redesigned submission flow, better ranking and in-conversation recommendations, MCP Events. Details below.
 
 ## How a ChatGPT plugin works
 
@@ -22,6 +25,38 @@ _Researched: 2026-10-01. Re-check before each phase — this changes often._
 - Resource `_meta.ui.csp` lists allowed domains. `_meta.ui.domain` is **required for submission** and must be unique.
 - Status text: `openai/toolInvocation/invoking` / `invoked` (≤64 chars). **[snippet]**
 - Widget ↔ host bridge: `ui/*` postMessage methods. ChatGPT extras on `window.openai` (`callTool`, `sendFollowUpMessage`, `openExternal`, `setWidgetState`…).
+- `_meta.ui.visibility` sets whether a tool is callable by the model, the widget, or both. **[snippet]**
+- A plugin can bundle **MCP servers + skills + templates**. One directory is shared by ChatGPT and Codex. **[snippet]**
+
+## Display modes **[snippet]**
+
+- **Inline** — card in the conversation. Default.
+- **Fullscreen** — for multi-step work. Composer stays on top.
+- **Picture-in-picture** — floating, for live sessions.
+- **Declare them:** set `_meta["openai/ui"].availableDisplayModes` on the resource contents (e.g. `["inline", "fullscreen"]`). Also declare during MCP Apps initialisation.
+
+## Extensions (new, DevDay) **[snippet]**
+
+These hook a plugin into ChatGPT surfaces outside the chat flow:
+
+- **Sidebar apps** — open the plugin from the sidebar, fullscreen.
+- **Conversation panels** — open the plugin beside a conversation.
+- **Plugin settings** — user-set options inside ChatGPT.
+- **File viewers / editors** — open supported files in our UI.
+- **Not available to Free and Go users on web yet** ("coming soon"). Free/Go users can still find plugins via the directory and recommendations.
+
+## MCP Events (new, DevDay) **[snippet]**
+
+- ChatGPT supports the *proposed* MCP Events spec.
+- A plugin can tell ChatGPT "something happened" and start an automation.
+- Not needed for a one-shot calculator. Noted for later.
+
+## Discovery and ranking (new, DevDay) **[snippet]**
+
+- Better ranking in the directory **and** in-conversation recommendations.
+- **Placement is not guaranteed by submission.** It depends on real usefulness and user satisfaction.
+- Plugins with strong utility and satisfaction "may be eligible" for directory placement or proactive suggestions.
+- So: tool names and descriptions must match how people actually ask. Bad answers will cost us reach.
 
 ## Versions (npm, 2026-10-01)
 
@@ -34,7 +69,7 @@ _Researched: 2026-10-01. Re-check before each phase — this changes often._
 | `@openai/apps-sdk-ui` | 0.2.2 |
 | Our `packages/mcp-server` | sdk **1.6.1** — very old |
 
-⚠️ Repo uses **zod 3**. v2 SDK needs **zod 4**. Plan for an isolated package/app.
+⚠️ Repo uses **zod 3**. v2 SDK needs **zod 4**. Plan for an isolated package or Next.js project.
 
 ## Auth
 
@@ -49,6 +84,15 @@ Every tool must set, explicitly:
 - `destructiveHint` — true if irreversible (incl. sending messages).
 - `openWorldHint` — true if it reaches the public internet or external people.
 
+## Submission (redesigned, DevDay) **[snippet]**
+
+- **Plugin Creator** — new builder tool inside ChatGPT.
+- Package the plugin, upload, then submit from the **Plugins** page.
+- Track it under **Review status**. Feedback comes **by email**, and is clearer than before.
+- A **submission errors** page lists automated-check failures.
+- After launch, changes to tool security schemes, tool `_meta` and UI resource links go through **continuous review**, once automated checks pass.
+- Still required: verified org identity, privacy policy, tool annotations, test prompts (incl. negative ones), unique UI domain.
+
 ## Review rules that matter to us **[snippet]**
 
 - **Financial advice = sensitive.** Needs safeguards + disclaimers.
@@ -57,7 +101,7 @@ Every tool must set, explicitly:
 - **No ads.** Must have standalone value, not exist mainly to advertise.
 - **No redirecting** the user away or inserting unrelated content.
 - **Privacy policy mandatory** (categories, purposes, recipients, retention, controls).
-- **Submission:** verified org identity, 3 negative test prompts, video walkthrough, unique UI domain.
+- **Submission:** see section above. A video walkthrough was required before DevDay. **Unverified** whether the new flow still asks for one.
 - **UK availability:** "varies by plan and region". **Not verified for GB.**
 
 ## Testing (developer mode) **[snippet]**
@@ -73,9 +117,33 @@ Every tool must set, explicitly:
 - Starters: `vercel-labs/mcp-apps-nextjs-starter` (pins v1 — upgrade it).
 - Gotchas: set `assetPrefix` to the base URL; CORS must answer OPTIONS 204; add `suppressHydrationWarning` on `<html>`; list our origin in widget CSP.
 
+## Carry-forward for later phases (founder, 1 Oct)
+
+These docs don't exist yet. When they are written they must include:
+
+- **02-ranking:** a 6th score, **Recommendation fit** (1–5) — would ChatGPT likely suggest this plugin for common questions? Re-rank on it.
+- **05-build-plan:**
+  - Is any extension (sidebar / panel) worth it for v1? Default: **no, inline only**, unless justified.
+  - The new submission steps (above).
+  - **30 test prompts** to check the plugin gets triggered.
+
 ## Not verified
 
 - Live wording of OpenAI pages.
 - Whether ChatGPT speaks the 2026-07-28 stateless protocol natively (mcp-handler 2 serves both).
 - UK availability of third-party plugins.
 - Any real-estate-specific restriction.
+- Exact steps of the new submission flow and Plugin Creator (we only have summaries).
+- Whether extensions are available in the UK.
+
+## Sources
+
+- [Plugin Extensions](https://developers.openai.com/plugins/build/extensions)
+- [Add UI to your MCP server](https://developers.openai.com/plugins/build/chatgpt-ui)
+- [Upload and submit your plugin](https://developers.openai.com/plugins/deploy/submission)
+- [Package your plugin](https://developers.openai.com/plugins/build/plugins)
+- [Plugin guidelines](https://developers.openai.com/plugins/plugin-guidelines)
+- [Remote MCP server review requirements](https://developers.openai.com/plugins/deploy/app-review)
+- [Plugins in ChatGPT (help centre)](https://help.openai.com/en/articles/20001256-plugins-in-chatgpt)
+- [DevDay 2026 recap](https://openai.com/index/devday-2026-recap/)
+- [TechCrunch, 29 Sep 2026](https://techcrunch.com/2026/09/29/openai-expands-chatgpts-plugins-with-app-like-interfaces-and-automations/)

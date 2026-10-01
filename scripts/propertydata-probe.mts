@@ -17,7 +17,7 @@
  *
  * The schemas must be rewritten from REAL responses, not from memory (see
  * CLAUDE.md: never fabricate identifiers). This script hits each endpoint
- * ONCE for one postcode (≈2–3 credits each, ~30 credits in total), saves
+ * ONCE for one postcode (≈2–3 credits each, ~35 credits in total), saves
  * the raw JSON under scratch/propertydata-probe/ (gitignored — the
  * responses carry real addresses) and prints the actual shape next to what
  * the code currently expects.
@@ -58,6 +58,19 @@ const ENDPOINTS: Record<
     params: {},
     codeExpects:
       'result.yield_average | result.gross_yield, result.yield_low, result.yield_high',
+  },
+  // Rent endpoints — not wrapped anywhere yet. Probed so the sell-or-let
+  // plugin's schemas are written from a real response (docs/mcp/01-audit.md).
+  // /valuation-rent is left out on purpose: it needs property-level inputs we
+  // have not verified, and guessing them is the mistake this script exists
+  // to prevent.
+  rents: {
+    params: {},
+    codeExpects: '(not implemented — new for the sell-or-let plugin)',
+  },
+  'demand-rent': {
+    params: {},
+    codeExpects: '(not implemented — new for the sell-or-let plugin)',
   },
   growth: {
     params: {},
