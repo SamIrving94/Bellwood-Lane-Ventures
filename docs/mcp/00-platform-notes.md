@@ -119,7 +119,7 @@ Every tool must set, explicitly:
 
 ## Carry-forward for later phases (founder, 1 Oct)
 
-These docs don't exist yet. When they are written they must include:
+Done: see `02-ranking.md` (Rec fit score) and `05-build-plan.md` (extensions, submission, 30 prompts). The original asks were:
 
 - **02-ranking:** a 6th score, **Recommendation fit** (1–5) — would ChatGPT likely suggest this plugin for common questions? Re-rank on it.
 - **05-build-plan:**
