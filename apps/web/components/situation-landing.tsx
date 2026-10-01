@@ -286,6 +286,9 @@ export function SituationLanding({
             >
               Regulatory
             </Link>
+            <Link href="/legal/privacy" className="hover:text-brand-deep">
+              Privacy
+            </Link>
           </nav>
         </div>
       </footer>

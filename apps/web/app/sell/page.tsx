@@ -677,6 +677,9 @@ export default function SellPage() {
               >
                 Regulatory
               </Link>
+              <Link href="/legal/privacy" className="hover:text-brand-deep">
+                Privacy
+              </Link>
             </nav>
           </div>
           <div className="mt-11 border-hair border-t pt-6">

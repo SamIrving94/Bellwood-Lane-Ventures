@@ -1,6 +1,8 @@
-import type { CSSProperties, ReactNode } from 'react';
+import { CookieConsent } from '@/components/cookie-consent';
+import { env } from '@/env';
 import { fonts } from '@repo/design-system/lib/fonts';
 import { cn } from '@repo/design-system/lib/utils';
+import type { CSSProperties, ReactNode } from 'react';
 import './[locale]/styles.css';
 
 // Public-site type system. The design system maps `font-serif` → --font-fraunces
@@ -21,7 +23,13 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       style={publicType}
       suppressHydrationWarning
     >
-      <body>{children}</body>
+      <body>
+        {children}
+        {/* GA loads only after a visitor accepts — see cookie-consent.tsx. */}
+        {env.NEXT_PUBLIC_GA_MEASUREMENT_ID && (
+          <CookieConsent gaId={env.NEXT_PUBLIC_GA_MEASUREMENT_ID} />
+        )}
+      </body>
     </html>
   );
 }

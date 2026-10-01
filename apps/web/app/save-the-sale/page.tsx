@@ -130,6 +130,7 @@ export default async function SaveTheSalePage({
             <Link href="/agents">Partner programme</Link>
             <Link href="/instant-offer/methodology">Methodology</Link>
             <Link href="/legal/fca-disclosure">Regulatory</Link>
+            <Link href="/legal/privacy">Privacy</Link>
           </nav>
         </div>
         <p className="mx-auto mt-8 max-w-5xl font-mono text-[10px] text-stone-400 leading-relaxed">

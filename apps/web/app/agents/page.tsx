@@ -762,6 +762,9 @@ export default function AgentsPage() {
               >
                 Regulatory
               </Link>
+              <Link href="/legal/privacy" className="hover:text-brand-deep">
+                Privacy
+              </Link>
               <Link href="/partners/login" className="hover:text-brand-deep">
                 Partner sign in
               </Link>

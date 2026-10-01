@@ -1,3 +1,4 @@
+import { CookieSettingsButton } from '@/components/cookie-consent';
 import { SiteHeader } from '@/components/site-header';
 import { brand } from '@repo/brand';
 import type { Metadata } from 'next';
@@ -23,8 +24,15 @@ export const metadata: Metadata = {
  * DRAFT — one fact still needs the founder before this is relied on: the ICO
  * registration number. The registered-entity facts (company number,
  * registered office) are verified against Companies House, 2026-07-31.
+ *
+ * v1.1 (Oct 2026) adds Google Analytics. Its claims depend on GA property
+ * settings, not just code — keep them true: data retention 2 months (GA4
+ * default), Google signals OFF, no Google Ads link. Change any of those and
+ * this page must change in the same breath. The consent gate and the
+ * private-URL guard live in components/cookie-consent.tsx.
  */
-const LAST_UPDATED = '2 August 2026';
+const LAST_UPDATED = '1 October 2026';
+const VERSION = '1.1';
 
 /** Verified against the Companies House register, 2026-07-31. */
 const REGISTERED_OFFICE = '20 Wenlock Road, London N1 7GU';
@@ -97,9 +105,16 @@ const SECTIONS: Array<{
           market data. That is about the building, not about your household.
         </p>
         <p>
-          <strong>We do not</strong> buy marketing lists, place third-party
-          advertising trackers, or collect anything about you before you contact
-          us.
+          If you agree to analytics cookies, Google Analytics records how you
+          use the site: the pages you view, roughly where you are (town or
+          region, not your address), your device and browser, and the site that
+          sent you. It does not see what you type into our forms, and it is
+          switched off on private pages such as offer and timeline links. If you
+          say no, none of this is collected.
+        </p>
+        <p>
+          <strong>We do not</strong> buy marketing lists or place advertising
+          trackers.
         </p>
       </>
     ),
@@ -126,6 +141,11 @@ const SECTIONS: Array<{
             securing the service, preventing abuse of our forms, and keeping
             records of what we offered and why. We do not think any of this
             overrides your rights; if you disagree, you can object (see below).
+          </li>
+          <li>
+            <strong>Your consent</strong> &mdash; for analytics cookies only.
+            You can withdraw it at any time, as easily as you gave it (see
+            Cookies).
           </li>
         </ul>
         <p>
@@ -157,6 +177,9 @@ const SECTIONS: Array<{
           <li>Neon — the database your record is stored in.</li>
           <li>Resend — sending the emails we send you.</li>
           <li>Clerk — sign-in for our internal team.</li>
+          <li>
+            Google — Google Analytics, only if you accept analytics cookies.
+          </li>
           <li>WhatsApp (Meta) — only if you choose to contact us that way.</li>
           <li>
             Anthropic — we pass submission details to an AI model to summarise
@@ -206,6 +229,12 @@ const SECTIONS: Array<{
             <strong>Agent portal accounts</strong> — until you ask us to close
             the account.
           </li>
+          <li>
+            <strong>Analytics data</strong> — Google Analytics deletes
+            visit-level data after two months. We keep only the totals (for
+            example, how many people visited a page in a month), which do not
+            identify anyone.
+          </li>
         </ul>
         <p>
           The seven-year floor is a legal obligation, so we cannot delete
@@ -218,19 +247,32 @@ const SECTIONS: Array<{
   {
     id: 'cookies',
     eyebrow: 'Cookies',
-    title: 'One functional cookie, no tracking.',
+    title: 'One functional cookie, and analytics only if you say yes.',
     body: (
       <>
         <p>
-          We set a single cookie, and only for agents who sign in to the partner
-          portal: it keeps you signed in. It is strictly necessary for that
-          feature, so it does not require consent, and it is not used to profile
-          you.
+          <strong>Always on, because the site needs it.</strong> For agents who
+          sign in to the partner portal, one cookie keeps you signed in. We also
+          remember your answer to the cookie question in your browser&rsquo;s
+          storage, so we don&rsquo;t ask on every page. Neither needs consent
+          and neither is used to profile you.
+        </p>
+        <p>
+          <strong>Only if you accept: Google Analytics.</strong> It helps us see
+          which pages are useful and which aren&rsquo;t. It sets two cookies,{' '}
+          <span className="font-mono text-[14px]">_ga</span> and{' '}
+          <span className="font-mono text-[14px]">_ga_&lt;id&gt;</span>, which
+          last up to two years and let it tell a returning visitor from a new
+          one. Until you press &ldquo;Accept&rdquo;, the Google Analytics code
+          is not loaded at all. We have not switched on Google&rsquo;s
+          advertising features, so this data is not used to show you ads.
+        </p>
+        <p>
+          Changed your mind? <CookieSettingsButton />. If you withdraw, we stop
+          Google Analytics and delete its cookies from your browser.
         </p>
         <p>
           We do not run advertising or cross-site tracking cookies on this site.
-          If that changes we will ask for your consent first, with a banner, and
-          update this page.
         </p>
       </>
     ),
@@ -300,9 +342,7 @@ export default function PrivacyPage() {
       <SiteHeader />
       <main className="min-h-screen bg-cream px-6 py-20 md:px-12 md:py-28">
         <div className="mx-auto max-w-3xl">
-          <p className="font-serif text-[13px] text-leaf">
-            Privacy notice
-          </p>
+          <p className="font-serif text-[13px] text-leaf">Privacy notice</p>
           <h1
             className="mt-5 font-semibold font-serif text-forest leading-[1.02] tracking-[-0.025em]"
             style={{ fontSize: 'clamp(44px, 6vw, 72px)' }}
@@ -319,15 +359,13 @@ export default function PrivacyPage() {
             emails we send you.
           </p>
           <p className="mt-4 font-mono text-[11px] text-stone-400">
-            Last updated {LAST_UPDATED} · version 1.0
+            Last updated {LAST_UPDATED} · version {VERSION}
           </p>
 
           <div className="mt-16 space-y-16">
             {SECTIONS.map((s) => (
               <section key={s.id} id={s.id}>
-                <p className="font-serif text-[13px] text-leaf">
-                  {s.eyebrow}
-                </p>
+                <p className="font-serif text-[13px] text-leaf">{s.eyebrow}</p>
                 <h2 className="mt-3 font-semibold font-serif text-3xl leading-[1.15] tracking-[-0.02em] md:text-4xl">
                   {s.title}
                 </h2>

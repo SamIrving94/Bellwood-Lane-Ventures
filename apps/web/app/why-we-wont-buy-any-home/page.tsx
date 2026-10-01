@@ -330,6 +330,7 @@ export default function WhyWeWontBuyAnyHomePage() {
               <Link href="/save-the-sale">Save a sale</Link>
               <Link href="/instant-offer/methodology">Methodology</Link>
               <Link href="/legal/fca-disclosure">Regulatory</Link>
+              <Link href="/legal/privacy">Privacy</Link>
             </nav>
           </div>
           <p className="mt-10 font-mono text-[11px] text-stone-500 leading-relaxed">
