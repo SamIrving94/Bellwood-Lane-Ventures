@@ -29,6 +29,7 @@ import {
 } from '@repo/kept-tools';
 import { z } from 'zod';
 import { keptHandoff } from './links';
+import { withUsageLogging } from './usage';
 import { WIDGET_HTML, WIDGET_MIME, WIDGET_URI } from './widget';
 
 /** Lazily loaded: it pulls in the EPC + Land Registry clients. */
@@ -66,6 +67,7 @@ export const PUBLIC_TOOL_NAMES = [
 ] as const;
 
 export function registerPublicPlugin(server: McpServer): void {
+  withUsageLogging(server, 'public');
   server.registerResource(
     'kept-card',
     WIDGET_URI,

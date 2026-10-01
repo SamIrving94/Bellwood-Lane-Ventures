@@ -21,6 +21,7 @@ import { SIGNED_OFFER_NOTIFIER } from '@repo/deal-updates';
 import { z } from 'zod';
 import type { Scope } from './oauth/config';
 import { type ProIdentity, findIdentity } from './oauth/identity';
+import { withUsageLogging } from './usage';
 
 const UK_POSTCODE = /^[A-Z]{1,2}\d[A-Z\d]?\s*\d[A-Z]{2}$/i;
 const DAY_MS = 86_400_000;
@@ -99,6 +100,7 @@ function trackUrl(token: string | null | undefined): string | null {
 }
 
 export function registerProPlugin(server: McpServer): void {
+  withUsageLogging(server, 'pro');
   // ---------------------------------------------------------------------
   // Agent: refer a sale
   // ---------------------------------------------------------------------

@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('@repo/property-data', () => ({
   getEpcData: vi.fn(async () => ({
@@ -109,5 +109,38 @@ describe('public plugin', () => {
 
   it('exports GET for the transport', () => {
     expect(typeof GET).toBe('function');
+  });
+
+  describe('usage logging', () => {
+    afterEach(() => vi.restoreAllMocks());
+
+    it('logs the tool name and outcome, never the inputs', async () => {
+      const log = vi.spyOn(console, 'log').mockImplementation(() => undefined);
+      await call('get_property_facts', {
+        addressLine: '99 Secret Lane',
+        postcode: 'M14 5AB',
+      });
+      const lines = log.mock.calls.map((c) => String(c[0]));
+      const usage = lines.find((l) => l.includes('kept_plugin_tool'));
+      expect(usage).toBeTruthy();
+      expect(JSON.parse(usage as string)).toMatchObject({
+        surface: 'public',
+        tool: 'get_property_facts',
+        outcome: 'ok',
+      });
+      expect(lines.join('\n')).not.toMatch(/Secret Lane|M14 5AB/);
+    });
+
+    it('marks a tool error as tool_error', async () => {
+      const log = vi.spyOn(console, 'log').mockImplementation(() => undefined);
+      await call('plan_inherited_home', {
+        dateOfDeath: '2026-02-30',
+        homeIsEmpty: true,
+      });
+      const usage = log.mock.calls
+        .map((c) => String(c[0]))
+        .find((l) => l.includes('kept_plugin_tool'));
+      expect(JSON.parse(usage as string).outcome).toBe('tool_error');
+    });
   });
 });
