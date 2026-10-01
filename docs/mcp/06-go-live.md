@@ -37,7 +37,12 @@ _Updated: 2026-10-01. ✅ = done by Claude. 👤 = needs you._
 3. **Project Name:** `kept-plugin`
    - It must say **kept**: the project name becomes the web address people paste into ChatGPT (`kept-plugin.vercel.app`). "Bellwoods" is the old brand.
 4. **Root Directory:** click **Edit** and pick **`apps/plugin`**. ⚠️ This is the only setting that matters.
-5. Leave everything else as it is. **No environment variables needed yet.**
+5. Open **Environment Variables** and add **one** before deploying:
+   - **Key:** `EPC_API_TOKEN`
+   - **Value:** copy it from **bellwood-api** (or **bellwood-web**) → Settings → Environment Variables.
+   - **No copy to be found?** Get a free one: **get-energy-performance-data.communities.gov.uk** → sign in with **GOV.UK One Login** → **My account** → copy the token. Add it to **bellwood-web** as well (Keyhole needs it).
+   - **Why:** energy certificates come from a government register that needs this free key. Without it, property facts can't read the EPC and renovation can't read the floor area. Land Registry sales work without any key.
+   - Leave everything else as it is.
 6. Click **Deploy**. It takes about 3–5 minutes.
 
 **Then check one setting:**
@@ -76,14 +81,13 @@ New chat → **+ → Developer mode →** tick **Kept**. Then type:
 
 ## 4. Turn on Pro: agents and investors (5 min) 👤
 
-**a) Add 5 environment variables:** kept-plugin → **Settings → Environment Variables**.
+**a) Add 4 environment variables** (`EPC_API_TOKEN` is already in from step 1): kept-plugin → **Settings → Environment Variables**.
 
 | Name | Value |
 |:--|:--|
 | `DATABASE_URL` | Copy from **bellwood-api** |
 | `RESEND_TOKEN` | Copy from **bellwood-api** |
 | `RESEND_FROM` | Copy from **bellwood-api** |
-| `EPC_API_TOKEN` | Copy from **bellwood-api** (also makes public property facts work fully) |
 | `PLUGIN_AUTH_SECRET` | New random text, 48+ characters. In a terminal: `openssl rand -base64 48` |
 
 **b) Redeploy:** Deployments → latest → **⋯ → Redeploy**.
