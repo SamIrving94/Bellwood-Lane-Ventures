@@ -26,6 +26,33 @@ export type WhatsNewEntry = {
 /** Newest first. The popup shows index 0. */
 export const WHATS_NEW: WhatsNewEntry[] = [
   {
+    id: '2026-10-01-kept-in-chatgpt',
+    date: '2026-10-01',
+    emoji: '💬',
+    title: 'Kept now lives inside ChatGPT (dark launch)',
+    intro:
+      'Two ChatGPT plugins are built and tested. They run in developer mode only until a real user has tried them.',
+    bullets: [
+      {
+        emoji: '🧭',
+        text: '**Public plugin**: compare ways to sell, a **dated plan for an inherited home**, renovation budgets and public-record facts. No Kept figure, ever.',
+      },
+      {
+        emoji: '🤝',
+        text: '**Pro plugin** for partner agents and investors: refer a fall-through in one sentence, check referral status, browse released deals.',
+      },
+      {
+        emoji: '📥',
+        text: 'Agent referrals and investor interest land in your **Action Centre** as "via ChatGPT" cards. Nothing is sent to a vendor.',
+      },
+      {
+        emoji: '🛡️',
+        text: 'Fixed: quote requests **no longer email the seller a figure** before a person has sent the offer.',
+      },
+    ],
+    cta: { label: 'Open the Action Centre', href: '/actions' },
+  },
+  {
     id: '2026-09-17-propertydata-signals-live',
     date: '2026-09-17',
     emoji: '🔌',

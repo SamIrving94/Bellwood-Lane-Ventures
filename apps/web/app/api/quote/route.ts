@@ -618,25 +618,21 @@ export async function POST(request: Request) {
       }
     }
 
-    // Record the offer event + dispatch transparent emails to all parties.
-    // Best-effort — never block the response.
+    // Record that the request arrived and send the plain acknowledgement.
+    // Deliberately NOT 'offer_sent' and NO figure: the founder rule is no
+    // price in front of a seller before a viewing, and every offer is checked
+    // by a person (docs/mcp/01-audit.md, P0). The generated quote stays on
+    // QuoteOffer for the founder; the only event that reveals a figure is the
+    // human approve-and-send in @repo/quote-ops (SIGNED_OFFER_NOTIFIER).
     let trackUrl: string | null = null;
     try {
       const recorded = await recordDealUpdate({
         quoteRequestId: quoteRequest.id,
-        kind: 'offer_sent',
-        title: offer.requiresReview
-          ? 'Indicative offer ready — awaiting founder review'
-          : 'Cash offer issued',
-        detail: offer.requiresReview
-          ? 'A senior member of our team is reviewing the inputs and will confirm a written offer shortly.'
-          : `We can complete in ${offer.completionDays} days. The offer is locked, in writing, until ${offer.lockedUntil.toLocaleString('en-GB', { dateStyle: 'long', timeStyle: 'short' })}.`,
-        metadata: {
-          offerPence: offer.offerPence,
-          offerPercentOfAvm: offer.offerPercentOfAvm,
-          confidenceScore: offer.confidenceScore,
-          completionDays: offer.completionDays,
-        },
+        kind: 'quote_requested',
+        title: 'We have your details',
+        detail:
+          'A person reads every request the same working day and will be in touch to arrange a viewing. No figure until we have seen the property; once we have, your written offer follows within two working days.',
+        metadata: { requiresReview: offer.requiresReview },
       });
       trackUrl = recorded.trackUrl;
     } catch (err) {
