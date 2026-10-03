@@ -117,11 +117,18 @@ Lives at `packages/property-data/src/propertydata.ts`. Currently exposes:
 All endpoints:
 
 - **Server-only** (`'server-only'` import enforces it).
-- **In-memory cached** with per-endpoint TTLs (7d for AVM/agents/demand,
-  90d for flood-risk/floor-areas — these change slowly).
+- **Cached** in memory and in Postgres (`PropertyDataCache`) with per-endpoint
+  TTLs (7d for AVM/agents/demand, 60d for flood-risk/floor-areas). **60 days is
+  the licence ceiling** — PropertyData allows a response to be held as current
+  data for 60 days from retrieval, on any plan. The client clamps every TTL to
+  it and evicts older durable rows on read. Dated snapshots kept as history
+  (AvmSnapshot, a lead's `snapshot` with its `fetchedAt`) are allowed.
 - **Credit-logged** — every call prints credit usage so we can grep Vercel
   logs to monitor spend. Pre-cap is `getProcessCredits()` for a runtime read.
-- **Rate-limited via timeout** (10s per call; aborts with a graceful null).
+- **Rate-limited** by a client throttle (4 calls / 10s, the entry-plan floor;
+  the real limit is per account, 12-72 per 30s by plan) plus one retry after
+  the server's `Retry-After` on 429 / 503. 10s abort budget per call (30s on
+  the slow scraping endpoints).
 - **Schema-validated** with Zod before being returned to callers.
 
 ### Adding a new endpoint
@@ -130,7 +137,9 @@ All endpoints:
 2. Define a small typed wrapper around `fetchPropertyData()` with:
    - `endpoint`: the path
    - `ttlMs`: cache lifetime
-   - `estimatedCredits`: per-call cost (for telemetry)
+   - `estimatedCredits`: per-call cost for the spend log — 1 for nearly every
+     endpoint; use `creditsFor` on "1 per 10 results" endpoints
+   - the key goes in the `Authorization: Bearer` header, never the URL
    - `schema`: the Zod schema
 3. Re-export from `packages/property-data/src/index.ts`.
 4. Add the use case to `docs/paperclip-handoff/agent-quick-form-ops.md`.

@@ -4,6 +4,14 @@
  *   pnpm tsx scripts/propertydata-probe.mts --postcode "DL2 3JP"
  *   pnpm tsx scripts/propertydata-probe.mts --postcode "DL2 3JP" --endpoints demand,flood-risk
  *
+ * Any other endpoint, with its own parameters (one call, saved + shaped):
+ *
+ *   pnpm tsx scripts/propertydata-probe.mts --raw /title --params title_number=DU221229
+ *   pnpm tsx scripts/propertydata-probe.mts --raw /uprns --postcode "DL2 3JP"
+ *
+ * A wrong parameter name costs nothing — PropertyData answers 400/422 with
+ * "Missing input: <name>" and charges only for success or 404.
+ *
  * Why this exists: eleven endpoints in packages/property-data/src/propertydata.ts
  * are coded against a `result.*` response shape that PropertyData does not
  * return. Production logs (bellwood-api, Sep 2026) show every call to them
@@ -134,41 +142,76 @@ function shape(value: unknown, depth = 0): string {
 async function main() {
   const apiKey = loadDotEnvLocal('PROPERTYDATA_API_KEY');
   const postcode = arg('--postcode');
-  if (!apiKey || !postcode) {
+  const raw = arg('--raw');
+  if (!apiKey || (!postcode && !raw)) {
     console.error(
-      'Usage: pnpm tsx scripts/propertydata-probe.mts --postcode "DL2 3JP"  (needs PROPERTYDATA_API_KEY)'
+      'Usage: pnpm tsx scripts/propertydata-probe.mts --postcode "DL2 3JP" [--endpoints a,b]\n' +
+        '       pnpm tsx scripts/propertydata-probe.mts --raw /title --params k=v,k=v [--postcode …]\n' +
+        '(needs PROPERTYDATA_API_KEY)'
     );
     process.exit(1);
   }
-  const only = arg('--endpoints')
-    ?.split(',')
-    .map((e) => e.trim());
-  const endpoints = Object.keys(ENDPOINTS).filter(
-    (e) => !only || only.includes(e)
-  );
   mkdirSync(OUT_DIR, { recursive: true });
 
-  for (const endpoint of endpoints) {
-    const cfg = ENDPOINTS[endpoint];
-    if (!cfg) {
-      console.error(
-        `Unknown endpoint "${endpoint}" — known: ${Object.keys(ENDPOINTS).join(', ')}`
-      );
-      continue;
+  // One arbitrary endpoint with caller-supplied params — for probing something
+  // the ENDPOINTS table does not know (e.g. the tenure chain /uprns →
+  // /uprn-title → /title).
+  const plan: Array<{
+    endpoint: string;
+    params: Record<string, string>;
+    codeExpects: string;
+  }> = [];
+  if (raw) {
+    const params: Record<string, string> = {};
+    for (const pair of arg('--params')?.split(',') ?? []) {
+      const [k, ...rest] = pair.split('=');
+      if (k && rest.length) params[k.trim()] = rest.join('=').trim();
     }
+    plan.push({
+      endpoint: raw.replace(/^\//, ''),
+      params,
+      codeExpects: '(not wired — raw probe)',
+    });
+  } else {
+    const only = arg('--endpoints')
+      ?.split(',')
+      .map((e) => e.trim());
+    for (const endpoint of Object.keys(ENDPOINTS)) {
+      if (only && !only.includes(endpoint)) continue;
+      const cfg = ENDPOINTS[endpoint];
+      if (cfg) plan.push({ endpoint, ...cfg });
+    }
+    for (const e of only ?? []) {
+      if (!ENDPOINTS[e]) {
+        console.error(
+          `Unknown endpoint "${e}" — known: ${Object.keys(ENDPOINTS).join(', ')} (or use --raw)`
+        );
+      }
+    }
+  }
+
+  for (const cfg of plan) {
+    const { endpoint } = cfg;
     const url = new URL(`${API_BASE}/${endpoint}`);
-    url.searchParams.set('key', apiKey);
-    url.searchParams.set(
-      'postcode',
-      postcode.replace(/\s+/g, '').toUpperCase()
-    );
+    if (postcode) {
+      url.searchParams.set(
+        'postcode',
+        postcode.replace(/\s+/g, '').toUpperCase()
+      );
+    }
     for (const [k, v] of Object.entries(cfg.params)) url.searchParams.set(k, v);
 
     console.log(`\n══ /${endpoint} ══`);
     let status = 0;
     let bodyText = '';
     try {
-      const res = await fetch(url, { headers: { Accept: 'application/json' } });
+      // Key as a Bearer header, same as the client — never in the URL.
+      const res = await fetch(url, {
+        headers: {
+          Accept: 'application/json',
+          Authorization: `Bearer ${apiKey}`,
+        },
+      });
       status = res.status;
       bodyText = await res.text();
     } catch (err) {
@@ -177,7 +220,7 @@ async function main() {
       );
       continue;
     }
-    const file = join(OUT_DIR, `${endpoint}.json`);
+    const file = join(OUT_DIR, `${endpoint.replace(/\//g, '_')}.json`);
     writeFileSync(file, bodyText);
     console.log(`  HTTP ${status} → saved ${file}`);
 
