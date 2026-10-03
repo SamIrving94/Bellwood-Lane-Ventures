@@ -7,11 +7,11 @@ export const keys = () =>
       ANTHROPIC_API_KEY: z.string().min(1).optional(),
       OPENAI_API_KEY: z.string().min(1).startsWith('sk-').optional(),
       /**
-       * OpenRouter key. When set it is the PRIMARY route for every LLM call
-       * (founder decision, 12 Sep 2026: one bill, any model, open-weight
+       * OpenRouter key. The ONLY LLM route (founder decision, 3 Oct 2026:
+       * "we moved everything to OpenRouter"; one bill, any model, open-weight
        * challengers testable per feature from Settings → AI models).
-       * Anthropic direct becomes the first fallback when its key is also
-       * set. Missing key = Anthropic direct only, no fallback chain.
+       * ANTHROPIC_API_KEY above is retired and unfunded; the planner still
+       * tolerates it as a fallback hop but nothing may depend on it.
        */
       OPENROUTER_API_KEY: z.string().min(1).optional(),
       /**
