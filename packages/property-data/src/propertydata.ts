@@ -29,6 +29,27 @@ const API_BASE = 'https://api.propertydata.co.uk';
 const REQUEST_TIMEOUT_MS = 10_000;
 const MAX_CACHE_ENTRIES = 500;
 
+/**
+ * PropertyData's licence allows a response to be held as CURRENT data for at
+ * most 60 days from retrieval (API docs, "Licensing, Caching & Permitted Use";
+ * no plan or price extends it). Every TTL in this file is clamped to this in
+ * both cache tiers, and a durable row written longer ago than this is evicted
+ * on read rather than served — rows from earlier deploys carried 90-day TTLs.
+ * Dated snapshots (AvmSnapshot, a lead's `snapshot` with its `fetchedAt`) are
+ * allowed indefinitely because they are presented as history, not as current.
+ */
+const MAX_CACHE_TTL_MS = 60 * 24 * 60 * 60 * 1000;
+
+/**
+ * The two statuses PropertyData documents as "wait, then try again": 429
+ * (X14, rate limit) and 503 (X20, server busy). Both carry a Retry-After
+ * header in seconds. We honour it, capped so a bad value can never park a cron,
+ * and fall back to a short pause when it is absent.
+ */
+const RETRYABLE_STATUSES = new Set([429, 503]);
+const MAX_RETRY_AFTER_MS = 30_000;
+const DEFAULT_RETRY_AFTER_MS = 2_500;
+
 // ---------------------------------------------------------------------------
 // In-memory cache (per server instance)
 // ---------------------------------------------------------------------------
@@ -218,9 +239,74 @@ function toNumber(value: unknown): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
+/**
+ * The API key travels in the Authorization header, never the query string. The
+ * docs accept both; a header cannot leak into a logged URL, an error message
+ * that echoes the request, or a cache key by accident.
+ */
+function authHeaders(apiKey: string): Record<string, string> {
+  return { Accept: 'application/json', Authorization: `Bearer ${apiKey}` };
+}
+
+/** Cost of a "1 per 10 results" response: at least 1, then 1 per started 10. */
+function creditsPerTenResults(rows: unknown[] | undefined): number {
+  return Math.max(1, Math.ceil((rows?.length ?? 0) / 10));
+}
+
+function retryAfterMs(res: Response): number {
+  const raw = res.headers.get('retry-after');
+  const seconds = raw ? Number(raw) : Number.NaN;
+  if (!Number.isFinite(seconds) || seconds <= 0) return DEFAULT_RETRY_AFTER_MS;
+  return Math.min(MAX_RETRY_AFTER_MS, Math.round(seconds * 1000));
+}
+
+/**
+ * One GET through the rate limiter with an abort budget, retried exactly once
+ * on 429 / 503 after the server's Retry-After. Shared by fetchPropertyData and
+ * the raw /sourced-properties probe so both carry the same rails. The returned
+ * `done` releases the abort timer once the caller has finished reading the
+ * body (so a stalled body read is bounded too). Throws AbortError on timeout.
+ */
+async function requestPropertyData(
+  url: URL,
+  apiKey: string,
+  timeoutMs: number
+): Promise<{ res: Response; done: () => void }> {
+  const attempt = async () => {
+    await acquireRateSlot();
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      const res = await fetch(url.toString(), {
+        method: 'GET',
+        signal: controller.signal,
+        headers: authHeaders(apiKey),
+      });
+      return { res, done: () => clearTimeout(timer) };
+    } catch (error) {
+      clearTimeout(timer);
+      throw error;
+    }
+  };
+  const first = await attempt();
+  if (!RETRYABLE_STATUSES.has(first.res.status)) return first;
+  // Another instance sharing the account can still collectively exceed the
+  // limit despite the client throttle; X20 is a transient server-side queue.
+  first.done();
+  await new Promise((r) => setTimeout(r, retryAfterMs(first.res)));
+  return attempt();
+}
+
 type FetchOptions<T> = {
+  /** Cache lifetime. Clamped to MAX_CACHE_TTL_MS whatever is passed. */
   ttlMs: number;
+  /** Per-call cost for the spend log (API docs: 1 for nearly every endpoint). */
   estimatedCredits: number;
+  /**
+   * For endpoints billed "1 per 10 results": the real cost of THIS response,
+   * computed from the validated body. Overrides `estimatedCredits` in the log.
+   */
+  creditsFor?: (value: T) => number;
   schema: z.ZodType<T>;
   /**
    * Does this validated body actually carry the fields the caller reads?
@@ -267,15 +353,14 @@ async function fetchPropertyData<T>(
     normalisedParams[k] = k === 'postcode' ? normalisePostcodeParam(v) : v;
   }
 
-  // Build the URL. PropertyData accepts the key as a query param (`key=`).
-  // We never log the URL because the key is in it.
+  // The key goes in the Authorization header (see authHeaders); the URL holds
+  // only the query so it is safe to appear in an error or a log.
   const url = new URL(`${API_BASE}${endpoint}`);
-  url.searchParams.set('key', apiKey);
   for (const [k, v] of Object.entries(normalisedParams)) {
     url.searchParams.set(k, String(v));
   }
 
-  // Cache key excludes the API key (don't bake it into stored cache keys).
+  const ttlMs = Math.min(options.ttlMs, MAX_CACHE_TTL_MS);
   const cacheKey = `${endpoint}:${JSON.stringify(normalisedParams)}`;
   const cached = cacheGet<T>(cacheKey);
   if (cached !== null) {
@@ -293,7 +378,21 @@ async function fetchPropertyData<T>(
       const entry = await persistentStore.get(cacheKey);
       if (entry) {
         const remainingMs = entry.expiresAt - Date.now();
-        if (remainingMs > 0) {
+        // The licence clock runs from retrieval, not from our TTL. A row that
+        // reports when it was stored is held to its real age; one that does not
+        // is held to the only bound we have (a row cannot have more than the
+        // maximum TTL left unless it was written under an older, longer one).
+        const ageMs =
+          typeof entry.storedAt === 'number'
+            ? Date.now() - entry.storedAt
+            : null;
+        const servableMs =
+          ageMs === null
+            ? remainingMs > MAX_CACHE_TTL_MS
+              ? 0
+              : remainingMs
+            : Math.min(remainingMs, MAX_CACHE_TTL_MS - ageMs);
+        if (servableMs > 0) {
           // Durable rows outlive deploys and are shared across instances, so the
           // value under this key may have been written by an OLDER code version
           // against an older upstream shape. Handing it back as `T` unchecked
@@ -302,7 +401,7 @@ async function fetchPropertyData<T>(
           const usable =
             revalidated.success && options.hasContent(revalidated.data);
           if (usable) {
-            cacheSet(cacheKey, revalidated.data, remainingMs);
+            cacheSet(cacheKey, revalidated.data, servableMs);
             logCreditUsage(endpoint, 0, true);
             return { outcome: 'ok', value: revalidated.data };
           }
@@ -310,6 +409,11 @@ async function fetchPropertyData<T>(
             `[propertydata] ${endpoint} durable cache entry rejected (${
               revalidated.success ? 'no usable content' : 'schema mismatch'
             }) — invalidating and re-fetching`
+          );
+          await invalidatePersistent(persistentStore, cacheKey, endpoint);
+        } else if (remainingMs > 0) {
+          console.warn(
+            `[propertydata] ${endpoint} durable cache entry past the 60-day retention limit — invalidating and re-fetching`
           );
           await invalidatePersistent(persistentStore, cacheKey, endpoint);
         }
@@ -322,33 +426,12 @@ async function fetchPropertyData<T>(
     }
   }
 
-  // Respect PropertyData's 4-calls/10s limit before every live fetch.
-  await acquireRateSlot();
-
   const timeoutMs = options.timeoutMs ?? REQUEST_TIMEOUT_MS;
-  const controller = new AbortController();
-  let timer = setTimeout(() => controller.abort(), timeoutMs);
+  let release: (() => void) | null = null;
 
   try {
-    let res = await fetch(url.toString(), {
-      method: 'GET',
-      signal: controller.signal,
-      headers: { Accept: 'application/json' },
-    });
-    if (res.status === 429) {
-      // X14 despite the client throttle — another server instance sharing
-      // the key can still collectively exceed 4/10s. Wait out the window
-      // and retry exactly once, with a fresh timeout budget.
-      await new Promise((r) => setTimeout(r, 2500));
-      await acquireRateSlot();
-      clearTimeout(timer);
-      timer = setTimeout(() => controller.abort(), timeoutMs);
-      res = await fetch(url.toString(), {
-        method: 'GET',
-        signal: controller.signal,
-        headers: { Accept: 'application/json' },
-      });
-    }
+    const { res, done } = await requestPropertyData(url, apiKey, timeoutMs);
+    release = done;
     if (res.status === 404) {
       // The only status that genuinely means "we looked, there is nothing here".
       return { outcome: 'not_found' };
@@ -386,12 +469,12 @@ async function fetchPropertyData<T>(
         error: `schema drift on ${endpoint} — response carried no usable fields`,
       };
     }
-    cacheSet(cacheKey, parsed.data, options.ttlMs);
+    cacheSet(cacheKey, parsed.data, ttlMs);
     if (persistentStore) {
       // Fire-and-forget: a durable-cache write must never block or fail a live
       // response.
       persistentStore
-        .set(cacheKey, parsed.data, Date.now() + options.ttlMs)
+        .set(cacheKey, parsed.data, Date.now() + ttlMs)
         .catch((error) =>
           console.warn(
             `[propertydata] persistent cache write failed for ${endpoint}`,
@@ -399,7 +482,11 @@ async function fetchPropertyData<T>(
           )
         );
     }
-    logCreditUsage(endpoint, options.estimatedCredits, false);
+    logCreditUsage(
+      endpoint,
+      options.creditsFor?.(parsed.data) ?? options.estimatedCredits,
+      false
+    );
     return { outcome: 'ok', value: parsed.data };
   } catch (error) {
     if (error instanceof PropertyDataError) {
@@ -422,7 +509,7 @@ async function fetchPropertyData<T>(
       error: `${endpoint} failed: ${(error as Error)?.message ?? String(error)}`,
     };
   } finally {
-    clearTimeout(timer);
+    release?.();
   }
 }
 
@@ -493,7 +580,7 @@ export async function getPropertyDataValuation(input: {
       },
       {
         ttlMs: 7 * 24 * 60 * 60 * 1000,
-        estimatedCredits: 3,
+        estimatedCredits: 1,
         schema: ValuationSaleSchema,
         hasContent: (d) => d.result !== undefined,
       }
@@ -546,7 +633,7 @@ const SQFT_TO_SQM = 0.09290304;
 /**
  * EPC-derived floor areas by postcode. ~2 credits per call.
  * Critical for the agent quick-form path where we don't ask for sqft.
- * 90-day cache.
+ * 60-day cache.
  */
 export async function getFloorAreas(postcode: string) {
   return unwrap(
@@ -555,8 +642,8 @@ export async function getFloorAreas(postcode: string) {
       '/floor-areas',
       { postcode },
       {
-        ttlMs: 90 * 24 * 60 * 60 * 1000,
-        estimatedCredits: 2,
+        ttlMs: 60 * 24 * 60 * 60 * 1000,
+        estimatedCredits: 1,
         schema: FloorAreasSchema,
         hasContent: (d) => Array.isArray(d.known_floor_areas),
       }
@@ -608,7 +695,7 @@ function floorAreaRows(
 /**
  * Every EPC floor-area row the register holds for a postcode — the whole-
  * postcode view the £/sqft comp matcher needs (vs `getPropertyFloorArea`'s
- * single-property view). Same /floor-areas call, same 90-day cache, so
+ * single-property view). Same /floor-areas call, same 60-day cache, so
  * matching many comps in one postcode costs one lookup. Returns [] without
  * a key or on failure — the caller sees "no rows", never invented ones.
  */
@@ -717,7 +804,7 @@ export type FloodRiskReading = {
 
 /**
  * Flood risk by postcode (England only). ~2 credits.
- * 90-day cache — postcode-level risk barely changes.
+ * 60-day cache — postcode-level risk barely changes.
  */
 export async function getFloodRisk(
   postcode: string
@@ -728,8 +815,8 @@ export async function getFloodRisk(
       '/flood-risk',
       { postcode },
       {
-        ttlMs: 90 * 24 * 60 * 60 * 1000,
-        estimatedCredits: 2,
+        ttlMs: 60 * 24 * 60 * 60 * 1000,
+        estimatedCredits: 1,
         schema: FloodRiskSchema,
         hasContent: (d) => typeof d.flood_risk === 'string',
       }
@@ -789,7 +876,7 @@ export async function getMarketDemandResult(
     { postcode },
     {
       ttlMs: 7 * 24 * 60 * 60 * 1000,
-      estimatedCredits: 2,
+      estimatedCredits: 1,
       schema: DemandSchema,
       hasContent: (d) =>
         typeof d.demand_rating === 'string' ||
@@ -916,7 +1003,7 @@ export async function getAgentsByPostcode(
       { postcode },
       {
         ttlMs: 7 * 24 * 60 * 60 * 1000,
-        estimatedCredits: 3,
+        estimatedCredits: 1,
         schema: AgentsSchema,
         hasContent: (d) => d.data !== undefined,
         // ~8s upstream (portal scrape); too close to the 10s default.
@@ -1220,7 +1307,6 @@ export async function getSourcedPropertiesRaw(
   if (!apiKey)
     return { ok: false, error: 'PROPERTYDATA_API_KEY not configured' };
   const url = new URL(`${API_BASE}/sourced-properties`);
-  url.searchParams.set('key', apiKey);
   url.searchParams.set('postcode', normalisePostcodeParam(postcode));
   url.searchParams.set('list', opts?.list ?? DEFAULT_LIST);
   if (typeof opts?.radiusMiles === 'number') {
@@ -1235,30 +1321,18 @@ export async function getSourcedPropertiesRaw(
     url.searchParams.set('standardised_type', opts.standardisedType);
   }
   // This raw helper bypasses fetchPropertyData (it must surface the real
-  // status + body, which the wrapper discards), so it has to reproduce the
-  // wrapper's safety rails itself: rate slot, abort timeout, 429 retry.
-  // Without the timeout, probeSourcedByType's 12-way fan-out could wedge the
-  // diagnostic page on a single stalled connection.
-  const controller = new AbortController();
-  let timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  // status + body, which the wrapper discards), but goes through the same
+  // request rails — rate slot, abort timeout, Retry-After retry — so
+  // probeSourcedByType's 12-way fan-out cannot wedge the diagnostic page on a
+  // single stalled connection.
+  let release: (() => void) | null = null;
   try {
-    await acquireRateSlot();
-    let res = await fetch(url.toString(), {
-      signal: controller.signal,
-      headers: { Accept: 'application/json' },
-    });
-    if (res.status === 429) {
-      // Same one-shot retry as fetchPropertyData: another instance sharing
-      // the key can collectively blow the 4/10s limit. Fresh timeout budget.
-      await new Promise((r) => setTimeout(r, 2500));
-      await acquireRateSlot();
-      clearTimeout(timer);
-      timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
-      res = await fetch(url.toString(), {
-        signal: controller.signal,
-        headers: { Accept: 'application/json' },
-      });
-    }
+    const { res, done } = await requestPropertyData(
+      url,
+      apiKey,
+      REQUEST_TIMEOUT_MS
+    );
+    release = done;
     const body = await res.json().catch(() => null);
     return { ok: res.ok, status: res.status, body };
   } catch (err) {
@@ -1270,7 +1344,7 @@ export async function getSourcedPropertiesRaw(
     }
     return { ok: false, error: (err as Error).message };
   } finally {
-    clearTimeout(timer);
+    release?.();
   }
 }
 
@@ -1314,7 +1388,9 @@ export async function getSourcedProperties(
     '/sourced-properties',
     await fetchPropertyData('/sourced-properties', params, {
       ttlMs: 24 * 60 * 60 * 1000,
+      // Billed 1 per 10 results (API docs).
       estimatedCredits: 1,
+      creditsFor: (d) => creditsPerTenResults(d.properties),
       schema: SourcedPropertiesSchema,
       hasContent: (d) => Array.isArray(d.properties),
     })
@@ -1557,7 +1633,7 @@ export type EpcReading = {
 
 /**
  * EPC ratings by postcode (from the public Energy Performance Certificate
- * register). ~2 credits, 90-day cache (EPCs are valid 10 years).
+ * register). ~2 credits, 60-day cache (EPCs are valid 10 years).
  *
  * Returns every certified property in the postcode. The caller is expected
  * to match by address fuzzy-string.
@@ -1569,8 +1645,8 @@ export async function getEpcByPostcodeResult(
     '/energy-efficiency',
     { postcode },
     {
-      ttlMs: 90 * 24 * 60 * 60 * 1000,
-      estimatedCredits: 2,
+      ttlMs: 60 * 24 * 60 * 60 * 1000,
+      estimatedCredits: 1,
       schema: EpcSchema,
       hasContent: (d) => Array.isArray(d.energy_efficiency),
     }
@@ -1686,7 +1762,10 @@ export async function getFreeholdTitles(
       { postcode },
       {
         ttlMs: 30 * 24 * 60 * 60 * 1000,
+        // Billed 1 per 10 results; the body says what this call cost.
         estimatedCredits: 1,
+        creditsFor: (d) =>
+          typeof d.api_calls_cost === 'number' ? d.api_calls_cost : 1,
         schema: FreeholdsSchema,
         hasContent: (d) => Array.isArray(d.data),
       }
@@ -1751,103 +1830,6 @@ export async function getTenureByPostcode(
 }
 
 // ---------------------------------------------------------------------------
-// Endpoint: /listings — active Rightmove-style listings — RICE A
-// ---------------------------------------------------------------------------
-
-const ListingsSchema = z.object({
-  status: z.string().optional(),
-  result: z
-    .object({
-      properties: z
-        .array(
-          z
-            .object({
-              address: z.string().optional(),
-              postcode: z.string().optional(),
-              price: z.number().optional(),
-              bedrooms: z.number().optional(),
-              property_type: z.string().optional(),
-              listing_url: z.string().optional(),
-              days_on_market: z.number().optional(),
-              price_changes: z.number().optional(),
-              agent_name: z.string().optional(),
-              agent_phone: z.string().optional(),
-            })
-            .partial()
-        )
-        .optional(),
-    })
-    .partial()
-    .optional(),
-});
-
-export type ActiveListing = {
-  address: string;
-  postcode: string;
-  pricePence: number | null;
-  bedrooms: number | null;
-  propertyType: string | null;
-  listingUrl: string | null;
-  daysOnMarket: number | null;
-  priceChangeCount: number | null;
-  agentName: string | null;
-  agentPhone: string | null;
-};
-
-/**
- * Active sales listings in an area. We use this for the stale-listing
- * harvester — properties that have been on market >60 days without selling
- * are motivated-seller territory. ~3 credits, 1-day cache.
- */
-export async function getActiveListings(
-  postcode: string,
-  opts?: { radiusMiles?: number; minDaysOnMarket?: number }
-): Promise<ActiveListing[]> {
-  const params: Record<string, string | number> = { postcode };
-  if (typeof opts?.radiusMiles === 'number') params.radius = opts.radiusMiles;
-
-  const data = unwrap(
-    '/listings',
-    await fetchPropertyData('/listings', params, {
-      ttlMs: 24 * 60 * 60 * 1000,
-      estimatedCredits: 3,
-      schema: ListingsSchema,
-      hasContent: (d) => Array.isArray(d.result?.properties),
-    })
-  );
-  const rows = (data as { result?: { properties?: unknown[] } } | null)?.result
-    ?.properties;
-  if (!Array.isArray(rows)) return [];
-  const minDays = opts?.minDaysOnMarket ?? 0;
-  const out: ActiveListing[] = [];
-  for (const raw of rows) {
-    const p = raw as Record<string, unknown>;
-    const address = typeof p.address === 'string' ? p.address.trim() : null;
-    const postcodeOut =
-      typeof p.postcode === 'string' ? p.postcode.toUpperCase().trim() : null;
-    if (!address || !postcodeOut) continue;
-    const dom = typeof p.days_on_market === 'number' ? p.days_on_market : null;
-    if (dom !== null && dom < minDays) continue;
-    out.push({
-      address,
-      postcode: postcodeOut,
-      pricePence:
-        typeof p.price === 'number' ? Math.round(p.price * 100) : null,
-      bedrooms: typeof p.bedrooms === 'number' ? p.bedrooms : null,
-      propertyType:
-        typeof p.property_type === 'string' ? p.property_type : null,
-      listingUrl: typeof p.listing_url === 'string' ? p.listing_url : null,
-      daysOnMarket: dom,
-      priceChangeCount:
-        typeof p.price_changes === 'number' ? p.price_changes : null,
-      agentName: typeof p.agent_name === 'string' ? p.agent_name : null,
-      agentPhone: typeof p.agent_phone === 'string' ? p.agent_phone : null,
-    });
-  }
-  return out;
-}
-
-// ---------------------------------------------------------------------------
 // Endpoint: /growth (price growth + forecast) — RICE C
 // ---------------------------------------------------------------------------
 
@@ -1902,7 +1884,7 @@ export async function getGrowthResult(
     { postcode },
     {
       ttlMs: 30 * 24 * 60 * 60 * 1000,
-      estimatedCredits: 2,
+      estimatedCredits: 1,
       schema: GrowthSchema,
       hasContent: (d) => Array.isArray(d.data),
     }
@@ -2356,7 +2338,9 @@ export async function getPlanningApplications(
     '/planning-applications',
     await fetchPropertyData('/planning-applications', params, {
       ttlMs: 7 * 24 * 60 * 60 * 1000,
-      estimatedCredits: 2,
+      // Billed 1 per 10 results (API docs).
+      estimatedCredits: 1,
+      creditsFor: (d) => creditsPerTenResults(d.data?.planning_applications),
       schema: PlanningApplicationsSchema,
       hasContent: (d) => Array.isArray(d.data?.planning_applications),
     })
@@ -2484,7 +2468,9 @@ export async function getHmoRegister(
     '/national-hmo-register',
     await fetchPropertyData('/national-hmo-register', params, {
       ttlMs: 30 * 24 * 60 * 60 * 1000,
-      estimatedCredits: 2,
+      // Billed 1 per 10 results (API docs).
+      estimatedCredits: 1,
+      creditsFor: (d) => creditsPerTenResults(d.data?.hmos),
       schema: HmoRegisterSchema,
       hasContent: (d) => Array.isArray(d.data?.hmos),
     })
@@ -2552,7 +2538,7 @@ export type DemographicsReading = {
 };
 
 /**
- * Demographics for a postcode area. ~2 credits, 90-day cache (census
+ * Demographics for a postcode area. ~2 credits, 60-day cache (census
  * data updates rarely).
  *
  * We're permissive about response shape since PropertyData has been
@@ -2568,8 +2554,8 @@ export async function getDemographics(
       '/demographics',
       { postcode },
       {
-        ttlMs: 90 * 24 * 60 * 60 * 1000,
-        estimatedCredits: 2,
+        ttlMs: 60 * 24 * 60 * 60 * 1000,
+        estimatedCredits: 1,
         schema: DemographicsSchema,
         // Deliberately loose — the response keys vary by plan, so all we can
         // assert is that ONE of the three known containers came back.
@@ -2761,7 +2747,7 @@ export async function getSoldPrices(
       },
       {
         ttlMs: 7 * 24 * 60 * 60 * 1000,
-        estimatedCredits: 2,
+        estimatedCredits: 1,
         schema: SoldPricesSchema,
         hasContent: (d) =>
           Array.isArray(d.data?.raw_data) ||
@@ -2848,7 +2834,7 @@ export async function getYields(
       { postcode },
       {
         ttlMs: 30 * 24 * 60 * 60 * 1000,
-        estimatedCredits: 2,
+        estimatedCredits: 1,
         schema: YieldsSchema,
         hasContent: (d) => d.data?.long_let?.gross_yield !== undefined,
         // ~9s upstream (live rental scrape); 10s default timed out every call.
@@ -2932,7 +2918,7 @@ export async function getPricesPerSqf(
       { postcode },
       {
         ttlMs: 30 * 24 * 60 * 60 * 1000,
-        estimatedCredits: 2,
+        estimatedCredits: 1,
         schema: PricesPerSqfSchema,
         hasContent: (d) =>
           typeof d.data?.average === 'number' ||
@@ -3013,8 +2999,8 @@ export async function getCouncilTax(
       '/council-tax',
       { postcode },
       {
-        ttlMs: 90 * 24 * 60 * 60 * 1000,
-        estimatedCredits: 2,
+        ttlMs: 60 * 24 * 60 * 60 * 1000,
+        estimatedCredits: 1,
         schema: CouncilTaxSchema,
         hasContent: (d) =>
           d.council_tax !== undefined || Array.isArray(d.properties),
@@ -3210,7 +3196,7 @@ export async function getPropertySnapshot(input: {
   const flood = floodReading ? { floodRisk: floodReading.floodRisk } : null;
   await sleep(DELAY);
   // EPC + tenure already pulled in preflight per postcode. Re-pull cheaply
-  // (cached at 90d/30d respectively).
+  // (cached at 60d/30d respectively).
   const epcRows = await safe('epc', () => getEpcByPostcode(input.postcode));
   let epc: PropertySnapshot['epc'] = null;
   if (epcRows && epcRows.length > 0) {
@@ -3397,9 +3383,9 @@ export async function askGeorge(input: {
       console.warn('[propertydata] /george returned non-JSON body');
       return { answer: null, error: 'invalid_response' as const };
     }
-    creditsThisProcess += 5; // /george is roughly 5 credits per call
+    creditsThisProcess += 10; // /george is 10 credits per call (API docs)
     console.info(
-      `[propertydata] /george +5 credits (process total: ${creditsThisProcess})`
+      `[propertydata] /george +10 credits (process total: ${creditsThisProcess})`
     );
     const { answer, conversationId } = extractGeorgeAnswer(json);
     if (!answer) {

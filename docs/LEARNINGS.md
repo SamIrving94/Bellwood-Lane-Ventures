@@ -6,6 +6,78 @@ the scout, the AVM, or any PropertyData call.
 
 ---
 
+## 2026-10-03 — PropertyData: five things the API docs said we had wrong
+
+**What was found.** The founder shared PropertyData's AI-readable API
+documentation (69 endpoints; condensed copy now at
+`docs/setup/propertydata-api-reference.md`). It carries no response shapes,
+so nothing in the 2026-09-17 rewrite changes — but it did show five things
+the client had wrong, one of them a licence breach.
+
+- **Caching over the licence limit.** PropertyData allows a response to be
+  held as current data for **60 days from retrieval**, on any plan, at any
+  price. Six endpoints cached for 90 days, in memory and in Postgres
+  (`PropertyDataCache`). Every TTL is now clamped to 60 days in
+  `fetchPropertyData`, and a durable row is held to its real age: the Postgres
+  adapters return `storedAt` (`updatedAt`) and the client evicts a row older
+  than 60 days on read, whatever TTL it was written with. Dated snapshots
+  (`AvmSnapshot`, a lead's `snapshot` with `fetchedAt`) are fine — the licence
+  allows history indefinitely as long as it is never presented as current.
+- **`/listings` is not a PropertyData endpoint.** It sat in the client with a
+  made-up schema and no callers. Removed.
+- **Credit estimates were 2-3× too high.** Nearly every endpoint is 1 credit;
+  `/freeholds`, `/sourced-properties`, `/planning-applications` and
+  `/national-hmo-register` are "1 per 10 results" (`creditsFor` now logs the
+  real cost, from `api_calls_cost` where the body carries it); `/george` is 10,
+  not 5. The spend log and `docs/setup/propertydata.md` budget maths were
+  overstating by about double.
+- **429 ignored `Retry-After`, and 503 was never retried.** Both are documented
+  "wait, then try again" statuses (X14, X20) with a `Retry-After` in seconds.
+  `requestPropertyData` now honours it (capped at 30 s) for exactly one retry,
+  shared by the client and the raw `/sourced-properties` probe.
+- **The key went in the URL.** The docs accept `Authorization: Bearer`; the
+  client now sends that and the URL carries only the query, so a logged URL or
+  an echoed error can never leak it.
+
+**Tenure: probed the `/uprns` → `/uprn-title` → `/title` chain (~9 credits).**
+`/title` wants the parameter **`title`**, not `title_number` — the latter is
+silently ignored and answers 404 "Title not found" (code 801), which is
+charged. Shapes, from DL2 3JP (house) and W14 9JH (block of flats):
+
+- `/uprns?postcode=` → `data[]` of `{ uprn, address, addressParts{primary,
+  street, town, postcode}, lat, lng, classificationCode ("RD06"),
+  classificationCodeDesc ("Flat") }`, 10 rows per call (`api_calls_cost: 1`;
+  pagination param not yet found — DL2 3JP has ~34 properties).
+- `/uprn-title?uprn=` → `data: { uprn, title_count, title_data[]{
+  title_number, title_class } }`. A flat's UPRN maps to the BUILDING'S
+  freehold title, not its own leasehold title.
+- `/title?title=` → `data: { class, estate_interest, ownership{type, details?
+  {owner, company_reg, owner_type, owner_address, date_added}}, plot_size,
+  polygons[], leaseholds[] (child leasehold title numbers), parent_freehold,
+  parent_freeholds[], uprns[], registeredLeases[], distinctLeases[] }`.
+
+So: **tenure class is reachable** (a title's `class` says freehold or
+leasehold; a freehold with `leaseholds[]` and several `uprns[]` is a block of
+flats), and **corporate ownership is reachable** (name + company number —
+personal data, we are the controller). **Lease length is not**:
+`registeredLeases` and `distinctLeases` were empty on every title probed,
+including the leasehold one. The short-lease screen still has no source;
+`getTenureByPostcodeResult` stays on the honest "unavailable" path. Nothing is
+wired yet — a per-property chain costs 3+ credits and needs a founder call.
+
+**Rules (additive).**
+
+- **60 days is the ceiling for anything served as current.** New TTLs above it
+  are clamped, not honoured. If a figure must live longer, store it as a dated
+  observation, not in the cache.
+- **The spend log reports what the API bills.** New endpoints take their
+  credit figure from the reference doc; "per N results" endpoints use
+  `creditsFor`.
+- **Before adding an endpoint, check it exists** in
+  `docs/setup/propertydata-api-reference.md`. Then probe it:
+  `scripts/propertydata-probe.mts --raw <endpoint> --params k=v`. A wrong
+  parameter name is free and self-describing; a 404 is not free.
+
 ## 2026-09-17 — PropertyData: the eleven schemas rewritten from real responses
 
 **What was done.** Follow-through on the 2026-09-12 entry below. The probe

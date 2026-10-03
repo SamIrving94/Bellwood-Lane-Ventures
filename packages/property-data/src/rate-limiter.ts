@@ -1,11 +1,13 @@
 /**
  * Global client-side rate limiter for PropertyData.
  *
- * PropertyData allows 4 calls / 10s per key. Every LIVE fetch in the client
- * routes through `acquireRateSlot()` so no single caller can trip the 429 "X14"
- * limit. This is the ONE throttle gate — callers must NOT rely on their own
- * `setTimeout` spacing (that reliance was the latent bug behind the 2026-07-17
- * scout incident; see docs/LEARNINGS.md, "Rate limiting lives in the client,
+ * PropertyData rate-limits per ACCOUNT, across all keys: 12 to 72 calls per 30s
+ * depending on plan (API docs). 4 calls / 10s is the entry-plan figure and the
+ * floor we hold to; a 429 (X14) still gets one Retry-After retry. Every LIVE
+ * fetch in the client routes through `acquireRateSlot()` so no single caller
+ * can trip the limit on its own. This is the ONE throttle gate — callers must
+ * NOT rely on their own `setTimeout` spacing (that reliance was the latent bug
+ * behind the 2026-07-17 scout incident; see docs/LEARNINGS.md, "Rate limiting lives in the client,
  * not in accidental sleeps").
  *
  * Kept dependency-free (no `server-only`) so it is unit-testable in isolation.
