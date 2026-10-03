@@ -47,10 +47,9 @@ export const WHATS_NEW: WhatsNewEntry[] = [
       },
       {
         emoji: '🔑',
-        text: '**One thing to do.** Paste the PostHog project key into Vercel (bellwood-web) or none of this records.',
+        text: '**One thing to do.** Paste the PostHog project key into Vercel (bellwood-web) or none of this records. Then app.posthog.com is where the numbers live.',
       },
     ],
-    cta: { label: 'Open PostHog', href: 'https://app.posthog.com' },
   },
   {
     id: '2026-09-17-guides-pipeline',
