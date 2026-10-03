@@ -254,6 +254,9 @@ importers:
         specifier: ^3.24.2
         version: 3.24.2
     devDependencies:
+      '@repo/analytics':
+        specifier: workspace:*
+        version: link:../../packages/analytics
       '@repo/testing':
         specifier: workspace:*
         version: link:../../packages/testing
@@ -497,6 +500,9 @@ importers:
       '@repo/ai':
         specifier: workspace:*
         version: link:../../packages/ai
+      '@repo/analytics':
+        specifier: workspace:*
+        version: link:../../packages/analytics
       '@repo/brand':
         specifier: workspace:*
         version: link:../../packages/brand

@@ -17,4 +17,8 @@ export const keys = () =>
       NEXT_PUBLIC_POSTHOG_HOST: process.env.NEXT_PUBLIC_POSTHOG_HOST,
       NEXT_PUBLIC_GA_MEASUREMENT_ID: process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID,
     },
+    // The public site ships these as "" to mean "off" (apps/web/.env.example).
+    // Without this, "" fails the startsWith checks and the provider throws in
+    // the browser instead of quietly not loading.
+    emptyStringAsUndefined: true,
   });

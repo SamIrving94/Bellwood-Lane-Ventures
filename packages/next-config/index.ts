@@ -6,6 +6,18 @@ import type { NextConfig } from 'next';
 
 const otelRegex = /@opentelemetry\/instrumentation/;
 
+// The PostHog ingest proxy follows the project's region. An EU project
+// proxied to the US cluster has its events rejected and nothing surfaces
+// until someone looks. Matches both forms PostHog hands out — the app host
+// (https://eu.posthog.com, what we set) and the ingest host the install docs
+// show (https://eu.i.posthog.com). Defaults to US, which is what the
+// dashboard has always pointed at.
+const posthogRegion = /^https?:\/\/eu\./.test(
+  process.env.NEXT_PUBLIC_POSTHOG_HOST ?? ''
+)
+  ? 'eu'
+  : 'us';
+
 export const config: NextConfig = {
   images: {
     formats: ['image/avif', 'image/webp'],
@@ -26,15 +38,15 @@ export const config: NextConfig = {
     return [
       {
         source: '/ingest/static/:path*',
-        destination: 'https://us-assets.i.posthog.com/static/:path*',
+        destination: `https://${posthogRegion}-assets.i.posthog.com/static/:path*`,
       },
       {
         source: '/ingest/:path*',
-        destination: 'https://us.i.posthog.com/:path*',
+        destination: `https://${posthogRegion}.i.posthog.com/:path*`,
       },
       {
         source: '/ingest/decide',
-        destination: 'https://us.i.posthog.com/decide',
+        destination: `https://${posthogRegion}.i.posthog.com/decide`,
       },
     ];
   },
