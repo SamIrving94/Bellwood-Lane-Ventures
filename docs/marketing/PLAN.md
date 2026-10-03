@@ -1,6 +1,6 @@
 # Bellwood Lane — Marketing Plan
 
-_Last verified against the live site: 2026-09-17._
+_Last verified against the live site: 2026-10-01._
 
 > **Voice is governed by `docs/brand/KEPT.md` § Voice, not by §2 below.**
 > The Aug 2026 Beth Sims pass superseded the May 2026 voice table. In
@@ -145,6 +145,16 @@ In priority order for Bellwood's economics:
 | **Local press + direct mail** | Probate-specific in target postcodes | 10% |
 | **Solicitor partnerships** | Probate + divorce lawyer referrals | 10% |
 | **TikTok** | Younger probate executors — test only | 5% |
+
+**Tracking is consent-gated (Oct 2026).** The Google Ads tag and Meta Pixel
+load only for visitors who accept *advertising* cookies in the site banner;
+Google Analytics only for those who accept *analytics*. Retargeting audiences
+and conversion counts therefore cover consenting visitors only — expect them
+to under-count, and judge CPA on enquiries in the dashboard, not ad-platform
+numbers alone. Tags never fire on private pages (offer, timeline, viewing,
+`/save-the-sale`). Setup: `NEXT_PUBLIC_GOOGLE_ADS_ID`, `NEXT_PUBLIC_META_PIXEL_ID`,
+`NEXT_PUBLIC_GA_MEASUREMENT_ID` on the web Vercel project; settings the privacy
+notice relies on are listed in `apps/web/app/legal/privacy/page.tsx`.
 
 **Phase 1 budget:** £1,000/month on paid acquisition. Track cost-per-form-
 submission tightly. If a segment is <£250 CPA, scale. If >£600 CPA, kill.

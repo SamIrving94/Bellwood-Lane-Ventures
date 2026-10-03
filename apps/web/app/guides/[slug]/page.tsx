@@ -1,4 +1,5 @@
 import { Button, Eyebrow } from '@/components/brand';
+import { SiteFooter } from '@/components/site-footer';
 import { SiteHeader } from '@/components/site-header';
 import { brand } from '@repo/brand';
 import { database } from '@repo/database';
@@ -234,6 +235,7 @@ export default async function GuidePage({
           </p>
         </article>
       </main>
+      <SiteFooter />
     </>
   );
 }

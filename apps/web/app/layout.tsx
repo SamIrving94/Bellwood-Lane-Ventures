@@ -1,6 +1,8 @@
-import type { CSSProperties, ReactNode } from 'react';
+import { CookieConsent } from '@/components/cookie-consent';
+import { consentTags, hasConsentTags } from '@/lib/consent-tags';
 import { fonts } from '@repo/design-system/lib/fonts';
 import { cn } from '@repo/design-system/lib/utils';
+import type { CSSProperties, ReactNode } from 'react';
 import './[locale]/styles.css';
 
 // Public-site type system. The design system maps `font-serif` → --font-fraunces
@@ -21,7 +23,11 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       style={publicType}
       suppressHydrationWarning
     >
-      <body>{children}</body>
+      <body>
+        {children}
+        {/* Tags load only after a visitor accepts — see cookie-consent.tsx. */}
+        {hasConsentTags() && <CookieConsent {...consentTags()} />}
+      </body>
     </html>
   );
 }

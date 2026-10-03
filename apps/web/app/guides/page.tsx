@@ -1,4 +1,5 @@
 import { Button, Eyebrow } from '@/components/brand';
+import { SiteFooter } from '@/components/site-footer';
 import { SiteHeader } from '@/components/site-header';
 import { database } from '@repo/database';
 import { brand } from '@repo/brand';
@@ -108,6 +109,7 @@ export default async function GuidesIndexPage() {
           </Button>
         </section>
       </main>
+      <SiteFooter />
     </>
   );
 }

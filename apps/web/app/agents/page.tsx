@@ -8,6 +8,7 @@ import {
   Wordmark,
 } from '@/components/brand';
 import { ProofBand } from '@/components/proof-band';
+import { SiteFooter } from '@/components/site-footer';
 import { TimelineMock } from '@/components/timeline-mock';
 import Link from 'next/link';
 import { AgentQuickForm } from './components/agent-quick-form';
@@ -724,66 +725,7 @@ export default function AgentsPage() {
         </div>
       </section>
 
-      {/* ————— FOOTER ————— */}
-      <footer className="bg-cream px-6 py-16 md:px-12">
-        <div className="mx-auto max-w-6xl">
-          <div className="flex flex-col items-start justify-between gap-8 md:flex-row md:items-center">
-            <div className="flex items-center gap-4">
-              <Seal label="Est. 2026" />
-              <div className="pl-1">
-                <Wordmark ventures className="text-base" />
-                <p className="mt-2 font-serif text-sm text-stone-500">
-                  Direct-to-vendor property buyers &middot; UK
-                </p>
-              </div>
-            </div>
-            <nav className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-stone-600">
-              <a href="#refer" className="hover:text-brand-deep">
-                Send a deal
-              </a>
-              <Link
-                href="/instant-offer/methodology"
-                className="hover:text-brand-deep"
-              >
-                Methodology
-              </Link>
-              <Link
-                href="/why-we-wont-buy-any-home"
-                className="hover:text-brand-deep"
-              >
-                What we won&rsquo;t buy
-              </Link>
-              <Link href="/sell" className="hover:text-brand-deep">
-                For sellers
-              </Link>
-              <Link
-                href="/legal/fca-disclosure"
-                className="hover:text-brand-deep"
-              >
-                Regulatory
-              </Link>
-              <Link href="/partners/login" className="hover:text-brand-deep">
-                Partner sign in
-              </Link>
-            </nav>
-          </div>
-          <div className="mt-10 border-hair border-t pt-6">
-            <p className="font-serif text-[12px] text-stone-500">
-              Property Redress Scheme (PRS) &middot; HMRC AML supervised
-              &middot; ICO registered
-            </p>
-            <p className="mt-4 text-[11px] text-stone-500 leading-relaxed">
-              Kept is a UK cash property buyer, not an
-              FCA-authorised firm. We do not provide financial or legal advice.
-              Seek independent legal advice before accepting any offer. All
-              offers are subject to satisfactory survey and title searches.
-            </p>
-            <p className="mt-4 text-[11px] text-stone-400">
-              © {new Date().getFullYear()} Kept.
-            </p>
-          </div>
-        </div>
-      </footer>
+      <SiteFooter />
     </>
   );
 }
