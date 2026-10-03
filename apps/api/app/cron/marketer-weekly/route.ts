@@ -1,5 +1,6 @@
 import { env } from '@/env';
 import { selfOrigin } from '../_lib/self-origin';
+import { KEPT_VOICE_RULES } from '@repo/ai/brand-voice';
 import { callClaudeForJson, CLAUDE_HAIKU } from '@repo/ai/claude';
 import { database } from '@repo/database';
 import { NextResponse } from 'next/server';
@@ -29,16 +30,12 @@ const LINKEDIN_SYSTEM_PROMPT = `You plan a week of LinkedIn content for Kept, a 
 
 Audience: UK estate agents, conveyancers, IFAs, mortgage brokers, property professionals. NOT vendors. Peer-to-peer voice.
 
-Voice rules (marketing plan §2):
-- Numbers + specifics over adjectives. UK spelling. £ symbol with grouped thousands.
-- Slightly dry. Professional. No motivational quotes. No "thoughts?" closers.
-- Each idea ≤ 25 words. Educational, not promotional.
-- Topics MUST be anchored to UK property news of the past 7 days — interest rate moves, HMRC/SDLT changes, planning law shifts, market data drops (Nationwide, Halifax, ONS, HMLR), known broker/agent industry news.
+${KEPT_VOICE_RULES}
 
-NEVER use:
-- "AI", "machine learning", "algorithm", "powered by"
-- "Game changer", "industry-leading", "revolutionary"
-- "Did you know…" or any other engagement-bait opener
+FORMAT.
+- Each idea ≤ 25 words. Educational, not promotional. No motivational quotes.
+- Public market figures are welcome here (an index move, a rate change) with the source named. Our own offers, prices and discounts are not.
+- Topics MUST be anchored to UK property news of the past 7 days: interest rate moves, HMRC/SDLT changes, planning law shifts, market data drops (Nationwide, Halifax, ONS, HMLR), known broker/agent industry news.
 
 You will be given the current date. Return ONLY JSON (no markdown fences):
 
@@ -140,7 +137,7 @@ async function draftLinkedInTopics(runDate: Date): Promise<{
           agent: 'marketer',
           title: 'Marketer weekly: LinkedIn topics need manual drafting',
           description: [
-            'Claude was unavailable (or returned no parseable topics) for this week\'s LinkedIn basket.',
+            "Claude was unavailable (or returned no parseable topics) for this week's LinkedIn basket.",
             '',
             'Manually pick 1-2 angles for the week. Reference recent UK property news (Nationwide/Halifax index, HMLR drops, SDLT changes, interest-rate moves).',
           ].join('\n'),
@@ -148,7 +145,7 @@ async function draftLinkedInTopics(runDate: Date): Promise<{
             JSON.stringify({
               workflow: 'marketer_weekly_linkedin_fallback',
               weekStart,
-            }),
+            })
           ),
         },
       })
@@ -161,7 +158,7 @@ async function draftLinkedInTopics(runDate: Date): Promise<{
   const lines = basket.topics
     .map(
       (t, i) =>
-        `${i + 1}. **${t.title}**\n   ${t.hook}\n   tags: ${t.suggestedHashtags.join(' ')}`,
+        `${i + 1}. **${t.title}**\n   ${t.hook}\n   tags: ${t.suggestedHashtags.join(' ')}`
     )
     .join('\n\n');
 
@@ -184,7 +181,7 @@ async function draftLinkedInTopics(runDate: Date): Promise<{
             weekStart,
             channel: 'linkedin',
             topics: basket.topics,
-          }),
+          })
         ),
       },
     })
@@ -204,16 +201,22 @@ async function draftLinkedInTopics(runDate: Date): Promise<{
 // Pass 2 — Two blog drafts via /agents/marketer/draft-blog
 // ────────────────────────────────────────────────────────────────────────────
 
-// SellerType values that map to a valid /agents/marketer/draft-blog segment
-// (the endpoint enums: probate | chain_break | distress | problem_property | agent).
-const SELLER_TYPE_TO_SEGMENT: Record<
-  string,
-  'probate' | 'chain_break' | 'distress' | 'problem_property' | 'agent'
-> = {
+// SellerType values that map to a valid /agents/marketer/draft-blog segment.
+// Keep in step with the `segment` enum in that route.
+type BlogSegment =
+  | 'probate'
+  | 'chain_break'
+  | 'separation'
+  | 'relocation'
+  | 'distress'
+  | 'problem_property'
+  | 'agent';
+
+const SELLER_TYPE_TO_SEGMENT: Record<string, BlogSegment> = {
   probate: 'probate',
   chain_break: 'chain_break',
   repossession: 'distress',
-  relocation: 'chain_break',
+  relocation: 'relocation',
   short_lease: 'problem_property',
   standard: 'chain_break',
 };
@@ -252,7 +255,10 @@ async function draftSegmentBlogs(request: Request): Promise<{
 
   // Fallback to probate + chain_break if no recent completions
   if (orderedSegments.length < 2) {
-    const defaults: Array<'probate' | 'chain_break'> = ['probate', 'chain_break'];
+    const defaults: Array<'probate' | 'chain_break'> = [
+      'probate',
+      'chain_break',
+    ];
     for (const d of defaults) {
       if (orderedSegments.length === 2) break;
       if (!seen.has(d)) {
@@ -263,7 +269,9 @@ async function draftSegmentBlogs(request: Request): Promise<{
   }
 
   if (!env.PAPERCLIP_API_KEY && !env.BELLWOOD_API_KEY) {
-    console.warn('[marketer-weekly] no PAPERCLIP_API_KEY / BELLWOOD_API_KEY — skipping blog drafts');
+    console.warn(
+      '[marketer-weekly] no PAPERCLIP_API_KEY / BELLWOOD_API_KEY — skipping blog drafts'
+    );
     return { blogsRequested: 0, segments: orderedSegments, fallback: true };
   }
 
@@ -272,17 +280,31 @@ async function draftSegmentBlogs(request: Request): Promise<{
   const bearer = env.BELLWOOD_API_KEY ?? env.PAPERCLIP_API_KEY ?? '';
 
   let blogsRequested = 0;
-  const topicBySegment: Record<string, { topic: string; primaryKeyword: string }> = {
+  const topicBySegment: Record<
+    string,
+    { topic: string; primaryKeyword: string }
+  > = {
     probate: {
       topic: 'Selling an empty inherited property without dragging the estate',
       primaryKeyword: 'sell inherited property uk',
     },
     chain_break: {
-      topic: 'What to do in the 48 hours after your buyer pulls out',
+      topic: 'What to do when your buyer pulls out',
       primaryKeyword: 'buyer pulled out uk',
     },
+    separation: {
+      topic:
+        'Selling a shared home after a separation without a long fight over the sale',
+      primaryKeyword: 'selling house after separation uk',
+    },
+    relocation: {
+      topic:
+        'Selling your home to a fixed date when you are relocating for work',
+      primaryKeyword: 'sell house quickly relocating uk',
+    },
     distress: {
-      topic: 'Selling a house in financial difficulty without going through repossession',
+      topic:
+        'Selling a house in financial difficulty without going through repossession',
       primaryKeyword: 'sell house repossession uk',
     },
     problem_property: {
@@ -290,7 +312,8 @@ async function draftSegmentBlogs(request: Request): Promise<{
       primaryKeyword: 'sell problem property uk',
     },
     agent: {
-      topic: 'How estate agents can save fall-through deals without losing the listing',
+      topic:
+        'How estate agents can save fall-through deals without losing the listing',
       primaryKeyword: 'fall through deal estate agent',
     },
   };
@@ -317,11 +340,14 @@ async function draftSegmentBlogs(request: Request): Promise<{
         blogsRequested++;
       } else {
         console.warn(
-          `[marketer-weekly] draft-blog ${segment} returned ${response.status}`,
+          `[marketer-weekly] draft-blog ${segment} returned ${response.status}`
         );
       }
     } catch (err) {
-      console.warn(`[marketer-weekly] draft-blog ${segment} request failed`, err);
+      console.warn(
+        `[marketer-weekly] draft-blog ${segment} request failed`,
+        err
+      );
     }
   }
 

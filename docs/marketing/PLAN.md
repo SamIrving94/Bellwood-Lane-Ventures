@@ -1,6 +1,14 @@
 # Bellwood Lane — Marketing Plan
 
-_Last verified against the live site: 2026-09-12._
+_Last verified against the live site: 2026-09-17._
+
+> **Voice is governed by `docs/brand/KEPT.md` § Voice, not by §2 below.**
+> The Aug 2026 Beth Sims pass superseded the May 2026 voice table. In
+> code, the single source is `packages/ai/brand-voice.ts`
+> (`KEPT_VOICE_RULES`), which every marketer prompt imports. Where §2 and
+> KEPT.md disagree, KEPT.md wins. Two specific retirements: "numbers +
+> specifics" no longer applies to probate copy (no numbers at all there),
+> and no service level faster than the public promise may appear anywhere.
 
 **Status:** May 2026 (v1).
 **Audience:** CEO, Marketer, Liaison, Designer, Counsel.

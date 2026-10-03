@@ -1,4 +1,5 @@
 import { database } from '@repo/database';
+import { KEPT_AGENT_PROPOSITION, KEPT_VOICE_RULES } from '@repo/ai/brand-voice';
 import { callClaude, callClaudeForJson } from '@repo/ai/claude';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
@@ -10,8 +11,10 @@ import { validateAgentAuth, unauthorizedResponse } from '../../_lib/auth';
  * The Marketer agent (or the founder via curl) asks for a draft SEO blog
  * post on a specific topic + vendor segment. We:
  *
- *   1. DRAFT — Claude writes the post in Kept voice (matches the
- *      marketing plan in docs/marketing/PLAN.md §2).
+ *   1. DRAFT — the model writes the post in Kept voice. The voice block
+ *      comes from @repo/ai/brand-voice, which derives from
+ *      docs/brand/KEPT.md § Voice (the Beth Sims bar) and the copy-truth
+ *      rules. Do not add voice rules here; add them there.
  *   2. AUDIT — a second Claude pass reviews the draft against the UK
  *      compliance ruleset (CPR 2008, NTSELAT, ICO/UK GDPR, PECR, ASA/CAP)
  *      and returns a structured list of risks.
@@ -34,10 +37,16 @@ import { validateAgentAuth, unauthorizedResponse } from '../../_lib/auth';
 const Body = z.object({
   /** Blog post topic — short title-cased phrase, e.g. "What happens when your buyer pulls out". */
   topic: z.string().min(5).max(200),
-  /** Vendor segment from the marketing plan §3. Drives tone + landing page CTA. */
+  /**
+   * Seller segment. Drives the brief + landing page CTA. One entry per live
+   * apps/web landing route, so a draft can never link to a page that does
+   * not exist (`distress` maps to /your-situation; there is no /distress).
+   */
   segment: z.enum([
     'probate',
     'chain_break',
+    'separation',
+    'relocation',
     'distress',
     'problem_property',
     'agent',
@@ -54,39 +63,35 @@ const Body = z.object({
 // Prompts
 // ────────────────────────────────────────────────────────────────────────────
 
+/**
+ * Landing routes are the live apps/web pages. Briefs describe the person,
+ * not the pitch; the promise and the bans live in KEPT_VOICE_RULES.
+ */
 const SEGMENT_BRIEF: Record<z.infer<typeof Body>['segment'], string> = {
   probate:
-    'UK estate executors (often dyslexic or elderly), grieving, IHT clock running, empty property bleeding council tax. Landing page CTA: /sell/probate. Top need: empathy + speed + signposting to solicitors when needed.',
+    'Executors and families selling an inherited home. Grieving, often doing this for the first time, sometimes from a distance. Landing page: /probate. Lead with closure and getting back to what matters. No numbers of any kind: no inheritance tax, no interest, no carrying costs, no council tax, no clock. Suggest a solicitor where the estate is complex.',
   chain_break:
-    'UK home sellers whose buyer just pulled out. Mid-transaction, often emotionally hooked on the next purchase. Landing page CTA: /save-the-sale. Top need: 24-hour cash backup so the onward purchase does not collapse.',
+    'Sellers whose buyer has just pulled out, often with an onward purchase at risk. Landing page: /chain-break. Lead with certainty: one buyer, a viewing, a written offer within two working days of it, held for a week. State no faster timing than that.',
+  separation:
+    'Two people selling a shared home after a separation who need one clean decision and no drawn-out marketing. Landing page: /separation. Even-handed and neutral: no assumptions about fault, who is staying, or who wants what.',
+  relocation:
+    'Sellers moving for work or family with a date they cannot miss. Landing page: /relocation. Lead with a fixed timetable and one buyer instead of a chain.',
   distress:
-    'UK home sellers in financial difficulty (divorce, repossession, mortgage arrears). Highest sensitivity. Landing page CTA: /sell/distress. CRITICAL: signpost StepChange + Citizens Advice in body, NEVER use urgency timers, NEVER use emotional manipulation.',
+    'Sellers in financial difficulty: arrears, repossession risk, a debt that a sale would clear. Highest sensitivity. Landing page: /your-situation. Signpost StepChange and Citizens Advice in the body. Never fear-led, never urgent, never a figure. Say plainly that our offer is below market and that other routes may serve them better.',
   problem_property:
-    'UK sellers of difficult properties — knotweed, short lease, cladding, structural, non-standard construction. Landing page CTA: /sell/problem-property. Top need: frank discussion of what we will and will not buy + typical discount band.',
-  agent:
-    'UK estate agents (branch managers, partners at independents). NOT a vendor — peer-to-peer professional tone. Landing page CTA: /save-the-sale agent form. Top need: how the introducer fee works + the 4-hour SLA promise.',
+    'Sellers of difficult properties: knotweed, short lease, cladding, structural issues, non-standard construction. Landing page: /problem-property. Be frank about what we will and will not buy, and that our offer reflects the work needed. No discount band, no percentage, no figure.',
+  agent: `Estate agents (branch managers, partners at independents). NOT a seller: peer-to-peer professional tone. Landing page: /agents (chain-break referrals: /save-the-sale). What they keep: ${KEPT_AGENT_PROPOSITION} Service claims only as stated in the promise.`,
 };
 
 const DRAFT_SYSTEM_PROMPT = `You write SEO blog posts for Kept, a UK direct-to-vendor property buyer specialising in chain-break, probate, and problem properties.
 
-Marketing plan §2 voice (iron rule):
-- Numbers and specifics over adjectives. Plain English.
-- Professional, specific, slightly dry, unapologetic about being selective.
-- Closer to a chartered surveyor than a property influencer.
-- UK spelling. £ symbol with grouped thousands. Dates DD Month YYYY.
+${KEPT_VOICE_RULES}
 
-NEVER use:
-- "AI", "machine learning", "algorithm", "powered by"
-- "We buy any house" — Kept is selective; that's the brand
-- "Get cash today!", countdown timers, urgency language
-- Stock-photo platitudes about families/happiness
-- "World-class", "best-in-class", "industry-leading", "revolutionary"
-
-ALWAYS:
-- Lead with the reader's situation, not Kept
-- Use real numbers (typical discount bands, completion timeframes, fee structures)
-- Signpost free debt advice (StepChange, Citizens Advice) when the topic touches financial difficulty
-- Include 1 clear CTA at the end pointing to the right landing page
+FORMAT.
+- UK spelling. £ symbol with grouped thousands where a figure is legitimately public (house-price indices, not our offers). Dates DD Month YYYY.
+- Lead with the reader's situation, not Kept.
+- Where the topic touches financial difficulty, signpost StepChange and Citizens Advice in the body.
+- One clear CTA at the end, pointing to the landing page named in the segment brief. Never a route that is not named there.
 
 You MUST return JSON only, no markdown fences, no preamble. Schema:
 
@@ -111,8 +116,11 @@ Rule sets:
 3. **ICO + UK GDPR** — Data protection. Opt-out language required on every email collection point; data minimisation; lawful basis named.
 4. **PECR** — Privacy and Electronic Communications Regulations. Opt-out on every B2B email is still required even with the B2B exemption.
 5. **ASA / CAP Code** — Advertising Standards Authority. Every factual claim must be substantiable; comparative claims must be honest and verifiable.
-6. **Bellwood marketing plan §11** — anonymisation rules. Postcode AREA only (e.g. M14), no street numbers, no vendor names without explicit written consent, 30-day delay between completion and any identifiable post.
-7. **Voice rule** — must not say "we buy any house", must not use urgency/countdown language, must not use AI claims.
+6. **Kept marketing plan §11** — anonymisation rules. Postcode AREA only (e.g. M14), no street numbers, no vendor names without explicit written consent, 30-day delay between completion and any identifiable post.
+7. **Voice and copy truth** — the draft must obey every line of the Kept voice block below. Treat any service claim faster than the promise, any figure or discount band in front of a seller, the word "advice", "legally binding", an em dash, or a probate piece that mentions tax, interest or costs as a blocker.
+
+Kept voice block:
+${KEPT_VOICE_RULES}
 
 Return ONLY JSON (no markdown fences):
 
@@ -173,7 +181,7 @@ export async function POST(request: Request) {
   if (!parsed.success) {
     return NextResponse.json(
       { error: 'Validation failed', details: parsed.error.flatten() },
-      { status: 400 },
+      { status: 400 }
     );
   }
 
@@ -209,9 +217,9 @@ export async function POST(request: Request) {
     return NextResponse.json(
       {
         error:
-          'Draft generation failed — Claude returned no parseable draft. Check ANTHROPIC_API_KEY is set on bellwood-api and try again.',
+          'Draft generation failed: the model returned no parseable draft. Check OPENROUTER_API_KEY or ANTHROPIC_API_KEY is set on bellwood-api and try again.',
       },
-      { status: 502 },
+      { status: 502 }
     );
   }
 
@@ -277,7 +285,7 @@ export async function POST(request: Request) {
             input,
             draft,
             compliance: compliance ?? null,
-          }),
+          })
         ),
       },
     })
@@ -297,8 +305,10 @@ export async function POST(request: Request) {
           ruleSet: 'Voice',
           severity: 'medium',
           excerpt: '(audit unavailable)',
-          problem: 'Compliance audit call returned null — Claude unavailable or API key missing',
-          suggestedFix: 'Re-run /agents/marketer/draft-blog once ANTHROPIC_API_KEY is healthy, or do a manual Counsel review.',
+          problem:
+            'Compliance audit call returned null — Claude unavailable or API key missing',
+          suggestedFix:
+            'Re-run /agents/marketer/draft-blog once ANTHROPIC_API_KEY is healthy, or do a manual Counsel review.',
         },
       ],
       substantiationNeeded: [],
