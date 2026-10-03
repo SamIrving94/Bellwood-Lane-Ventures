@@ -12,6 +12,7 @@ import Link from 'next/link';
 const NAV = [
   { href: '/sell', label: 'For sellers' },
   { href: '/probate', label: 'Probate guide' },
+  { href: '/guides', label: 'Guides' },
   { href: '/instant-offer/methodology', label: 'Methodology' },
   { href: '/agents', label: 'For agents' },
   { href: '/save-the-sale', label: 'Save a sale' },

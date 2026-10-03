@@ -69,7 +69,11 @@ export async function register() {
       if (!row) return null;
       const expiresAt = row.expiresAt.getTime();
       if (expiresAt <= Date.now()) return null;
-      return { value: row.value, expiresAt };
+      return {
+        value: row.value,
+        expiresAt,
+        storedAt: row.updatedAt.getTime(),
+      };
     },
     async set(key: string, value: unknown, expiresAt: number) {
       // Key is `${endpoint}:${params}` — keep the endpoint for spend analysis.
@@ -89,7 +93,7 @@ export async function register() {
       // The client calls this when a durable row fails re-validation — a value
       // written by an older deploy, or upstream drift that got cached before we
       // checked for it. Without eviction the poison sat here for the full TTL
-      // (up to 90 days) and every instance read it.
+      // (formerly up to 90 days) and every instance read it.
       await db.propertyDataCache.deleteMany({ where: { key } });
     },
   };

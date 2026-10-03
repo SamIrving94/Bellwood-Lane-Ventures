@@ -26,6 +26,64 @@ export type WhatsNewEntry = {
 /** Newest first. The popup shows index 0. */
 export const WHATS_NEW: WhatsNewEntry[] = [
   {
+    id: '2026-09-17-guides-pipeline',
+    date: '2026-10-03',
+    emoji: '📚',
+    title: 'One guide a week, written for Google, published by you',
+    intro:
+      'Every Saturday the marketer listens to the UK property press and the housing forums, picks the evergreen question they point at, and drafts the answer in Kept voice. You read it, you press Publish, it is live.',
+    bullets: [
+      {
+        emoji: '🎧',
+        text: '**Listens first.** Trade feeds and HM Land Registry news every week; Reddit’s UK housing subs once the key is set.',
+      },
+      {
+        emoji: '🧭',
+        text: '**Evergreen questions only.** “What happens to a house after probate is granted?” ranks in March and in September. The news supplies the opening line, never the topic.',
+      },
+      {
+        emoji: '🖱️',
+        text: '**Publish is a click.** New **Guides** tab in Marketing. Approve keeps it, Publish puts it at wearekept.co.uk/guides in five minutes, Unpublish pulls it back.',
+      },
+      {
+        emoji: '🧾',
+        text: '**Sources you can check.** Every guide lists what it cited. The model cannot cite anything it was not shown.',
+      },
+    ],
+    cta: { label: 'Open Guides', href: '/marketing/guides' },
+  },
+  {
+    id: '2026-10-03-avm-evidence-gate',
+    date: '2026-10-03',
+    emoji: '🧾',
+    title: 'The AVM now shows its receipts',
+    intro:
+      'A 3-bed semi in SW16 got “valued” at £345k with zero sold comps behind it. That number was a placeholder. No more: every valuation now says where it came from, and with no evidence there is no number at all.',
+    bullets: [
+      {
+        emoji: '🚫',
+        text: '**No comps, no number.** With nothing sold nearby the AVM now says **“No valuation”** and blocks the offer, instead of pricing off an area average.',
+      },
+      {
+        emoji: '🗺️',
+        text: '**New evidence source.** When the half-mile and postcode come up empty, it widens to same-type **Land Registry sales across the postcode sector** — free, no credits, flagged as wide.',
+      },
+      {
+        emoji: '🧾',
+        text: '**Source on every valuation.** Under Confidence you now see **which feed** priced it and **how many comps** at what radius. **0 sold comps** shows in red.',
+      },
+      {
+        emoji: '⚖️',
+        text: '**“Above market” now checks itself.** A low-confidence AVM can no longer rule a lead out on its own — it says **verify** instead.',
+      },
+      {
+        emoji: '🗣️',
+        text: '**The agent’s blurb is labelled.** The listing description under The Verdict is now marked **“From the agent’s listing”** — it was never our assessment.',
+      },
+    ],
+    cta: { label: 'Re-appraise a thin lead', href: '/leads' },
+  },
+  {
     id: '2026-10-01-kept-in-chatgpt',
     date: '2026-10-01',
     emoji: '💬',
@@ -51,6 +109,64 @@ export const WHATS_NEW: WhatsNewEntry[] = [
       },
     ],
     cta: { label: 'Open the Action Centre', href: '/actions' },
+  },
+  {
+    id: '2026-09-17-propertydata-signals-live',
+    date: '2026-09-17',
+    emoji: '🔌',
+    title: 'Flood, demand, yield and sold comps now live on batch rows',
+    intro:
+      'Eleven PropertyData feeds were plugged into the wrong socket since day one — paid for on every run, never read. They are wired to the real responses now.',
+    bullets: [
+      {
+        emoji: '🌊',
+        text: '**Flood, demand and yield** fill in on every batch-appraised row. Upload the pipeline sheet again and the three columns populate.',
+      },
+      {
+        emoji: '🏘️',
+        text: '**Sold comps by distance** now feed the AVM — real Land Registry sales within half a mile, not the postcode fallback.',
+      },
+      {
+        emoji: '📐',
+        text: '**Real floor areas** from the EPC register match by house number. Sizes arrive in square feet and are converted once, properly.',
+      },
+      {
+        emoji: '🕵️',
+        text: '**Agent prospecting** lists who is actually selling in each postcode, by live instruction count.',
+      },
+      {
+        emoji: '🔒',
+        text: '**Tenure stays honest.** PropertyData has no per-address lease data, so the short-lease screen says "not performed" rather than guessing. Every quote still lands with a person.',
+      },
+    ],
+    cta: { label: 'Open the batch tool', href: '/batch' },
+  },
+  {
+    id: '2026-09-17-marketer-kept-voice',
+    date: '2026-09-17',
+    emoji: '🪶',
+    title: 'The marketer now writes like Kept',
+    intro:
+      'Every blog, Instagram, LinkedIn, paid-ad and outreach draft now starts from the same voice rules as the homepage. The Beth Sims bar, in code, in one place.',
+    bullets: [
+      {
+        emoji: '🤝',
+        text: '**Only the real promise.** No more "24-hour cash backup", "4-hour SLA" or "8 weeks" in any draft. Two working days after viewing, held for a week, weeks not months.',
+      },
+      {
+        emoji: '🕊️',
+        text: '**Probate copy has no numbers.** No tax clock, no carrying costs. Closure, not a deadline.',
+      },
+      {
+        emoji: '🔗',
+        text: '**Blog CTAs link to pages that exist.** Plus two new segments: **separation** and **relocation**.',
+      },
+      {
+        emoji: '🧭',
+        text: '**One rulebook.** Change the voice in one file and all five drafters follow. Drafts are still held for your review, always.',
+      },
+    ],
+    cta: { label: 'Open your actions', href: '/actions' },
   },
   {
     id: '2026-09-12-appraisal-signals-and-size',

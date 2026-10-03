@@ -28,7 +28,7 @@ they are always held for founder review.
 - **Auth:** Clerk
 - **Database:** Neon Postgres via **Prisma** + `@prisma/adapter-neon` (WebSocket driver adapter)
 - **Email:** Resend (`@repo/email`, graceful fallback when no token)
-- **AI:** Vercel AI SDK + OpenAI; agent orchestration via external "Paperclip" agents
+- **AI:** **OpenRouter only** (founder decision, 3 Oct 2026) through `@repo/ai/claude` on the Vercel AI SDK. One bill, any model; routing per feature in Settings → AI models. Anthropic direct is retired and unfunded: no raw Anthropic fetches, no `@anthropic-ai/sdk`, no `if (!ANTHROPIC_API_KEY)` gates (use `hasLlmProvider()`). See `docs/LLM-ROUTING.md`.
 - **Lint/format:** **Biome** via **Ultracite** preset (`pnpm lint` / `pnpm format`)
 - **Tests:** Vitest
 - **Hosting:** Vercel — two projects: `bellwood-app` (dashboard) and `bellwood-api` (crons/agents)
@@ -99,7 +99,9 @@ This is the most important custom surface. Two families of route handlers:
 (Vercel cron). Examples: `pipeline-appraise`, `pipeline-outreach`,
 `pipeline-summary`, `sla-alerts`, `auction-scan`, `marketer-daily/weekly/monthly`,
 `event-poller`, `deep-appraisal`, `agent-prospecting`, `quote-ops`, `keep-alive`,
-`weekly-patterns`, `avm-backtest` (monthly, 28th). **Exception:** `scouting` has NO schedule (founder decision,
+`weekly-patterns`, `avm-backtest` (monthly, 28th), `guide-research` (Saturdays;
+drafts one evergreen guide a week into `GuidePost`, published by hand from
+/marketing/guides). **Exception:** `scouting` has NO schedule (founder decision,
 27 Aug 2026) — it is founder-triggered from Settings → Scouting ("Run scout
 now") to control PropertyData spend; same route, same CRON_SECRET auth.
 - **Auth:** `Authorization: Bearer <CRON_SECRET>` (checked inline in each route).
@@ -166,6 +168,15 @@ Run a task for one workspace with a filter, e.g.
 - **Safety rails (do not break these):** vendor emails are always held for
   founder review (`OutreachHold`); CEO escalation fires for offers <60% of AVM;
   SLA breaches are deduplicated so they don't spawn duplicate `FounderAction`s.
+- **The AVM never values without a sale.** `runAVM` tries PropertyData
+  radius comps → Land Registry postcode → Land Registry postcode **sector**
+  (free SPARQL, low confidence) and, if all three are empty, throws
+  `InsufficientEvidenceError` (`@repo/valuation`) — never a number off an
+  area average. Every call site catches it with `isInsufficientEvidence`
+  and records a **no-valuation** state (`avmFull.pointEstimatePence: null`
+  + `noValuationReason`). The SW16 incident (Sep 2026): the HMLR feed was
+  down, `avgPrice` was a hash-generated placeholder, and a £750k semi
+  appraised at £345k with "0 sold comps" and an offer built on it.
 - **Every `runAVM` call site must freeze its result with `saveAvmSnapshot`**
   (`@repo/valuation`). The monthly `avm-backtest` cron judges those frozen
   rows against later Land Registry sales; an appraisal that is not frozen

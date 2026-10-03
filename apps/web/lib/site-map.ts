@@ -27,6 +27,7 @@ export const SITE_MAP: SiteGroup[] = [
     links: [
       { href: '/sell', label: 'Sell your home' },
       { href: '/probate', label: 'Probate guide' },
+      { href: '/guides', label: 'Guides' },
       { href: '/chain-break', label: 'Chain break' },
       { href: '/separation', label: 'Separation' },
       { href: '/relocation', label: 'Relocation' },

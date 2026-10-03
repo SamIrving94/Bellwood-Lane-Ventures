@@ -1,4 +1,5 @@
 import { env } from '@/env';
+import { KEPT_VOICE_RULES } from '@repo/ai/brand-voice';
 import { callClaudeForObject, CLAUDE_HAIKU } from '@repo/ai/claude';
 import { database } from '@repo/database';
 import { NextResponse } from 'next/server';
@@ -26,23 +27,18 @@ import { z } from 'zod';
 
 const SYSTEM_PROMPT = `You write Instagram captions for Kept, a UK direct-to-vendor property buyer specialising in chain-break, probate, and problem properties.
 
-Voice (marketing plan §2):
-- Numbers and specifics over adjectives. Plain English. UK spelling.
-- Professional, slightly dry. Closer to a chartered surveyor than a property influencer.
-- Short sentences. ≤ 150 words for the caption.
-- One concrete fact, one human note, one CTA. Nothing else.
+${KEPT_VOICE_RULES}
+
+FORMAT.
+- ≤ 150 words for the caption. Short sentences.
+- One human note about the situation, one true thing about how it went, one CTA. Nothing else.
+- Never the offer figure, the price paid, or a percentage of market value.
 
 ANONYMISATION — these rules from marketing plan §11 are NON-NEGOTIABLE:
 - Use the postcode AREA only (e.g. "M14", "SK4"). NEVER the full postcode (no "M14 5AB"), NEVER the street, NEVER the house number.
 - NEVER include the vendor's name, the executor's name, the solicitor's name, or any other personal identifier.
 - NEVER describe distinguishing exterior features (the specific bay, the green door, the neighbour's hedge).
 - For completed deals: the founder may STILL hold for 30 days even if your draft passes. That gate is the founder's; you just draft.
-
-NEVER use:
-- "AI", "machine learning", "algorithm", "powered by"
-- "We buy any house" — Kept is selective; that's the brand
-- "Get cash today!", countdown timers, urgency language
-- Stock-photo platitudes about families/happiness
 
 You will be given a structured profile of one deal. Return ONLY JSON (no markdown fences, no preamble):
 
@@ -89,7 +85,7 @@ function buildUserPrompt(
     bedrooms: number | null;
     sellerType: string;
   },
-  context: 'offer_made' | 'completed',
+  context: 'offer_made' | 'completed'
 ): string {
   const lines: string[] = [
     `Pipeline event: ${context}`,
@@ -158,7 +154,9 @@ export const POST = async (request: Request) => {
     });
 
     if (!draft || !draft.caption) {
-      fallbackTitles.push(`Offer on ${deal.address} (${deal.postcode}) — IG post needs manual drafting`);
+      fallbackTitles.push(
+        `Offer on ${deal.address} (${deal.postcode}) — IG post needs manual drafting`
+      );
       errorCount++;
       continue;
     }
@@ -183,13 +181,17 @@ export const POST = async (request: Request) => {
       model: CLAUDE_HAIKU,
       feature: 'ig_post_draft',
     }).catch((err) => {
-      console.warn('[marketer-daily] LLM draft failed for completion', deal.id, err);
+      console.warn(
+        '[marketer-daily] LLM draft failed for completion',
+        deal.id,
+        err
+      );
       return null;
     });
 
     if (!draft || !draft.caption) {
       fallbackTitles.push(
-        `Completion of ${deal.address} (${deal.postcode}) — IG post + case study need manual drafting`,
+        `Completion of ${deal.address} (${deal.postcode}) — IG post + case study need manual drafting`
       );
       errorCount++;
       continue;
@@ -200,7 +202,9 @@ export const POST = async (request: Request) => {
 
     // Case study placeholder — gated to acquiredAt + 30 days per §11.
     const acquiredAt = deal.acquiredAt ?? deal.stageEnteredAt;
-    const publishNotBefore = new Date(acquiredAt.getTime() + 30 * 24 * 60 * 60 * 1000);
+    const publishNotBefore = new Date(
+      acquiredAt.getTime() + 30 * 24 * 60 * 60 * 1000
+    );
     await database.founderAction
       .create({
         data: {
@@ -227,7 +231,7 @@ export const POST = async (request: Request) => {
               publishNotBefore: publishNotBefore.toISOString(),
               starterCaption: draft.caption,
               starterHashtags: draft.hashtags,
-            }),
+            })
           ),
         },
       })
@@ -257,7 +261,7 @@ export const POST = async (request: Request) => {
               workflow: 'marketer_daily_fallback',
               runDate: runDate.toISOString(),
               fallbackTitles,
-            }),
+            })
           ),
         },
       })
@@ -329,7 +333,7 @@ async function persistIgAction({
     context === 'completed'
       ? new Date(
           (deal.acquiredAt ?? deal.stageEnteredAt).getTime() +
-            30 * 24 * 60 * 60 * 1000,
+            30 * 24 * 60 * 60 * 1000
         ).toISOString()
       : undefined;
 
@@ -360,7 +364,7 @@ async function persistIgAction({
             anonymisationCheck: draft.anonymisationCheck,
             complianceFlags: draft.complianceFlags ?? [],
             ...(publishNotBefore ? { publishNotBefore } : {}),
-          }),
+          })
         ),
       },
     });

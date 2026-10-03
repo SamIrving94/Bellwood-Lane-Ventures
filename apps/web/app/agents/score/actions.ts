@@ -3,7 +3,7 @@
 import { LIMITS, checkRateLimit } from '@/lib/rate-limit';
 import { generateInstantOffer } from '@repo/instant-offer';
 import { runPreflightChecks } from '@repo/property-data/src/propertydata';
-import type { PropertyType } from '@repo/valuation';
+import { type PropertyType, isInsufficientEvidence } from '@repo/valuation';
 import { headers } from 'next/headers';
 
 function coercePropertyType(raw: string): PropertyType {
@@ -145,6 +145,17 @@ export async function calculateBellwoodScore(input: {
       marketBand: preflight?.marketTemperature.band ?? null,
     };
   } catch (err) {
+    // The AVM declines to value a property with no sold evidence anywhere
+    // (see @repo/valuation evidence.ts). Say so plainly — the engine's own
+    // message names internal sources and belongs in our logs, not on screen.
+    if (isInsufficientEvidence(err)) {
+      console.warn('[agents/score] no valuation', postcode, err.message);
+      return {
+        ok: false,
+        error:
+          'Not enough recent sold evidence near this property to score it yet. Send it through and a person will look at it.',
+      };
+    }
     return {
       ok: false,
       error: (err as Error)?.message ?? 'Score calculation failed',

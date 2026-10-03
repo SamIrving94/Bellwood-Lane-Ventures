@@ -1,4 +1,5 @@
 import { env } from '@/env';
+import { KEPT_SIGN_OFF, KEPT_VOICE_RULES } from '@repo/ai/brand-voice';
 import { callClaudeForJson, CLAUDE_HAIKU } from '@repo/ai/claude';
 import { database } from '@repo/database';
 import { NextResponse } from 'next/server';
@@ -29,16 +30,18 @@ const MAX_SOLICITORS_PER_RUN = 15;
 // ─── Outreach draft prompt (lifted from cron/agent-prospecting) ─────────
 const OUTREACH_SYSTEM_PROMPT = `You write peer-to-peer outreach for Kept, a UK property-buying firm specialising in fall-through deals, probate, and distressed sales.
 
-You are writing to senior solicitors at independent firms — busy professionals who get cold outreach daily. Most go straight to bin. Yours must NOT.
+You are writing to senior solicitors at independent firms: busy professionals who get cold outreach daily. Most go straight to bin. Yours must not.
 
-Voice: peer-to-peer, professional, slightly dry, specific. Closer to a working surveyor than a sales rep. Short sentences. No marketing fluff. No countdown urgency. No "synergy" or "revolutionise". UK spelling.
+${KEPT_VOICE_RULES}
+
+Peer-to-peer register: a working surveyor writing to a solicitor, not a sales rep. No "synergy" or "revolutionise". We are a quiet, peer offer, not a pitch.
 
 You will receive a structured profile of one firm. Produce a JSON object containing TWO drafts:
 
 {
   "email": {
     "subject": string,              // ≤ 7 words, specific, no clickbait
-    "bodyPlainText": string         // 3 short paragraphs, ≤ 110 words total. Sign off as "Sam — Kept, hello@bellwoodslane.co.uk".
+    "bodyPlainText": string         // 3 short paragraphs, ≤ 110 words total. Sign off exactly as "${KEPT_SIGN_OFF}".
   },
   "linkedInDm": {
     "openingHook": string,          // 1 sentence, ≤ 18 words, references something specific about the firm or their probate / divorce practice
@@ -48,11 +51,9 @@ You will receive a structured profile of one firm. Produce a JSON object contain
 }
 
 Iron rules:
-- Lead with what's in it for THEM: a fast, cash-buyer route for executor sales where the beneficiaries want closure within 8 weeks. Frees up admin time.
-- NAME the firm + their probate / divorce practice so it doesn't read as a template.
-- NEVER promise "we will buy any house" — we are selective; that's the brand.
-- NEVER use "AI", "machine learning", "algorithm" — peer language only.
-- NEVER use urgency / countdown language. We are a quiet, peer offer — not a sales pitch.
+- Lead with what's in it for THEM: a discreet, certain route for estate and separation sales where the client wants closure over open marketing. We view, confirm a written offer within two working days of viewing, hold it for a week, and complete in weeks not months. Frees up their admin time. No other timing.
+- NAME the firm + their probate / divorce practice so it doesn't read as a template. Never infer or mention circumstances of any identifiable client.
+- Never a figure, a discount band or a percentage of market value.
 - The LinkedIn DM is SHORTER than the email. Different opening from the email subject.
 - Output ONLY the JSON object, no markdown fences, no prose.`;
 
@@ -66,23 +67,15 @@ interface OutreachDraft {
 
 const PAID_AD_SYSTEM_PROMPT = `You write Google / Meta paid search and social ad variants for Kept, a UK direct-to-vendor property buyer.
 
-Voice (marketing plan §2):
-- Numbers and specifics over adjectives. Plain English. UK spelling.
-- Professional, slightly dry. Closer to a chartered surveyor than a property influencer.
+${KEPT_VOICE_RULES}
 
-You will be given a single vendor segment (e.g. "probate", "chain_break"). Produce 3 headline variants + 3 body copy variants.
+You will be given a single seller segment (e.g. "probate", "chain_break"). Produce 3 headline variants + 3 body copy variants.
 
-NEVER use:
-- "AI", "machine learning", "algorithm", "powered by"
-- "We buy any house" — Kept is selective; that's the brand
-- "Get cash today!", countdown timers, urgency language
-- Stock-photo platitudes about families/happiness
-- "World-class", "best-in-class", "industry-leading", "revolutionary"
-
-ALWAYS:
-- Lead with the reader's situation, not Kept
-- One concrete promise per variant (24h cash backup, 8 week completion, no agent fee, etc.)
-- ASA/CAP code compliant — every numeric claim must be substantiable
+FORMAT.
+- Lead with the reader's situation, not Kept.
+- One commitment per variant, drawn only from the promise: we view every property; a written offer within two working days of viewing; held for a week; completion in as little as two weeks; no fees to you; the price we confirm is the price we complete at.
+- Probate variants carry no numbers at all, not even the timings above. Closure, not a deadline.
+- ASA/CAP code compliant: every claim must be substantiable from the live site.
 
 Return ONLY JSON (no markdown fences, no preamble):
 
@@ -162,9 +155,9 @@ async function draftSolicitorOutreach(): Promise<{
   const fallbackNames: string[] = [];
 
   for (const firm of solicitors) {
-    const focus = firm.tags
-      .filter((t) => t === 'probate' || t === 'divorce')
-      .join(' + ') || 'probate';
+    const focus =
+      firm.tags.filter((t) => t === 'probate' || t === 'divorce').join(' + ') ||
+      'probate';
 
     const userPrompt = [
       `Firm: ${firm.name}`,
@@ -234,13 +227,16 @@ async function draftSolicitorOutreach(): Promise<{
               linkedInDm: draft.linkedInDm,
               personalisedHook: draft.personalisedHook,
               link: '/outreach',
-            }),
+            })
           ),
         },
       });
       drafted++;
     } catch (err) {
-      console.warn(`[marketer-monthly] action create failed for ${firm.name}`, err);
+      console.warn(
+        `[marketer-monthly] action create failed for ${firm.name}`,
+        err
+      );
       fallbackNames.push(firm.name);
     }
   }
@@ -263,7 +259,7 @@ async function draftSolicitorOutreach(): Promise<{
             JSON.stringify({
               workflow: 'marketer_monthly_solicitor_fallback',
               firms: fallbackNames,
-            }),
+            })
           ),
         },
       })
@@ -314,7 +310,11 @@ async function draftPaidAdCopy(): Promise<{
       return null;
     });
 
-    if (!copy || !Array.isArray(copy.headlines) || !Array.isArray(copy.bodies)) {
+    if (
+      !copy ||
+      !Array.isArray(copy.headlines) ||
+      !Array.isArray(copy.bodies)
+    ) {
       fallbackSegments.push(segment);
       continue;
     }
@@ -331,10 +331,14 @@ async function draftPaidAdCopy(): Promise<{
             `**Segment:** ${segment}`,
             '',
             `**Headlines:**`,
-            ...copy.headlines.map((h, i) => `${i + 1}. ${h.text} _(angle: ${h.angle})_`),
+            ...copy.headlines.map(
+              (h, i) => `${i + 1}. ${h.text} _(angle: ${h.angle})_`
+            ),
             '',
             `**Bodies:**`,
-            ...copy.bodies.map((b, i) => `${i + 1}. ${b.text} _(angle: ${b.angle})_`),
+            ...copy.bodies.map(
+              (b, i) => `${i + 1}. ${b.text} _(angle: ${b.angle})_`
+            ),
             copy.complianceNotes?.length
               ? `\n**Compliance notes:** ${copy.complianceNotes.join('; ')}`
               : '',
@@ -347,13 +351,16 @@ async function draftPaidAdCopy(): Promise<{
               headlines: copy.headlines,
               bodies: copy.bodies,
               complianceNotes: copy.complianceNotes ?? [],
-            }),
+            })
           ),
         },
       });
       drafted++;
     } catch (err) {
-      console.warn(`[marketer-monthly] paid-ad action create failed for ${segment}`, err);
+      console.warn(
+        `[marketer-monthly] paid-ad action create failed for ${segment}`,
+        err
+      );
       fallbackSegments.push(segment);
     }
   }
@@ -376,7 +383,7 @@ async function draftPaidAdCopy(): Promise<{
             JSON.stringify({
               workflow: 'marketer_monthly_paid_ad_fallback',
               segments: fallbackSegments,
-            }),
+            })
           ),
         },
       })

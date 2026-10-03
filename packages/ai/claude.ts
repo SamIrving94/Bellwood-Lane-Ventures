@@ -32,9 +32,12 @@
  *   2. Anthropic prompt caching. Long static system prompts (the SEO blog
  *      draft, the offer narrative, the comp rationale, the outreach
  *      drafts) pass `cacheSystemPrompt: true`. When `system.length > 1024`
- *      we mark it with `cacheControl: { type: 'ephemeral' }` so repeat
- *      calls inside Anthropic's ~5-minute cache window pay ~90% less on
- *      the system token portion.
+ *      the system message carries a message-level
+ *      `providerOptions.anthropic.cacheControl` breakpoint (see
+ *      ./prompt-shape for why it must be message-level: the text-part
+ *      form is rejected by the SDK and silenced the marketer for three
+ *      weeks in Sep 2026) so repeat calls inside Anthropic's ~5-minute
+ *      cache window pay ~90% less on the system token portion.
  *
  * Iron rules:
  *   - Graceful: missing key / failed provider / parse failure → null. NEVER throw.
@@ -46,7 +49,7 @@ import 'server-only';
 
 import { createAnthropic } from '@ai-sdk/anthropic';
 import { createOpenRouter } from '@openrouter/ai-sdk-provider';
-import { type CoreMessage, generateObject, generateText } from 'ai';
+import { generateObject, generateText } from 'ai';
 import type { z } from 'zod';
 import { callWithFallback, isRecoverableProviderError } from './fallback';
 import { keys } from './keys';
@@ -56,7 +59,9 @@ import {
   openRouterProviderPrefs,
   planProviders,
   resolveRoute,
+  prefsForModel,
 } from './routing';
+import { buildPromptShape } from './prompt-shape';
 
 export {
   DEFAULT_FALLBACK_CHAINS,
@@ -172,18 +177,24 @@ type AiModelInstance = Parameters<typeof generateText>[0]['model'];
 /** Live AI SDK model instance for one step of a provider plan. */
 function instantiate(
   s: ProviderPlanStep,
-  providerPrefs: Record<string, unknown> | undefined
+  providerPrefs: Record<string, unknown> | undefined,
+  plugins?: Record<string, unknown>[]
 ): AiModelInstance {
   if (s.kind === 'anthropic') {
     return createAnthropic({ apiKey: env.ANTHROPIC_API_KEY! })(s.model);
   }
   const openrouter = createOpenRouter({ apiKey: env.OPENROUTER_API_KEY! });
   // extraBody.provider is OpenRouter's provider-routing block; the
-  // ai-sdk provider forwards it verbatim. Cast: the settings type lags
-  // the wire format.
+  // ai-sdk provider forwards it verbatim. Host pins are resolved per model:
+  // a Claude id under a third-party-host pin is unservable (see
+  // prefsForModel). Cast: the settings type lags the wire format.
+  const prefs = prefsForModel(providerPrefs, s.model);
+  const extraBody: Record<string, unknown> = {};
+  if (prefs) extraBody.provider = prefs;
+  if (plugins?.length) extraBody.plugins = plugins;
   return openrouter(
     s.model,
-    (providerPrefs ? { extraBody: { provider: providerPrefs } } : {}) as Record<
+    (Object.keys(extraBody).length > 0 ? { extraBody } : {}) as Record<
       string,
       never
     >
@@ -198,13 +209,14 @@ function instantiate(
 function buildProviderAttempts<T>(
   model: string,
   providerPrefs: Record<string, unknown> | undefined,
-  runModel: (modelInstance: AiModelInstance) => Promise<T>
+  runModel: (modelInstance: AiModelInstance) => Promise<T>,
+  plugins?: Record<string, unknown>[]
 ): { primary: ProviderAttempt<T>; fallbacks: ProviderAttempt<T>[] } | null {
   const plan = planProviders(model, env);
   if (!plan) return null;
   const toAttempt = (s: ProviderPlanStep): ProviderAttempt<T> => ({
     provider: s.label,
-    call: () => runModel(instantiate(s, providerPrefs)),
+    call: () => runModel(instantiate(s, providerPrefs, plugins)),
   });
   return {
     primary: toAttempt(plan.primary),
@@ -251,6 +263,13 @@ export interface CallClaudeInput {
    */
   images?: { data: string; mediaType: string }[];
   /**
+   * Ask OpenRouter to run its web plugin: live search results are injected
+   * ahead of the model's turn and it answers with citations. Replaces
+   * Anthropic's server-side web_search tool, which went with Anthropic
+   * direct (retired 3 Oct 2026). `maxResults` defaults to 5.
+   */
+  webSearch?: { maxResults?: number };
+  /**
    * INTERNAL — set on shadow-eval calls so they bypass routing (no
    * recursion) and never trigger their own shadow. Do not set manually.
    */
@@ -267,64 +286,6 @@ function shouldCache(input: CallClaudeInput): boolean {
   if (!input.cacheSystemPrompt) return false;
   if (!input.system) return false;
   return input.system.length > 1024;
-}
-
-/**
- * Build the messages array. When caching is on, we promote the system
- * prompt to a CoreMessage with providerOptions so the Anthropic provider
- * emits the wire-level `cache_control` block. Images force the messages
- * shape too (the user turn becomes image parts + text). Otherwise we
- * return the simpler top-level `system: string, prompt: string` API of
- * generateText.
- */
-function buildPromptShape(
-  input: CallClaudeInput,
-  enableCache: boolean
-):
-  | { mode: 'simple'; system: string; prompt: string }
-  | { mode: 'messages'; messages: CoreMessage[] } {
-  const images = input.images ?? [];
-  if (!enableCache && images.length === 0) {
-    return { mode: 'simple', system: input.system, prompt: input.user };
-  }
-  // AI SDK v4.1: CoreSystemMessage.content is typed as string only, but
-  // the Anthropic provider DOES accept text-part arrays with
-  // providerOptions.anthropic.cacheControl at runtime — this is how
-  // wire-level `cache_control` blocks are emitted. The typing is behind
-  // the runtime here; cast through unknown to bridge the gap.
-  const systemMsg = enableCache
-    ? {
-        role: 'system' as const,
-        content: [
-          {
-            type: 'text' as const,
-            text: input.system,
-            providerOptions: {
-              anthropic: { cacheControl: { type: 'ephemeral' as const } },
-            },
-          },
-        ],
-      }
-    : { role: 'system' as const, content: input.system };
-  const userMsg: CoreMessage =
-    images.length > 0
-      ? {
-          role: 'user',
-          content: [
-            ...images.map((img) => ({
-              type: 'image' as const,
-              image: img.data,
-              mimeType: img.mediaType,
-            })),
-            { type: 'text' as const, text: input.user },
-          ],
-        }
-      : { role: 'user', content: input.user };
-  const messages: CoreMessage[] = [
-    systemMsg as unknown as CoreMessage,
-    userMsg,
-  ];
-  return { mode: 'messages', messages };
 }
 
 export interface CallClaudeResult {
@@ -418,8 +379,17 @@ export async function callClaudeWithMeta(
   // OpenRouter provider-routing prefs (host pinning / ZDR / no-training)
   // come from the route, and are threaded to shadow calls explicitly.
   const providerPrefs = input.providerPrefs ?? openRouterProviderPrefs(route);
+  // OpenRouter web plugin, when asked for. Ignored by the Anthropic step.
+  const plugins = input.webSearch
+    ? [{ id: 'web', max_results: input.webSearch.maxResults ?? 5 }]
+    : undefined;
 
-  const attempts = buildProviderAttempts(model, providerPrefs, runModel);
+  const attempts = buildProviderAttempts(
+    model,
+    providerPrefs,
+    runModel,
+    plugins
+  );
   if (!attempts) {
     // Defensive — the key check above should already have caught this.
     return noKey;

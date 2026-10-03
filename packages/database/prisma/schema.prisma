@@ -1327,3 +1327,54 @@ model RateLimitCounter {
   @@unique([bucket, subject, windowStart])
   @@index([expiresAt])
 }
+
+// ─── Guides (evergreen SEO content) ─────────────────────────────────────
+//
+// One row per drafted guide. The weekly guide-research cron drafts one
+// against an evergreen question; the founder approves and publishes from the
+// dashboard; apps/web renders `published` rows at /guides/<slug>. The linked
+// FounderAction is the review card; this row is the content.
+
+enum GuideStatus {
+  draft
+  approved
+  published
+  archived
+}
+
+model GuidePost {
+  id              String      @id @default(cuid())
+  slug            String      @unique
+  /**
+   * Key from the evergreen question list (apps/api cron/_lib/guides).
+   */
+  questionKey     String
+  segment         String
+  title           String
+  h1              String
+  metaDescription String
+  bodyMarkdown    String      @db.Text
+  ctaLine         String
+  ctaHref         String
+  primaryKeyword  String?
+  /**
+   * This week's opening hook, drawn from the research signals.
+   */
+  hook            String?     @db.Text
+  /**
+   * [{ title, url, source, publishedAt }] — only sources the model was shown.
+   */
+  sources         Json?
+  internalLinks   Json?
+  compliance      Json?
+  status          GuideStatus @default(draft)
+  founderActionId String?     @unique
+  approvedAt      DateTime?
+  publishedAt     DateTime?
+  publishedBy     String?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  @@index([status, publishedAt])
+  @@index([questionKey, createdAt])
+}

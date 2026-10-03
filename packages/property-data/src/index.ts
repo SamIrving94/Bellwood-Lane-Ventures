@@ -37,6 +37,7 @@ import { resolveAddress, OsPlaceSchema } from './os-places';
 
 export * from './arbitrage';
 export * from './hmlr';
+export * from './hmlr-sector';
 export * from './hmlr-hpi';
 export * from './epc';
 export * from './companies-house';

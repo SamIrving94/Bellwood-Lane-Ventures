@@ -3,10 +3,11 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
-type TabId = 'queue' | 'calendar' | 'performance';
+type TabId = 'queue' | 'guides' | 'calendar' | 'performance';
 
 const TABS: Array<{ id: TabId; label: string; href: string }> = [
   { id: 'queue', label: 'Queue', href: '/marketing/queue' },
+  { id: 'guides', label: 'Guides', href: '/marketing/guides' },
   { id: 'calendar', label: 'Calendar', href: '/marketing/calendar' },
   { id: 'performance', label: 'Performance', href: '/marketing/performance' },
 ];

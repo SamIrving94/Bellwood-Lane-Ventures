@@ -328,6 +328,8 @@ const LeadDetailPage = async ({
     yields: { averageYieldPct: number | null } | null;
     pricesPerSqf: { averagePerSqft: number | null } | null;
     demandScore: number | null;
+    /** PropertyData's text rating, e.g. "Balanced market" (Sep 2026+). */
+    demandRating?: string | null;
     daysOnMarketAvg: number | null;
     growth: {
       annualGrowthPct: number | null;
@@ -339,7 +341,15 @@ const LeadDetailPage = async ({
       band: string | null;
       bandsByLetter: Record<string, number>;
     } | null;
-    flood: { riversAndSea: string | null; surfaceWater: string | null } | null;
+    /**
+     * Snapshots from Sep 2026 carry `floodRisk`; older ones carry the two
+     * fields the API never actually sent (always null).
+     */
+    flood: {
+      floodRisk?: string | null;
+      riversAndSea?: string | null;
+      surfaceWater?: string | null;
+    } | null;
     epc: { rating: string | null; matchedAddress: string | null } | null;
     tenure: {
       tenure: 'freehold' | 'leasehold' | 'unknown';
@@ -446,6 +456,15 @@ const LeadDetailPage = async ({
     refurbAssumedFloorArea?: boolean | null;
     /** Likely 5+ bed HMO/multi-let — the house AVM under-values it. */
     hmoLikely?: boolean | null;
+    /** Which comp source produced the number (runAVM's source label). */
+    avmSources?: string | null;
+    /**
+     * Set when the AVM declined to value: no sold evidence from any source.
+     * pointEstimatePence is null in that state — there is no number.
+     */
+    noValuationReason?: 'no_sales' | 'sources_unavailable' | null;
+    noValuationDetail?: string | null;
+    noValuationTried?: string[] | null;
     fetchedAt: string;
     /** Photo-inferred condition (deal-model level) + the vision read. */
     inferredCondition?: string | null;
@@ -474,9 +493,28 @@ const LeadDetailPage = async ({
   let verdictLabel = 'Review';
   let verdictReason = '';
   let verdictTone = 'border-slate-200 bg-slate-50 text-slate-700';
+  // Evidence behind the number. 'placeholder' = a valuation with no sold
+  // comps at all (pre-Sep-2026 rows that priced off an area average, or a
+  // synthetic Land Registry feed) — not a valuation, and never a verdict.
+  // 'sector' = real sales, but postcode-sector wide with no distance.
+  const avmSources = avmFull?.avmSources ?? '';
+  const avmEvidence: 'placeholder' | 'sector' | null =
+    avmFull?.pointEstimatePence
+      ? (avmFull.comparableCount ?? 0) === 0 || /synthetic/.test(avmSources)
+        ? 'placeholder'
+        : /^hmlr_ppd_sector/.test(avmSources)
+          ? 'sector'
+          : null
+      : null;
   if (avmFull?.pointEstimatePence) {
     const lowConf = avmFull.confidenceLevel !== 'high';
-    if (askingVsAvm === null) {
+    const compsNote = `${avmFull.comparableCount ?? 0} sold comps`;
+    if (avmEvidence === 'placeholder') {
+      verdictLabel = 'Not a valuation';
+      verdictReason =
+        'This number has no sold comps behind it. Ignore the asking-vs-market read and re-appraise — the AVM now refuses to price without evidence.';
+      verdictTone = 'border-rose-300 bg-rose-50 text-rose-900';
+    } else if (askingVsAvm === null) {
       verdictReason = 'No asking price to compare against market value.';
     } else if (askingVsAvm >= 15) {
       verdictLabel = lowConf ? 'Promising — verify' : 'Strong opportunity';
@@ -493,9 +531,15 @@ const LeadDetailPage = async ({
     } else if (askingVsAvm >= 0) {
       verdictLabel = 'Thin';
       verdictReason = `Asking is only ${askingVsAvm}% below market — little headroom unless the seller will move on price.`;
+    } else if (lowConf) {
+      // Same discipline as the below-market branch: a thin AVM can be the
+      // thing that is wrong, so it must not rule a lead out on its own.
+      verdictLabel = 'Above modelled value — verify';
+      verdictReason = `Asking is ${Math.abs(askingVsAvm)}% above modelled market value, but AVM confidence is ${avmFull.confidenceLevel} on ${compsNote} — check the comps before ruling it out.`;
+      verdictTone = 'border-amber-200 bg-amber-50 text-amber-900';
     } else {
       verdictLabel = 'Above market';
-      verdictReason = `Asking is ${Math.abs(askingVsAvm)}% above modelled market value — unlikely to work without a large reduction.`;
+      verdictReason = `Asking is ${Math.abs(askingVsAvm)}% above modelled market value on ${compsNote} — unlikely to work without a large reduction.`;
       verdictTone = 'border-rose-200 bg-rose-50 text-rose-900';
     }
     // HMO / large-property override — the house AVM under-values 5+ bed
@@ -608,7 +652,10 @@ const LeadDetailPage = async ({
                   <span className="text-muted-foreground">Floor area: </span>
                   {avmFull?.floorAreaSource && avmFull.floorAreaSqm ? (
                     <span className="font-medium">
-                      {Math.round(avmFull.floorAreaSqm * 10.7639).toLocaleString('en-GB')} sqft
+                      {Math.round(
+                        avmFull.floorAreaSqm * 10.7639
+                      ).toLocaleString('en-GB')}{' '}
+                      sqft
                       <span className="ml-1 text-[11px] text-muted-foreground">
                         ({Math.round(avmFull.floorAreaSqm)} m² · EPC
                         {avmFull.floorAreaSource === 'caller'
@@ -626,7 +673,10 @@ const LeadDetailPage = async ({
                     </span>
                   ) : typeof propertyEpcFloorAreaSqm === 'number' ? (
                     <span className="font-medium">
-                      {Math.round(propertyEpcFloorAreaSqm * 10.7639).toLocaleString('en-GB')} sqft
+                      {Math.round(
+                        propertyEpcFloorAreaSqm * 10.7639
+                      ).toLocaleString('en-GB')}{' '}
+                      sqft
                       <span className="ml-1 text-[11px] text-muted-foreground">
                         ({Math.round(propertyEpcFloorAreaSqm)} m² · EPC, address
                         search — not verified to the house number)
@@ -717,6 +767,64 @@ const LeadDetailPage = async ({
           </div>
         </div>
 
+        {/* ── NO VALUATION — the AVM declined: no sold evidence anywhere ──
+            There is no number in this state, and deliberately no offer.
+            Before Sep 2026 this case silently priced off an area average
+            (a hash-generated one when the HMLR feed was down) — see
+            @repo/valuation evidence.ts. */}
+        {avmFull && !avmFull.pointEstimatePence && avmFull.noValuationReason ? (
+          <section className="rounded-2xl border-2 border-rose-200 bg-rose-50/60 p-5">
+            <div className="flex items-center justify-between gap-3">
+              <p className="font-mono text-[10px] text-muted-foreground uppercase tracking-[0.22em]">
+                Deal decision
+              </p>
+              <EnrichLeadButton leadId={lead.id} label="↻ Re-appraise" />
+            </div>
+            <p className="mt-3 font-semibold text-lg text-rose-900 leading-tight">
+              No valuation — no sold evidence found.
+            </p>
+            <p className="mt-2 text-slate-700 text-sm leading-relaxed">
+              {avmFull.noValuationReason === 'sources_unavailable'
+                ? 'The Land Registry feeds were unreachable when this ran, so nothing could be checked. Re-appraise later.'
+                : 'No same-type sale turned up within half a mile, in this postcode, or across the postcode sector. Without a sale there is no number — and no offer. Check the address and property type, then re-appraise; or value it by hand from the portals below.'}
+            </p>
+            {avmFull.noValuationTried &&
+              avmFull.noValuationTried.length > 0 && (
+                <ul className="mt-3 space-y-0.5 font-mono text-[11px] text-muted-foreground">
+                  {avmFull.noValuationTried.map((t) => (
+                    <li key={t}>· {t}</li>
+                  ))}
+                </ul>
+              )}
+            <div className="mt-4 flex flex-wrap items-baseline gap-x-8 gap-y-2">
+              <div>
+                <p className="text-[11px] text-muted-foreground">Asking</p>
+                <p className="font-bold font-mono text-2xl tabular-nums leading-none">
+                  {askingPrice ? formatGBP(askingPrice) : '—'}
+                </p>
+              </div>
+              <div>
+                <p className="text-[11px] text-muted-foreground">
+                  Market value (AVM)
+                </p>
+                <p className="font-bold font-mono text-2xl text-rose-700 leading-none">
+                  none
+                </p>
+              </div>
+              <div>
+                <p className="text-[11px] text-muted-foreground">Our offer</p>
+                <p className="font-bold font-mono text-2xl text-rose-700 leading-none">
+                  blocked
+                </p>
+              </div>
+              <p className="text-[11px] text-muted-foreground">
+                Last tried{' '}
+                {new Date(avmFull.fetchedAt).toLocaleDateString('en-GB')}
+              </p>
+            </div>
+          </section>
+        ) : null}
+
         {/* ── DEAL DECISION — strong in-house AVM, the buy-vs-share call ── */}
         {avmFull?.pointEstimatePence ? (
           <section className="rounded-2xl border-2 border-slate-900/10 bg-white p-5">
@@ -731,6 +839,39 @@ const LeadDetailPage = async ({
                 )}
               </div>
             </div>
+
+            {/* No sold evidence behind this number — say so before the
+                number, not after. These are pre-evidence-gate rows (or a
+                synthetic feed); a Re-appraise now returns "no valuation"
+                instead of a placeholder, or a real sector-level number. */}
+            {avmEvidence === 'placeholder' && (
+              <div className="mt-3 rounded-lg border-2 border-rose-300 bg-rose-50 p-3 text-rose-900 text-sm">
+                <p className="font-semibold">
+                  ⚠ Not a valuation — 0 sold comps behind this number.
+                </p>
+                <p className="mt-1">
+                  It was priced off an area average
+                  {/synthetic/.test(avmSources)
+                    ? ' from a placeholder Land Registry feed'
+                    : ''}
+                  , not a sale. The offer and the asking-vs-market read below
+                  are built on it. Re-appraise: the AVM now declines to value
+                  without evidence, or finds real sector sales.
+                </p>
+              </div>
+            )}
+            {avmEvidence === 'sector' && (
+              <div className="mt-3 rounded-lg border border-amber-300 bg-amber-50 p-3 text-amber-900 text-sm">
+                <p className="font-semibold">
+                  ⚠ Sector-level evidence — nothing sold within half a mile.
+                </p>
+                <p className="mt-1">
+                  These comps are same-type Land Registry sales across the whole
+                  postcode sector, with no distance. Real, but wide: treat the
+                  number as a bracket and check the comps by hand.
+                </p>
+              </div>
+            )}
 
             <div className="mt-3 grid gap-4 sm:grid-cols-5">
               <div>
@@ -772,10 +913,24 @@ const LeadDetailPage = async ({
                   {avmFull.confidenceLevel ?? '—'}
                 </p>
                 {avmFull.comparableCount !== null && (
-                  <p className="mt-1 text-[11px] text-muted-foreground">
+                  <p
+                    className={`mt-1 text-[11px] ${
+                      avmFull.comparableCount === 0
+                        ? 'font-semibold text-rose-700'
+                        : 'text-muted-foreground'
+                    }`}
+                  >
                     {avmFull.comparableCount} sold comps
                   </p>
                 )}
+                {/* The engine's own source label — which feed produced the
+                    number, and how many comps at what radius. */}
+                <p
+                  className="mt-0.5 break-all font-mono text-[10px] text-muted-foreground"
+                  title="AVM source trail: comp feed (count@radius) + the signals that joined the blend"
+                >
+                  via {avmFull.avmSources ?? 'unrecorded (pre-Sep-2026 run)'}
+                </p>
               </div>
               {/* Size economics — the EPC-verified size priced against the
                   area's £/sqft. When the size anchor fed the AVM, say so. */}
@@ -796,7 +951,7 @@ const LeadDetailPage = async ({
                     </p>
                   </>
                 ) : (
-                  <p className="font-semibold text-lg leading-none text-muted-foreground">
+                  <p className="font-semibold text-lg text-muted-foreground leading-none">
                     —
                   </p>
                 )}
@@ -1209,9 +1364,21 @@ const LeadDetailPage = async ({
                     {rationale}
                   </p>
                 )}
-                {(summary || planningProposal) && (
+                {/* The listing's own description — the agent's words, not
+                    ours. Labelled so it is never read as our assessment. */}
+                {summary && (
+                  <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-3">
+                    <p className="font-mono text-[10px] text-muted-foreground uppercase tracking-[0.18em]">
+                      From the agent's listing
+                    </p>
+                    <p className="mt-1.5 text-slate-600 text-sm leading-relaxed">
+                      {summary}
+                    </p>
+                  </div>
+                )}
+                {!summary && planningProposal && (
                   <p className="mt-2 text-slate-600 text-sm leading-relaxed">
-                    {summary ?? planningProposal}
+                    {planningProposal}
                   </p>
                 )}
                 {primeOpportunity && (
@@ -1420,13 +1587,10 @@ const LeadDetailPage = async ({
                 <div>
                   <p className="text-[11px] text-muted-foreground">Flood</p>
                   <p className="font-medium text-sm capitalize">
-                    {snapshot.flood?.riversAndSea ?? '—'}
+                    {snapshot.flood?.floodRisk ??
+                      snapshot.flood?.riversAndSea ??
+                      '—'}
                   </p>
-                  {snapshot.flood?.surfaceWater && (
-                    <p className="mt-0.5 text-[11px] text-muted-foreground capitalize">
-                      surface: {snapshot.flood.surfaceWater}
-                    </p>
-                  )}
                 </div>
               </div>
             </div>
@@ -1451,10 +1615,11 @@ const LeadDetailPage = async ({
                   <p className="text-[11px] text-muted-foreground">
                     Sales demand
                   </p>
-                  <p className="font-mono font-semibold text-xl tabular-nums">
-                    {typeof snapshot.demandScore === 'number'
-                      ? `${snapshot.demandScore}/100`
-                      : '—'}
+                  <p className="font-semibold text-base">
+                    {snapshot.demandRating ??
+                      (typeof snapshot.demandScore === 'number'
+                        ? `${snapshot.demandScore}/100`
+                        : '—')}
                   </p>
                   {typeof snapshot.daysOnMarketAvg === 'number' && (
                     <p className="text-[11px] text-muted-foreground">
@@ -2119,7 +2284,9 @@ function SqftEvidencePanel({
         <div>
           <p className="text-[11px] text-muted-foreground">Nearby sold</p>
           <p className="font-mono font-semibold text-lg tabular-nums">
-            {evidence.poundsPerSqft ? `${fmt(evidence.poundsPerSqft)}/sqft` : '—'}
+            {evidence.poundsPerSqft
+              ? `${fmt(evidence.poundsPerSqft)}/sqft`
+              : '—'}
           </p>
           <p className="text-[11px] text-muted-foreground">
             {evidence.matchedCount > 0
