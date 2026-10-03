@@ -1,5 +1,6 @@
 'use server';
 
+import { getCronSecret } from '@/lib/cron-secret';
 import { getFounderSession } from '@repo/auth/server';
 import { database } from '@repo/database';
 import { getSourcedPropertiesRaw } from '@repo/property-data/src/propertydata';
@@ -227,7 +228,7 @@ export async function triggerScoutingCron(): Promise<{
   const userId = (await getFounderSession())?.userId;
   if (!userId) return { success: false, error: 'Unauthorized' };
 
-  const cronSecret = process.env.CRON_SECRET;
+  const cronSecret = getCronSecret();
   if (!cronSecret)
     return { success: false, error: 'CRON_SECRET not configured' };
 

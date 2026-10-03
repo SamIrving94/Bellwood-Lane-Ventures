@@ -44,6 +44,7 @@ they are always held for founder review.
 | `apps/email` | `email` | 3003 | React Email preview/dev |
 | `apps/docs` | `docs` | 3004 | Mintlify documentation site |
 | `apps/studio` | `studio` | 3005 | Prisma Studio (DB browser) |
+| `apps/plugin` | `plugin` | 3006 | **ChatGPT plugins** (MCP): public `/mcp` + agent/investor `/pro/mcp` with OAuth. MCP SDK v2 + zod 4, isolated. See `docs/mcp/` |
 | `apps/storybook` | `storybook` | 6006 | Design-system component explorer |
 
 `apps/app` route groups: `app/(authenticated)/*` (dashboard pages),
@@ -65,7 +66,8 @@ Business-logic packages (the custom part of this codebase):
 | `@repo/calendly` | Booking-link generator + webhook verification |
 | `@repo/whatsapp-parser` | Parse inbound WhatsApp intake messages |
 | `@repo/instant-offer`, `@repo/quote-ops`, `@repo/deal-updates`, `@repo/document-pipeline`, `@repo/knowledge-base`, `@repo/notifications` | Deal/offer/document/notification workflows |
-| `@repo/mcp-server` | MCP server exposing repo capabilities (see `.mcp.json`) |
+| `@repo/kept-tools` | Logic behind the ChatGPT plugin tools (sale routes, inherited-home plan, renovation bands, CGT, property facts). Pure; every stated fact sourced in `src/sources.ts` |
+| `@repo/mcp-server` | MCP server exposing repo capabilities (see `.mcp.json`). Broken (crashes on start) and exposes lead PII; superseded by `apps/plugin` (docs/mcp/01-audit.md) |
 
 Platform/infra packages (mostly inherited from next-forge):
 `@repo/auth`, `@repo/analytics`, `@repo/design-system`, `@repo/observability`,
@@ -164,6 +166,15 @@ Run a task for one workspace with a filter, e.g.
 - **Safety rails (do not break these):** vendor emails are always held for
   founder review (`OutreachHold`); CEO escalation fires for offers <60% of AVM;
   SLA breaches are deduplicated so they don't spawn duplicate `FounderAction`s.
+- **The AVM never values without a sale.** `runAVM` tries PropertyData
+  radius comps → Land Registry postcode → Land Registry postcode **sector**
+  (free SPARQL, low confidence) and, if all three are empty, throws
+  `InsufficientEvidenceError` (`@repo/valuation`) — never a number off an
+  area average. Every call site catches it with `isInsufficientEvidence`
+  and records a **no-valuation** state (`avmFull.pointEstimatePence: null`
+  + `noValuationReason`). The SW16 incident (Sep 2026): the HMLR feed was
+  down, `avgPrice` was a hash-generated placeholder, and a £750k semi
+  appraised at £345k with "0 sold comps" and an offer built on it.
 - **Every `runAVM` call site must freeze its result with `saveAvmSnapshot`**
   (`@repo/valuation`). The monthly `avm-backtest` cron judges those frozen
   rows against later Land Registry sales; an appraisal that is not frozen

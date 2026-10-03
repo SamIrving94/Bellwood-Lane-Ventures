@@ -11,8 +11,8 @@ import 'server-only';
 import * as React from 'react';
 
 import { database } from '@repo/database';
+import { SIGNED_OFFER_NOTIFIER, recordDealUpdate } from '@repo/deal-updates';
 import { sendEmail } from '@repo/email';
-import { recordDealUpdate } from '@repo/deal-updates';
 import { SignedOfferEmail } from '@repo/email/templates/signed-offer';
 
 import type { SendSignedOfferInput, SendSignedOfferResult } from './types';
@@ -37,7 +37,7 @@ function firstName(name?: string | null): string | undefined {
  * `status === 'completed'` short-circuits.
  */
 export async function sendSignedOffer(
-  input: SendSignedOfferInput,
+  input: SendSignedOfferInput
 ): Promise<SendSignedOfferResult> {
   const action = await database.founderAction.findUnique({
     where: { id: input.founderActionId },
@@ -122,7 +122,7 @@ export async function sendSignedOffer(
       offerPence: newOfferPence,
       founderActionId: action.id,
     },
-    notifiedBy: `quote-ops:approve-and-send`,
+    notifiedBy: SIGNED_OFFER_NOTIFIER,
     // Don't double-notify the agent — sendEmail above already did it.
     skipNotify: true,
   }).catch((err: unknown) => {
@@ -142,7 +142,10 @@ export async function sendSignedOffer(
     sent: !emailSkipped,
     emailSkipped,
     reason:
-      emailSkipped && typeof emailResult === 'object' && emailResult !== null && 'reason' in emailResult
+      emailSkipped &&
+      typeof emailResult === 'object' &&
+      emailResult !== null &&
+      'reason' in emailResult
         ? String((emailResult as { reason?: unknown }).reason ?? 'unknown')
         : undefined,
     dealUpdateId: recorded?.id,

@@ -2,6 +2,7 @@
 // update in real time. This is the transparency moat made literal.
 
 import { database } from '@repo/database';
+import { SIGNED_OFFER_NOTIFIER } from '@repo/deal-updates';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
@@ -106,7 +107,12 @@ export default async function TrackPage({
         }
       : null;
 
-  const offer = trackToken.quoteRequest?.offer;
+  // Show the figure only once a person has approved and sent the offer.
+  // Before that the quote is an internal draft (founder no-figure rule).
+  const offerSentByPerson = updates.some(
+    (u) => u.kind === 'offer_sent' && u.notifiedBy === SIGNED_OFFER_NOTIFIER
+  );
+  const offer = offerSentByPerson ? trackToken.quoteRequest?.offer : null;
 
   return (
     <main className="min-h-screen bg-cream px-6 py-16 md:px-12 md:py-24">
@@ -136,9 +142,7 @@ export default async function TrackPage({
         {/* Headline offer card */}
         {offer && (
           <div className="mt-10 rounded-2xl border-2 border-leaf/40 bg-soft p-7">
-            <p className="font-serif text-[13px] text-stone-500">
-              Cash offer
-            </p>
+            <p className="font-serif text-[13px] text-stone-500">Cash offer</p>
             <p className="mt-2 font-semibold font-serif text-[48px] text-forest leading-none tracking-[-0.025em] md:text-[64px]">
               {formatGBP(offer.offerPence)}
             </p>
@@ -241,8 +245,8 @@ export default async function TrackPage({
         </section>
 
         <p className="mt-12 font-serif text-[13px] text-stone-400">
-          Kept · Property Redress Scheme (PRS) · HMRC AML
-          supervised · ICO registered
+          Kept · Property Redress Scheme (PRS) · HMRC AML supervised · ICO
+          registered
         </p>
       </div>
     </main>

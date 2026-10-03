@@ -16,7 +16,11 @@ import type { Epc, Hpi, PpdTransaction } from '@repo/property-data';
 // Common helpers
 // ───────────────────────────────────────────────────────────────────────────
 
-export function mkPpdTx(price: number, date: string, type = 'T'): PpdTransaction {
+export function mkPpdTx(
+  price: number,
+  date: string,
+  type = 'T'
+): PpdTransaction {
   return {
     price,
     date,
@@ -47,7 +51,7 @@ export function rising(annual: number): Hpi {
 export function mkEpc(
   rating: string | null,
   floorAreaSqm: number | null = 85,
-  ageBand: string | null = '1981-1990',
+  ageBand: string | null = '1981-1990'
 ): Epc {
   return {
     epcRating: rating,
@@ -110,11 +114,57 @@ export const SCENARIO_PROBATE_NO_COMPS = {
   pricePaid: {
     source: 'hmlr_ppd',
     avgPrice: 260_000,
-    transactions: [], // empty — triggers fallback in base-valuation
+    transactions: [], // empty — and the sector feed is empty too (test default)
   },
   hpi: rising(0.5), // near-stable
   epc: mkEpc(null, null, null), // no EPC data
   externalAvm: null,
+};
+
+// ───────────────────────────────────────────────────────────────────────────
+// Scenario 3b — same probate case, but the postcode SECTOR has three sales.
+// Locks the evidence-of-last-resort path: real rows, low confidence, no
+// synthetic input anywhere.
+// ───────────────────────────────────────────────────────────────────────────
+
+export const SCENARIO_PROBATE_SECTOR_COMPS = {
+  ...SCENARIO_PROBATE_NO_COMPS,
+  sector: {
+    sector: 'M14 5',
+    source: 'hmlr_ppd_sector',
+    transactions: [
+      {
+        price: 240_000,
+        date: monthsBack(2),
+        propertyType: 'terraced',
+        newBuild: false,
+        tenure: 'unknown',
+        provenance: 'hmlr_ppd',
+        address: '14 TEST STREET',
+        postcode: 'M14 5CD',
+      },
+      {
+        price: 236_000,
+        date: monthsBack(5),
+        propertyType: 'terraced',
+        newBuild: false,
+        tenure: 'unknown',
+        provenance: 'hmlr_ppd',
+        address: '3 OTHER ROAD',
+        postcode: 'M14 5EF',
+      },
+      {
+        price: 244_000,
+        date: monthsBack(9),
+        propertyType: 'terraced',
+        newBuild: false,
+        tenure: 'unknown',
+        provenance: 'hmlr_ppd',
+        address: '27 OTHER ROAD',
+        postcode: 'M14 5EF',
+      },
+    ],
+  },
 };
 
 // ───────────────────────────────────────────────────────────────────────────
