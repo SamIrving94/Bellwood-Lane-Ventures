@@ -177,7 +177,8 @@ type AiModelInstance = Parameters<typeof generateText>[0]['model'];
 /** Live AI SDK model instance for one step of a provider plan. */
 function instantiate(
   s: ProviderPlanStep,
-  providerPrefs: Record<string, unknown> | undefined
+  providerPrefs: Record<string, unknown> | undefined,
+  plugins?: Record<string, unknown>[]
 ): AiModelInstance {
   if (s.kind === 'anthropic') {
     return createAnthropic({ apiKey: env.ANTHROPIC_API_KEY! })(s.model);
@@ -188,9 +189,15 @@ function instantiate(
   // a Claude id under a third-party-host pin is unservable (see
   // prefsForModel). Cast: the settings type lags the wire format.
   const prefs = prefsForModel(providerPrefs, s.model);
+  const extraBody: Record<string, unknown> = {};
+  if (prefs) extraBody.provider = prefs;
+  if (plugins?.length) extraBody.plugins = plugins;
   return openrouter(
     s.model,
-    (prefs ? { extraBody: { provider: prefs } } : {}) as Record<string, never>
+    (Object.keys(extraBody).length > 0 ? { extraBody } : {}) as Record<
+      string,
+      never
+    >
   );
 }
 
@@ -202,13 +209,14 @@ function instantiate(
 function buildProviderAttempts<T>(
   model: string,
   providerPrefs: Record<string, unknown> | undefined,
-  runModel: (modelInstance: AiModelInstance) => Promise<T>
+  runModel: (modelInstance: AiModelInstance) => Promise<T>,
+  plugins?: Record<string, unknown>[]
 ): { primary: ProviderAttempt<T>; fallbacks: ProviderAttempt<T>[] } | null {
   const plan = planProviders(model, env);
   if (!plan) return null;
   const toAttempt = (s: ProviderPlanStep): ProviderAttempt<T> => ({
     provider: s.label,
-    call: () => runModel(instantiate(s, providerPrefs)),
+    call: () => runModel(instantiate(s, providerPrefs, plugins)),
   });
   return {
     primary: toAttempt(plan.primary),
@@ -254,6 +262,13 @@ export interface CallClaudeInput {
    * the user text. Only pick vision-capable models for such features.
    */
   images?: { data: string; mediaType: string }[];
+  /**
+   * Ask OpenRouter to run its web plugin: live search results are injected
+   * ahead of the model's turn and it answers with citations. Replaces
+   * Anthropic's server-side web_search tool, which went with Anthropic
+   * direct (retired 3 Oct 2026). `maxResults` defaults to 5.
+   */
+  webSearch?: { maxResults?: number };
   /**
    * INTERNAL — set on shadow-eval calls so they bypass routing (no
    * recursion) and never trigger their own shadow. Do not set manually.
@@ -364,8 +379,17 @@ export async function callClaudeWithMeta(
   // OpenRouter provider-routing prefs (host pinning / ZDR / no-training)
   // come from the route, and are threaded to shadow calls explicitly.
   const providerPrefs = input.providerPrefs ?? openRouterProviderPrefs(route);
+  // OpenRouter web plugin, when asked for. Ignored by the Anthropic step.
+  const plugins = input.webSearch
+    ? [{ id: 'web', max_results: input.webSearch.maxResults ?? 5 }]
+    : undefined;
 
-  const attempts = buildProviderAttempts(model, providerPrefs, runModel);
+  const attempts = buildProviderAttempts(
+    model,
+    providerPrefs,
+    runModel,
+    plugins
+  );
   if (!attempts) {
     // Defensive — the key check above should already have caught this.
     return noKey;
