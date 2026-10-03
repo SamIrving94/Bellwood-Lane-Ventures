@@ -254,6 +254,9 @@ importers:
         specifier: ^3.24.2
         version: 3.24.2
     devDependencies:
+      '@repo/analytics':
+        specifier: workspace:*
+        version: link:../../packages/analytics
       '@repo/testing':
         specifier: workspace:*
         version: link:../../packages/testing

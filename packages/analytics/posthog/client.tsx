@@ -1,10 +1,11 @@
 'use client';
 
-import posthog, { type PostHog } from 'posthog-js';
+import posthog, { type CaptureResult, type PostHog } from 'posthog-js';
 import { PostHogProvider as PostHogProviderRaw, usePostHog } from 'posthog-js/react';
 import type { ReactNode } from 'react';
 import { useCallback, useEffect } from 'react';
 import { keys } from '../keys';
+import { type IsPrivatePath, redactPrivateUrls } from './redact';
 
 type PostHogProviderProps = {
   readonly children: ReactNode;
@@ -23,60 +24,28 @@ type PostHogProviderProps = {
    * address in the query string. Every PostHog event carries the current
    * URL and referrer by default, so on these paths the URL properties are
    * cut back to the first segment (`/track/[private]`) before anything
-   * leaves the browser. Pair with `PostHogPageView`'s `exclude` so no page
-   * view is sent from them at all.
+   * leaves the browser (see ./redact.ts). Pair with `PostHogPageView`'s
+   * `exclude` so no page view is sent from them at all.
    */
-  readonly privatePath?: (pathname: string) => boolean;
+  readonly privatePath?: IsPrivatePath;
 };
 
-/** Event properties posthog-js fills with a URL or path on its own. */
-const URL_PROPERTY_KEYS = [
-  '$current_url',
-  '$pathname',
-  '$referrer',
-  '$initial_current_url',
-  '$initial_pathname',
-  '$initial_referrer',
-] as const;
-
-const redactUrl = (
-  value: string,
-  isPrivate: (pathname: string) => boolean
-): string => {
-  let url: URL;
-  try {
-    url = new URL(value, 'http://placeholder.invalid');
-  } catch {
-    return value;
-  }
-  if (!isPrivate(url.pathname)) {
-    return value;
-  }
-  const first = url.pathname.split('/').filter(Boolean)[0] ?? '';
-  const stub = `/${first}/[private]`;
-  return value.startsWith('/') ? stub : `${url.origin}${stub}`;
-};
-
-const redactPrivateUrls = (
-  properties: Record<string, unknown>,
-  isPrivate: (pathname: string) => boolean
-): Record<string, unknown> => {
-  const out: Record<string, unknown> = { ...properties };
-  for (const key of URL_PROPERTY_KEYS) {
-    const v = out[key];
-    if (typeof v === 'string') {
-      out[key] = redactUrl(v, isPrivate);
+/** `before_send` hook: redact URL-bearing properties on every event. */
+const redactEvent =
+  (isPrivate: IsPrivatePath) =>
+  (event: CaptureResult | null): CaptureResult | null => {
+    if (!event) {
+      return event;
     }
-  }
-  // Person properties ride along on events as $set / $set_once.
-  for (const bag of ['$set', '$set_once'] as const) {
-    const inner = out[bag];
-    if (inner && typeof inner === 'object') {
-      out[bag] = redactPrivateUrls(inner as Record<string, unknown>, isPrivate);
-    }
-  }
-  return out;
-};
+    return {
+      ...event,
+      properties: redactPrivateUrls(event.properties ?? {}, isPrivate),
+      ...(event.$set ? { $set: redactPrivateUrls(event.$set, isPrivate) } : {}),
+      ...(event.$set_once
+        ? { $set_once: redactPrivateUrls(event.$set_once, isPrivate) }
+        : {}),
+    };
+  };
 
 export const PostHogProvider = ({
   children,
@@ -101,12 +70,7 @@ export const PostHogProvider = ({
               ip: false,
             }
           : {}),
-        ...(privatePath
-          ? {
-              sanitize_properties: (properties: Record<string, unknown>) =>
-                redactPrivateUrls(properties, privatePath),
-            }
-          : {}),
+        ...(privatePath ? { before_send: redactEvent(privatePath) } : {}),
       }) as PostHog;
     }
   }, [posthogKey, cookieless, privatePath]);

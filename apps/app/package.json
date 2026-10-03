@@ -46,6 +46,7 @@
     "zod": "^3.24.2"
   },
   "devDependencies": {
+    "@repo/analytics": "workspace:*",
     "@repo/testing": "workspace:*",
     "@repo/typescript-config": "workspace:*",
     "@testing-library/dom": "^10.4.0",
