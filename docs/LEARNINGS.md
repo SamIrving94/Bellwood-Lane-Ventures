@@ -6,6 +6,44 @@ the scout, the AVM, or any PropertyData call.
 
 ---
 
+## 2026-10-03 — The marketer ran every day for three weeks and produced nothing
+
+**What broke.** From 12 Sep every LinkedIn basket, paid-ad set, solicitor
+and agent outreach draft failed with
+`all_providers_failed: Invalid prompt: messages must be an array of CoreMessage or UIMessage`.
+The morning briefing failed with `all_providers_failed: Not Found`. The
+crons fired on schedule and logged healthy-looking AgentEvents
+("0 drafts"), so nothing looked dead. The founder noticed because the
+queue stayed empty after the OpenRouter key went live.
+
+**Root causes.**
+
+- `cacheSystemPrompt` turned the system message into a text-part array
+  (to place a `cache_control` block). AI SDK 4.1's CoreSystemMessage
+  schema allows only a string. The SDK threw before any provider was
+  called, so the error was not a provider error and the fallback chain
+  could not help. Every long-prompt feature hit it; short-prompt features
+  (IG captions) never did, which hid the pattern.
+- The `morning_briefing` route pinned OpenRouter hosts (DeepInfra,
+  Fireworks, Together) for PII reasons but left the model at the Haiku
+  default. No pinned host serves Claude, so OpenRouter answered 404, and
+  404 was treated as fatal, so the chain never ran.
+
+**Rules.**
+
+- Prompt shaping lives in `packages/ai/prompt-shape.ts`, which has no
+  `server-only` import so it is tested against the SDK's own validator.
+  A regression test keeps the rejected shape rejected.
+- Cache breakpoints go on the message (`providerOptions`), never inside a
+  content-part array.
+- Host pins resolve per model (`prefsForModel`): a Claude id under a
+  third-party pin is re-pinned to Anthropic's own endpoint.
+- 404 from a provider is recoverable: the chain walks on and the
+  `_via_fallback` row says who answered.
+- "0 drafted" every day is a failure signal, not a quiet week. When a cron
+  that exists to produce things produces zero for a fortnight, open the
+  LlmCallLog rows for its features before assuming there was nothing to do.
+
 ## 2026-09-12 — One empty Anthropic balance took four features down for days
 
 **What broke.** Deep appraisal, the auction/lead photo screener, the morning

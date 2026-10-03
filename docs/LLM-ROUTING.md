@@ -1,6 +1,6 @@
 # LLM routing — OpenRouter first, open-weight challengers, one bill
 
-_Last verified against the code: 2026-09-13_
+_Last verified against the code: 2026-10-03_
 
 ## How a call is routed
 
@@ -34,6 +34,20 @@ fatal, so the chain never ran.
 OpenRouter's is `anthropic/claude-sonnet-4.5` (dot). The client maps one
 to the other; you can type either in Settings. The old chain used the
 hyphen form on OpenRouter, which is not a model there.
+
+## Two faults fixed 3 Oct 2026 (read before touching caching or pinning)
+
+- **Cached system prompts.** The breakpoint is message-level
+  (`providerOptions.anthropic.cacheControl` on a string system message).
+  The text-part-array form fails the SDK's prompt validation before any
+  provider is called and the chain cannot rescue it. `prompt-shape.ts`
+  owns the shape and is tested against the validator.
+- **Host pinning and Claude.** `providerOnly` names open-weight hosts; none
+  serve Claude. `prefsForModel` re-pins a Claude id to `['anthropic']`
+  and keeps `zdr` / `data_collection`. If a route is meant to run on an
+  open-weight host, set its **Model** too; a pin alone does not move it.
+- **404 is recoverable.** A model OpenRouter cannot serve as asked hands
+  the call to the next model in the chain.
 
 ## Testing open-weight models
 

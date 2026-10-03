@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest';
 import { isBillingError, isRecoverableProviderError } from '../fallback';
 import {
   DEFAULT_FALLBACK_CHAINS,
+  isAnthropicModel,
   planProviders,
+  prefsForModel,
   toOpenRouterId,
 } from '../routing';
 
@@ -146,5 +148,54 @@ describe('billing errors are recoverable', () => {
       status: 400,
     });
     expect(isRecoverableProviderError(err)).toBe(false);
+  });
+});
+
+describe('prefsForModel: host pins never strand a Claude id', () => {
+  const pinned = {
+    only: ['deepinfra', 'fireworks', 'together'],
+    allow_fallbacks: false,
+    zdr: true,
+    data_collection: 'deny',
+  };
+
+  it('leaves open-weight models on the pinned hosts', () => {
+    expect(prefsForModel(pinned, 'deepseek/deepseek-v4-flash')).toEqual(pinned);
+  });
+
+  it('re-pins a Claude id to Anthropic and keeps the privacy flags', () => {
+    const out = prefsForModel(pinned, 'anthropic/claude-haiku-4.5');
+    expect(out).toEqual({ ...pinned, only: ['anthropic'] });
+  });
+
+  it('passes through when there is no pin or Anthropic is already allowed', () => {
+    expect(
+      prefsForModel(undefined, 'anthropic/claude-haiku-4.5')
+    ).toBeUndefined();
+    expect(prefsForModel({ zdr: true }, 'anthropic/claude-haiku-4.5')).toEqual({
+      zdr: true,
+    });
+    const allowed = { only: ['anthropic', 'together'] };
+    expect(prefsForModel(allowed, 'anthropic/claude-sonnet-4.5')).toEqual(
+      allowed
+    );
+  });
+
+  it('recognises both spellings of a Claude id', () => {
+    expect(isAnthropicModel('claude-haiku-4-5')).toBe(true);
+    expect(isAnthropicModel('anthropic/claude-sonnet-4.5')).toBe(true);
+    expect(isAnthropicModel('moonshotai/kimi-k2.6')).toBe(false);
+  });
+});
+
+describe('404 from a provider walks the chain', () => {
+  it('is recoverable so the next model can serve the feature', () => {
+    const notFound = Object.assign(new Error('Not Found'), { statusCode: 404 });
+    expect(isRecoverableProviderError(notFound)).toBe(true);
+  });
+
+  it('a plain 400 is still fatal', () => {
+    const bad = Object.assign(new Error('Bad Request'), { statusCode: 400 });
+    expect(isRecoverableProviderError(bad)).toBe(false);
   });
 });
