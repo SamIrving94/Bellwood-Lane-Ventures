@@ -7,7 +7,10 @@ import { z } from 'zod';
 
 export const env = createEnv({
   extends: [core(), email(), observability(), security()],
-  server: {},
+  server: {
+    // Set by Vercel itself. Used to keep tracking tags to the live site.
+    VERCEL_ENV: z.enum(['production', 'preview', 'development']).optional(),
+  },
   client: {
     // Unset or "" = no Google Analytics and no cookie banner (nothing to
     // consent to). .env.example ships it as "".
@@ -23,6 +26,7 @@ export const env = createEnv({
       .optional(),
   },
   runtimeEnv: {
+    VERCEL_ENV: process.env.VERCEL_ENV,
     NEXT_PUBLIC_GA_MEASUREMENT_ID: process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID,
     NEXT_PUBLIC_GOOGLE_ADS_ID: process.env.NEXT_PUBLIC_GOOGLE_ADS_ID,
     NEXT_PUBLIC_META_PIXEL_ID: process.env.NEXT_PUBLIC_META_PIXEL_ID,
