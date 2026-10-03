@@ -37,6 +37,19 @@ import { useEffect, useState } from 'react';
  * "page changed" hits, which fire after, are already muted. A React effect
  * would be too late. Add new token-bearing routes to PRIVATE_PATHS.
  *
+ * Google Tag Manager is for EXTRA tags only (founder decision, Oct 2026):
+ * GA, Google Ads and Meta stay here in code, so never add a GA4 tag for the
+ * site's own measurement ID inside GTM (every visit would count twice).
+ * GTM loads only after analytics or advertising consent and never on a
+ * private page. It sees the same Consent Mode signals, plus two dataLayer
+ * events: `kept_consent` (kept_analytics / kept_advertising = granted|denied)
+ * and `kept_page_privacy` (kept_private_page = true|false, pushed before
+ * every client-side URL change). A non-Google tag added in GTM must fire
+ * only when its category is granted AND have kept_private_page = true as an
+ * exception, and must be added to the privacy notice before it goes live.
+ * GTM's <noscript> iframe is deliberately left out: a visitor without
+ * JavaScript can never see the banner, so can never consent.
+ *
  * With no tag IDs configured the layout does not render this component, so
  * there is no banner asking for consent to nothing.
  */
@@ -47,6 +60,7 @@ export type ConsentTags = {
   gaId?: string;
   adsId?: string;
   metaPixelId?: string;
+  gtmId?: string;
 };
 
 type Consent = { analytics: boolean; advertising: boolean };
@@ -90,6 +104,14 @@ const syncFlags = (path: string) => {
     w()[`ga-disable-${tags.adsId}`] = !granted.advertising || isPrivate;
   }
   w().fbq?.('consent', granted.advertising && !isPrivate ? 'grant' : 'revoke');
+  // Tags inside GTM can't be muted by id, so every Google tag there gets
+  // consent denied on a private page, and any other tag must use the
+  // `kept_private_page` flag as an exception trigger (see GTM note above).
+  pushConsent(isPrivate);
+  w().dataLayer?.push({
+    event: 'kept_page_privacy',
+    kept_private_page: isPrivate,
+  });
 };
 
 const installPrivacyGuard = () => {
@@ -125,8 +147,12 @@ const injectScript = (src: string) => {
   document.head.appendChild(s);
 };
 
-/** The standard gtag stub, with every Consent Mode signal defaulted to denied. */
-const ensureGtag = (loaderId: string) => {
+/**
+ * The standard gtag stub, with every Consent Mode signal defaulted to denied.
+ * GA, Ads and GTM all share this one dataLayer, so it must exist (with the
+ * denied defaults queued first) before any of their scripts load.
+ */
+const ensureGtagStub = () => {
   const win = w();
   if (win.gtag) {
     return;
@@ -144,7 +170,27 @@ const ensureGtag = (loaderId: string) => {
     ad_personalization: 'denied',
   });
   win.gtag('js', new Date());
-  injectScript(`https://www.googletagmanager.com/gtag/js?id=${loaderId}`);
+};
+
+/** Current choices as Consent Mode signals; everything denied on a private page. */
+const pushConsent = (isPrivate: boolean) => {
+  const a = granted.analytics && !isPrivate ? 'granted' : 'denied';
+  const ad = granted.advertising && !isPrivate ? 'granted' : 'denied';
+  w().gtag?.('consent', 'update', {
+    analytics_storage: a,
+    ad_storage: ad,
+    ad_user_data: ad,
+    ad_personalization: ad,
+  });
+};
+
+const loaded = new Set<string>();
+
+const loadOnce = (key: string, load: () => void) => {
+  if (!loaded.has(key)) {
+    loaded.add(key);
+    load();
+  }
 };
 
 /** The standard Meta Pixel stub. */
@@ -179,12 +225,20 @@ const ensureFbq = (pixelId: string) => {
 
 /** Inject the scripts the visitor has allowed (never on a private page). */
 const loadAllowedTags = () => {
-  const { gaId, adsId, metaPixelId } = tags;
-  const wantGa = granted.analytics ? gaId : undefined;
-  const wantAds = granted.advertising ? adsId : undefined;
-  const loaderId = wantGa ?? wantAds;
+  const { gaId, adsId, metaPixelId, gtmId } = tags;
+  const loaderId =
+    (granted.analytics ? gaId : undefined) ??
+    (granted.advertising ? adsId : undefined);
   if (loaderId) {
-    ensureGtag(loaderId);
+    loadOnce('gtag', () =>
+      injectScript(`https://www.googletagmanager.com/gtag/js?id=${loaderId}`)
+    );
+  }
+  if (gtmId && (granted.analytics || granted.advertising)) {
+    loadOnce('gtm', () => {
+      w().dataLayer?.push({ 'gtm.start': Date.now(), event: 'gtm.js' });
+      injectScript(`https://www.googletagmanager.com/gtm.js?id=${gtmId}`);
+    });
   }
   if (granted.advertising && metaPixelId) {
     ensureFbq(metaPixelId);
@@ -205,19 +259,25 @@ const configureAllowedTags = () => {
   }
 };
 
-/** Load (or mute) every tag to match `granted` on the current page. */
+/**
+ * Load (or mute) every tag to match `granted` on the current page. Order
+ * matters: the stub (denied defaults) → the visitor's real choices → only
+ * then the scripts, so nothing, GTM's first tags included, ever runs on a
+ * stale consent state.
+ */
 const applyConsent = (path: string) => {
-  if (!isPrivatePath(path)) {
-    loadAllowedTags();
+  const isPrivate = isPrivatePath(path);
+  if (granted.analytics || granted.advertising) {
+    ensureGtagStub();
   }
-  w().gtag?.('consent', 'update', {
-    analytics_storage: granted.analytics ? 'granted' : 'denied',
-    ad_storage: granted.advertising ? 'granted' : 'denied',
-    ad_user_data: granted.advertising ? 'granted' : 'denied',
-    ad_personalization: granted.advertising ? 'granted' : 'denied',
-  });
   syncFlags(path);
-  if (!isPrivatePath(path)) {
+  w().dataLayer?.push({
+    event: 'kept_consent',
+    kept_analytics: granted.analytics ? 'granted' : 'denied',
+    kept_advertising: granted.advertising ? 'granted' : 'denied',
+  });
+  if (!isPrivate) {
+    loadAllowedTags();
     configureAllowedTags();
   }
 };
@@ -298,6 +358,7 @@ export function CookieConsent(props: ConsentTags) {
       gaId: props.gaId,
       adsId: props.adsId,
       metaPixelId: props.metaPixelId,
+      gtmId: props.gtmId,
     };
     const saved = readConsent();
     if (saved) {
@@ -316,7 +377,7 @@ export function CookieConsent(props: ConsentTags) {
     };
     window.addEventListener(OPEN_EVENT, reopen);
     return () => window.removeEventListener(OPEN_EVENT, reopen);
-  }, [props.gaId, props.adsId, props.metaPixelId]);
+  }, [props.gaId, props.adsId, props.metaPixelId, props.gtmId]);
 
   // Also re-runs on navigation: a visitor who arrived on a private page gets
   // the tags once they move to a public one.

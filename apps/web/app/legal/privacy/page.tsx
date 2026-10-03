@@ -35,7 +35,8 @@ export const metadata: Metadata = {
  *   - Meta Events Manager → automatic advanced matching: OFF
  *   - Google Ads → enhanced conversions: OFF
  * The last two are what lets "they never see what you type into our forms"
- * stay true. The consent gate and the private-URL guard live in
+ * stay true. Google Tag Manager (GTM-WNM6MJGZ) may only run tools this page
+ * already names: add a tag in GTM and you must add it here first. The consent gate and the private-URL guard live in
  * components/cookie-consent.tsx.
  */
 const LAST_UPDATED = '1 October 2026';
@@ -325,6 +326,11 @@ const SECTIONS: Array<{
           <span className="font-mono text-[14px]">_fbc</span> if you arrived
           from one of its adverts. Each lasts up to 90 days. Both companies may
           also read their own cookies on their own sites.
+        </p>
+        <p>
+          <strong>Google Tag Manager</strong> is how we switch these tools on.
+          It sets no cookies of its own, loads only after you accept analytics
+          or advertising, and runs only the tools named on this page.
         </p>
         <p>
           You choose each kind separately, and nothing is ticked for you. Until
