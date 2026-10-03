@@ -101,6 +101,36 @@ export function openRouterProviderPrefs(
   return Object.keys(prefs).length > 0 ? prefs : undefined;
 }
 
+/** Claude ids in either spelling: `anthropic/claude-…` or bare `claude-…`. */
+export function isAnthropicModel(model: string): boolean {
+  return model.startsWith('anthropic/') || model.startsWith('claude-');
+}
+
+/**
+ * Resolve host pinning for the model actually being called.
+ *
+ * `providerOnly` lists open-weight hosts (DeepInfra, Fireworks, Together).
+ * None of them serve Claude: on OpenRouter, Anthropic models come from
+ * Anthropic itself (and Amazon/Google). With `only` set to those hosts and
+ * `allow_fallbacks: false`, OpenRouter answers 404 Not Found. That is what
+ * silenced the morning briefing from 12 Sep 2026: the route pinned hosts
+ * but left the model at the Haiku default, so every call died at the
+ * primary and, 404 being non-recoverable then, the chain never ran.
+ *
+ * For a Claude id we pin to Anthropic's own endpoint instead and keep the
+ * zdr / data_collection flags. The guarantee the pin exists for (no
+ * third-party host sees the prompt) still holds.
+ */
+export function prefsForModel(
+  prefs: Record<string, unknown> | undefined,
+  model: string
+): Record<string, unknown> | undefined {
+  if (!prefs || !Array.isArray(prefs.only)) return prefs;
+  if (!isAnthropicModel(model)) return prefs;
+  if ((prefs.only as unknown[]).includes('anthropic')) return prefs;
+  return { ...prefs, only: ['anthropic'] };
+}
+
 // ───────────────────────────────────────────────────────────────────────────
 // Provider planning — pure, so it is unit-testable without keys or SDKs.
 // claude.ts turns a plan into live AI SDK model instances.

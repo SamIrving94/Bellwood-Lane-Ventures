@@ -1,30 +1,33 @@
 import { env } from '@/env';
-import { keys as aiKeys } from '@repo/ai/keys';
+import {
+  CLAUDE_SONNET,
+  callClaudeWithMeta,
+  hasLlmProvider,
+} from '@repo/ai/claude';
 import { database } from '@repo/database';
 import { NextResponse } from 'next/server';
 
-// Web search is server-side on Anthropic's end but each search adds latency;
-// 8 searches + synthesis can take a couple of minutes. Pro-plan cap.
+// Web search runs on OpenRouter's side before the model answers; search plus
+// synthesis can take a couple of minutes. Pro-plan cap.
 export const maxDuration = 300;
 
 /**
  * Overnight analyst — runs at 05:30 UTC, before the founders wake up.
  *
- * Uses Claude's server-side web search tool to scan overnight/recent local
- * signals for Kept's target areas (planning news, market shifts, auction
+ * Uses OpenRouter's web plugin (via the shared client's `webSearch`) to scan
+ * overnight/recent local signals for Kept's target areas (planning news, market shifts, auction
  * activity, distressed-seller-relevant items) and writes ONE morning-brief
  * FounderAction that the Today page and Action Centre surface.
  *
- * NOTE ON THE LLM CALL: packages/ai callClaude does not support tools, and
- * the installed @ai-sdk/anthropic (1.2.12) predates the provider-defined
- * webSearch_20250305 tool. We therefore call the Anthropic Messages API
- * directly with the raw `web_search_20250305` server tool and log usage
- * manually to LlmCallLog (the setLlmLogger path only covers callClaude).
+ * LLM CALL: goes through @repo/ai/claude like every other feature, so it
+ * gets routing (Settings → AI models, feature `overnight_analyst`), the
+ * fallback chain and LlmCallLog for free. Until 3 Oct 2026 this route called
+ * Anthropic's Messages API directly for its web_search tool and failed every
+ * day from 9 Sep on an empty balance; Anthropic direct is retired.
  */
 
-const MODEL = 'claude-sonnet-4-5';
 const MAX_TOKENS = 3000;
-const MAX_WEB_SEARCHES = 8;
+const MAX_WEB_RESULTS = 8;
 const MAX_AREAS = 5;
 
 type TargetArea = { postcode: string; label?: string };
@@ -51,7 +54,10 @@ async function readTargetAreas(): Promise<TargetArea[]> {
       if (areas.length > 0) return areas.slice(0, MAX_AREAS);
     }
   } catch (err) {
-    console.warn('[cron/overnight-research] failed to read scouting.areas', err);
+    console.warn(
+      '[cron/overnight-research] failed to read scouting.areas',
+      err
+    );
   }
 
   // Legacy fallback — plain district/postcode strings.
@@ -61,34 +67,20 @@ async function readTargetAreas(): Promise<TargetArea[]> {
     });
     if (districtsRow && Array.isArray(districtsRow.value)) {
       return (districtsRow.value as unknown[])
-        .filter((v): v is string => typeof v === 'string' && v.trim().length > 0)
+        .filter(
+          (v): v is string => typeof v === 'string' && v.trim().length > 0
+        )
         .slice(0, MAX_AREAS)
         .map((postcode) => ({ postcode: postcode.trim() }));
     }
   } catch (err) {
     console.warn(
       '[cron/overnight-research] failed to read scouting.targetPostcodes',
-      err,
+      err
     );
   }
   return [];
 }
-
-// ── Minimal Messages-API response shape (only the fields we read) ──────
-type AnthropicContentBlock = {
-  type: string;
-  text?: string;
-};
-
-type AnthropicMessagesResponse = {
-  content?: AnthropicContentBlock[];
-  stop_reason?: string;
-  usage?: {
-    input_tokens?: number;
-    output_tokens?: number;
-    server_tool_use?: { web_search_requests?: number };
-  };
-};
 
 export const POST = async (request: Request) => {
   const authHeader = request.headers.get('authorization');
@@ -99,10 +91,9 @@ export const POST = async (request: Request) => {
   // Failures always return 200 with { error } so Vercel doesn't retry-storm
   // and the watchdog picture stays clean — a missing brief is low-stakes.
   try {
-    const apiKey = aiKeys().ANTHROPIC_API_KEY;
-    if (!apiKey) {
+    if (!hasLlmProvider()) {
       return NextResponse.json({
-        error: 'ANTHROPIC_API_KEY not configured — overnight brief skipped',
+        error: 'no LLM provider key configured — overnight brief skipped',
       });
     }
 
@@ -133,117 +124,52 @@ export const POST = async (request: Request) => {
       .map((a) => (a.label ? `${a.postcode} (${a.label})` : a.postcode))
       .join(', ');
 
-    const prompt = [
-      `You are the overnight market analyst for Kept, a two-founder UK company that buys property directly from vendors for cash. Their deal types: probate sales, chain breaks, short leases, and repossessions.`,
-      ``,
-      `Target areas (UK postcodes): ${areaList}.`,
-      ``,
-      `Use web search to find RECENT (last few days, ideally last 24-48 hours) local signals for these areas:`,
-      `- planning applications, approvals, or development news`,
-      `- local property market shifts (prices, listings, time-on-market)`,
-      `- auction activity and notable auction lots`,
-      `- anything relevant to motivated or distressed sellers (repossession trends, probate/estate news, chain-collapse signals, landlord exits)`,
-      ``,
-      `Then write a morning brief answering: "what should two founders buying property in these areas know this morning?"`,
-      ``,
-      `Format rules (the reader is dyslexic):`,
-      `- UK English. Concise markdown.`,
-      `- Short sentences. Bullet points. **Bold** the key facts.`,
-      `- Clear ## headings, one per theme or area. No dense paragraphs.`,
-      `- Lead with a 2-3 bullet "**Top takeaways**" section.`,
-      `- If a search found nothing new for an area, say so in one line — do not pad.`,
-      `- End with a one-line "Worth a look today" suggestion if anything is actionable.`,
+    const system = [
+      'You are the overnight market analyst for Kept, a two-founder UK company that buys property directly from vendors for cash. Their deal types: probate sales, chain breaks, short leases, and repossessions.',
+      '',
+      'You have live web search results in front of you. Use only what they support; if a search found nothing new for an area, say so in one line and do not pad.',
+      '',
+      'Format rules (the reader is dyslexic):',
+      '- UK English. Concise markdown.',
+      '- Short sentences. Bullet points. **Bold** the key facts.',
+      '- Clear ## headings, one per theme or area. No dense paragraphs.',
+      '- Lead with a 2-3 bullet "**Top takeaways**" section.',
+      '- End with a one-line "Worth a look today" suggestion if anything is actionable.',
+      '- Do not narrate your searching. Write the brief only.',
     ].join('\n');
 
-    const startedAt = Date.now();
-    let brief = '';
-    let usage: AnthropicMessagesResponse['usage'];
-    let stopReason: string | undefined;
+    const user = [
+      `Target areas (UK postcodes): ${areaList}.`,
+      '',
+      'Find RECENT (last few days, ideally last 24-48 hours) local signals for these areas:',
+      '- planning applications, approvals, or development news',
+      '- local property market shifts (prices, listings, time-on-market)',
+      '- auction activity and notable auction lots',
+      '- anything relevant to motivated or distressed sellers (repossession trends, probate/estate news, chain-collapse signals, landlord exits)',
+      '',
+      'Then write the morning brief answering: "what should two founders buying property in these areas know this morning?"',
+    ].join('\n');
 
-    try {
-      const res = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: {
-          'content-type': 'application/json',
-          'x-api-key': apiKey,
-          'anthropic-version': '2023-06-01',
-        },
-        body: JSON.stringify({
-          model: MODEL,
-          max_tokens: MAX_TOKENS,
-          messages: [{ role: 'user', content: prompt }],
-          tools: [
-            {
-              type: 'web_search_20250305',
-              name: 'web_search',
-              max_uses: MAX_WEB_SEARCHES,
-              user_location: {
-                type: 'approximate',
-                country: 'GB',
-                timezone: 'Europe/London',
-              },
-            },
-          ],
-        }),
-      });
-
-      if (!res.ok) {
-        const body = await res.text().catch(() => '');
-        throw new Error(
-          `Anthropic API ${res.status}: ${body.slice(0, 300)}`,
-        );
-      }
-
-      const data = (await res.json()) as AnthropicMessagesResponse;
-      usage = data.usage;
-      stopReason = data.stop_reason;
-      // The response interleaves server_tool_use / web_search_tool_result
-      // blocks with text. Text blocks BEFORE the final one are the model
-      // narrating its searches ("I'll search for…") — noise the founder
-      // explicitly complained about. The brief is the LAST text block: the
-      // synthesis written after all searches finished.
-      const textBlocks = (data.content ?? [])
-        .filter((b) => b.type === 'text' && typeof b.text === 'string')
-        .map((b) => (b.text as string).trim())
-        .filter(Boolean);
-      brief = (textBlocks[textBlocks.length - 1] ?? '').trim();
-
-      // Manual LLM usage log — the setLlmLogger path only covers callClaude.
-      await database.llmCallLog
-        .create({
-          data: {
-            feature: 'overnight_analyst',
-            model: MODEL,
-            inputTokens: usage?.input_tokens ?? 0,
-            outputTokens: usage?.output_tokens ?? 0,
-            durationMs: Date.now() - startedAt,
-            success: brief.length > 0,
-            errorReason: brief.length > 0 ? null : 'empty response text',
-          },
-        })
-        .catch((err: unknown) =>
-          console.warn('[cron/overnight-research] llm log failed', err),
-        );
-    } catch (err) {
-      const reason = err instanceof Error ? err.message : String(err);
-      await database.llmCallLog
-        .create({
-          data: {
-            feature: 'overnight_analyst',
-            model: MODEL,
-            durationMs: Date.now() - startedAt,
-            success: false,
-            errorReason: reason.slice(0, 500),
-          },
-        })
-        .catch(() => undefined);
-      return NextResponse.json({ error: `LLM call failed: ${reason}` });
-    }
+    // Routing, fallback and LlmCallLog all come from the shared client. The
+    // web plugin runs on OpenRouter before the model's turn, so one call.
+    const result = await callClaudeWithMeta({
+      system,
+      user,
+      model: CLAUDE_SONNET,
+      maxTokens: MAX_TOKENS,
+      temperature: 0.3,
+      feature: 'overnight_analyst',
+      webSearch: { maxResults: MAX_WEB_RESULTS },
+      // Search + synthesis is slow; give each hop room before the chain moves on.
+      attemptTimeoutMs: 120_000,
+    });
+    const brief = (result.text ?? '').trim();
 
     if (!brief) {
       return NextResponse.json({
         error: 'LLM returned no text — brief not created',
-        stopReason,
+        model: result.model,
+        provider: result.provider,
       });
     }
 
@@ -265,10 +191,9 @@ export const POST = async (request: Request) => {
         metadata: {
           source: 'cron_overnight_research',
           areas: areas.map((a) => a.postcode),
-          webSearchRequests: usage?.server_tool_use?.web_search_requests ?? null,
-          inputTokens: usage?.input_tokens ?? null,
-          outputTokens: usage?.output_tokens ?? null,
-          model: MODEL,
+          model: result.model,
+          provider: result.provider,
+          viaFallback: result.viaFallback,
           dayBucket,
         },
       },
@@ -279,8 +204,8 @@ export const POST = async (request: Request) => {
       actionId: action.id,
       areas: areas.map((a) => a.postcode),
       briefChars: brief.length,
-      webSearchRequests: usage?.server_tool_use?.web_search_requests ?? null,
-      stopReason,
+      model: result.model,
+      provider: result.provider,
     });
   } catch (err) {
     // Never crash — a missing brief is not worth an alerting retry loop.
