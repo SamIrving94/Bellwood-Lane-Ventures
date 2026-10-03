@@ -18,6 +18,7 @@
     "@repo/design-system": "workspace:*",
     "@repo/email": "workspace:*",
     "@repo/instant-offer": "workspace:*",
+    "@repo/kept-tools": "workspace:*",
     "@repo/next-config": "workspace:*",
     "@repo/observability": "workspace:*",
     "@repo/property-data": "workspace:*",

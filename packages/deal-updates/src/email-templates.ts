@@ -123,9 +123,15 @@ export function renderUpdateEmail(ctx: UpdateEmailContext): {
     ? `${copy.subjectPrefix} · ${propertyLabel}`
     : copy.subjectPrefix;
 
-  const offerLine = ctx.offer
-    ? `Cash offer: £${Math.round(ctx.offer.offerPence / 100).toLocaleString('en-GB')} · target completion ${ctx.offer.completionDays} days`
-    : '';
+  // The figure only ever appears once a person has sent the offer
+  // (offer_sent from quote-ops) or the seller has accepted it. Every other
+  // update — a note, a delay, a decline — must not repeat it.
+  const figureAllowed =
+    ctx.kind === 'offer_sent' || ctx.kind === 'offer_accepted';
+  const offerLine =
+    ctx.offer && figureAllowed
+      ? `Cash offer: £${Math.round(ctx.offer.offerPence / 100).toLocaleString('en-GB')} · target completion ${ctx.offer.completionDays} days`
+      : '';
 
   const trackBlock = ctx.trackUrl
     ? `

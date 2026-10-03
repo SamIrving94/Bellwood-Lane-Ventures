@@ -27,10 +27,7 @@ import {
   database,
 } from '@repo/database';
 import { sendEmail } from '@repo/email';
-import {
-  renderUpdateEmail,
-  type UpdateEmailContext,
-} from './email-templates';
+import { type UpdateEmailContext, renderUpdateEmail } from './email-templates';
 
 export type {
   DealUpdateKind,
@@ -40,6 +37,8 @@ export type {
 // ---------------------------------------------------------------------------
 // Public API
 // ---------------------------------------------------------------------------
+
+export { SIGNED_OFFER_NOTIFIER } from './constants';
 
 export type RecordUpdateInput = {
   /** Either a Deal id OR a QuoteRequest id (or both — they get linked) */
@@ -70,7 +69,7 @@ export type RecordedDealUpdate = {
  * party in the chain (or the override list).
  */
 export async function recordDealUpdate(
-  input: RecordUpdateInput,
+  input: RecordUpdateInput
 ): Promise<RecordedDealUpdate> {
   if (!input.dealId && !input.quoteRequestId) {
     throw new Error('recordDealUpdate: dealId or quoteRequestId required');
@@ -105,7 +104,7 @@ export async function recordDealUpdate(
   });
 
   // 4. Dispatch emails (graceful — failure does not block the record).
-  let notifiedTo: string[] = [];
+  const notifiedTo: string[] = [];
   if (!input.skipNotify && chain.recipients.length > 0) {
     const trackUrl = trackToken
       ? `${getWebOrigin()}/track/${trackToken.token}`
@@ -152,9 +151,7 @@ export async function recordDealUpdate(
 
   return {
     id: created.id,
-    trackUrl: trackToken
-      ? `${getWebOrigin()}/track/${trackToken.token}`
-      : null,
+    trackUrl: trackToken ? `${getWebOrigin()}/track/${trackToken.token}` : null,
     notifiedTo,
   };
 }
@@ -277,13 +274,12 @@ function dedupeEmails(emails: string[]): string[] {
 }
 
 function getFounderEmail(): string {
-  return (
-    process.env.BELLWOODS_FOUNDER_EMAIL || 'anthony@bellwoodslane.co.uk'
-  );
+  return process.env.BELLWOODS_FOUNDER_EMAIL || 'anthony@bellwoodslane.co.uk';
 }
 
 function getWebOrigin(): string {
-  return (
-    process.env.NEXT_PUBLIC_WEB_URL || 'http://localhost:3001'
-  ).replace(/\/$/, '');
+  return (process.env.NEXT_PUBLIC_WEB_URL || 'http://localhost:3001').replace(
+    /\/$/,
+    ''
+  );
 }
