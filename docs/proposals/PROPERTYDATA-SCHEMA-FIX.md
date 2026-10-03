@@ -3,6 +3,10 @@
 _Written 2026-09-12 from production logs. Run the prompt at the bottom in a
 local Claude Code session (needs `PROPERTYDATA_API_KEY` and internet)._
 
+_Executed 2026-09-17 on branch `fix/propertydata-real-shapes` — see the
+2026-09-17 entry in `docs/LEARNINGS.md` for what the real shapes turned out to
+be and the four assumptions that were wrong._
+
 ## Report — what is wrong, in plain terms
 
 **Eleven PropertyData endpoints have never returned a value to the app.**

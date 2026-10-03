@@ -6,6 +6,164 @@ the scout, the AVM, or any PropertyData call.
 
 ---
 
+## 2026-10-03 — The marketer ran every day for three weeks and produced nothing
+
+**What broke.** From 12 Sep every LinkedIn basket, paid-ad set, solicitor
+and agent outreach draft failed with
+`all_providers_failed: Invalid prompt: messages must be an array of CoreMessage or UIMessage`.
+The morning briefing failed with `all_providers_failed: Not Found`. The
+crons fired on schedule and logged healthy-looking AgentEvents
+("0 drafts"), so nothing looked dead. The founder noticed because the
+queue stayed empty after the OpenRouter key went live.
+
+**Root causes.**
+
+- `cacheSystemPrompt` turned the system message into a text-part array
+  (to place a `cache_control` block). AI SDK 4.1's CoreSystemMessage
+  schema allows only a string. The SDK threw before any provider was
+  called, so the error was not a provider error and the fallback chain
+  could not help. Every long-prompt feature hit it; short-prompt features
+  (IG captions) never did, which hid the pattern.
+- The `morning_briefing` route pinned OpenRouter hosts (DeepInfra,
+  Fireworks, Together) for PII reasons but left the model at the Haiku
+  default. No pinned host serves Claude, so OpenRouter answered 404, and
+  404 was treated as fatal, so the chain never ran.
+
+**Rules.**
+
+- Prompt shaping lives in `packages/ai/prompt-shape.ts`, which has no
+  `server-only` import so it is tested against the SDK's own validator.
+  A regression test keeps the rejected shape rejected.
+- Cache breakpoints go on the message (`providerOptions`), never inside a
+  content-part array.
+- Host pins resolve per model (`prefsForModel`): a Claude id under a
+  third-party pin is re-pinned to Anthropic's own endpoint.
+- 404 from a provider is recoverable: the chain walks on and the
+  `_via_fallback` row says who answered.
+- "0 drafted" every day is a failure signal, not a quiet week. When a cron
+  that exists to produce things produces zero for a fortnight, open the
+  LlmCallLog rows for its features before assuming there was nothing to do.
+
+## 2026-10-03 — PropertyData: five things the API docs said we had wrong
+
+**What was found.** The founder shared PropertyData's AI-readable API
+documentation (69 endpoints; condensed copy now at
+`docs/setup/propertydata-api-reference.md`). It carries no response shapes,
+so nothing in the 2026-09-17 rewrite changes — but it did show five things
+the client had wrong, one of them a licence breach.
+
+- **Caching over the licence limit.** PropertyData allows a response to be
+  held as current data for **60 days from retrieval**, on any plan, at any
+  price. Six endpoints cached for 90 days, in memory and in Postgres
+  (`PropertyDataCache`). Every TTL is now clamped to 60 days in
+  `fetchPropertyData`, and a durable row is held to its real age: the Postgres
+  adapters return `storedAt` (`updatedAt`) and the client evicts a row older
+  than 60 days on read, whatever TTL it was written with. Dated snapshots
+  (`AvmSnapshot`, a lead's `snapshot` with `fetchedAt`) are fine — the licence
+  allows history indefinitely as long as it is never presented as current.
+- **`/listings` is not a PropertyData endpoint.** It sat in the client with a
+  made-up schema and no callers. Removed.
+- **Credit estimates were 2-3× too high.** Nearly every endpoint is 1 credit;
+  `/freeholds`, `/sourced-properties`, `/planning-applications` and
+  `/national-hmo-register` are "1 per 10 results" (`creditsFor` now logs the
+  real cost, from `api_calls_cost` where the body carries it); `/george` is 10,
+  not 5. The spend log and `docs/setup/propertydata.md` budget maths were
+  overstating by about double.
+- **429 ignored `Retry-After`, and 503 was never retried.** Both are documented
+  "wait, then try again" statuses (X14, X20) with a `Retry-After` in seconds.
+  `requestPropertyData` now honours it (capped at 30 s) for exactly one retry,
+  shared by the client and the raw `/sourced-properties` probe.
+- **The key went in the URL.** The docs accept `Authorization: Bearer`; the
+  client now sends that and the URL carries only the query, so a logged URL or
+  an echoed error can never leak it.
+
+**Tenure: probed the `/uprns` → `/uprn-title` → `/title` chain (~9 credits).**
+`/title` wants the parameter **`title`**, not `title_number` — the latter is
+silently ignored and answers 404 "Title not found" (code 801), which is
+charged. Shapes, from DL2 3JP (house) and W14 9JH (block of flats):
+
+- `/uprns?postcode=` → `data[]` of `{ uprn, address, addressParts{primary,
+  street, town, postcode}, lat, lng, classificationCode ("RD06"),
+  classificationCodeDesc ("Flat") }`, 10 rows per call (`api_calls_cost: 1`;
+  pagination param not yet found — DL2 3JP has ~34 properties).
+- `/uprn-title?uprn=` → `data: { uprn, title_count, title_data[]{
+  title_number, title_class } }`. A flat's UPRN maps to the BUILDING'S
+  freehold title, not its own leasehold title.
+- `/title?title=` → `data: { class, estate_interest, ownership{type, details?
+  {owner, company_reg, owner_type, owner_address, date_added}}, plot_size,
+  polygons[], leaseholds[] (child leasehold title numbers), parent_freehold,
+  parent_freeholds[], uprns[], registeredLeases[], distinctLeases[] }`.
+
+So: **tenure class is reachable** (a title's `class` says freehold or
+leasehold; a freehold with `leaseholds[]` and several `uprns[]` is a block of
+flats), and **corporate ownership is reachable** (name + company number —
+personal data, we are the controller). **Lease length is not**:
+`registeredLeases` and `distinctLeases` were empty on every title probed,
+including the leasehold one. The short-lease screen still has no source;
+`getTenureByPostcodeResult` stays on the honest "unavailable" path. Nothing is
+wired yet — a per-property chain costs 3+ credits and needs a founder call.
+
+**Rules (additive).**
+
+- **60 days is the ceiling for anything served as current.** New TTLs above it
+  are clamped, not honoured. If a figure must live longer, store it as a dated
+  observation, not in the cache.
+- **The spend log reports what the API bills.** New endpoints take their
+  credit figure from the reference doc; "per N results" endpoints use
+  `creditsFor`.
+- **Before adding an endpoint, check it exists** in
+  `docs/setup/propertydata-api-reference.md`. Then probe it:
+  `scripts/propertydata-probe.mts --raw <endpoint> --params k=v`. A wrong
+  parameter name is free and self-describing; a 404 is not free.
+
+## 2026-09-17 — PropertyData: the eleven schemas rewritten from real responses
+
+**What was done.** Follow-through on the 2026-09-12 entry below. The probe
+(`scripts/propertydata-probe.mts --postcode "DL2 3JP"`, ~30 credits) captured
+one real body per endpoint; every schema, `hasContent` and reader in
+`packages/property-data/src/propertydata.ts` was rewritten from those files,
+and each endpoint now ships with a fixture test of its saved response
+(`src/__tests__/propertydata-shapes.test.ts`, fixtures in
+`src/__tests__/fixtures/propertydata-responses.ts`). The `SCHEMA DRIFT` log
+lines should stop; the responses now cache, so credits per cron run drop.
+
+**What the API actually sends — and what we had assumed.** None of the eleven
+carries a `result` object. Beyond that, four assumptions were simply false:
+
+- `/demand` has **no 0-100 score**. It publishes a text `demand_rating`
+  ("Balanced market"), `days_on_market`, stock and turnover figures. We do not
+  map the rating to a number; the preflight temperature now leans on growth.
+- `/freeholds` has **no addresses, no tenure, no lease lengths**. It returns
+  freehold title polygons with a `leaseholds` count each. Per-address tenure
+  therefore has NO source: `getTenureByPostcodeResult` reports `failed` with
+  the reason, spends nothing, and the preflight keeps routing to a person
+  ("short-lease screen NOT performed"). The titles are exposed as
+  `getFreeholdTitles` so nothing is wasted.
+- `/floor-areas` is in **square feet** (`square_feet`), not the m² the reader
+  assumed, and carries no bedrooms or property type. Converted once at the
+  boundary; the type+bedrooms matching path is gone because it could never fire.
+- `/agents` has **no phone or website**. It ranks agents per portal by live
+  instructions (`units_offered`) with branch towns.
+
+Also: `/energy-efficiency` returns JSON again (the "retired, returns HTML"
+note in the 2026-08 entry below is out of date); `/growth` is a tuple array of
+yearly rows with no forecast; `/yields` and `/growth` percentages and
+`/council-tax` pound figures arrive as **strings**.
+
+**Rules (additive to 2026-09-12).**
+
+- Every PropertyData reader is typed. No caller reads the raw body — the
+  `.result` reach-ins in `signals.ts`, the prospecting cron, scouting and the
+  snapshot builder are gone. Add a field to the reading, not to the caller.
+- A field the API does not publish stays on the public type as `null` with a
+  comment saying so (e.g. `demandScore`, `medianPricePence`, `forecastGrowthPct`)
+  so persisted snapshots and their readers keep their shape. Do not fill it
+  from a look-alike.
+- Not probed, still on the old `result` shape: `/valuation-sale`, `/listings`,
+  `/account/credits`, `/demographics`, `/george`. They were not in the
+  production drift logs, but they were also written from memory. Probe before
+  trusting.
+
 ## 2026-09-12 — One empty Anthropic balance took four features down for days
 
 **What broke.** Deep appraisal, the auction/lead photo screener, the morning

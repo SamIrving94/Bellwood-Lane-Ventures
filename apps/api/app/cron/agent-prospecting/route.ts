@@ -7,7 +7,7 @@ import {
 import { callClaudeForJson } from '@repo/ai/claude';
 import { database } from '@repo/database';
 import { sendEmail } from '@repo/email';
-import { getAgentsByPostcode } from '@repo/property-data';
+import { getAgentsByPostcode, topSaleAgents } from '@repo/property-data';
 import { NextResponse } from 'next/server';
 
 /**
@@ -125,7 +125,7 @@ export const POST = async (request: Request) => {
     // cron alive across a single bad postcode, but count it — a run that
     // surfaced nothing because every call 429'd used to look like a run where
     // no agent has listings.
-    const data = await getAgentsByPostcode(postcode).catch((err) => {
+    const rows = await getAgentsByPostcode(postcode).catch((err) => {
       failedPostcodes.push(postcode);
       console.warn(
         `[cron/agent-prospecting] /agents unavailable for ${postcode}`,
@@ -133,26 +133,17 @@ export const POST = async (request: Request) => {
       );
       return null;
     });
-    const agents = (data as { result?: { agents?: unknown[] } } | null)?.result
-      ?.agents;
-    if (!Array.isArray(agents)) continue;
+    if (!rows) continue;
 
-    for (const raw of agents) {
-      const a = raw as {
-        name?: string;
-        phone?: string;
-        address?: string;
-        number_of_listings?: number;
-        url?: string;
-      };
-      if (!a.name) continue;
+    // /agents ranks agents per portal by live SALE instructions. It carries no
+    // phone or website (verified against a real response, Sep 2026), so those
+    // stay empty and the founder finds the branch from the town list.
+    for (const a of topSaleAgents(rows)) {
       surfaced.push({
         postcode,
-        name: a.name.trim(),
-        phone: a.phone?.trim(),
-        address: a.address?.trim(),
-        numberOfListings: a.number_of_listings,
-        url: a.url?.trim(),
+        name: a.name,
+        address: a.branches.length > 0 ? a.branches.join(', ') : undefined,
+        numberOfListings: a.unitsOffered ?? undefined,
       });
     }
   }

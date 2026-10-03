@@ -328,6 +328,8 @@ const LeadDetailPage = async ({
     yields: { averageYieldPct: number | null } | null;
     pricesPerSqf: { averagePerSqft: number | null } | null;
     demandScore: number | null;
+    /** PropertyData's text rating, e.g. "Balanced market" (Sep 2026+). */
+    demandRating?: string | null;
     daysOnMarketAvg: number | null;
     growth: {
       annualGrowthPct: number | null;
@@ -339,7 +341,15 @@ const LeadDetailPage = async ({
       band: string | null;
       bandsByLetter: Record<string, number>;
     } | null;
-    flood: { riversAndSea: string | null; surfaceWater: string | null } | null;
+    /**
+     * Snapshots from Sep 2026 carry `floodRisk`; older ones carry the two
+     * fields the API never actually sent (always null).
+     */
+    flood: {
+      floodRisk?: string | null;
+      riversAndSea?: string | null;
+      surfaceWater?: string | null;
+    } | null;
     epc: { rating: string | null; matchedAddress: string | null } | null;
     tenure: {
       tenure: 'freehold' | 'leasehold' | 'unknown';
@@ -941,7 +951,7 @@ const LeadDetailPage = async ({
                     </p>
                   </>
                 ) : (
-                  <p className="font-semibold text-lg leading-none text-muted-foreground">
+                  <p className="font-semibold text-lg text-muted-foreground leading-none">
                     —
                   </p>
                 )}
@@ -1577,13 +1587,10 @@ const LeadDetailPage = async ({
                 <div>
                   <p className="text-[11px] text-muted-foreground">Flood</p>
                   <p className="font-medium text-sm capitalize">
-                    {snapshot.flood?.riversAndSea ?? '—'}
+                    {snapshot.flood?.floodRisk ??
+                      snapshot.flood?.riversAndSea ??
+                      '—'}
                   </p>
-                  {snapshot.flood?.surfaceWater && (
-                    <p className="mt-0.5 text-[11px] text-muted-foreground capitalize">
-                      surface: {snapshot.flood.surfaceWater}
-                    </p>
-                  )}
                 </div>
               </div>
             </div>
@@ -1608,10 +1615,11 @@ const LeadDetailPage = async ({
                   <p className="text-[11px] text-muted-foreground">
                     Sales demand
                   </p>
-                  <p className="font-mono font-semibold text-xl tabular-nums">
-                    {typeof snapshot.demandScore === 'number'
-                      ? `${snapshot.demandScore}/100`
-                      : '—'}
+                  <p className="font-semibold text-base">
+                    {snapshot.demandRating ??
+                      (typeof snapshot.demandScore === 'number'
+                        ? `${snapshot.demandScore}/100`
+                        : '—')}
                   </p>
                   {typeof snapshot.daysOnMarketAvg === 'number' && (
                     <p className="text-[11px] text-muted-foreground">

@@ -2,7 +2,7 @@
  * Optional durable cache for PropertyData responses.
  *
  * The in-memory LRU in propertydata.ts dies on every serverless cold start, so a
- * fresh Vercel lambda re-buys the entire (up to 90-day-TTL) dataset — the single
+ * fresh Vercel lambda re-buys the entire (up to 60-day-TTL) dataset — the single
  * biggest source of wasted PropertyData credits, and a compounding cause of the
  * lead-appraise 504s (every cold run re-fetches instead of reusing). A
  * persistent store (Postgres) lets a bought response survive cold starts and be
@@ -23,6 +23,12 @@ export type PersistentCacheEntry = {
   value: unknown;
   /** Absolute epoch-ms expiry. */
   expiresAt: number;
+  /**
+   * Epoch-ms the row was written, for adapters that track it (the Postgres
+   * adapter returns `updatedAt`). The client holds a row to PropertyData's
+   * 60-day retention limit from this, whatever TTL it was written with.
+   */
+  storedAt?: number;
 };
 
 export type PersistentCacheStore = {
@@ -33,7 +39,7 @@ export type PersistentCacheStore = {
   /**
    * Drop `key`. Without this there was no way to evict a row the client has
    * decided is poison — an upstream field rename validated against our
-   * all-optional schemas, got written with a 90-day TTL, and every instance
+   * all-optional schemas, got written with a long TTL, and every instance
    * served the empty answer until it expired. Optional so host wiring that
    * predates it still satisfies the contract; the client degrades to letting
    * the bad row age out.

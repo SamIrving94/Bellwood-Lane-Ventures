@@ -107,6 +107,12 @@ export function isRecoverableProviderError(err: unknown): boolean {
     (err as { status?: unknown })?.status;
   if (typeof status === 'number') {
     if (status === 408 || status === 425 || status === 429) return true;
+    // OpenRouter answers 404 when THIS model cannot be served as asked: an
+    // id that is not on its list, or a host pin that excludes every host
+    // for it. The next model in the chain can serve the feature, and the
+    // `_via_fallback` log row records that it did. Before Oct 2026 this
+    // was fatal and a pinned Haiku route stayed dark for three weeks.
+    if (status === 404) return true;
     if (status >= 500 && status < 600) return true;
   }
   return false;

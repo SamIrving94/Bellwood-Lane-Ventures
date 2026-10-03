@@ -69,7 +69,7 @@
 ### LLM (set on BOTH Vercel projects — see `docs/LLM-ROUTING.md`)
 - `REDDIT_CLIENT_ID` / `REDDIT_CLIENT_SECRET` (+ optional `REDDIT_USER_AGENT`) — bellwood-api only. Reddit "script" app for `/cron/guide-research`; without them the Reddit source is skipped and the weekly card says so.
 - `OPENROUTER_API_KEY` — **primary** route for every AI feature since 12 Sep 2026 (one bill, any model, open-weight challengers testable from Settings → AI models)
-- `ANTHROPIC_API_KEY` — optional; first fallback. Its balance ran dry in Sep 2026 and took four features down — never the only key again
+- `ANTHROPIC_API_KEY` — **retired (3 Oct 2026: everything moved to OpenRouter)**. Unfunded; may still be set but nothing may depend on it. Safe to remove from both projects.
 - `LLM_PRIMARY_PROVIDER` / `LLM_FALLBACK_CHAIN` — optional overrides, documented in the routing doc
 
 ### Per-project gotcha (Vercel)

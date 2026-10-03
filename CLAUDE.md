@@ -28,7 +28,7 @@ they are always held for founder review.
 - **Auth:** Clerk
 - **Database:** Neon Postgres via **Prisma** + `@prisma/adapter-neon` (WebSocket driver adapter)
 - **Email:** Resend (`@repo/email`, graceful fallback when no token)
-- **AI:** Vercel AI SDK + OpenAI; agent orchestration via external "Paperclip" agents
+- **AI:** **OpenRouter only** (founder decision, 3 Oct 2026) through `@repo/ai/claude` on the Vercel AI SDK. One bill, any model; routing per feature in Settings → AI models. Anthropic direct is retired and unfunded: no raw Anthropic fetches, no `@anthropic-ai/sdk`, no `if (!ANTHROPIC_API_KEY)` gates (use `hasLlmProvider()`). See `docs/LLM-ROUTING.md`.
 - **Lint/format:** **Biome** via **Ultracite** preset (`pnpm lint` / `pnpm format`)
 - **Tests:** Vitest
 - **Hosting:** Vercel — two projects: `bellwood-app` (dashboard) and `bellwood-api` (crons/agents)

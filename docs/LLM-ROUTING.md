@@ -1,6 +1,6 @@
 # LLM routing — OpenRouter first, open-weight challengers, one bill
 
-_Last verified against the code: 2026-09-17_
+_Last verified against the code: 2026-10-03_
 
 ## How a call is routed
 
@@ -10,14 +10,15 @@ Every LLM feature goes through `@repo/ai/claude` (`callClaude`,
 deep appraisal (`deep_appraisal`), the WhatsApp intake parser
 (`whatsapp_parse`) and the photo condition screener (`property_vision`).
 
-Order of attempts, decided by `planProviders` in `packages/ai/routing.ts`:
+**OpenRouter is the only route** (founder decision, 3 Oct 2026: "we moved
+everything to OpenRouter"). `planProviders` in `packages/ai/routing.ts`
+still knows how to use an Anthropic key if one is present, but the account
+is unfunded and the key is being retired; treat any attempt that lands on
+Anthropic direct as a wasted hop, not a plan.
 
 | Keys set | Primary | Then |
 |:--|:--|:--|
-| `OPENROUTER_API_KEY` (+ Anthropic) | OpenRouter, same Claude tier | Anthropic direct → chain |
-| `OPENROUTER_API_KEY` only | OpenRouter, same Claude tier | chain |
-| `ANTHROPIC_API_KEY` only | Anthropic direct | nothing |
-| both + `LLM_PRIMARY_PROVIDER=anthropic` | Anthropic direct | OpenRouter Claude → chain |
+| `OPENROUTER_API_KEY` | OpenRouter, routed model | per-tier chain |
 
 The **chain** is per tier (override with `LLM_FALLBACK_CHAIN=a/b,c/d`):
 
@@ -34,6 +35,33 @@ fatal, so the chain never ran.
 OpenRouter's is `anthropic/claude-sonnet-4.5` (dot). The client maps one
 to the other; you can type either in Settings. The old chain used the
 hyphen form on OpenRouter, which is not a model there.
+
+## Two faults fixed 3 Oct 2026 (read before touching caching or pinning)
+
+- **Cached system prompts.** The breakpoint is message-level
+  (`providerOptions.anthropic.cacheControl` on a string system message).
+  The text-part-array form fails the SDK's prompt validation before any
+  provider is called and the chain cannot rescue it. `prompt-shape.ts`
+  owns the shape and is tested against the validator.
+- **Host pinning and Claude.** `providerOnly` names open-weight hosts; none
+  serve Claude. `prefsForModel` re-pins a Claude id to `['anthropic']`
+  and keeps `zdr` / `data_collection`. If a route is meant to run on an
+  open-weight host, set its **Model** too; a pin alone does not move it.
+- **404 is recoverable.** A model OpenRouter cannot serve as asked hands
+  the call to the next model in the chain.
+
+## Web search and the one remaining Anthropic-direct dependency
+
+- **Web search** runs through OpenRouter's web plugin (`plugins: [{ id: 'web' }]`),
+  requested with `webSearch` on `callClaude*`. The overnight analyst
+  (`/cron/overnight-research`) moved to it on 3 Oct 2026 after failing daily
+  since 9 Sep on Anthropic's server tool with an empty balance.
+- **Probate PDF extraction** (`packages/document-pipeline/src/probate-extract.ts`)
+  still calls Anthropic's Files + Citations beta directly. It returns an
+  empty extract with `no_api_key` when the key is absent and is otherwise
+  dark while the account is unfunded. Moving it to OpenRouter means sending
+  the PDF as a file part to a Sonnet-class model and dropping citation
+  spans; that is a product decision, so it is flagged here rather than done.
 
 ## Testing open-weight models
 
@@ -72,7 +100,7 @@ Rules of thumb:
 | Var | Purpose |
 |:--|:--|
 | `OPENROUTER_API_KEY` | Primary route. One bill for every model. |
-| `ANTHROPIC_API_KEY` | Optional. First fallback (or primary with the flag below). |
+| `ANTHROPIC_API_KEY` | Retired 3 Oct 2026. Unfunded. Remove when convenient; nothing may depend on it. |
 | `LLM_PRIMARY_PROVIDER` | `openrouter` (default when keyed) or `anthropic`. |
 | `LLM_FALLBACK_CHAIN` | Optional comma list of OpenRouter ids to try after the primary. |
 
