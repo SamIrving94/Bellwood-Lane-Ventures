@@ -195,6 +195,49 @@ billboards. No radio.
 
 ---
 
+## §5a Guides — the evergreen question library (17 Sep 2026)
+
+_Founder decisions, 17 Sep 2026: evergreen questions are what we publish;
+news reaction is LinkedIn's job; one guide a week, not two; Reddit is the
+listening source worth having, X is not._
+
+**What it is.** A short library at `/guides` on the public site. Each guide
+answers ONE question a seller, executor or agent types into Google in March
+and again in September. The list lives in code
+(`apps/api/app/cron/_lib/guides/evergreen-questions.ts`, ~23 questions, one
+per week for a year before it repeats). The answer does not change with the
+news; the opening hook does.
+
+**How a guide is made.**
+
+1. **Listen** (Saturday 06:00). `/cron/guide-research` reads the last seven
+   days of UK property trade feeds (Property Industry Eye, The Negotiator,
+   HM Land Registry news) and, when a Reddit script app is configured,
+   r/HousingUK, r/LegalAdviceUK and r/UKPersonalFinance. A dead source is a
+   line on the card, never a missed week.
+2. **Pick.** The model ranks the unwritten questions against those signals
+   and returns three candidates, each with a hook and the signal indices
+   that justify it. It can only cite what it was shown.
+3. **Draft.** The top pick goes through `/agents/marketer/draft-blog` in
+   Kept voice with the hook and only those sources, then the compliance
+   audit. A `GuidePost` row (status `draft`) and one queue card land in
+   /marketing.
+4. **Review and publish.** The founder reads the card, Approves (keeps it)
+   or Publishes (live at `/guides/<slug>` within five minutes, in the
+   sitemap, indexable). Nothing in the cron path can publish.
+
+**What we do not do.** No news-reaction posts. No second guide because the
+cron can. No X search (no free API; the audience is on LinkedIn and Google).
+No figure, band or percentage in a guide, ever. Every guide ends "an honest
+steer, not advice" with the StepChange and Citizens Advice line.
+
+**Honest expectation.** A new domain ranks slowly. Six to eighteen months of
+weekly guides and a handful of referring links before search traffic is
+material. The guides also serve as the answers we link to from outreach and
+from the situation pages, which is value from week one.
+
+---
+
 ## §6 Internal workflow — who does what
 
 | Workflow | Owner | Approval | Cadence | Cron route |
@@ -204,7 +247,7 @@ billboards. No radio.
 | Weekly LinkedIn educational content | **Marketer** | CEO | Sun evening for week ahead | `/cron/marketer-weekly` |
 | Monday prospecting → first-touch DMs/emails | **Marketer** | CEO | Mondays after `/cron/agent-prospecting` fires | `/cron/agent-prospecting` (already existed) |
 | LinkedIn comments + DM reply drafts | **Liaison** | CEO | Within 4h of inbound | `/cron/event-poller` |
-| Vendor SEO blog post — research + draft | **Marketer** (using `askGeorge()`) | **Counsel + CEO** | 2/week | `/cron/marketer-weekly` |
+| Evergreen guide — listen, pick, draft (see §5a) | **Marketer** (`/cron/guide-research`) | **CEO** publishes from /marketing/guides | 1/week | `/cron/guide-research` (Sat 06:00) |
 | Anonymised vendor case study | **Marketer + Counsel** | CEO | After every completion | `/cron/marketer-daily` |
 | Paid ad copy variants | **Marketer** | CEO | Monthly | `/cron/marketer-monthly` |
 | Inbound vendor reply | **Liaison** | CEO (always) | Within 2h | `/cron/event-poller` |
