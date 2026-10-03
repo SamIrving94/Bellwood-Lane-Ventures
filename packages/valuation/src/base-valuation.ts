@@ -13,6 +13,12 @@
  * Sep 2026 — a fourth pillar, SIZE: sold comps matched to their EPC floor
  * areas give a £/sqft rate for the street, re-priced by the subject's own
  * EPC floor area. See ./sqft-comps.ts for the weights it takes.
+ *
+ * Sep 2026 — evidence gate. Zero sold comps from every source (PropertyData
+ * radius → Land Registry postcode → Land Registry sector) now throws
+ * InsufficientEvidenceError instead of pricing off an area average that,
+ * when the HMLR feed was down, was a hash-generated placeholder. Valuations
+ * that had a comp are unchanged. See ./evidence.ts.
  */
 
 import 'server-only';
@@ -25,6 +31,7 @@ import {
   getPropertyFloorArea,
   getFloorAreaRows,
   getPricesPerSqf,
+  getSectorPricePaid,
   realTransactions,
   type PpdTransaction,
   type Epc,
@@ -34,6 +41,7 @@ import {
   getDistanceWeightedValuation,
   type DistanceWeightedValuation,
 } from './distance-comps';
+import { InsufficientEvidenceError } from './evidence';
 import {
   buildSqftEvidence,
   normalisePostcode,
@@ -67,7 +75,7 @@ export interface ComparableSale {
   address: string | null;
   /** Sold-property postcode (lets the UI link to the sold record). */
   postcode: string | null;
-  /** Distance from the subject in miles. Null for the HMLR fallback path. */
+  /** Distance from the subject in miles. Null for the HMLR postcode/sector paths. */
   distanceMiles: number | null;
   /** EPC floor area of the sold comp (m²). Null when no register row matched. */
   floorAreaSqm: number | null;
@@ -171,11 +179,11 @@ function timeAdjust(price: number, months: number): number {
 // Comp filtering — same type within 18 months (36 max), outlier removal
 // ---------------------------------------------------------------------------
 
-function filterComps(
-  transactions: PpdTransaction[],
+function filterComps<T extends PpdTransaction>(
+  transactions: T[],
   targetType: PropertyType,
   floorAreaSqm?: number
-): Array<PpdTransaction & { adjustedPrice: number; monthsAgo: number }> {
+): Array<T & { adjustedPrice: number; monthsAgo: number }> {
   const MAX_MONTHS = 36;
   const MAX_COMPS = 12;
 
@@ -210,6 +218,19 @@ function filterComps(
   );
 
   return cleaned.slice(0, MAX_COMPS);
+}
+
+/** Median of the time-adjusted prices — the CSA for a keyless HMLR comp set. */
+function medianAdjusted(comps: Array<{ adjustedPrice: number }>): number {
+  const sorted = [...comps].sort((a, b) => a.adjustedPrice - b.adjustedPrice);
+  const mid = Math.floor(sorted.length / 2);
+  return sorted.length % 2 === 0
+    ? Math.round(
+        ((sorted[mid - 1]?.adjustedPrice ?? 0) +
+          (sorted[mid]?.adjustedPrice ?? 0)) /
+          2
+      )
+    : (sorted[mid]?.adjustedPrice ?? 0);
 }
 
 // ---------------------------------------------------------------------------
@@ -291,70 +312,64 @@ export async function getBaseValuation(
 ): Promise<BaseValuation> {
   const { postcode, propertyType, floorAreaSqm, bedrooms, address } = input;
 
-  const [
-    pricePaid,
-    hpi,
-    epc,
-    externalAvm,
-    distanceWeighted,
-    pdFloorArea,
-  ] = await Promise.all([
-    getPricePaid(postcode, 20),
-    getHousepriceIndex(postcode),
-    getEpcData(postcode, address),
-    // PropertyData's £/sqft-driven AVM. Cached 7 days per postcode+type+
-    // bedrooms so we burn ~3 credits per unique property per week.
-    //
-    // A FAILED lookup now throws rather than returning null. We catch it here so
-    // one dark cross-check can't take down a valuation that has HMLR comps — but
-    // we log it, because "no AVM" and "AVM unreachable" are different facts and
-    // only one of them is a reason to distrust the estimate.
-    getPropertyDataValuation({
-      postcode,
-      propertyType,
-      bedrooms: bedrooms ?? undefined,
-      // m², matching this package's units. See the unit caveat on
-      // getPropertyDataValuation — /valuation-sale's expected unit is unconfirmed.
-      internalAreaSqm: floorAreaSqm ?? undefined,
-    }).catch((err) => {
-      console.warn(
-        `[base-valuation] external AVM cross-check unavailable for ${postcode}`,
-        err
-      );
-      return null;
-    }),
-    // Distance-weighted sold comps (last 12mo, 0.25mi=60% / 0.5mi=40%).
-    // Returns null when the subject can't be geolocated or there are no
-    // comps — we then fall back to the Land-Registry exact-postcode path.
-    getDistanceWeightedValuation({
-      postcode,
-      propertyType,
-      bedrooms: bedrooms ?? undefined,
-      maxAgeMonths: 12,
-    }),
-    // Real, EPC-derived floor area for THIS property (house-number matched).
-    // Returns null when we can't pin an unambiguous record — we then show no
-    // size rather than a guess. NOT the postcode average.
-    // Same treatment: a failed /floor-areas lookup must not masquerade as
-    // "no unambiguous record for this address".
-    getPropertyFloorArea({
-      postcode,
-      address,
-      propertyType,
-      bedrooms: bedrooms ?? undefined,
-    }).catch((err) => {
-      console.warn(
-        `[base-valuation] PropertyData floor-area lookup unavailable for ${postcode}`,
-        err
-      );
-      return null;
-    }),
-  ]);
+  const [pricePaid, hpi, epc, externalAvm, distanceWeighted, pdFloorArea] =
+    await Promise.all([
+      getPricePaid(postcode, 20),
+      getHousepriceIndex(postcode),
+      getEpcData(postcode, address),
+      // PropertyData's £/sqft-driven AVM. Cached 7 days per postcode+type+
+      // bedrooms so we burn ~3 credits per unique property per week.
+      //
+      // A FAILED lookup now throws rather than returning null. We catch it here so
+      // one dark cross-check can't take down a valuation that has HMLR comps — but
+      // we log it, because "no AVM" and "AVM unreachable" are different facts and
+      // only one of them is a reason to distrust the estimate.
+      getPropertyDataValuation({
+        postcode,
+        propertyType,
+        bedrooms: bedrooms ?? undefined,
+        // m², matching this package's units. See the unit caveat on
+        // getPropertyDataValuation — /valuation-sale's expected unit is unconfirmed.
+        internalAreaSqm: floorAreaSqm ?? undefined,
+      }).catch((err) => {
+        console.warn(
+          `[base-valuation] external AVM cross-check unavailable for ${postcode}`,
+          err
+        );
+        return null;
+      }),
+      // Distance-weighted sold comps (last 12mo, 0.25mi=60% / 0.5mi=40%).
+      // Returns null when the subject can't be geolocated or there are no
+      // comps — we then fall back to the Land-Registry exact-postcode path.
+      getDistanceWeightedValuation({
+        postcode,
+        propertyType,
+        bedrooms: bedrooms ?? undefined,
+        maxAgeMonths: 12,
+      }),
+      // Real, EPC-derived floor area for THIS property (house-number matched).
+      // Returns null when we can't pin an unambiguous record — we then show no
+      // size rather than a guess. NOT the postcode average.
+      // Same treatment: a failed /floor-areas lookup must not masquerade as
+      // "no unambiguous record for this address".
+      getPropertyFloorArea({
+        postcode,
+        address,
+        propertyType,
+        bedrooms: bedrooms ?? undefined,
+      }).catch((err) => {
+        console.warn(
+          `[base-valuation] PropertyData floor-area lookup unavailable for ${postcode}`,
+          err
+        );
+        return null;
+      }),
+    ]);
 
   // Real Land Registry sales only — a hash-derived placeholder must never be
   // presented as a comparable. When the feed was synthetic this empties the
-  // comp set, which drops us onto the `fallback` path below (already tagged
-  // source 'synthetic' + low confidence).
+  // comp set, which sends us to the sector source below — and, if that is
+  // empty too, to InsufficientEvidenceError rather than a number.
   const hmlrComps = filterComps(
     realTransactions(pricePaid.transactions),
     propertyType,
@@ -379,10 +394,19 @@ export async function getBaseValuation(
   // CSA value — comparable sales adjusted value. Priority:
   //   1. Distance-weighted PropertyData comps (the real radius — best)
   //   2. Land Registry exact-postcode comps (median of adjusted)
-  //   3. Area-average fallback with a type discount (deterministic, low conf.)
+  //   3. Land Registry postcode-SECTOR comps (free SPARQL; low confidence)
+  //   4. Nothing → InsufficientEvidenceError. Never a number without a sale.
+  //
+  // Step 3 runs ONLY when 1 and 2 are both empty, so every valuation that
+  // had a comp before Sep 2026 gets exactly the same answer it always did
+  // (the AVM method is frozen until the backtest reads — see CLAUDE.md).
+  // What changed is the zero-comp case: it used to price off
+  // `pricePaid.avgPrice`, which when the HMLR feed was down was a
+  // hash-generated placeholder. See ./evidence.ts for the incident.
   let csaValue: number;
   let comparables: ComparableSale[];
-  let csaSource: 'distance' | 'hmlr' | 'fallback';
+  let csaSource: 'distance' | 'hmlr' | 'sector';
+  let sectorLabel: string | null = null;
 
   if (distanceWeighted) {
     csaValue = Math.round(distanceWeighted.estimatePence / 100);
@@ -400,18 +424,7 @@ export async function getBaseValuation(
     }));
     csaSource = 'distance';
   } else if (hmlrComps.length > 0) {
-    const sorted = [...hmlrComps].sort(
-      (a, b) => a.adjustedPrice - b.adjustedPrice
-    );
-    const mid = Math.floor(sorted.length / 2);
-    csaValue =
-      sorted.length % 2 === 0
-        ? Math.round(
-            ((sorted[mid - 1]?.adjustedPrice ?? 0) +
-              (sorted[mid]?.adjustedPrice ?? 0)) /
-              2
-          )
-        : (sorted[mid]?.adjustedPrice ?? 0);
+    csaValue = medianAdjusted(hmlrComps);
     comparables = hmlrComps.map((c) => ({
       price: c.price,
       date: c.date,
@@ -427,17 +440,49 @@ export async function getBaseValuation(
     }));
     csaSource = 'hmlr';
   } else {
-    // No same-type comps anywhere: use overall avg with type discount.
-    const fallback = pricePaid.avgPrice ?? 250_000;
-    const typeDiscount: Record<PropertyType, number> = {
-      detached: 1.35,
-      'semi-detached': 1.0,
-      terraced: 0.85,
-      flat: 0.72,
-    };
-    csaValue = Math.round(fallback * (typeDiscount[propertyType] ?? 1.0));
-    comparables = [];
-    csaSource = 'fallback';
+    // Widen to the postcode sector. Free, keyless, and independent of
+    // PropertyData credits — but it carries no distance, so it can only
+    // ever be low-confidence evidence (capped below).
+    const sector = await getSectorPricePaid(postcode, { propertyType });
+    const sectorComps = filterComps(
+      realTransactions(sector.transactions) as typeof sector.transactions,
+      propertyType,
+      floorAreaSqm
+    );
+    if (sectorComps.length === 0) {
+      const hmlrDown = pricePaid.source === 'synthetic';
+      const sectorDown = sector.source === 'unavailable';
+      throw new InsufficientEvidenceError({
+        postcode,
+        propertyType,
+        reason: hmlrDown && sectorDown ? 'sources_unavailable' : 'no_sales',
+        tried: [
+          'PropertyData sold-prices (0.5 mile)',
+          hmlrDown
+            ? 'Land Registry postcode (unreachable)'
+            : 'Land Registry postcode',
+          sectorDown
+            ? `Land Registry sector ${sector.sector ?? '?'} (unreachable)`
+            : `Land Registry sector ${sector.sector ?? '?'}`,
+        ],
+      });
+    }
+    csaValue = medianAdjusted(sectorComps);
+    comparables = sectorComps.map((c) => ({
+      price: c.price,
+      date: c.date,
+      propertyType: c.propertyType,
+      adjustedPrice: c.adjustedPrice,
+      monthsAgo: c.monthsAgo,
+      address: c.address,
+      postcode: c.postcode,
+      // Sector comps are not geolocated — the UI must not imply proximity.
+      distanceMiles: null,
+      floorAreaSqm: null,
+      pricePerSqft: null,
+    }));
+    csaSource = 'sector';
+    sectorLabel = sector.sector;
   }
 
   // Hedonic estimate — anchored to CSA, adjusted for size/bedrooms
@@ -469,7 +514,7 @@ export async function getBaseValuation(
       const hit = sqft.matched.find(
         (m) =>
           m.address === comp.address &&
-          m.adjustedPricePence === Math.round(comp.adjustedPrice * 100),
+          m.adjustedPricePence === Math.round(comp.adjustedPrice * 100)
       );
       if (hit) {
         comp.floorAreaSqm = hit.floorAreaSqm;
@@ -487,13 +532,13 @@ export async function getBaseValuation(
   const weights = triangulationWeights(
     csaSource,
     Boolean(externalAvm),
-    sqftEstimate != null ? sqft?.source ?? null : null,
+    sqftEstimate != null ? (sqft?.source ?? null) : null
   );
   const pointEstimate = Math.round(
     csaValue * weights.csa +
       hpiAdjustedHedonic * weights.hedonic +
       (externalAvm?.estimate ?? 0) * weights.external +
-      (sqftEstimate ?? 0) * weights.sqft,
+      (sqftEstimate ?? 0) * weights.sqft
   );
 
   // Confidence — two stages:
@@ -505,7 +550,9 @@ export async function getBaseValuation(
   let signalLevel: ConfidenceLevel;
   if (csaSource === 'distance' && distanceWeighted) {
     signalLevel = distanceWeighted.confidence;
-  } else if (pricePaid.source === 'synthetic' || csaSource === 'fallback') {
+  } else if (csaSource === 'sector') {
+    // Sector-wide sales with no distance: real evidence, unverified
+    // proximity. Never better than low, however many rows agree.
     signalLevel = 'low';
   } else {
     signalLevel = calcConfidence(hpiAdjustedHedonic, csaValue).level;
@@ -545,11 +592,13 @@ export async function getBaseValuation(
       : sqftEstimate != null && sqft?.source === 'area_benchmark'
         ? '+sqft_benchmark'
         : '';
+  // Every branch above either found a real sale or threw, so 'synthetic'
+  // can no longer be a valuation's source label.
   const source =
     csaSource === 'distance' && distanceWeighted
       ? `propertydata_sold_distance(${distanceWeighted.nearCount}@0.25mi/${distanceWeighted.farCount}@0.5mi)${hpiTag}${epcTag}${sqftTag}`
-      : pricePaid.source === 'synthetic'
-        ? 'synthetic'
+      : csaSource === 'sector'
+        ? `hmlr_ppd_sector(${comparables.length}@${sectorLabel ?? '?'})${hpiTag}${epcTag}${sqftTag}`
         : `hmlr_ppd${hpiTag}${epcTag}${sqftTag}`;
 
   return {
@@ -599,7 +648,7 @@ async function resolveSqftEvidence(input: {
   const addressed = input.comps.filter((c) => c.address);
   const compKeys: string[] = [];
   for (const c of [...addressed].sort(
-    (a, b) => (a.distanceMiles ?? 0) - (b.distanceMiles ?? 0),
+    (a, b) => (a.distanceMiles ?? 0) - (b.distanceMiles ?? 0)
   )) {
     const key = normalisePostcode(c.postcode);
     if (!key || key === subjectKey || compKeys.includes(key)) continue;
@@ -617,7 +666,7 @@ async function resolveSqftEvidence(input: {
         ? getPricesPerSqf(input.postcode).catch((err) => {
             console.warn(
               `[base-valuation] £/sqft benchmark unavailable for ${input.postcode}`,
-              err,
+              err
             );
             return null;
           })
@@ -648,7 +697,7 @@ async function resolveSqftEvidence(input: {
     // A failed size lookup must never take down a valuation that has comps.
     console.warn(
       `[base-valuation] £/sqft evidence unavailable for ${input.postcode}`,
-      err,
+      err
     );
     return null;
   }
