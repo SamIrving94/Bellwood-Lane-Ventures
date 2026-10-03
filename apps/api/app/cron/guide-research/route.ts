@@ -364,3 +364,7 @@ export const POST = async (request: Request) => {
     durationMs: Date.now() - startedAt.getTime(),
   });
 };
+
+// Vercel cron sends GET by default. Accept either method so a manual
+// POST and an automated GET both reach the same handler.
+export const GET = POST;
