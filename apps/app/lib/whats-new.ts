@@ -26,6 +26,37 @@ export type WhatsNewEntry = {
 /** Newest first. The popup shows index 0. */
 export const WHATS_NEW: WhatsNewEntry[] = [
   {
+    id: '2026-10-03-avm-evidence-gate',
+    date: '2026-10-03',
+    emoji: '🧾',
+    title: 'The AVM now shows its receipts',
+    intro:
+      'A 3-bed semi in SW16 got “valued” at £345k with zero sold comps behind it. That number was a placeholder. No more: every valuation now says where it came from, and with no evidence there is no number at all.',
+    bullets: [
+      {
+        emoji: '🚫',
+        text: '**No comps, no number.** With nothing sold nearby the AVM now says **“No valuation”** and blocks the offer, instead of pricing off an area average.',
+      },
+      {
+        emoji: '🗺️',
+        text: '**New evidence source.** When the half-mile and postcode come up empty, it widens to same-type **Land Registry sales across the postcode sector** — free, no credits, flagged as wide.',
+      },
+      {
+        emoji: '🧾',
+        text: '**Source on every valuation.** Under Confidence you now see **which feed** priced it and **how many comps** at what radius. **0 sold comps** shows in red.',
+      },
+      {
+        emoji: '⚖️',
+        text: '**“Above market” now checks itself.** A low-confidence AVM can no longer rule a lead out on its own — it says **verify** instead.',
+      },
+      {
+        emoji: '🗣️',
+        text: '**The agent’s blurb is labelled.** The listing description under The Verdict is now marked **“From the agent’s listing”** — it was never our assessment.',
+      },
+    ],
+    cta: { label: 'Re-appraise a thin lead', href: '/leads' },
+  },
+  {
     id: '2026-10-01-kept-in-chatgpt',
     date: '2026-10-01',
     emoji: '💬',
@@ -51,6 +82,37 @@ export const WHATS_NEW: WhatsNewEntry[] = [
       },
     ],
     cta: { label: 'Open the Action Centre', href: '/actions' },
+  },
+  {
+    id: '2026-09-17-propertydata-signals-live',
+    date: '2026-09-17',
+    emoji: '🔌',
+    title: 'Flood, demand, yield and sold comps now live on batch rows',
+    intro:
+      'Eleven PropertyData feeds were plugged into the wrong socket since day one — paid for on every run, never read. They are wired to the real responses now.',
+    bullets: [
+      {
+        emoji: '🌊',
+        text: '**Flood, demand and yield** fill in on every batch-appraised row. Upload the pipeline sheet again and the three columns populate.',
+      },
+      {
+        emoji: '🏘️',
+        text: '**Sold comps by distance** now feed the AVM — real Land Registry sales within half a mile, not the postcode fallback.',
+      },
+      {
+        emoji: '📐',
+        text: '**Real floor areas** from the EPC register match by house number. Sizes arrive in square feet and are converted once, properly.',
+      },
+      {
+        emoji: '🕵️',
+        text: '**Agent prospecting** lists who is actually selling in each postcode, by live instruction count.',
+      },
+      {
+        emoji: '🔒',
+        text: '**Tenure stays honest.** PropertyData has no per-address lease data, so the short-lease screen says "not performed" rather than guessing. Every quote still lands with a person.',
+      },
+    ],
+    cta: { label: 'Open the batch tool', href: '/batch' },
   },
   {
     id: '2026-09-12-appraisal-signals-and-size',
