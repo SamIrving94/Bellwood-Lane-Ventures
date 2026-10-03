@@ -1,5 +1,6 @@
 'use client';
 
+import { useTrack } from '@repo/analytics/posthog/client';
 import { type ReactNode, useState } from 'react';
 
 /**
@@ -137,6 +138,16 @@ export function OfferForm() {
   const [email, setEmail] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
+  const track = useTrack();
+
+  /** A Continue that passed its check. Back links call setStep directly so
+   *  the funnel counts forward progress only. Nothing typed goes with it. */
+  const advance = (next: Step) => {
+    track(step === 'address' ? 'sell_form_started' : 'sell_form_step', {
+      step: next,
+    });
+    setStep(next);
+  };
 
   const submit = async () => {
     setSending(true);
@@ -144,6 +155,18 @@ export function OfferForm() {
     const m = address.match(POSTCODE_RE);
     const postcode = m ? `${m[1]} ${m[2]}`.toUpperCase() : '';
     const askingDigits = askingPrice.replace(NON_DIGITS_RE, '');
+    // Funnel properties only: the outward code places a lead on a map of
+    // districts, never at a door. Name, email, phone and address stay out.
+    const funnel = {
+      situation,
+      property_type: propertyType,
+      bedrooms: bedrooms ?? undefined,
+      condition: condition ?? undefined,
+      urgency_days: urgencyDays ?? undefined,
+      outward_code: m ? m[1].toUpperCase() : undefined,
+      has_asking_price: askingDigits.length > 0,
+      has_notes: notes.trim().length > 0,
+    };
     try {
       const res = await fetch('/api/quote', {
         method: 'POST',
@@ -169,8 +192,10 @@ export function OfferForm() {
         }),
       });
       if (!res.ok) {
+        track('sell_form_failed', { ...funnel, status: res.status });
         throw new Error(`HTTP ${res.status}`);
       }
+      track('sell_form_submitted', funnel);
       setStep('done');
     } catch {
       setError(
@@ -231,7 +256,7 @@ export function OfferForm() {
                   return;
                 }
                 setError(null);
-                setStep('property');
+                advance('property');
               }}
               type="button"
             >
@@ -288,7 +313,7 @@ export function OfferForm() {
                   return;
                 }
                 setError(null);
-                setStep('condition');
+                advance('condition');
               }}
               type="button"
             >
@@ -338,7 +363,7 @@ export function OfferForm() {
               className={PILL}
               onClick={() => {
                 setError(null);
-                setStep('situation');
+                advance('situation');
               }}
               type="button"
             >
@@ -398,7 +423,7 @@ export function OfferForm() {
                   return;
                 }
                 setError(null);
-                setStep('contact');
+                advance('contact');
               }}
               type="button"
             >

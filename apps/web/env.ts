@@ -27,6 +27,14 @@ export const env = createEnv({
     NEXT_PUBLIC_META_PIXEL_ID: z
       .union([z.string().regex(/^\d+$/), z.literal('')])
       .optional(),
+    // PostHog, cookieless, outside the consent gate (see app/layout.tsx).
+    // Unset or "" = not loaded. The provider itself reads these through
+    // @repo/analytics/keys; they are declared here so the web build
+    // validates them like every other public tag id.
+    NEXT_PUBLIC_POSTHOG_KEY: z
+      .union([z.string().startsWith('phc_'), z.literal('')])
+      .optional(),
+    NEXT_PUBLIC_POSTHOG_HOST: z.union([z.string().url(), z.literal('')]).optional(),
   },
   runtimeEnv: {
     VERCEL_ENV: process.env.VERCEL_ENV,
@@ -34,5 +42,7 @@ export const env = createEnv({
     NEXT_PUBLIC_GOOGLE_ADS_ID: process.env.NEXT_PUBLIC_GOOGLE_ADS_ID,
     NEXT_PUBLIC_META_PIXEL_ID: process.env.NEXT_PUBLIC_META_PIXEL_ID,
     NEXT_PUBLIC_GTM_ID: process.env.NEXT_PUBLIC_GTM_ID,
+    NEXT_PUBLIC_POSTHOG_KEY: process.env.NEXT_PUBLIC_POSTHOG_KEY,
+    NEXT_PUBLIC_POSTHOG_HOST: process.env.NEXT_PUBLIC_POSTHOG_HOST,
   },
 });

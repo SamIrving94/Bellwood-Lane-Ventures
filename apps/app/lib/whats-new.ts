@@ -26,6 +26,33 @@ export type WhatsNewEntry = {
 /** Newest first. The popup shows index 0. */
 export const WHATS_NEW: WhatsNewEntry[] = [
   {
+    id: '2026-10-03-site-analytics',
+    date: '2026-10-03',
+    emoji: '📈',
+    title: 'The public site now counts its visitors',
+    intro:
+      'Until today wearekept.co.uk recorded nothing: no page views, no idea where the offer form lost people. PostHog now watches the whole site, cookie-free, so the privacy notice still holds.',
+    bullets: [
+      {
+        emoji: '📊',
+        text: '**Every page counted.** Views, referrers and UTM tags, so a Google Ads click and a probate guide read are told apart.',
+      },
+      {
+        emoji: '🪜',
+        text: '**The form, step by step.** Started, each Continue, sent. The drop-off between steps is the number to watch.',
+      },
+      {
+        emoji: '🍪',
+        text: '**No cookie, no banner.** Nothing stored on the visitor’s device, IP not recorded, never a name or email. The privacy notice says so, in the same change.',
+      },
+      {
+        emoji: '🔑',
+        text: '**One thing to do.** Paste the PostHog project key into Vercel (bellwood-web) or none of this records.',
+      },
+    ],
+    cta: { label: 'Open PostHog', href: 'https://app.posthog.com' },
+  },
+  {
     id: '2026-09-17-guides-pipeline',
     date: '2026-10-03',
     emoji: '📚',

@@ -497,6 +497,9 @@ importers:
       '@repo/ai':
         specifier: workspace:*
         version: link:../../packages/ai
+      '@repo/analytics':
+        specifier: workspace:*
+        version: link:../../packages/analytics
       '@repo/brand':
         specifier: workspace:*
         version: link:../../packages/brand

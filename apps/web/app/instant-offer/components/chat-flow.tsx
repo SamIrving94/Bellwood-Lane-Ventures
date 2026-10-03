@@ -1,5 +1,6 @@
 'use client';
 
+import { useTrack } from '@repo/analytics/posthog/client';
 import { useSearchParams } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 
@@ -254,6 +255,7 @@ export function ChatFlow({ defaultRole }: ChatFlowProps = {}) {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const didMount = useRef(false);
+  const track = useTrack();
 
   useEffect(() => {
     // Never scroll on first mount — it hijacks the page load and dumps the
@@ -279,6 +281,10 @@ export function ChatFlow({ defaultRole }: ChatFlowProps = {}) {
     }
     setErrorMsg(null);
     setState((s) => ({ ...s, address: addr, postcode: pc }));
+    track('instant_offer_started', {
+      role: defaultRole ?? 'unset',
+      referred: Boolean(referralCode),
+    });
     setStep('property_type');
   };
 
@@ -365,6 +371,18 @@ export function ChatFlow({ defaultRole }: ChatFlowProps = {}) {
       setResearchProgress(Math.min(idx, RESEARCH_LINES.length - 1));
     }, 700);
 
+    // Funnel properties only — never the contact details or the address.
+    const funnel = {
+      role: state.role ?? defaultRole ?? 'unset',
+      situation: state.situation,
+      property_type: state.propertyType,
+      bedrooms: state.bedrooms,
+      urgency_days: state.urgencyDays,
+      has_asking_price: state.askingPricePence !== undefined,
+      referred: Boolean(referralCode),
+    };
+    track('instant_offer_requested', funnel);
+
     try {
       const res = await fetch('/api/quote', {
         method: 'POST',
@@ -381,14 +399,20 @@ export function ChatFlow({ defaultRole }: ChatFlowProps = {}) {
       clearInterval(ticker);
       setResearchProgress(RESEARCH_LINES.length);
       if (!res.ok) {
+        track('instant_offer_failed', { ...funnel, status: res.status });
         setErrorMsg(data.error || 'Something went wrong');
         setStep('error');
         return;
       }
+      track('instant_offer_result', {
+        ...funnel,
+        requires_review: Boolean(data.requiresReview),
+      });
       setOffer(data);
       setStep('result');
     } catch {
       clearInterval(ticker);
+      track('instant_offer_failed', { ...funnel, status: 0 });
       setErrorMsg('Could not reach the offer engine. Please try again.');
       setStep('error');
     }
@@ -721,6 +745,7 @@ function OfferCard({ offer }: { offer: OfferResult }) {
   const [accepted, setAccepted] = useState(false);
   const [accepting, setAccepting] = useState(false);
   const [acceptError, setAcceptError] = useState<string | null>(null);
+  const track = useTrack();
 
   // Accepting is gated on the private track token. We hold it here because the
   // same response that produced this card carried the track link.
@@ -738,6 +763,7 @@ function OfferCard({ offer }: { offer: OfferResult }) {
         body: JSON.stringify({ token: trackToken ?? undefined }),
       });
       if (res.ok) {
+        track('instant_offer_accepted');
         setAccepted(true);
         return;
       }

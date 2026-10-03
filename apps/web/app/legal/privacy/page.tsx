@@ -38,9 +38,14 @@ export const metadata: Metadata = {
  * stay true. Google Tag Manager (GTM-WNM6MJGZ) may only run tools this page
  * already names: add a tag in GTM and you must add it here first. The consent gate and the private-URL guard live in
  * components/cookie-consent.tsx.
+ *
+ * v1.3 adds PostHog in the always-on tier. That placement rests on the
+ * config in app/layout.tsx: memory-only persistence, no autocapture, no
+ * session recording, ip: false, and the same PRIVATE_PATHS redaction Google
+ * gets. Loosen any of those and PostHog moves behind the analytics consent.
  */
-const LAST_UPDATED = '1 October 2026';
-const VERSION = '1.2';
+const LAST_UPDATED = '3 October 2026';
+const VERSION = '1.3';
 
 /** Verified against the Companies House register, 2026-07-31. */
 const REGISTERED_OFFICE = '20 Wenlock Road, London N1 7GU';
@@ -306,6 +311,17 @@ const SECTIONS: Array<{
           remember your cookie choices in your browser&rsquo;s storage, so we
           don&rsquo;t ask on every page. Neither needs consent and neither is
           used to profile you.
+        </p>
+        <p>
+          <strong>Also always on, because it stores nothing: PostHog.</strong>{' '}
+          It counts page views and shows us at which step people leave the
+          offer form. It runs without a cookie or any other storage on your
+          device, so it forgets you when you close the page and cannot tell a
+          returning visitor from a new one. We ask it not to record your IP
+          address, nothing you type into a form is sent to it, and it never
+          sees the private links we send you, such as your deal timeline or
+          your offer. Because nothing is stored on your device, it is not
+          something we ask consent for.
         </p>
         <p>
           <strong>Only if you accept analytics: Google Analytics.</strong> It
