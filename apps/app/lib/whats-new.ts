@@ -55,6 +55,8 @@ export const WHATS_NEW: WhatsNewEntry[] = [
       },
     ],
     cta: { label: 'Re-appraise a thin lead', href: '/leads' },
+  },
+  {
     id: '2026-10-01-kept-in-chatgpt',
     date: '2026-10-01',
     emoji: '💬',
