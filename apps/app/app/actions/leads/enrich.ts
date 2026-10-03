@@ -10,6 +10,7 @@ import {
   type ConditionLevel,
   appraiseDealFromAvm,
   estimateRefurb,
+  isInsufficientEvidence,
   mapVisualConditionToLevel,
   mergeOfferConfig,
   mergeValuationConfig,
@@ -163,6 +164,10 @@ export async function enrichLeadById(leadId: string): Promise<{
       confidenceLevel: r.confidenceLevel ?? null,
       comparableCount: r.comparableCount ?? null,
       comparables: r.comparables ?? [],
+      // Which comp source produced the number — shown on the lead page so a
+      // sector-level or thin valuation is never mistaken for a street one.
+      avmSources: r.avmSources ?? null,
+      noValuationReason: null,
       requiresReview: Boolean(r.requiresCeoEscalation || r.discountCapped),
       // Listing body language + nearby distress — display context for the
       // lead page. Null = PropertyData was unreachable at appraisal time.
@@ -195,10 +200,36 @@ export async function enrichLeadById(leadId: string): Promise<{
       fetchedAt: new Date().toISOString(),
     };
     avmRanFresh = true;
-  } catch {
-    // AVM failure must not block snapshot enrichment — leave avmFull null and
-    // keep whatever was there before.
-    avmFull = (raw.avmFull as Record<string, unknown> | undefined) ?? null;
+  } catch (err) {
+    if (isInsufficientEvidence(err)) {
+      // No sold evidence from any source. Record THAT rather than keeping a
+      // previous number: the previous number on a zero-comp lead is the
+      // placeholder valuation this state exists to replace.
+      avmFull = {
+        pointEstimatePence: null,
+        lowPence: null,
+        highPence: null,
+        finalOfferPence: null,
+        offerDiscountPct: null,
+        confidenceLevel: null,
+        comparableCount: 0,
+        comparables: [],
+        avmSources: null,
+        noValuationReason: err.reason,
+        noValuationDetail: err.message,
+        noValuationTried: err.tried,
+        requiresReview: true,
+        riskScore: null,
+        assumedPropertyType: normalised ? null : avmPropertyType,
+        hmoLikely: (bedrooms ?? 0) >= 5,
+        fetchedAt: new Date().toISOString(),
+      };
+      avmRanFresh = false;
+    } else {
+      // Any other AVM failure must not block snapshot enrichment — leave
+      // avmFull as it was.
+      avmFull = (raw.avmFull as Record<string, unknown> | undefined) ?? null;
+    }
   }
 
   // ── Vision: infer condition from the listing photo(s). ────────────────
@@ -259,7 +290,9 @@ export async function enrichLeadById(leadId: string): Promise<{
   // ROI proxy with the real BMV discount (asking vs AVM) + deal-model cash ROI.
   // Best-effort; factor labels carry the inputs so every point is traceable.
   const scoreUpdate: { leadScore?: number; verdict?: Verdict } = {};
-  if (avmFull) {
+  // A no-valuation state has no number to score against: the sourcing score
+  // stands and the ROI pillar stays provisional.
+  if (avmFull && typeof avmFull.pointEstimatePence === 'number') {
     try {
       const askingPence =
         typeof pd?.pricePence === 'number' ? (pd.pricePence as number) : null;

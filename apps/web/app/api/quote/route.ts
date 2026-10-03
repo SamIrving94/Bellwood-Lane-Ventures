@@ -16,7 +16,11 @@ import {
   generateInstantOffer,
 } from '@repo/instant-offer';
 import { runPreflightChecks } from '@repo/property-data/src/propertydata';
-import { type PropertyType, saveAvmSnapshot } from '@repo/valuation';
+import {
+  type PropertyType,
+  isInsufficientEvidence,
+  saveAvmSnapshot,
+} from '@repo/valuation';
 import { DEFAULT_OFFER_CONFIG } from '@repo/valuation/src/offer-config';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
@@ -661,12 +665,25 @@ export async function POST(request: Request) {
         : null,
     });
   } catch (err) {
-    console.error('[quote] offer engine failed', err);
     // Mark as draft so we can follow up manually
     await database.quoteRequest.update({
       where: { id: quoteRequest.id },
       data: { status: 'draft' },
     });
+    // No sold evidence anywhere → the AVM declines to put a number on it.
+    // Not an outage: the request is saved and a person prices it. (No figure
+    // is shown on screen in any case — SHOW_ONSCREEN_OFFER.)
+    if (isInsufficientEvidence(err)) {
+      console.warn('[quote] no valuation', input.postcode, err.message);
+      return NextResponse.json(
+        {
+          error:
+            'We could not find enough recent sold evidence to price this automatically. Your request is saved — a person will review it and email you.',
+        },
+        { status: 422 }
+      );
+    }
+    console.error('[quote] offer engine failed', err);
     return NextResponse.json(
       {
         error:

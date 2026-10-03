@@ -2,7 +2,12 @@
 
 import { requireFounder } from '@repo/auth/server';
 import { database } from '@repo/database';
-import { mergeOfferConfig, runAVM, saveAvmSnapshot } from '@repo/valuation';
+import {
+  isInsufficientEvidence,
+  mergeOfferConfig,
+  runAVM,
+  saveAvmSnapshot,
+} from '@repo/valuation';
 import { revalidatePath } from 'next/cache';
 
 // Map a free-text deal.propertyType onto the AVM's PropertyType enum.
@@ -72,7 +77,18 @@ export async function generateDealOffer(dealId: string) {
     dealId: deal.id,
     offerConfig,
   };
-  const avm = await runAVM(avmInput);
+  let avm: Awaited<ReturnType<typeof runAVM>>;
+  try {
+    avm = await runAVM(avmInput);
+  } catch (err) {
+    // No sold evidence from any source → no number, no offer. Surface the
+    // engine's own sentence (it names every source it tried) rather than a
+    // generic failure, so the founder knows this is a data gap, not a bug.
+    if (isInsufficientEvidence(err)) {
+      throw new Error(`Offer not generated. ${err.message}`);
+    }
+    throw err;
+  }
   // Freeze the appraisal for the monthly Land Registry backtest.
   await saveAvmSnapshot(database, {
     input: avmInput,

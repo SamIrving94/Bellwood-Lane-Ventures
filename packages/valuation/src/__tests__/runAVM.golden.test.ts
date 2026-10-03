@@ -17,6 +17,7 @@ import {
   SCENARIO_CHAIN_BREAK_EPC_F,
   SCENARIO_NORMAL_TERRACED,
   SCENARIO_PROBATE_NO_COMPS,
+  SCENARIO_PROBATE_SECTOR_COMPS,
 } from './test-fixtures';
 
 // Stub out the entire property-data package. Each test resets the mocks to
@@ -32,6 +33,9 @@ vi.mock('@repo/property-data', () => ({
   // the pillar undefined and throw inside the valuation.
   getFloorAreaRows: vi.fn(),
   getPricesPerSqf: vi.fn(),
+  // Sector comps (Land Registry SPARQL) — the evidence of last resort.
+  // Stubbed dark by default so the golden scenarios keep their comp sets.
+  getSectorPricePaid: vi.fn(),
   // Pure provenance filter — keep the REAL implementation. Stubbing it out
   // would let fabricated comps through the very guard we're locking in.
   realTransactions: (txs: Array<{ provenance?: string }>) =>
@@ -58,20 +62,29 @@ const {
   getPropertyFloorArea,
   getFloorAreaRows,
   getPricesPerSqf,
+  getSectorPricePaid,
   geocodePostcode,
   geocodePostcodes,
   getSoldPrices,
   getSubjectMarketSignals,
 } = await import('@repo/property-data');
-const { runAVM } = await import('../index');
+const { runAVM, InsufficientEvidenceError } = await import('../index');
 
 function applyScenario(scn: {
   pricePaid: unknown;
   hpi: unknown;
   epc: unknown;
   externalAvm: unknown;
+  sector?: unknown;
 }) {
   vi.mocked(getPricePaid).mockResolvedValue(scn.pricePaid as never);
+  vi.mocked(getSectorPricePaid).mockResolvedValue(
+    (scn.sector ?? {
+      sector: 'M14 5',
+      transactions: [],
+      source: 'hmlr_ppd_sector',
+    }) as never
+  );
   vi.mocked(getHousepriceIndex).mockResolvedValue(scn.hpi as never);
   vi.mocked(getEpcData).mockResolvedValue(scn.epc as never);
   vi.mocked(getPropertyDataValuation).mockResolvedValue(
@@ -169,7 +182,50 @@ describe('runAVM — Scenario 2: Chain-break with EPC F', () => {
 describe('runAVM — Scenario 3: Probate with no comps + flood zone 2', () => {
   beforeEach(() => applyScenario(SCENARIO_PROBATE_NO_COMPS));
 
-  it('falls back to area-average pricing and reports low confidence', async () => {
+  it('refuses to value with no sold evidence from any source', async () => {
+    // Postcode feed empty, sector feed empty → no number, a typed error.
+    // Before Sep 2026 this priced off avgPrice × type discount (~£220k),
+    // which is how a placeholder became an offer.
+    await expect(
+      runAVM({
+        postcode: 'M14 5AB',
+        propertyType: 'terraced',
+        address: '12 Test Street, Manchester',
+        sellerType: 'probate',
+        floodZone: 'zone_2',
+      })
+    ).rejects.toBeInstanceOf(InsufficientEvidenceError);
+
+    // The sector source was actually consulted before giving up.
+    expect(getSectorPricePaid).toHaveBeenCalledWith('M14 5AB', {
+      propertyType: 'terraced',
+    });
+    // Nothing at all should be frozen for the backtest — there is no number.
+  });
+
+  it('names unreachable feeds so "no sales" is not confused with "could not look"', async () => {
+    applyScenario({
+      ...SCENARIO_PROBATE_NO_COMPS,
+      pricePaid: { source: 'synthetic', avgPrice: 260_000, transactions: [] },
+      sector: { sector: 'M14 5', transactions: [], source: 'unavailable' },
+    });
+    const err = await runAVM({
+      postcode: 'M14 5AB',
+      propertyType: 'terraced',
+      address: '12 Test Street, Manchester',
+      sellerType: 'probate',
+    }).catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(InsufficientEvidenceError);
+    expect((err as InstanceType<typeof InsufficientEvidenceError>).reason).toBe(
+      'sources_unavailable'
+    );
+  });
+});
+
+describe('runAVM — Scenario 3b: sector comps rescue a zero-postcode valuation', () => {
+  beforeEach(() => applyScenario(SCENARIO_PROBATE_SECTOR_COMPS));
+
+  it('values off the sector sales, capped at low confidence, and says so in the source', async () => {
     const result = await runAVM({
       postcode: 'M14 5AB',
       propertyType: 'terraced',
@@ -177,31 +233,24 @@ describe('runAVM — Scenario 3: Probate with no comps + flood zone 2', () => {
       sellerType: 'probate',
       floodZone: 'zone_2',
     });
-
     const r = result.resultJson;
 
-    // No comps → 0 comparableCount.
-    expect(r.comparableCount).toBe(0);
-    // FIXED: confidence is now ceiling-capped by comp volume, so a valuation
-    // with no nearby sales can never read better than 'low' — regardless of how
-    // well the hedonic and CSA estimates happen to agree. (~4 sales within half
-    // a mile are required for 'high'.)
+    // Three real sector sales at ~£240k drive the CSA; no synthetic input.
+    expect(r.comparableCount).toBe(3);
+    expect(r.avmPointEstimate).toBeGreaterThan(215_000);
+    expect(r.avmPointEstimate).toBeLessThan(275_000);
+    expect(r.avmSources).toMatch(/^hmlr_ppd_sector\(3@M14 5\)/);
+
+    // Sector comps carry no distance — never better than low.
     expect(r.confidenceLevel).toBe('low');
+    expect(r.comparables.every((c) => c.distanceMiles === null)).toBe(true);
+    expect(r.comparables[0]?.address).toBe('14 TEST STREET');
 
-    // Fallback uses area avg × terraced type discount (0.85). With avgPrice
-    // 260k that lands the AVM around £220k. Allow a wide ±15% band.
-    expect(r.avmPointEstimate).toBeGreaterThan(180_000);
-    expect(r.avmPointEstimate).toBeLessThan(260_000);
-
-    // Probate seller type → 20% base margin
+    // Probate seller type → 20% base margin, flood zone 2 still applied.
     expect(r.sellerType).toBe('probate');
     expect(r.baseAcquisitionMargin).toBeCloseTo(0.2, 2);
-
-    // Flood zone 2 surfaces as a discount line (no pre-RICS flag — only 3a+)
     expect(r.discountLines.some((d) => d.label.includes('Flood'))).toBe(true);
     expect(r.floodDiscount).toBeCloseTo(0.01, 5);
-
-    // No EPC data → epcRating is null
     expect(r.epcRating).toBeNull();
   });
 });
