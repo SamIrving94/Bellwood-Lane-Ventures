@@ -4,6 +4,7 @@ import { database } from '@repo/database';
 import { format } from 'date-fns';
 import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
+import { DraftNowButton } from './draft-now-button';
 import { GuideRowActions } from './guide-row-actions';
 
 export const metadata: Metadata = {
@@ -12,6 +13,8 @@ export const metadata: Metadata = {
 };
 
 export const dynamic = 'force-dynamic';
+// The "Draft a guide now" server action waits for a full guide run.
+export const maxDuration = 300;
 
 const STATUS_STYLE: Record<string, string> = {
   draft: 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300',
@@ -30,22 +33,34 @@ const GuidesPage = async () => {
   const { userId } = await auth();
   if (!userId) redirect('/sign-in');
 
-  const guides = await database.guidePost.findMany({
-    orderBy: [{ status: 'asc' }, { createdAt: 'desc' }],
-    take: 200,
-    select: {
-      id: true,
-      slug: true,
-      title: true,
-      segment: true,
-      questionKey: true,
-      status: true,
-      hook: true,
-      createdAt: true,
-      publishedAt: true,
-      compliance: true,
-    },
-  });
+  // If the GuidePost table was never pushed to prod this query throws. Say
+  // so on the page instead of a 500, and keep the draft button reachable.
+  let loadError: string | null = null;
+  const guides = await database.guidePost
+    .findMany({
+      orderBy: [{ status: 'asc' }, { createdAt: 'desc' }],
+      take: 200,
+      select: {
+        id: true,
+        slug: true,
+        title: true,
+        segment: true,
+        questionKey: true,
+        status: true,
+        hook: true,
+        createdAt: true,
+        publishedAt: true,
+        compliance: true,
+      },
+    })
+    .catch((err: unknown) => {
+      const code = (err as { code?: string })?.code;
+      loadError =
+        code === 'P2021'
+          ? 'The GuidePost table does not exist in the live database. Run pnpm migrate, then reload.'
+          : `Guides could not be loaded: ${(err as Error)?.message ?? 'unknown error'}`;
+      return [];
+    });
 
   const published = guides.filter((g) => g.status === 'published').length;
   const waiting = guides.filter((g) => g.status === 'draft').length;
@@ -65,6 +80,14 @@ const GuidesPage = async () => {
           Publishing puts it at {brand.url}/guides within five minutes.
         </span>
       </div>
+
+      <DraftNowButton />
+
+      {loadError && (
+        <div className="rounded-lg border border-red-300 bg-red-50 p-4 text-red-800 text-sm dark:border-red-900 dark:bg-red-950 dark:text-red-300">
+          {loadError}
+        </div>
+      )}
 
       {guides.length === 0 ? (
         <div className="rounded-lg border bg-card p-12 text-center">
