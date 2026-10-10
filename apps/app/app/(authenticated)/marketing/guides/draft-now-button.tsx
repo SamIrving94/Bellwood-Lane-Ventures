@@ -20,7 +20,17 @@ export function DraftNowButton() {
   const run = () =>
     startTransition(async () => {
       setResult(null);
-      setResult(await draftGuideNow());
+      // A rejected action (function timeout, a redeploy since the page
+      // loaded) would otherwise bubble to global-error and blank the whole
+      // dashboard. Show the message here instead.
+      try {
+        setResult(await draftGuideNow());
+      } catch (err) {
+        setResult({
+          ok: false,
+          error: `${err instanceof Error ? err.message : String(err)}. Reload the page and try again.`,
+        });
+      }
     });
 
   return (
