@@ -7,6 +7,7 @@ import { FeedbackPanel } from '../../components/feedback-panel';
 import { Header } from '../../components/header';
 import { DealEconomicsPanel } from './deal-economics-panel';
 import { GenerateOfferButton } from './generate-offer-button';
+import { InvestorPackPanel } from './investor-pack-panel';
 import { InvestorPanel } from './investor-panel';
 import { LegalPanel } from './legal-panel';
 import { ReleaseControl } from './release-control';
@@ -44,6 +45,7 @@ const DealDetailPage = async ({
     existingAvmFeedback,
     fieldPartners,
     chaserAction,
+    investorRecipientCount,
   ] = await Promise.all([
     database.deal.findUnique({
       where: { id },
@@ -53,6 +55,7 @@ const DealDetailPage = async ({
         legalDocuments: { orderBy: { createdAt: 'desc' } },
         avmResults: { orderBy: { createdAt: 'desc' }, take: 1 },
         investorInterests: { orderBy: { createdAt: 'desc' } },
+        investorPack: true,
         viewings: {
           orderBy: { createdAt: 'desc' },
           include: { partner: { select: { name: true } } },
@@ -89,6 +92,10 @@ const DealDetailPage = async ({
       where: { dealId: id, type: 'legal_flag', status: 'pending' },
       orderBy: { createdAt: 'desc' },
       select: { id: true, metadata: true },
+    }),
+    // Who an investor pack would go to: active links with an email.
+    database.investorAccessToken.count({
+      where: { revoked: false, email: { not: null } },
     }),
   ]);
 
@@ -311,8 +318,26 @@ const DealDetailPage = async ({
           reason={deal.resaleReason}
         />
 
-        {/* Investor interest + updates (only once released) */}
-        {deal.releasedForResale && (
+        {/* Back-to-back investor pack: we stay in the deal and offer it on
+            to the investor list at seller price + our fee. */}
+        {!deal.releasedForResale && (
+          <InvestorPackPanel
+            dealId={deal.id}
+            pack={deal.investorPack}
+            defaults={{
+              sellerPricePence: deal.ourOfferPence ?? deal.askingPricePence,
+              marketValuePence: deal.estimatedMarketValuePence,
+              refurbEstimatePence:
+                deal.viewings.find((v) => v.refurbEstimatePence !== null)
+                  ?.refurbEstimatePence ?? null,
+            }}
+            viewingPhotos={deal.viewings.flatMap((v) => v.photos)}
+            recipientCount={investorRecipientCount}
+          />
+        )}
+
+        {/* Investor interest + updates (once released, or once a pack exists) */}
+        {(deal.releasedForResale || deal.investorPack) && (
           <>
             <InvestorPanel
               dealId={deal.id}

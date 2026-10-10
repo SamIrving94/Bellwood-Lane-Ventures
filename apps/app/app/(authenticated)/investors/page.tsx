@@ -79,6 +79,26 @@ const InvestorFeedPage = async () => {
   });
   const webUrl = process.env.NEXT_PUBLIC_WEB_URL || 'http://localhost:3001';
 
+  // Back-to-back investment packs (we stay in the deal). Separate from the
+  // released feed above, which is deals we passed on.
+  const packs = await database.investorPack.findMany({
+    where: { status: { in: ['draft', 'live', 'closed'] } },
+    orderBy: { updatedAt: 'desc' },
+    select: {
+      dealId: true,
+      status: true,
+      headline: true,
+      pricePence: true,
+      feePence: true,
+      closesAt: true,
+      sentCount: true,
+      viewCount: true,
+      deal: {
+        select: { postcode: true, _count: { select: { investorInterests: true } } },
+      },
+    },
+  });
+
   return (
     <>
       <Header
@@ -101,6 +121,47 @@ const InvestorFeedPage = async () => {
             <span className="font-medium text-foreground">Pass &amp; release</span>.
           </p>
         </div>
+
+        {/* Back-to-back investment packs */}
+        {packs.length > 0 && (
+          <div className="rounded-xl border bg-card p-4">
+            <h2 className="mb-3 font-medium text-muted-foreground text-sm uppercase tracking-wide">
+              Investment packs
+            </h2>
+            <ul className="divide-y">
+              {packs.map((p) => (
+                <li key={p.dealId}>
+                  <Link
+                    href={`/deals/${p.dealId}`}
+                    className="flex items-center justify-between gap-3 py-2.5 text-sm hover:underline"
+                  >
+                    <span className="min-w-0">
+                      <span className="font-medium">{p.headline}</span>
+                      <span className="block text-muted-foreground text-xs">
+                        {p.deal.postcode} · {formatGBP(p.pricePence)} (fee{' '}
+                        {formatGBP(p.feePence)}) · {p.sentCount} sent ·{' '}
+                        {p.viewCount} views
+                        {p.closesAt
+                          ? ` · closes ${p.closesAt.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}`
+                          : ''}
+                      </span>
+                    </span>
+                    <span className="flex shrink-0 items-center gap-2">
+                      {p.deal._count.investorInterests > 0 && (
+                        <span className="rounded-full bg-blue-100 px-2 py-0.5 font-medium text-[10px] text-blue-800 dark:bg-blue-950 dark:text-blue-300">
+                          {p.deal._count.investorInterests} interested
+                        </span>
+                      )}
+                      <span className="rounded-full bg-muted px-2 py-0.5 font-medium text-[10px] capitalize">
+                        {p.status}
+                      </span>
+                    </span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
 
         {/* Investor access links (public read-only feed) */}
         <InvestorAccessLinks webUrl={webUrl} tokens={accessTokens} />

@@ -15,6 +15,8 @@ type Interest = {
   investorEmail: string;
   note: string | null;
   notify: boolean;
+  pricePence?: number | null;
+  source?: string;
   createdAt: Date;
 };
 
@@ -103,6 +105,14 @@ export function InvestorPanel({
                   {i.investorEmail}
                   {i.notify ? ' · gets updates' : ' · muted'}
                 </p>
+                {i.source === 'pack' && (
+                  <p className="mt-0.5 text-emerald-700 text-xs dark:text-emerald-400">
+                    Registered from the pack
+                    {i.pricePence
+                      ? ` at £${Math.round(i.pricePence / 100).toLocaleString('en-GB')}`
+                      : ''}
+                  </p>
+                )}
                 {i.note && (
                   <p className="mt-0.5 text-xs text-muted-foreground">
                     {i.note}

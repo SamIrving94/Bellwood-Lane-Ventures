@@ -92,6 +92,7 @@ enum ActionType {
   golden_window
   dispatch_campaign
   review_viewing_report
+  investor_interest
   general
 }
 
@@ -251,6 +252,7 @@ model Deal {
   dealUpdates       DealUpdate[]
   trackToken        TrackToken?
   investorInterests InvestorInterest[]
+  investorPack      InvestorPack?
   viewings          Viewing[]
   worksProject      WorksProject?
 
@@ -989,11 +991,70 @@ model InvestorInterest {
   notify        Boolean  @default(true) // receive live DealUpdate emails
   status        String   @default("interested") // interested | committed | passed
   createdBy     String? // founder userId who logged it, if founder-entered
+  // Back-to-back packs: the price the investor registered interest at (the
+  // pack's asking price at that moment), and whether they did it themselves
+  // from the pack page or the founder logged it by hand.
+  pricePence    Int?
+  source        String   @default("founder") // founder | pack
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
   @@unique([dealId, investorEmail])
   @@index([dealId])
+}
+
+enum InvestorPackStatus {
+  draft // being built; visible only to the founder (and via preview)
+  live // sent to the investor list; open for interest until closesAt
+  closed // window ended or an investor was chosen
+  withdrawn // pulled (seller fell through, price changed, etc.)
+}
+
+// Back-to-back resale. Unlike `releasedForResale` (Kept PASSED on the deal),
+// a pack is for a deal we are still in: we have agreed a price with the seller
+// and offer the contract on to our investor list at that price plus our fee.
+// Phase 1 is fixed-price "register interest", not bidding (founder decision,
+// 10 Oct 2026). pricePence is the floor: sellerPricePence + feePence.
+model InvestorPack {
+  id     String             @id @default(cuid())
+  dealId String             @unique
+  deal   Deal               @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  status InvestorPackStatus @default(draft)
+
+  // Copy. `snippet` is the 1–2 sentence teaser that goes in the email.
+  headline   String
+  snippet    String   @db.Text
+  summary    String   @db.Text // the investment case, plain paragraphs
+  highlights String[] // short bullet facts
+
+  // Media (public blob URLs). Renders are illustrative CGIs and are always
+  // labelled as such on the pack.
+  photos       String[]
+  renders      String[]
+  floorPlanUrl String?
+
+  // Figures. Kept's own economics (sellerPricePence, feePence) are NEVER
+  // shown to investors; only pricePence and the investor-side numbers are.
+  sellerPricePence    Int // agreed with the seller
+  feePence            Int // our fee on the back-to-back
+  pricePence          Int // = sellerPricePence + feePence, the price offered
+  marketValuePence    Int? // current market value as we present it
+  refurbEstimatePence Int?
+  gdvPence            Int? // value after works
+  monthlyRentPence    Int? // achievable rent, for yield
+  tenure              String?
+  epcRating           String?
+  floorAreaSqft       Int?
+
+  publishedAt DateTime?
+  closesAt    DateTime? // interest window end (two weeks from publish)
+  sentCount   Int       @default(0)
+  viewCount   Int       @default(0)
+  createdBy   String
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([status])
 }
 
 model EstateAgentContact {

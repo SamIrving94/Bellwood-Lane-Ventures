@@ -215,4 +215,18 @@ export const LIMITS = {
     limit: 10,
     windowMs: 60 * 60 * 1000,
   },
+  /**
+   * Investor registering interest from a pack. The token bucket caps a
+   * guessed link; the IP cap bounds FounderAction writes from one device.
+   */
+  investorInterestByToken: {
+    bucket: 'investor-interest:token',
+    limit: 20,
+    windowMs: 60 * 60 * 1000,
+  },
+  investorInterestByIp: {
+    bucket: 'investor-interest:ip',
+    limit: 30,
+    windowMs: 60 * 60 * 1000,
+  },
 } as const satisfies Record<string, RateLimitRule>;

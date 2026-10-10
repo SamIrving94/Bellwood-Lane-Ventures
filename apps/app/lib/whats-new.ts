@@ -26,6 +26,33 @@ export type WhatsNewEntry = {
 /** Newest first. The popup shows index 0. */
 export const WHATS_NEW: WhatsNewEntry[] = [
   {
+    id: '2026-10-10-investor-packs',
+    date: '2026-10-10',
+    emoji: '🏡',
+    title: 'Investment packs for back-to-back deals',
+    intro:
+      'Agreed a price with a seller? Build a beautiful pack and offer the deal to your investors at a fixed price.',
+    bullets: [
+      {
+        emoji: '🧮',
+        text: '**Price = seller price + your fee.** Investors only see the total.',
+      },
+      {
+        emoji: '✨',
+        text: '**Draft with AI**, then edit. Add photos, renders and a floor plan.',
+      },
+      {
+        emoji: '📬',
+        text: '**Send to investors** in one click. Each gets their own link.',
+      },
+      {
+        emoji: '🙋',
+        text: '**Register interest** for two weeks. Each one lands in your actions.',
+      },
+    ],
+    cta: { label: 'Open Investors', href: '/investors' },
+  },
+  {
     id: '2026-10-10-draft-guide-now',
     date: '2026-10-10',
     emoji: '✍️',
