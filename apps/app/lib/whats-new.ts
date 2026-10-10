@@ -26,6 +26,29 @@ export type WhatsNewEntry = {
 /** Newest first. The popup shows index 0. */
 export const WHATS_NEW: WhatsNewEntry[] = [
   {
+    id: '2026-10-10-draft-guide-now',
+    date: '2026-10-10',
+    emoji: '✍️',
+    title: 'Draft a guide whenever you like',
+    intro:
+      'No more waiting for Saturday. One button writes this week’s guide now, so you can read it and decide.',
+    bullets: [
+      {
+        emoji: '🔘',
+        text: '**Draft a guide now** on Marketing → Guides. Takes 1–3 minutes.',
+      },
+      {
+        emoji: '🩺',
+        text: '**Tells you what happened.** Draft ready, or the exact reason it failed.',
+      },
+      {
+        emoji: '🔒',
+        text: '**Still never publishes itself.** Going live is always your click.',
+      },
+    ],
+    cta: { label: 'Open Guides', href: '/marketing/guides' },
+  },
+  {
     id: '2026-10-03-site-analytics',
     date: '2026-10-03',
     emoji: '📈',
