@@ -26,8 +26,8 @@ export type WhatsNewEntry = {
 /** Newest first. The popup shows index 0. */
 export const WHATS_NEW: WhatsNewEntry[] = [
   {
-    id: '2026-10-10-investor-packs',
-    date: '2026-10-10',
+    id: '2026-10-11-investor-packs',
+    date: '2026-10-11',
     emoji: '🏡',
     title: 'Investment packs for back-to-back deals',
     intro:
