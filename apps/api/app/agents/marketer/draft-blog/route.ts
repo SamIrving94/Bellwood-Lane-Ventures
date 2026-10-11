@@ -204,6 +204,10 @@ interface ComplianceReport {
   missingSignposts: string[];
 }
 
+// LLM calls here may take minutes (slow beats cut out, Oct 2026); give the
+// function the Pro-plan ceiling so it is never killed mid-answer.
+export const maxDuration = 800;
+
 export async function POST(request: Request) {
   if (!validateAgentAuth(request)) return unauthorizedResponse();
 
@@ -253,7 +257,9 @@ export async function POST(request: Request) {
   const draft = await callClaudeForJson<BlogDraft>({
     system: DRAFT_SYSTEM_PROMPT,
     user: draftUserPrompt,
-    maxTokens: 4000,
+    // Headroom for reasoning models, which spend part of the cap thinking
+    // and return nothing if it runs out (Oct 2026).
+    maxTokens: 8000,
     temperature: 0.6,
     feature: 'blog_draft',
     cacheSystemPrompt: true,
@@ -285,7 +291,7 @@ export async function POST(request: Request) {
   const compliance = await callClaudeForJson<ComplianceReport>({
     system: COMPLIANCE_SYSTEM_PROMPT,
     user: auditUserPrompt,
-    maxTokens: 1500,
+    maxTokens: 3000,
     temperature: 0.2,
     feature: 'blog_compliance_audit',
     cacheSystemPrompt: true,

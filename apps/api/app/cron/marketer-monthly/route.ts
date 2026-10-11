@@ -93,6 +93,10 @@ interface PaidAdCopy {
   complianceNotes: string[];
 }
 
+// LLM calls here may take minutes (slow beats cut out, Oct 2026); give the
+// function the Pro-plan ceiling so it is never killed mid-answer.
+export const maxDuration = 800;
+
 export const POST = async (request: Request) => {
   const authHeader = request.headers.get('authorization');
   if (authHeader !== `Bearer ${env.CRON_SECRET}`) {
@@ -300,7 +304,9 @@ async function draftPaidAdCopy(): Promise<{
         '',
         'Draft 3 headline variants + 3 body copy variants. JSON only.',
       ].join('\n'),
-      maxTokens: 700,
+      // Headroom for reasoning models, which spend part of the cap thinking
+      // and return nothing if it runs out (Oct 2026).
+      maxTokens: 1500,
       temperature: 0.6,
       model: CLAUDE_HAIKU,
       feature: 'paid_ad_copy',

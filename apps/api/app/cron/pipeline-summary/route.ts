@@ -10,9 +10,11 @@ import { z } from 'zod';
 // overnight, and — first — runs the founder desk: every pending action gets
 // a ranked, one-line suggested call (see rankFounderDesk below).
 //
-// The desk is one Haiku call over up to DESK_MAX_ACTIONS actions plus one
-// metadata update per action; comfortably inside this budget.
-export const maxDuration = 120;
+// The desk is one call over up to DESK_MAX_ACTIONS actions plus one
+// metadata update per action, then the briefing call. Either may take
+// minutes on a slow model (slow beats cut out, Oct 2026), so this runs to
+// the Pro-plan ceiling.
+export const maxDuration = 800;
 
 export const POST = async (request: Request) => {
   const authHeader = request.headers.get('authorization');
@@ -353,16 +355,28 @@ export type DeskCall = {
   why: string;
 };
 
+// No length limits or integer checks in the schema: a call one word over
+// is still useful, and a schema miss throws the whole answer away. Oct
+// 2026: `.max(160)` / `.max(240)` plus a 3,000-token cap over 40 actions
+// failed the desk 14 days of 14. Lengths are trimmed in code instead.
 const DESK_SCHEMA = z.object({
   calls: z.array(
     z.object({
       id: z.string(),
-      rank: z.number().int().min(1),
-      call: z.string().max(160),
-      why: z.string().max(240),
+      rank: z.number(),
+      call: z.string(),
+      why: z.string(),
     })
   ),
 });
+
+const DESK_CALL_MAX = 160;
+const DESK_WHY_MAX = 240;
+
+function clip(text: string, max: number): string {
+  const t = text.trim();
+  return t.length <= max ? t : `${t.slice(0, max - 1).trimEnd()}…`;
+}
 
 const DESK_SYSTEM_PROMPT = `You are the Chief of Staff for Kept, a UK direct-to-vendor property buyer. The founder is dyslexic and time-poor.
 
@@ -416,11 +430,11 @@ async function rankFounderDesk(): Promise<DeskCall[]> {
     system: DESK_SYSTEM_PROMPT,
     user: `Pending queue (${actions.length} items):\n\n${block}`,
     schema: DESK_SCHEMA,
-    maxTokens: 3000,
+    // ~100 tokens per action as JSON, with headroom.
+    maxTokens: 8000,
     temperature: 0.2,
     model: CLAUDE_HAIKU,
     feature: 'founder_desk',
-    attemptTimeoutMs: 60_000,
   });
   if (!result) return [];
 
@@ -436,8 +450,8 @@ async function rankFounderDesk(): Promise<DeskCall[]> {
       id: c.id,
       rank: c.rank,
       title: action.title,
-      call: c.call.trim(),
-      why: c.why.trim(),
+      call: clip(c.call, DESK_CALL_MAX),
+      why: clip(c.why, DESK_WHY_MAX),
     });
   }
   calls.sort((a, b) => a.rank - b.rank);

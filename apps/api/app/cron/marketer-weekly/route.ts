@@ -55,6 +55,10 @@ interface LinkedInTopicBasket {
   }>;
 }
 
+// LLM calls here may take minutes (slow beats cut out, Oct 2026); give the
+// function the Pro-plan ceiling so it is never killed mid-answer.
+export const maxDuration = 800;
+
 export const POST = async (request: Request) => {
   const authHeader = request.headers.get('authorization');
   if (authHeader !== `Bearer ${env.CRON_SECRET}`) {
@@ -107,7 +111,9 @@ async function draftLinkedInTopics(runDate: Date): Promise<{
       `Current date: ${weekStart}`,
       'Plan 5 LinkedIn educational topics for the week ahead. JSON only.',
     ].join('\n'),
-    maxTokens: 900,
+    // Headroom for reasoning models, which spend part of the cap thinking
+    // and return nothing if it runs out (Oct 2026).
+    maxTokens: 2000,
     temperature: 0.6,
     model: CLAUDE_HAIKU,
     feature: 'linkedin_topics',
