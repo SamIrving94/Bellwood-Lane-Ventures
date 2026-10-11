@@ -48,6 +48,18 @@ export const LANDING_ROUTES = [
   '/instant-offer/methodology',
 ] as const;
 
+/**
+ * Landing routes switched off on the public site for now (founder decision,
+ * 11 Oct 2026). Mirrors apps/web/lib/public-sections.ts — keep the two in
+ * step. A question that lands here is skipped in rotation, so no new guide
+ * CTAs to a 404; it comes back by itself once the route is removed here.
+ */
+export const HIDDEN_LANDINGS: ReadonlySet<string> = new Set([
+  '/agents',
+  '/save-the-sale',
+  '/instant-offer/methodology',
+]);
+
 export const EVERGREEN_QUESTIONS: readonly EvergreenQuestion[] = [
   // ── Probate ──────────────────────────────────────────────────────────
   {
@@ -234,11 +246,14 @@ export function candidateQuestions(
   recentKeys: readonly string[]
 ): EvergreenQuestion[] {
   const recent = new Set(recentKeys);
-  const fresh = EVERGREEN_QUESTIONS.filter((q) => !recent.has(q.key));
+  const live = EVERGREEN_QUESTIONS.filter(
+    (q) => !HIDDEN_LANDINGS.has(q.landing)
+  );
+  const fresh = live.filter((q) => !recent.has(q.key));
   if (fresh.length > 0) return fresh;
   // Every question has a guide inside the window: revisit the oldest first.
   const order = new Map(recentKeys.map((k, i) => [k, i]));
-  return [...EVERGREEN_QUESTIONS].sort(
+  return [...live].sort(
     (a, b) => (order.get(b.key) ?? -1) - (order.get(a.key) ?? -1)
   );
 }

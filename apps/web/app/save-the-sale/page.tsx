@@ -1,8 +1,10 @@
 import { LogoLockup } from '@/components/brand';
 import { SiteFooter } from '@/components/site-footer';
 import { sansDocFont, serifDocFont } from '@repo/design-system/lib/fonts';
+import { AGENT_SIDE_PUBLIC } from '@/lib/public-sections';
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { notFound } from 'next/navigation';
 import { AgentQuickForm } from '../agents/components/agent-quick-form';
 
 export const metadata: Metadata = {
@@ -26,6 +28,10 @@ export default async function SaveTheSalePage({
     situation?: string;
   }>;
 }) {
+  // Agent-facing page, hidden for now — see lib/public-sections.ts.
+  if (!AGENT_SIDE_PUBLIC) {
+    notFound();
+  }
   // The Kept Score form hands its fields over via query params so the agent
   // never re-types what they just entered.
   const { address, postcode, situation } = await searchParams;
@@ -64,8 +70,8 @@ export default async function SaveTheSalePage({
             <p className="mt-7 max-w-md text-lg text-stone-600 leading-relaxed">
               Buyer pulled out, mortgage refused, survey down-valued, chain
               broken. Whatever&rsquo;s collapsed, we step in with an indicative
-              figure on screen, fast (drawn from HM Land Registry comps), and
-              we make a signed offer within two working days of viewing the
+              figure on screen, fast (drawn from HM Land Registry comps), and we
+              make a signed offer within two working days of viewing the
               property.
             </p>
             <ul className="mt-8 space-y-3 text-[14px] text-stone-700">

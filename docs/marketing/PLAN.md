@@ -1,6 +1,13 @@
 # Bellwood Lane — Marketing Plan
 
-_Last verified against the live site: 2026-10-01._
+_Last verified against the live site: 2026-10-11._
+
+> **Hidden for now (founder decision, 11 Oct 2026):** the agent side
+> (`/agents`, `/agents/score`, `/save-the-sale`, `/partners/signup`, the
+> partner brief) and the methodology page (`/instant-offer/methodology`)
+> return 404 and are unlinked. Every channel below that lands on them is
+> paused until they come back, and no copy may say the methodology "is
+> published". The switch is `apps/web/lib/public-sections.ts`.
 
 > **Voice is governed by `docs/brand/KEPT.md` § Voice, not by §2 below.**
 > The Aug 2026 Beth Sims pass superseded the May 2026 voice table. In

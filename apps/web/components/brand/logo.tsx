@@ -124,7 +124,7 @@ export function Wordmark({
  * dot.
  */
 export function LogoLockup({
-  href = '/agents',
+  href = '/',
   className,
   wordmarkClassName,
   ventures = false,

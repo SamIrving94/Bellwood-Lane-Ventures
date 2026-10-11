@@ -4,6 +4,10 @@ import { mergeOfferConfig, runAVM, saveAvmSnapshot } from '@repo/valuation';
 import { NextResponse } from 'next/server';
 import { recordCronHeartbeat } from '../_lib/heartbeat';
 
+// LLM calls here may take minutes (slow beats cut out, Oct 2026); give the
+// function the Pro-plan ceiling so it is never killed mid-answer.
+export const maxDuration = 800;
+
 // Pipeline Stage 2: Auto-appraise top leads (7:15am daily)
 // Finds leads scored >= 70 with no existing AVM, runs valuation, pushes results
 export const POST = async (request: Request) => {

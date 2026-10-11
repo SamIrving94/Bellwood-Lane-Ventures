@@ -53,6 +53,33 @@ export const WHATS_NEW: WhatsNewEntry[] = [
     cta: { label: 'Open Investors', href: '/investors' },
   },
   {
+    id: '2026-10-11-ai-slow-not-silent',
+    date: '2026-10-11',
+    emoji: '🐢',
+    title: 'The AI now takes its time instead of giving up',
+    intro:
+      'Guides, LinkedIn topics, ad copy and the founder desk were quietly cutting out. They now wait for a full answer.',
+    bullets: [
+      {
+        emoji: '✍️',
+        text: '**Guide drafts land in Actions.** The weekly guide can finally reach its writer.',
+      },
+      {
+        emoji: '⏳',
+        text: '**Minutes, not seconds.** Long writing gets the time it needs.',
+      },
+      {
+        emoji: '🔁',
+        text: '**Blank answer? Next model.** An empty or broken reply now tries the next one.',
+      },
+      {
+        emoji: '🧭',
+        text: '**Founder desk is back.** Every action opens with a suggested call again.',
+      },
+    ],
+    cta: { label: 'Open Actions', href: '/actions' },
+  },
+  {
     id: '2026-10-10-draft-guide-now',
     date: '2026-10-10',
     emoji: '✍️',

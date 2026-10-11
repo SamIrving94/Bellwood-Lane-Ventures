@@ -18,8 +18,10 @@ import {
   type SourceReport,
 } from '../_lib/guides/signals';
 
-// Feeds + Reddit + one LLM call + the drafter's two calls. Pro-plan cap.
-export const maxDuration = 300;
+// Feeds + Reddit + one LLM call + the drafter's two calls, each of which
+// may now take minutes (slow beats cut out). The pick gets a 2-minute
+// deadline so pick + drafter (up to ~9 minutes) fit inside this.
+export const maxDuration = 800;
 
 /**
  * Weekly guide research (Saturdays 06:00 UTC).
@@ -180,10 +182,12 @@ export const POST = async (request: Request) => {
         '',
         'Choose three. JSON only.',
       ].join('\n'),
-      maxTokens: 900,
+      // Headroom for reasoning models (see the drafter).
+      maxTokens: 2000,
       temperature: 0.3,
       feature: 'guide_topic_pick',
       cacheSystemPrompt: true,
+      totalBudgetMs: 120_000,
     }).catch((err) => {
       console.warn('[guide-research] topic pick failed', err);
       return null;
@@ -264,13 +268,13 @@ export const POST = async (request: Request) => {
       const json = (await res.json().catch(() => ({}))) as {
         success?: boolean;
         guidePostId?: string | null;
-        error?: string;
+        error?: unknown;
       };
       if (res.ok && json.success) {
         drafted = true;
         guidePostId = json.guidePostId ?? null;
       } else {
-        draftError = json.error ?? `drafter HTTP ${res.status}`;
+        draftError = describeDrafterError(json.error, res.status);
       }
     } catch (err) {
       draftError = err instanceof Error ? err.message : String(err);
@@ -368,3 +372,20 @@ export const POST = async (request: Request) => {
 // Vercel cron sends GET by default. Accept either method so a manual
 // POST and an automated GET both reach the same handler.
 export const GET = POST;
+
+/**
+ * A readable reason from the drafter's error body. Our own route sends a
+ * string; Vercel's platform errors send an object ({ code, message }),
+ * which used to land in the Queue as "[object Object]" for a week.
+ */
+function describeDrafterError(error: unknown, status: number): string {
+  if (typeof error === 'string' && error) return error;
+  if (error && typeof error === 'object') {
+    const { code, message } = error as { code?: unknown; message?: unknown };
+    if (typeof message === 'string') {
+      return `drafter HTTP ${status}: ${message}${code ? ` (${String(code)})` : ''}`;
+    }
+    return `drafter HTTP ${status}: ${JSON.stringify(error).slice(0, 200)}`;
+  }
+  return `drafter HTTP ${status}`;
+}

@@ -1,6 +1,7 @@
 import { Button, Eyebrow } from '@/components/brand';
 import { SiteFooter } from '@/components/site-footer';
 import { SiteHeader } from '@/components/site-header';
+import { isHiddenPath } from '@/lib/public-sections';
 import { brand } from '@repo/brand';
 import { database } from '@repo/database';
 import { type Article, JsonLd, type WithContext } from '@repo/seo/json-ld';
@@ -191,15 +192,19 @@ export default async function GuidePage({
             </ReactMarkdown>
           </div>
 
-          <section className="mt-12 rounded-sm border border-hair bg-secondary/60 p-6">
-            <Eyebrow>next step</Eyebrow>
-            <p className="mt-3 font-serif text-[19px] text-forest leading-snug">
-              {guide.ctaLine}
-            </p>
-            <Button href={guide.ctaHref} className="mt-4 px-5 py-2 text-sm">
-              Read more
-            </Button>
-          </section>
+          {/* A guide written before a section was hidden may still point
+              into it; drop the box rather than CTA to a 404. */}
+          {!isHiddenPath(guide.ctaHref) && (
+            <section className="mt-12 rounded-sm border border-hair bg-secondary/60 p-6">
+              <Eyebrow>next step</Eyebrow>
+              <p className="mt-3 font-serif text-[19px] text-forest leading-snug">
+                {guide.ctaLine}
+              </p>
+              <Button href={guide.ctaHref} className="mt-4 px-5 py-2 text-sm">
+                Read more
+              </Button>
+            </section>
+          )}
 
           {sources.length > 0 && (
             <section className="mt-10">

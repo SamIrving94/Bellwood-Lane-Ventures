@@ -1,8 +1,15 @@
 import { LogoLockup } from '@/components/brand';
+import { AGENT_SIDE_PUBLIC } from '@/lib/public-sections';
 import Link from 'next/link';
+import { notFound } from 'next/navigation';
 import { SignupForm } from './signup-form';
 
 export default function SignupPage() {
+  // New partner applications are closed while the agent side is hidden —
+  // see lib/public-sections.ts. Existing partners still sign in at /login.
+  if (!AGENT_SIDE_PUBLIC) {
+    notFound();
+  }
   return (
     <div className="mx-auto max-w-xl px-6 py-20">
       <div className="text-center">

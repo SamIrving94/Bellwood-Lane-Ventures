@@ -2,6 +2,7 @@ import { describe, expect, test } from 'vitest';
 import {
   candidateQuestions,
   EVERGREEN_QUESTIONS,
+  HIDDEN_LANDINGS,
   LANDING_ROUTES,
 } from '../app/cron/_lib/guides/evergreen-questions';
 import {
@@ -47,10 +48,21 @@ describe('candidateQuestions rotation', () => {
 
   test('when every question is recent, the oldest comes back first', () => {
     // recentKeys is newest first; the last entry is the oldest guide.
-    const all = EVERGREEN_QUESTIONS.map((q) => q.key);
+    const all = EVERGREEN_QUESTIONS.filter(
+      (q) => !HIDDEN_LANDINGS.has(q.landing)
+    ).map((q) => q.key);
     const out = candidateQuestions(all);
     expect(out.length).toBe(all.length);
     expect(out[0].key).toBe(all[all.length - 1]);
+  });
+
+  test('never offers a question whose landing page is hidden', () => {
+    const everything = EVERGREEN_QUESTIONS.map((q) => q.key);
+    for (const recent of [[], everything]) {
+      for (const q of candidateQuestions(recent)) {
+        expect(HIDDEN_LANDINGS.has(q.landing), q.key).toBe(false);
+      }
+    }
   });
 });
 

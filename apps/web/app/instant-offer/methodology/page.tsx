@@ -1,7 +1,9 @@
 import { SiteFooter } from '@/components/site-footer';
 import { SiteHeader } from '@/components/site-header';
+import { METHODOLOGY_PUBLIC } from '@/lib/public-sections';
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { notFound } from 'next/navigation';
 
 export const metadata: Metadata = {
   title: 'How we price your property · Kept',
@@ -10,6 +12,10 @@ export const metadata: Metadata = {
 };
 
 export default function MethodologyPage() {
+  // Hidden for now — see lib/public-sections.ts.
+  if (!METHODOLOGY_PUBLIC) {
+    notFound();
+  }
   return (
     <>
       {/* Shared site header — it already renders the LogoLockup this page

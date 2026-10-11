@@ -1,5 +1,6 @@
 import { Button, Eyebrow, LogoLockup } from '@/components/brand';
 import { SiteFooter } from '@/components/site-footer';
+import { METHODOLOGY_PUBLIC } from '@/lib/public-sections';
 import type { Metadata } from 'next';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -29,12 +30,14 @@ export default function AboutPage() {
         <div className="mx-auto flex max-w-[1100px] items-center justify-between gap-6 px-5 py-3.5 md:px-10">
           <LogoLockup href="/sell" animate />
           <div className="flex items-center gap-6">
-            <Link
-              href="/instant-offer/methodology"
-              className="hidden text-[13.5px] text-stone-600 transition-colors hover:text-brand-deep sm:block"
-            >
-              How we price
-            </Link>
+            {METHODOLOGY_PUBLIC && (
+              <Link
+                href="/instant-offer/methodology"
+                className="hidden text-[13.5px] text-stone-600 transition-colors hover:text-brand-deep sm:block"
+              >
+                How we price
+              </Link>
+            )}
             <Button href="/sell#offer" className="px-5 py-2 text-sm">
               Send us your details
             </Button>
@@ -106,15 +109,23 @@ export default function AboutPage() {
               Anthony who reads it. Same-day response, Monday to Friday.
             </p>
             <p className="mt-4 max-w-xl text-[15px] text-stone-600 leading-[1.7]">
-              We view every property before we price it, the price we send is
-              the price we complete at, and how we get to that figure is{' '}
-              <Link
-                href="/instant-offer/methodology"
-                className="underline decoration-leaf/50 underline-offset-4 hover:decoration-leaf"
-              >
-                published in full
-              </Link>
-              . If the open market is the better route for you, we&rsquo;ll say
+              We view every property before we price it, and the price we send
+              is the price we complete at.
+              {/* "Published in full" is only true while the page is live. */}
+              {METHODOLOGY_PUBLIC && (
+                <>
+                  {' '}
+                  How we get to that figure is{' '}
+                  <Link
+                    href="/instant-offer/methodology"
+                    className="underline decoration-leaf/50 underline-offset-4 hover:decoration-leaf"
+                  >
+                    published in full
+                  </Link>
+                  .
+                </>
+              )}{' '}
+              If the open market is the better route for you, we&rsquo;ll say
               so.
             </p>
           </div>
