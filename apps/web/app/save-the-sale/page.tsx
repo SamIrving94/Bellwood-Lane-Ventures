@@ -107,10 +107,10 @@ export default async function SaveTheSalePage({
             <p className="mt-8 text-[12px] text-stone-500">
               Prefer email?{' '}
               <a
-                href="mailto:hello@bellwoodslane.co.uk?subject=Sale%20fallen%20through%20%E2%80%94%20urgent"
+                href="mailto:sam@wearekept.co.uk?subject=Sale%20fallen%20through%20%E2%80%94%20urgent"
                 className="text-leaf underline underline-offset-4"
               >
-                hello@bellwoodslane.co.uk
+                sam@wearekept.co.uk
               </a>{' '}
               &ndash; it reaches the same team.
             </p>

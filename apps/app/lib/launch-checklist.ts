@@ -114,12 +114,12 @@ export const LAUNCH_TASKS: LaunchTask[] = [
   {
     id: 'sam-deals-mailbox',
     owner: 'sam',
-    title: 'Check deals@ receives email',
-    why: 'Keyhole referrals are sent to deals@wearekept.co.uk. If that mailbox does not exist, real leads vanish silently.',
+    title: 'Check sam@ receives email',
+    why: 'Keyhole referrals are sent to sam@wearekept.co.uk. If that mailbox does not receive them, real leads vanish silently.',
     steps: [
-      'Send a test email from your personal account to deals@wearekept.co.uk.',
+      'Send a test email from your personal account to sam@wearekept.co.uk.',
       'Confirm it arrives somewhere you and Ant actually read.',
-      'If it bounces: add deals@ as an alias in the email admin, then test again.',
+      'If it bounces: check the mailbox in the email admin, then test again.',
     ],
   },
   {

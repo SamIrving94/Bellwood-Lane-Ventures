@@ -60,8 +60,8 @@ export const KEPT: BrandIdentity = {
   companyNumber: '16454416',
   domain: 'wearekept.co.uk',
   url: 'https://wearekept.co.uk',
-  email: 'hello@wearekept.co.uk',
-  dealsEmail: 'deals@wearekept.co.uk',
+  email: 'sam@wearekept.co.uk',
+  dealsEmail: 'sam@wearekept.co.uk',
 };
 
 /**

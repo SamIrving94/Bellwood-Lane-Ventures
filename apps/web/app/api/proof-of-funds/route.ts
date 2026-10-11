@@ -61,7 +61,7 @@ export async function POST(request: Request) {
   `;
 
   await sendEmail({
-    to: 'anthony@bellwoodslane.co.uk',
+    to: 'sam@wearekept.co.uk',
     subject,
     html,
   }).catch(() => undefined);

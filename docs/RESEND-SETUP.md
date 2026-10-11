@@ -20,7 +20,7 @@ Add to **all three** environments:
 
 ```bash
 RESEND_TOKEN=re_xxxxxxxxxxxxxxxxxxxx
-RESEND_FROM="Bellwoods Lane <hello@bellwoodslane.co.uk>"
+RESEND_FROM="Kept <sam@wearekept.co.uk>"
 ```
 
 ### Vercel production
@@ -55,7 +55,7 @@ Every event that calls `recordDealUpdate()` will email:
 
 - The seller's `contactEmail`
 - The agent linked via `referralCode` (if any)
-- `BELLWOODS_FOUNDER_EMAIL` (defaults to `anthony@bellwoodslane.co.uk`)
+- `BELLWOODS_FOUNDER_EMAIL` (defaults to `sam@wearekept.co.uk`)
 
 Triggers in current code:
 

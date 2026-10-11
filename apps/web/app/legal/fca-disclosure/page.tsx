@@ -178,8 +178,8 @@ const SECTIONS: Array<{
         <p>
           We will not pressure you to sign. If anyone from Kept ever
           does, email{' '}
-          <a href="mailto:anthony@bellwoodslane.co.uk" className="underline">
-            anthony@bellwoodslane.co.uk
+          <a href="mailto:sam@wearekept.co.uk" className="underline">
+            sam@wearekept.co.uk
           </a>{' '}
           and we will respond within two working days.
         </p>
@@ -273,9 +273,9 @@ export default function FCADisclosurePage() {
               <dd>
                 <a
                   className="underline"
-                  href="mailto:anthony@bellwoodslane.co.uk"
+                  href="mailto:sam@wearekept.co.uk"
                 >
-                  anthony@bellwoodslane.co.uk
+                  sam@wearekept.co.uk
                 </a>
               </dd>
             </dl>

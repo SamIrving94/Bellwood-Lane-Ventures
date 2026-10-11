@@ -121,7 +121,7 @@ export default async function TrackPage({
           href="/instant-offer"
           className="inline-flex items-center gap-2 font-serif text-[13px] text-stone-500 transition hover:text-leaf"
         >
-          <span aria-hidden>←</span> bellwoodslane.co.uk
+          <span aria-hidden>←</span> wearekept.co.uk
         </Link>
 
         <p className="mt-12 font-serif text-[13px] text-leaf">
@@ -233,10 +233,10 @@ export default async function TrackPage({
           <p className="mt-4 text-[15px] text-stone-700 leading-relaxed">
             If anything looks wrong, reply to any of our emails or contact{' '}
             <a
-              href="mailto:anthony@bellwoodslane.co.uk"
+              href="mailto:sam@wearekept.co.uk"
               className="text-leaf underline"
             >
-              anthony@bellwoodslane.co.uk
+              sam@wearekept.co.uk
             </a>{' '}
             — or use the form below.
           </p>

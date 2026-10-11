@@ -140,7 +140,7 @@ export function AgentQuickForm({
           kind: 'error',
           message:
             data?.error ||
-            'Something went wrong. Please email hello@bellwoodslane.co.uk and we will pick it up.',
+            'Something went wrong. Please email sam@wearekept.co.uk and we will pick it up.',
         });
         return;
       }
@@ -153,7 +153,7 @@ export function AgentQuickForm({
       setState({
         kind: 'error',
         message:
-          'Could not reach our offer engine. Please email hello@bellwoodslane.co.uk and we will pick it up.',
+          'Could not reach our offer engine. Please email sam@wearekept.co.uk and we will pick it up.',
       });
     }
   };
