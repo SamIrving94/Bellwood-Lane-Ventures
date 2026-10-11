@@ -5,6 +5,7 @@
 
 import { database } from '@repo/database';
 import type { Metadata } from 'next';
+import Link from 'next/link';
 import { notFound } from 'next/navigation';
 
 export const dynamic = 'force-dynamic';
@@ -56,6 +57,24 @@ export default async function InvestorFeedPage({
     },
   });
 
+  // Back-to-back packs that are open for interest. A live pack past its
+  // close date drops off by itself.
+  const packs = await database.investorPack.findMany({
+    where: {
+      status: 'live',
+      OR: [{ closesAt: null }, { closesAt: { gt: new Date() } }],
+    },
+    orderBy: { publishedAt: 'desc' },
+    select: {
+      dealId: true,
+      headline: true,
+      photos: true,
+      pricePence: true,
+      closesAt: true,
+      deal: { select: { postcode: true, bedrooms: true, propertyType: true } },
+    },
+  });
+
   return (
     <main className="mx-auto w-full max-w-5xl space-y-6 p-6">
       <div>
@@ -66,16 +85,59 @@ export default async function InvestorFeedPage({
           Sourced deals
         </h1>
         <p className="mt-2 max-w-2xl text-neutral-600 text-sm">
-          Off-market deals we&apos;ve sourced and are offering to investors.
-          {deals.length} live{' '}
-          {deals.length === 1 ? 'opportunity' : 'opportunities'}. Shared with{' '}
+          Off-market deals we&apos;ve sourced and are offering to investors.{' '}
+          {deals.length + packs.length} live{' '}
+          {deals.length + packs.length === 1 ? 'opportunity' : 'opportunities'}.
+          Shared with{' '}
           <span className="font-medium text-neutral-900">{access.label}</span>.
-          To register interest in any deal, reply to the email this link came
-          from.
+          Open a deal with photos to register interest there; for the rest,
+          reply to the email this link came from.
         </p>
       </div>
 
-      {deals.length === 0 ? (
+      {packs.length > 0 && (
+        <div className="grid gap-4 sm:grid-cols-2">
+          {packs.map((p) => (
+            <Link
+              key={p.dealId}
+              href={`/investors/${token}/deals/${p.dealId}`}
+              className="group overflow-hidden rounded-xl border bg-white transition-shadow hover:shadow-md"
+            >
+              {p.photos[0] && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={p.photos[0]}
+                  alt=""
+                  className="aspect-[16/9] w-full object-cover"
+                />
+              )}
+              <div className="p-5">
+                <p className="font-semibold group-hover:underline">
+                  {p.headline}
+                </p>
+                <p className="mt-1 text-neutral-500 text-xs capitalize">
+                  {p.deal.bedrooms ? `${p.deal.bedrooms} bed ` : ''}
+                  {p.deal.propertyType} · {p.deal.postcode.split(' ')[0]}
+                </p>
+                <p className="mt-3 font-mono font-semibold text-sm tabular-nums">
+                  {formatGBP(p.pricePence)}
+                </p>
+                {p.closesAt && (
+                  <p className="mt-1 text-[11px] text-neutral-500">
+                    Interest closes{' '}
+                    {p.closesAt.toLocaleDateString('en-GB', {
+                      day: 'numeric',
+                      month: 'short',
+                    })}
+                  </p>
+                )}
+              </div>
+            </Link>
+          ))}
+        </div>
+      )}
+
+      {deals.length === 0 && packs.length > 0 ? null : deals.length === 0 ? (
         <div className="rounded-xl border border-dashed bg-neutral-50 p-8 text-center text-sm text-neutral-500">
           No live deals right now. New opportunities will appear here.
         </div>

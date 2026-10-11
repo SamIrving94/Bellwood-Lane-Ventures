@@ -29,11 +29,17 @@ export async function registerInvestorInterest(
 
   const deal = await database.deal.findUnique({
     where: { id: dealId },
-    select: { id: true, releasedForResale: true },
+    select: {
+      id: true,
+      releasedForResale: true,
+      investorPack: { select: { id: true } },
+    },
   });
   if (!deal) throw new Error('Deal not found');
-  if (!deal.releasedForResale) {
-    throw new Error('Release the deal to the investor feed first.');
+  if (!deal.releasedForResale && !deal.investorPack) {
+    throw new Error(
+      'Release the deal to the investor feed, or build an investor pack, first.'
+    );
   }
 
   await database.investorInterest.upsert({
@@ -99,11 +105,17 @@ export async function postInvestorUpdate(
 
   const deal = await database.deal.findUnique({
     where: { id: dealId },
-    select: { id: true, releasedForResale: true },
+    select: {
+      id: true,
+      releasedForResale: true,
+      investorPack: { select: { status: true } },
+    },
   });
   if (!deal) throw new Error('Deal not found');
-  if (!deal.releasedForResale) {
-    throw new Error('Only released deals can be sent to investors.');
+  if (!deal.releasedForResale && deal.investorPack?.status !== 'live') {
+    throw new Error(
+      'Only released deals or live investor packs can be sent to investors.'
+    );
   }
 
   const subscribers = await database.investorInterest.findMany({

@@ -184,6 +184,9 @@ importers:
       '@repo/document-pipeline':
         specifier: workspace:*
         version: link:../../packages/document-pipeline
+      '@repo/email':
+        specifier: workspace:*
+        version: link:../../packages/email
       '@repo/next-config':
         specifier: workspace:*
         version: link:../../packages/next-config
@@ -205,6 +208,9 @@ importers:
       '@repo/seo':
         specifier: workspace:*
         version: link:../../packages/seo
+      '@repo/storage':
+        specifier: workspace:*
+        version: link:../../packages/storage
       '@repo/valuation':
         specifier: workspace:*
         version: link:../../packages/valuation
