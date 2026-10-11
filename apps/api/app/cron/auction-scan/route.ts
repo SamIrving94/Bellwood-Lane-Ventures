@@ -24,6 +24,10 @@ const VISION_SCREEN_CAP = 50;
 // each vision call can take 5-10s. 3 concurrent ~= 50 lots in ~150s worst-case.
 const VISION_CONCURRENCY = 3;
 
+// LLM calls here may take minutes (slow beats cut out, Oct 2026); give the
+// function the Pro-plan ceiling so it is never killed mid-answer.
+export const maxDuration = 800;
+
 export const POST = async (request: Request) => {
   const authHeader = request.headers.get('authorization');
   if (authHeader !== `Bearer ${env.CRON_SECRET}`) {

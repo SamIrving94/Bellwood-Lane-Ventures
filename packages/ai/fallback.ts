@@ -12,12 +12,45 @@
  *     failure mode — callers already handle null gracefully (see the
  *     "iron rule" pattern in callClaude / callClaudeForJson).
  *   - Total wall-clock budget for primary + fallback is bounded so a
- *     stuck provider can't block a request indefinitely. Default 5s
- *     per attempt (configurable).
+ *     stuck provider can't block a request indefinitely: a per-attempt
+ *     cap AND an overall deadline (`totalBudgetMs`). The deadline matters
+ *     more than the cap. Oct 2026: every attempt was capped at 8s with no
+ *     deadline, so a 1,000-word blog draft timed out on every model in
+ *     the chain and the weekly guide never once produced a draft. Give
+ *     each attempt the time its output needs; let the deadline stop the
+ *     chain before the Vercel function is killed, so the failure is
+ *     logged instead of lost.
  *   - OpenRouter is OPT-IN: if no fallback function is supplied, the
  *     primary failure short-circuits to null. The caller (claude.ts)
  *     omits the fallback function when OPENROUTER_API_KEY is missing.
  */
+
+// ───────────────────────────────────────────────────────────────────────────
+// Time budgets
+//
+// Founder direction (Oct 2026): slower is fine, cutting out is not. Until
+// then every attempt had a flat 8s cap, which no long output can meet: the
+// blog drafter (4,000 tokens) timed out on every model in the chain and the
+// weekly guide never once produced a draft. Budgets now scale with the
+// output asked for, and one overall deadline stops the chain while there is
+// still time to log the failure.
+// ───────────────────────────────────────────────────────────────────────────
+
+/**
+ * Per-attempt budget for an output of `maxTokens`. Assumes a slow host
+ * (~40 tokens/s) plus time to first token, so 800 tokens gets 50s and a
+ * 4,000-token draft gets 130s. Capped at 180s.
+ */
+export function defaultAttemptTimeoutMs(maxTokens: number): number {
+  return Math.min(180_000, Math.max(45_000, 30_000 + maxTokens * 25));
+}
+
+/**
+ * Overall deadline across primary + fallbacks. Sits under the 300s Vercel
+ * default with room for the caller to write its result. A route that makes
+ * several calls in a row needs its own `maxDuration` to match.
+ */
+export const DEFAULT_TOTAL_BUDGET_MS = 270_000;
 
 export type FallbackResult<T> =
   | { ok: true; value: T; viaFallback: boolean; provider: string }
@@ -42,7 +75,30 @@ export type CallWithFallbackOpts<T> = {
   isRecoverable?: (err: unknown) => boolean;
   /** Per-attempt wall-clock budget in ms. Default 5000. */
   attemptTimeoutMs?: number;
+  /**
+   * Overall deadline in ms across primary + every fallback. Each attempt
+   * gets min(attemptTimeoutMs, time left). Unset = no deadline.
+   */
+  totalBudgetMs?: number;
+  /**
+   * Reject a value that arrived but is unusable (empty text, unparseable
+   * JSON). Return a short reason to reject, null to accept. A rejection
+   * is treated as a recoverable error, so the next model gets a turn:
+   * one model returning nothing is not evidence the next one will.
+   */
+  validate?: (value: T) => string | null;
 };
+
+/** Below this much time left, starting another attempt is pointless. */
+const MIN_ATTEMPT_MS = 5000;
+
+/** Error for a response that arrived but failed `validate`. */
+export class InvalidResponseError extends Error {
+  constructor(reason: string) {
+    super(reason);
+    this.name = 'InvalidResponseError';
+  }
+}
 
 /**
  * Wording the providers use for "your account has no money". Anthropic
@@ -88,6 +144,15 @@ export function isBillingError(err: unknown): boolean {
 export function isRecoverableProviderError(err: unknown): boolean {
   if (!err) return false;
   if (isBillingError(err)) return true;
+  if (err instanceof Error) {
+    // An unusable answer (see `validate`) or a structured call whose output
+    // missed the schema: a different model can do better, so try it. Oct
+    // 2026: the founder desk failed 14 days of 14 on one model's schema
+    // misses and never asked the next one.
+    if (err.name === 'InvalidResponseError') return true;
+    if (err.name === 'AI_NoObjectGeneratedError') return true;
+    if (err.message?.includes('No object generated')) return true;
+  }
   // Network / abort / timeout signatures
   if (err instanceof Error) {
     const msg = err.message?.toLowerCase() ?? '';
@@ -157,14 +222,24 @@ export async function callWithFallback<T>(
 ): Promise<FallbackResult<T>> {
   const recoverable = opts.isRecoverable ?? isRecoverableProviderError;
   const attemptTimeoutMs = opts.attemptTimeoutMs ?? 5000;
+  const deadline =
+    opts.totalBudgetMs === undefined ? null : Date.now() + opts.totalBudgetMs;
+
+  const run = async (attempt: ProviderAttempt<T>): Promise<T> => {
+    const left = deadline === null ? attemptTimeoutMs : deadline - Date.now();
+    const value = await withTimeout(
+      attempt.call(),
+      Math.min(attemptTimeoutMs, left),
+      attempt.provider
+    );
+    const rejected = opts.validate?.(value);
+    if (rejected) throw new InvalidResponseError(rejected);
+    return value;
+  };
 
   // Primary attempt
   try {
-    const value = await withTimeout(
-      opts.primary.call(),
-      attemptTimeoutMs,
-      opts.primary.provider
-    );
+    const value = await run(opts.primary);
     return {
       ok: true,
       value,
@@ -179,12 +254,15 @@ export async function callWithFallback<T>(
     let lastErr: unknown = primaryErr;
     let lastProvider = opts.primary.provider;
     for (const fb of opts.fallbacks) {
-      try {
-        const value = await withTimeout(
-          fb.call(),
-          attemptTimeoutMs,
-          fb.provider
+      if (deadline !== null && deadline - Date.now() < MIN_ATTEMPT_MS) {
+        const e = new Error(
+          `time budget used up after ${lastProvider}: ${errMessage(lastErr)}`
         );
+        e.name = 'TimeoutError';
+        return { ok: false, error: e, provider: lastProvider };
+      }
+      try {
+        const value = await run(fb);
         return { ok: true, value, viaFallback: true, provider: fb.provider };
       } catch (err) {
         lastErr = err;
@@ -199,4 +277,8 @@ export async function callWithFallback<T>(
     }
     return { ok: false, error: lastErr, provider: lastProvider };
   }
+}
+
+function errMessage(err: unknown): string {
+  return err instanceof Error ? err.message : String(err);
 }

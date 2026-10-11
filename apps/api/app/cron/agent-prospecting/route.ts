@@ -108,6 +108,10 @@ type ProspectAgent = {
   url?: string;
 };
 
+// LLM calls here may take minutes (slow beats cut out, Oct 2026); give the
+// function the Pro-plan ceiling so it is never killed mid-answer.
+export const maxDuration = 800;
+
 export const POST = async (request: Request) => {
   const authHeader = request.headers.get('authorization');
   if (authHeader !== `Bearer ${env.CRON_SECRET}`) {

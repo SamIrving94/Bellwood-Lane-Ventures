@@ -4,7 +4,7 @@
  * Public surface (kept stable across migrations):
  *
  *   callClaude({ system, user, maxTokens, temperature, model?, feature?,
- *                cacheSystemPrompt?, attemptTimeoutMs? })
+ *                cacheSystemPrompt?, attemptTimeoutMs?, totalBudgetMs? })
  *     → Promise<string | null>
  *
  *   callClaudeForJson<T>({ system, user, ... })
@@ -51,7 +51,12 @@ import { createAnthropic } from '@ai-sdk/anthropic';
 import { createOpenRouter } from '@openrouter/ai-sdk-provider';
 import { generateObject, generateText } from 'ai';
 import type { z } from 'zod';
-import { callWithFallback, isRecoverableProviderError } from './fallback';
+import {
+  DEFAULT_TOTAL_BUDGET_MS,
+  callWithFallback,
+  defaultAttemptTimeoutMs,
+  isRecoverableProviderError,
+} from './fallback';
 import { keys } from './keys';
 import {
   type ModelRoute,
@@ -74,6 +79,10 @@ export {
 } from './routing';
 
 const env = keys();
+
+// Time budgets live in ./fallback (testable without 'server-only'):
+// per-attempt caps scale with maxTokens, one deadline bounds the chain.
+export { DEFAULT_TOTAL_BUDGET_MS, defaultAttemptTimeoutMs };
 
 // ───────────────────────────────────────────────────────────────────────────
 // Model selectors. Tiering is intentional:
@@ -252,10 +261,20 @@ export interface CallClaudeInput {
    */
   cacheSystemPrompt?: boolean;
   /**
-   * Per-attempt wall-clock budget in ms. Primary + first fallback hop
-   * are bounded to ~2×this. Default 8000.
+   * Per-attempt wall-clock budget in ms. Default scales with maxTokens
+   * (see defaultAttemptTimeoutMs).
    */
   attemptTimeoutMs?: number;
+  /**
+   * Overall deadline across primary + fallbacks, in ms. Default
+   * DEFAULT_TOTAL_BUDGET_MS.
+   */
+  totalBudgetMs?: number;
+  /**
+   * INTERNAL — reject an answer that arrived but is unusable, so the next
+   * model gets a turn. callClaudeForJson uses it for unparseable JSON.
+   */
+  accept?: (text: string) => string | null;
   /**
    * Photos to show the model (vision). Base64 data + media type, already
    * fetched and size-checked by the caller. Sent as image parts ahead of
@@ -327,7 +346,6 @@ export async function callClaudeWithMeta(
     : await resolveRoute(feature);
   const model = route?.model ?? input.model ?? CLAUDE_SONNET;
   const enableCache = shouldCache(input);
-  const attemptTimeoutMs = input.attemptTimeoutMs ?? 8000;
   const startedAt = Date.now();
 
   const noKey = { text: null, model, provider: null, viaFallback: false };
@@ -350,6 +368,8 @@ export async function callClaudeWithMeta(
   const shape = buildPromptShape(input, enableCache);
   const maxTokens = input.maxTokens ?? 800;
   const temperature = input.temperature ?? 0.3;
+  const attemptTimeoutMs =
+    input.attemptTimeoutMs ?? defaultAttemptTimeoutMs(maxTokens);
 
   // Track usage from whichever provider answers.
   let lastUsage: { promptTokens?: number; completionTokens?: number } = {};
@@ -400,6 +420,12 @@ export async function callClaudeWithMeta(
     fallbacks: attempts.fallbacks,
     isRecoverable: isRecoverableProviderError,
     attemptTimeoutMs,
+    totalBudgetMs: input.totalBudgetMs ?? DEFAULT_TOTAL_BUDGET_MS,
+    // An empty answer is a failed attempt, not a result: reasoning models
+    // can spend the whole token cap thinking and return no text (GLM did
+    // this to the LinkedIn basket and the guide topic pick, Oct 2026).
+    validate: (text) =>
+      text ? (input.accept?.(text) ?? null) : 'empty_response',
   });
 
   const durationMs = Date.now() - startedAt;
@@ -516,7 +542,12 @@ export function extractJson<T = Record<string, unknown>>(
 export async function callClaudeForJson<T = Record<string, unknown>>(
   input: CallClaudeInput
 ): Promise<T | null> {
-  const text = await callClaude(input);
+  // Unparseable JSON counts as a failed attempt, so the next model in the
+  // chain gets a turn instead of the feature returning null.
+  const text = await callClaude({
+    ...input,
+    accept: (t) => (extractJson(t) ? null : 'unparseable_json'),
+  });
   if (!text) return null;
   return extractJson<T>(text);
 }
@@ -538,8 +569,10 @@ export interface CallClaudeObjectInput<T> {
   model?: ClaudeModelId;
   /** Feature tag for metrics + routing. Default 'unknown'. */
   feature?: string;
-  /** Per-attempt wall-clock budget in ms. Default 8000. */
+  /** Per-attempt wall-clock budget in ms. Default scales with maxTokens. */
   attemptTimeoutMs?: number;
+  /** Overall deadline across primary + fallbacks. Default DEFAULT_TOTAL_BUDGET_MS. */
+  totalBudgetMs?: number;
   /** INTERNAL — shadow-eval calls bypass routing. Do not set manually. */
   bypassRouting?: boolean;
   /** INTERNAL — provider prefs threaded to shadow calls. Do not set manually. */
@@ -605,7 +638,9 @@ export async function callClaudeForObject<T>(
     primary: attempts.primary,
     fallbacks: attempts.fallbacks,
     isRecoverable: isRecoverableProviderError,
-    attemptTimeoutMs: input.attemptTimeoutMs ?? 8000,
+    attemptTimeoutMs:
+      input.attemptTimeoutMs ?? defaultAttemptTimeoutMs(input.maxTokens ?? 800),
+    totalBudgetMs: input.totalBudgetMs ?? DEFAULT_TOTAL_BUDGET_MS,
   });
 
   const durationMs = Date.now() - startedAt;
