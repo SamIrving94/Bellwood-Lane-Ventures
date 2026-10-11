@@ -21,7 +21,7 @@ import {
   View,
   renderToBuffer,
 } from '@react-pdf/renderer';
-import { put } from '@vercel/blob';
+import { put } from '@repo/storage';
 import * as React from 'react';
 
 import { brand } from '@repo/brand';
