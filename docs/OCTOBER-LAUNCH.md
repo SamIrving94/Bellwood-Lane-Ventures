@@ -39,7 +39,7 @@ the promise is genuinely different. Both work — pick one on purpose.
 | 3 | Run **`pnpm migrate`** against prod | KeyholeReport table |
 | 4 | **Seed the fringe:** `pnpm tsx scripts/seed-london-prime.mts --write --districts=W11,NW3` (dry-run first) then Settings → Scouting → **Run scout now** | The £1.5M–£10M trial |
 | 5 | Run **`pnpm tsx --env-file=.env scripts/arbitrage-rank.mts --districts=SE22,SW12,W11,NW3 --csv=arbitrage.csv`** and send Claude the CSV | Evidence-based district re-tiering |
-| 6 | Confirm **deals@wearekept.co.uk** receives mail | Keyhole referrals have somewhere to land |
+| 6 | Confirm **sam@wearekept.co.uk** receives mail (deals@ retired 11 Oct) | Keyhole referrals have somewhere to land |
 | 7 | Pick the **5–8 Keyhole pilot professionals** (local probate firms in our postcodes first) | Phase 0 pilot |
 | 8 | Start the **first-look buying-agent list** (template: `docs/templates/buying-agent-first-look.md`) | Top-end relationship channel |
 | 9 | Glance at **PropertyData credits** after two scout runs | Trial stays inside budget |

@@ -274,7 +274,7 @@ function dedupeEmails(emails: string[]): string[] {
 }
 
 function getFounderEmail(): string {
-  return process.env.BELLWOODS_FOUNDER_EMAIL || 'anthony@bellwoodslane.co.uk';
+  return process.env.BELLWOODS_FOUNDER_EMAIL || 'sam@wearekept.co.uk';
 }
 
 function getWebOrigin(): string {

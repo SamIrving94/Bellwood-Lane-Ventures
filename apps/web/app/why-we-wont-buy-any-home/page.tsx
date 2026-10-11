@@ -79,7 +79,7 @@ const SITUATIONS_WE_WONT_BUY: Array<{
     k: 'A property we have no expertise to underwrite',
     b: 'Commercial properties, equestrian, agricultural, unusual heritage assets, properties under £80k or over £2m. Our model is sized for residential UK property in the £150k–£800k range.',
     recommend:
-      'A specialist auction house or a buyer focused on your property type will outperform us. We can recommend names if you email hello@bellwoodslane.co.uk with a one-line description.',
+      'A specialist auction house or a buyer focused on your property type will outperform us. We can recommend names if you email sam@wearekept.co.uk with a one-line description.',
   },
 ];
 

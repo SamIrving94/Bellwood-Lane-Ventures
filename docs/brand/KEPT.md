@@ -1,6 +1,6 @@
 # Kept. — brand & design system
 
-_Last verified against the live site: 2026-09-05._
+_Last verified against the live site: 2026-10-11._
 
 **Status:** exploration approved by both founders, July 2026. Domain secured:
 **wearekept.co.uk**. Legal/trading structure TBC (trademark class 36 search
@@ -157,7 +157,9 @@ Also binding, from the Aug 2026 founder review:
 ## Digital home
 
 - Primary domain: **wearekept.co.uk**
-- Email pattern: `hello@wearekept.co.uk`
+- Email: `sam@wearekept.co.uk` (founder decision, 11 Oct 2026: the one
+  live mailbox; hello@ and deals@ do not exist, so the site and every
+  alert use sam@)
 - Design exploration mocks: session artefacts July 2026 (offer-letter
   board, four style tiles, blended homepage, /sell re-skin) — synced to
   the "Kept" Claude Design project for iteration.
