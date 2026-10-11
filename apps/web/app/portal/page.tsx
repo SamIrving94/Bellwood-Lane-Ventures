@@ -1,4 +1,5 @@
 import { getCurrentAgent } from '@/app/partners/_lib/auth';
+import { AGENT_SIDE_PUBLIC } from '@/lib/public-sections';
 import { brand } from '@repo/brand';
 import { database } from '@repo/database';
 import Link from 'next/link';
@@ -50,9 +51,7 @@ export default async function PortalPage() {
     <main className="mx-auto max-w-6xl px-6 py-12">
       {/* Greeting */}
       <section>
-        <p className="font-serif text-[13px] text-leaf">
-          Welcome back
-        </p>
+        <p className="font-serif text-[13px] text-leaf">Welcome back</p>
         <h1 className="mt-1 font-semibold font-serif text-4xl">
           Hello, {agent.contactName.split(' ')[0]}.
         </h1>
@@ -60,9 +59,7 @@ export default async function PortalPage() {
 
       {/* Referral link */}
       <section className="mt-10 rounded-[2px] border-2 border-leaf/40 bg-soft p-8">
-        <p className="font-serif text-[13px] text-leaf">
-          Your referral link
-        </p>
+        <p className="font-serif text-[13px] text-leaf">Your referral link</p>
         <p className="mt-2 font-serif text-xl">
           Share this with a seller. We credit every offer back to you.
         </p>
@@ -95,9 +92,7 @@ export default async function PortalPage() {
             { label: 'Completed', value: metrics.completed },
           ].map((m) => (
             <div key={m.label} className="p-6">
-              <p className="font-serif text-[13px] text-stone-500">
-                {m.label}
-              </p>
+              <p className="font-serif text-[13px] text-stone-500">{m.label}</p>
               <p className="mt-2 font-semibold font-serif text-4xl">
                 {m.value}
               </p>
@@ -113,8 +108,8 @@ export default async function PortalPage() {
           <div className="mt-6 rounded-[2px] border border-stone-300 border-dashed bg-white p-10 text-center">
             <p className="font-serif text-lg">No referrals yet.</p>
             <p className="mt-2 text-sm text-stone-600">
-              Share your referral link with a seller. Anything they submit
-              using it will show up here.
+              Share your referral link with a seller. Anything they submit using
+              it will show up here.
             </p>
           </div>
         ) : (
@@ -184,9 +179,7 @@ export default async function PortalPage() {
       {/* Tier upsell */}
       {agent.tier === 'partner' && (
         <section className="mt-10 rounded-[2px] bg-forest p-8 text-white">
-          <p className="font-serif text-[13px] text-leaf">
-            Unlock Preferred
-          </p>
+          <p className="font-serif text-[13px] text-leaf">Unlock Preferred</p>
           <p className="mt-2 font-semibold font-serif text-2xl">
             Complete 3 referrals to move up.
           </p>
@@ -197,43 +190,48 @@ export default async function PortalPage() {
         </section>
       )}
 
-      {/* Tools — the two things an agent actually uses day-to-day */}
-      <section className="mt-10 grid grid-cols-1 gap-4 md:grid-cols-2">
-        <Link
-          href="/save-the-sale"
-          className="rounded-[2px] border-2 border-leaf/40 bg-white p-6 transition hover:border-leaf"
-        >
-          <p className="font-semibold font-serif text-lg">Save a sale →</p>
-          <p className="mt-2 text-sm text-stone-600">
-            Sale collapsed? Send the address — an indicative figure on screen,
-            credited to your referral code.
-          </p>
-        </Link>
-        <Link
-          href="/agents/score"
-          className="rounded-[2px] border-2 border-leaf/40 bg-white p-6 transition hover:border-leaf"
-        >
-          <p className="font-semibold font-serif text-lg">Kept Score →</p>
-          <p className="mt-2 text-sm text-stone-600">
-            An indicative range to show a seller before you leave their living
-            room.
-          </p>
-        </Link>
-      </section>
+      {/* Tools — the two things an agent actually uses day-to-day. Both pages
+          404 while the agent side is hidden (lib/public-sections.ts). */}
+      {AGENT_SIDE_PUBLIC && (
+        <section className="mt-10 grid grid-cols-1 gap-4 md:grid-cols-2">
+          <Link
+            href="/save-the-sale"
+            className="rounded-[2px] border-2 border-leaf/40 bg-white p-6 transition hover:border-leaf"
+          >
+            <p className="font-semibold font-serif text-lg">Save a sale →</p>
+            <p className="mt-2 text-sm text-stone-600">
+              Sale collapsed? Send the address — an indicative figure on screen,
+              credited to your referral code.
+            </p>
+          </Link>
+          <Link
+            href="/agents/score"
+            className="rounded-[2px] border-2 border-leaf/40 bg-white p-6 transition hover:border-leaf"
+          >
+            <p className="font-semibold font-serif text-lg">Kept Score →</p>
+            <p className="mt-2 text-sm text-stone-600">
+              An indicative range to show a seller before you leave their living
+              room.
+            </p>
+          </Link>
+        </section>
+      )}
 
       {/* Resources */}
       <section className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
-        <Link
-          href="/instant-offer/partner-brief"
-          className="rounded-[2px] border border-stone-200 bg-white p-6 transition hover:border-leaf"
-        >
-          <p className="font-semibold font-serif text-lg">
-            Agent Partner Brief →
-          </p>
-          <p className="mt-2 text-sm text-stone-600">
-            Printable one-pager to show clients and colleagues.
-          </p>
-        </Link>
+        {AGENT_SIDE_PUBLIC && (
+          <Link
+            href="/instant-offer/partner-brief"
+            className="rounded-[2px] border border-stone-200 bg-white p-6 transition hover:border-leaf"
+          >
+            <p className="font-semibold font-serif text-lg">
+              Agent Partner Brief →
+            </p>
+            <p className="mt-2 text-sm text-stone-600">
+              Printable one-pager to show clients and colleagues.
+            </p>
+          </Link>
+        )}
         <Link
           href="/instant-offer/seller-disclosure"
           className="rounded-[2px] border border-stone-200 bg-white p-6 transition hover:border-leaf"

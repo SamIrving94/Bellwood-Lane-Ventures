@@ -1,5 +1,6 @@
 import { SiteFooter } from '@/components/site-footer';
 import { SiteHeader } from '@/components/site-header';
+import { AGENT_SIDE_PUBLIC } from '@/lib/public-sections';
 import { sansDocFont, serifDocFont } from '@repo/design-system/lib/fonts';
 import type { Metadata } from 'next';
 import Link from 'next/link';
@@ -87,15 +88,21 @@ const SITUATIONS_WE_BUY_FROM: Array<{
   route: string;
   href: string;
 }> = [
+  // While the agent side is hidden (lib/public-sections.ts) these route to
+  // the seller's own chain-break page instead of the agent form.
   {
     situation: 'Chain break / buyer pulled out',
-    route: 'Use the save-the-sale form',
-    href: '/save-the-sale',
+    route: AGENT_SIDE_PUBLIC
+      ? 'Use the save-the-sale form'
+      : 'Start with the chain-break page',
+    href: AGENT_SIDE_PUBLIC ? '/save-the-sale' : '/chain-break',
   },
   {
     situation: 'Mortgage refused / survey down-valued',
-    route: 'Use the save-the-sale form',
-    href: '/save-the-sale',
+    route: AGENT_SIDE_PUBLIC
+      ? 'Use the save-the-sale form'
+      : 'Start with the chain-break page',
+    href: AGENT_SIDE_PUBLIC ? '/save-the-sale' : '/chain-break',
   },
   {
     situation: 'Probate',
@@ -295,24 +302,26 @@ export default function WhyWeWontBuyAnyHomePage() {
       </section>
 
       {/* ————— ESTATE AGENTS ————— */}
-      <section className="border-stone-200/60 border-b bg-stone-50 px-6 py-12 md:px-12">
-        <div className="mx-auto flex max-w-5xl flex-col items-center justify-between gap-4 text-center md:flex-row md:text-left">
-          <div>
-            <p className="font-serif text-[13px] text-stone-500">
-              Estate agent reading this?
-            </p>
-            <p className="mt-1 font-serif text-xl">
-              The same selectivity applies on your side.
-            </p>
+      {AGENT_SIDE_PUBLIC && (
+        <section className="border-stone-200/60 border-b bg-stone-50 px-6 py-12 md:px-12">
+          <div className="mx-auto flex max-w-5xl flex-col items-center justify-between gap-4 text-center md:flex-row md:text-left">
+            <div>
+              <p className="font-serif text-[13px] text-stone-500">
+                Estate agent reading this?
+              </p>
+              <p className="mt-1 font-serif text-xl">
+                The same selectivity applies on your side.
+              </p>
+            </div>
+            <Link
+              href="/agents"
+              className="inline-flex items-center gap-2 rounded-md border border-stone-300 bg-white px-6 py-3 text-sm text-stone-700 transition hover:border-stone-400"
+            >
+              See the agent partner programme →
+            </Link>
           </div>
-          <Link
-            href="/agents"
-            className="inline-flex items-center gap-2 rounded-md border border-stone-300 bg-white px-6 py-3 text-sm text-stone-700 transition hover:border-stone-400"
-          >
-            See the agent partner programme →
-          </Link>
-        </div>
-      </section>
+        </section>
+      )}
 
       <SiteFooter disclaimer="Kept is a UK cash property buyer, not an FCA-authorised firm. We do not provide financial or legal advice. Seek independent legal and debt advice before accepting any offer. All offers are subject to satisfactory survey and title searches." />
     </div>

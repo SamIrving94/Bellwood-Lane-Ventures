@@ -1,5 +1,7 @@
+import { AGENT_SIDE_PUBLIC } from '@/lib/public-sections';
 import { brand } from '@repo/brand';
 import type { Metadata } from 'next';
+import { notFound } from 'next/navigation';
 
 export const metadata: Metadata = {
   title: 'Agent Partner Brief · Kept',
@@ -7,6 +9,10 @@ export const metadata: Metadata = {
 };
 
 export default function PartnerBriefPage() {
+  // Agent-facing page, hidden for now — see lib/public-sections.ts.
+  if (!AGENT_SIDE_PUBLIC) {
+    notFound();
+  }
   return (
     <div className="mx-auto max-w-3xl px-8 py-14 print:px-0 print:py-0">
       <style>{`
@@ -147,8 +153,8 @@ export default function PartnerBriefPage() {
             by email, WhatsApp, or via our indicative offer tool.
           </li>
           <li>
-            <strong>2.</strong> We send you the indicative offer, and we
-            confirm the price in writing within two working days of viewing.
+            <strong>2.</strong> We send you the indicative offer, and we confirm
+            the price in writing within two working days of viewing.
           </li>
           <li>
             <strong>3.</strong> You present the offer to your seller using our

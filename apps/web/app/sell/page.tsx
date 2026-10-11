@@ -1,6 +1,7 @@
 import { Button, Eyebrow, LogoLockup, Seal } from '@/components/brand';
 import { OfferForm } from '@/components/home/offer-form';
 import { SiteFooter } from '@/components/site-footer';
+import { AGENT_SIDE_PUBLIC, METHODOLOGY_PUBLIC } from '@/lib/public-sections';
 import type { Metadata } from 'next';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -171,7 +172,10 @@ const FAQ = [
   },
   {
     q: 'How is the offer calculated?',
-    a: 'We pull every comparable sale within 0.5 miles of the property from HM Land Registry’s last 24 months, adjust for market trend, score the risk factors, then arrive at a figure we can commit to. The full methodology is published.',
+    a: `We pull every comparable sale within 0.5 miles of the property from HM Land Registry’s last 24 months, adjust for market trend, score the risk factors, then arrive at a figure we can commit to.${
+      // Only true while the methodology page is live (lib/public-sections.ts).
+      METHODOLOGY_PUBLIC ? ' The full methodology is published.' : ''
+    }`,
   },
   {
     q: 'How quickly can you complete?',
@@ -193,7 +197,7 @@ const NAV = [
   { href: '#for-me', label: 'Is Kept for me?' },
   { href: '#how', label: 'How it works' },
   { href: '#faq', label: 'FAQ' },
-  { href: '/agents', label: 'For agents' },
+  ...(AGENT_SIDE_PUBLIC ? [{ href: '/agents', label: 'For agents' }] : []),
 ];
 
 export default function SellPage() {
@@ -626,16 +630,18 @@ export default function SellPage() {
             {/* Co-founder note, 9 Sep 2026: the button sends details, it does
                 not get an offer (no figure on screen), so say what it does. */}
             <Button href="#offer">Send us your details</Button>
-            <p className="mt-4 text-[14px] text-stone-600 leading-[1.6]">
-              Or, if you&rsquo;re an estate agent with a chain coming apart:{' '}
-              <Link
-                href="/agents"
-                className="underline decoration-leaf/50 underline-offset-4 hover:decoration-leaf"
-              >
-                the partner programme
-              </Link>
-              .
-            </p>
+            {AGENT_SIDE_PUBLIC && (
+              <p className="mt-4 text-[14px] text-stone-600 leading-[1.6]">
+                Or, if you&rsquo;re an estate agent with a chain coming apart:{' '}
+                <Link
+                  href="/agents"
+                  className="underline decoration-leaf/50 underline-offset-4 hover:decoration-leaf"
+                >
+                  the partner programme
+                </Link>
+                .
+              </p>
+            )}
           </div>
         </div>
       </section>

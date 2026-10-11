@@ -1,4 +1,5 @@
 import { LogoLockup } from '@/components/brand';
+import { AGENT_SIDE_PUBLIC } from '@/lib/public-sections';
 import Link from 'next/link';
 import { LoginForm } from './login-form';
 
@@ -24,7 +25,7 @@ export default async function LoginPage({
     <div className="mx-auto max-w-md px-6 py-20">
       <div className="text-center">
         <LogoLockup
-          href="/agents"
+          href={AGENT_SIDE_PUBLIC ? '/agents' : '/'}
           className="justify-center"
           wordmarkClassName="text-lg md:text-xl"
         />
@@ -48,15 +49,18 @@ export default async function LoginPage({
         <LoginForm />
       </div>
 
-      <p className="mt-8 text-center text-sm text-stone-500">
-        Not a partner yet?{' '}
-        <Link
-          href="/partners/signup"
-          className="font-medium text-leaf underline underline-offset-4 hover:text-leaf-dark"
-        >
-          Apply →
-        </Link>
-      </p>
+      {/* Applications are closed while the agent side is hidden. */}
+      {AGENT_SIDE_PUBLIC && (
+        <p className="mt-8 text-center text-sm text-stone-500">
+          Not a partner yet?{' '}
+          <Link
+            href="/partners/signup"
+            className="font-medium text-leaf underline underline-offset-4 hover:text-leaf-dark"
+          >
+            Apply →
+          </Link>
+        </p>
+      )}
     </div>
   );
 }
