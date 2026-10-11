@@ -3,6 +3,7 @@ import {
   generateReferralCode,
 } from '@/app/partners/_lib/auth';
 import { escapeHtml } from '@/lib/escape-html';
+import { AGENT_SIDE_PUBLIC } from '@/lib/public-sections';
 import {
   LIMITS,
   checkRateLimit,
@@ -24,6 +25,11 @@ const InputSchema = z.object({
 });
 
 export async function POST(request: Request) {
+  // The signup page is hidden, so close the endpoint behind it too —
+  // otherwise applications could still arrive by direct POST.
+  if (!AGENT_SIDE_PUBLIC) {
+    return NextResponse.json({ error: 'Not found' }, { status: 404 });
+  }
   const ip = clientIp(request) ?? 'anonymous';
   const ipLimit = await checkRateLimit(LIMITS.partnerAuthByIp, `ip:${ip}`);
   if (!ipLimit.ok) {

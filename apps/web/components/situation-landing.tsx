@@ -1,6 +1,7 @@
 import { Button, Eyebrow, LogoLockup } from '@/components/brand';
 import { SituationOfferForm } from '@/components/home/situation-offer-form';
 import { SiteFooter } from '@/components/site-footer';
+import { METHODOLOGY_PUBLIC } from '@/lib/public-sections';
 import { SITUATION_CONTENT, type SituationKey } from '@/lib/situation-content';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -27,12 +28,14 @@ export function SituationLanding({
         <div className="mx-auto flex max-w-[1100px] items-center justify-between gap-6 px-5 py-3.5 md:px-10">
           <LogoLockup href="/sell" animate />
           <div className="flex items-center gap-6">
-            <Link
-              href="/instant-offer/methodology"
-              className="hidden text-[13.5px] text-stone-600 transition-colors hover:text-brand-deep sm:block"
-            >
-              How we price
-            </Link>
+            {METHODOLOGY_PUBLIC && (
+              <Link
+                href="/instant-offer/methodology"
+                className="hidden text-[13.5px] text-stone-600 transition-colors hover:text-brand-deep sm:block"
+              >
+                How we price
+              </Link>
+            )}
             <Button href="#offer" className="px-5 py-2 text-sm">
               Send us your details
             </Button>
@@ -221,14 +224,21 @@ export function SituationLanding({
               {c.honestBody}
             </p>
             <p className="mt-3.5 max-w-[66ch] text-[#44403c] text-[15px] leading-[1.7]">
-              Our figure is below open-market value by design, and our{' '}
-              <Link
-                href="/instant-offer/methodology"
-                className="underline decoration-leaf/50 underline-offset-4 hover:decoration-leaf"
-              >
-                full methodology is published
-              </Link>{' '}
-              so you can see exactly how we get there.
+              {/* "Published" is only true while the methodology page is live. */}
+              {METHODOLOGY_PUBLIC ? (
+                <>
+                  Our figure is below open-market value by design, and our{' '}
+                  <Link
+                    href="/instant-offer/methodology"
+                    className="underline decoration-leaf/50 underline-offset-4 hover:decoration-leaf"
+                  >
+                    full methodology is published
+                  </Link>{' '}
+                  so you can see exactly how we get there.
+                </>
+              ) : (
+                'Our figure is below open-market value by design.'
+              )}
             </p>
           </div>
         </section>

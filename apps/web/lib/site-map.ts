@@ -12,6 +12,8 @@
  * private link, never browsed to.
  */
 
+import { AGENT_SIDE_PUBLIC, METHODOLOGY_PUBLIC } from './public-sections';
+
 export type SiteLink = {
   href: string;
   label: string;
@@ -36,19 +38,32 @@ export const SITE_MAP: SiteGroup[] = [
       { href: '/why-we-wont-buy-any-home', label: 'What we won’t buy' },
     ],
   },
-  {
-    title: 'Agents',
-    links: [
-      { href: '/agents', label: 'For agents' },
-      { href: '/save-the-sale', label: 'Save a sale' },
-      { href: '/partners/login', label: 'Partner sign in', sitemap: false },
-    ],
-  },
+  // Hidden sections (lib/public-sections.ts) drop out of the footer and the
+  // sitemap together. Partner sign-in goes with the agent side: existing
+  // partners keep their direct link to /partners/login.
+  ...(AGENT_SIDE_PUBLIC
+    ? [
+        {
+          title: 'Agents',
+          links: [
+            { href: '/agents', label: 'For agents' },
+            { href: '/save-the-sale', label: 'Save a sale' },
+            {
+              href: '/partners/login',
+              label: 'Partner sign in',
+              sitemap: false as const,
+            },
+          ],
+        },
+      ]
+    : []),
   {
     title: 'Kept',
     links: [
       { href: '/about', label: 'Kept’s story' },
-      { href: '/instant-offer/methodology', label: 'Methodology' },
+      ...(METHODOLOGY_PUBLIC
+        ? [{ href: '/instant-offer/methodology', label: 'Methodology' }]
+        : []),
     ],
   },
   {
