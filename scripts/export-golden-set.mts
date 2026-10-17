@@ -22,7 +22,15 @@
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { PrismaClient } from '../packages/database/generated/client/index.js';
-import { canonicalPropertyType } from '../packages/property-data/src/property-type.ts';
+import * as TypeNs from '../packages/property-data/src/property-type.ts';
+
+// @repo/property-data has no `"type": "module"`, so under tsx its TS source
+// arrives CJS-wrapped with named exports under `default` (same unwrap as
+// scripts/avm-backtest.mts).
+function unwrap<T>(ns: T): T {
+  return ((ns as { default?: T }).default ?? ns) as T;
+}
+const { canonicalPropertyType } = unwrap(TypeNs);
 
 const db = new PrismaClient();
 

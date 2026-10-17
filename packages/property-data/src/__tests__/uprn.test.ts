@@ -227,3 +227,15 @@ describe('EPC search rows carry the lodged UPRN', () => {
     expect(rows.map((r) => r.uprn)).toEqual(['100121241798', null, null]);
   });
 });
+
+describe('sameHome', () => {
+  it('picks this home out of Land Registry-style addresses', async () => {
+    const { sameHome } = await import('../uprn');
+    expect(sameHome('12 Acacia Road', '12, ACACIA ROAD, LONDON')).toBe(true);
+    expect(sameHome('12 Acacia Road', 'FLAT 1, 12, ACACIA ROAD')).toBe(false);
+    expect(sameHome('Flat 1, 12 Acacia Road', 'FLAT 1, 12, ACACIA ROAD')).toBe(
+      true
+    );
+    expect(sameHome('12 Acacia Road', '112, ACACIA ROAD')).toBe(false);
+  });
+});

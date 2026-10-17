@@ -183,6 +183,15 @@ function keysMatch(lead: AddressKey, candidate: AddressKey): boolean {
   return lead.street === null || candidate.text.includes(lead.street);
 }
 
+/**
+ * Does `candidate` describe the same home as `address`? Same strict rules as
+ * UPRN matching (exact number, exact flat, street word). Used to pick THIS
+ * home's sales out of a postcode's Land Registry records.
+ */
+export function sameHome(address: string, candidate: string): boolean {
+  return keysMatch(addressKey(address), addressKey(candidate));
+}
+
 type SourceOutcome =
   | { kind: 'match'; uprn: string }
   | { kind: 'ambiguous' }
