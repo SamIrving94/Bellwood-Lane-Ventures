@@ -1,5 +1,6 @@
 'use server';
 
+import { propertyFromLead } from '@/lib/lead-to-deal';
 import { requireFounder } from '@repo/auth/server';
 import { database } from '@repo/database';
 import { revalidatePath } from 'next/cache';
@@ -19,22 +20,29 @@ export async function convertLeadToDeal(leadId: string) {
     data: {
       address: lead.address,
       postcode: lead.postcode,
-      propertyType: lead.leadType, // Will be refined later
-      sellerType: lead.leadType === 'probate'
-        ? 'probate'
-        : lead.leadType === 'chain_break'
-          ? 'chain_break'
-          : lead.leadType === 'repossession'
-            ? 'repossession'
-            : lead.leadType === 'short_lease'
-              ? 'short_lease'
-              : 'standard',
+      ...propertyFromLead(lead.rawPayload),
+      sellerType:
+        lead.leadType === 'probate'
+          ? 'probate'
+          : lead.leadType === 'chain_break'
+            ? 'chain_break'
+            : lead.leadType === 'repossession'
+              ? 'repossession'
+              : lead.leadType === 'short_lease'
+                ? 'short_lease'
+                : 'standard',
       source: 'scout_lead',
       track: lead.track,
       sellerName: lead.contactName,
       sellerEmail: lead.contactEmail,
       sellerPhone: lead.contactPhone,
       convertedFromLeadId: lead.id,
+      // Same property, same ID — carried over as resolved, never re-guessed.
+      uprn: lead.uprn,
+      uprnConfidence: lead.uprnConfidence,
+      uprnSources: lead.uprnSources,
+      uprnReason: lead.uprnReason,
+      uprnCheckedAt: lead.uprnCheckedAt,
     },
   });
 

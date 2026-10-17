@@ -1,6 +1,7 @@
 import { auth } from '@repo/auth/server';
 import { getBookingLink } from '@repo/calendly';
 import { database } from '@repo/database';
+import { canonicalPropertyType } from '@repo/property-data/src/property-type';
 import type { Metadata } from 'next';
 import { notFound, redirect } from 'next/navigation';
 import { FeedbackPanel } from '../../components/feedback-panel';
@@ -220,7 +221,15 @@ const DealDetailPage = async ({
               )}
             </h1>
             <p className="text-muted-foreground text-sm">
-              {deal.postcode} &middot; {deal.propertyType}
+              {deal.postcode} &middot;{' '}
+              {canonicalPropertyType(deal.propertyType) ?? (
+                <span
+                  className="text-amber-700 dark:text-amber-400"
+                  title="No known property type. Valuations on this deal assume terraced."
+                >
+                  type unknown
+                </span>
+              )}
               {deal.bedrooms ? ` · ${deal.bedrooms} bed` : ''}
             </p>
             {deal.convertedFromLeadId && (

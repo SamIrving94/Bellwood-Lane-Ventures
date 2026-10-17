@@ -2,6 +2,7 @@
 
 import { requireFounder } from '@repo/auth/server';
 import { database } from '@repo/database';
+import { avmPropertyTypeFor } from '@repo/property-data/src/property-type';
 import {
   isInsufficientEvidence,
   mergeOfferConfig,
@@ -9,18 +10,6 @@ import {
   saveAvmSnapshot,
 } from '@repo/valuation';
 import { revalidatePath } from 'next/cache';
-
-// Map a free-text deal.propertyType onto the AVM's PropertyType enum.
-const PROPERTY_TYPE_MAP: Record<string, string> = {
-  detached: 'detached',
-  'semi-detached': 'semi-detached',
-  semi: 'semi-detached',
-  terraced: 'terraced',
-  terrace: 'terraced',
-  flat: 'flat',
-  apartment: 'flat',
-  bungalow: 'detached',
-};
 
 const SELLER_TYPE_MAP: Record<string, string> = {
   probate: 'probate',
@@ -54,8 +43,11 @@ export async function generateDealOffer(dealId: string) {
   });
   if (!deal) throw new Error('Deal not found');
 
-  const avmPropertyType =
-    PROPERTY_TYPE_MAP[deal.propertyType.toLowerCase()] ?? 'terraced';
+  // An unknown type still values as terraced, but it is logged on the deal
+  // below rather than passing silently (it used to catch every converted
+  // lead, whose type column held the seller type).
+  const { propertyType: avmPropertyType, assumed: typeAssumed } =
+    avmPropertyTypeFor(deal.propertyType);
   const avmSellerType = SELLER_TYPE_MAP[deal.sellerType] ?? 'standard';
 
   // Founder-tuned offer policy: highest active avm_confidence EvalConfig wins.
@@ -151,6 +143,10 @@ export async function generateDealOffer(dealId: string) {
       action: 'offer_generated',
       detail: `Founder ran valuation: offer ${offerLabel}, risk ${avm.riskScore}/100${
         r.requiresCeoEscalation ? ' — CEO escalation (offer <60% AVM)' : ''
+      }${
+        typeAssumed
+          ? ` — property type unknown ("${deal.propertyType}"), valued as terraced`
+          : ''
       }`,
       userId,
     },
@@ -164,7 +160,8 @@ export async function generateDealOffer(dealId: string) {
     marginPercent,
     riskScore: avm.riskScore,
     verdict,
-    requiresReview: r.requiresCeoEscalation || r.discountCapped,
+    requiresReview: r.requiresCeoEscalation || r.discountCapped || typeAssumed,
     preRicsFlags: r.preRicsFlags ?? [],
+    assumedPropertyType: typeAssumed ? avmPropertyType : null,
   };
 }

@@ -193,6 +193,16 @@ model Deal {
   createdAt                 DateTime   @default(now())
   updatedAt                 DateTime   @updatedAt
 
+  // One stable property ID — see @repo/property-data `resolveUprn`. Matched
+  // from the EPC register and OS Places, never guessed: null + uprnReason
+  // when the match wasn't clean. Confidence: high (both sources agree) |
+  // medium (one source, the other silent).
+  uprn           String?
+  uprnConfidence String?
+  uprnSources    String? // comma-separated: epc,os_places
+  uprnReason     String? // why it's null: ambiguous | no_match | …
+  uprnCheckedAt  DateTime?
+
   // Founder Action Centre fields
   suggestedNextAction   String?   @db.Text // JSON: { action, reasoning, agent }
   goldenWindowExpiresAt DateTime? // Probate/chain break deadline
@@ -261,6 +271,7 @@ model Deal {
   @@index([sellerType])
   @@index([releasedForResale])
   @@index([track])
+  @@index([uprn])
 }
 
 model DealActivity {
@@ -307,6 +318,16 @@ model ScoutLead {
 
   whatsAppIntake WhatsAppIntake?
 
+  // One stable property ID — see @repo/property-data `resolveUprn`. Matched
+  // from the EPC register and OS Places, never guessed: null + uprnReason
+  // when the match wasn't clean. Confidence: high (both sources agree) |
+  // medium (one source, the other silent).
+  uprn           String?
+  uprnConfidence String?
+  uprnSources    String? // comma-separated: epc,os_places
+  uprnReason     String? // why it's null: ambiguous | no_match | …
+  uprnCheckedAt  DateTime?
+
   // Dedup key: one row per physical property. Makes
   // createMany({ skipDuplicates: true }) actually skip re-sourced leads
   // instead of inserting a new row every daily cron run.
@@ -316,6 +337,7 @@ model ScoutLead {
   @@index([postcode])
   @@index([campaignId])
   @@index([track])
+  @@index([uprn])
 }
 
 // Keyhole: the free condition-and-value report for professionals (probate

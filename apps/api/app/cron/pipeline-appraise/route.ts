@@ -1,5 +1,6 @@
 import { env } from '@/env';
 import { database } from '@repo/database';
+import { avmPropertyTypeFor } from '@repo/property-data/src/property-type';
 import { mergeOfferConfig, runAVM, saveAvmSnapshot } from '@repo/valuation';
 import { NextResponse } from 'next/server';
 import { recordCronHeartbeat } from '../_lib/heartbeat';
@@ -78,19 +79,11 @@ export const POST = async (request: Request) => {
   // Appraise deals
   for (const deal of dealsNeedingValuation) {
     try {
-      // Map property type string to AVM enum
-      const propertyTypeMap: Record<string, string> = {
-        detached: 'detached',
-        'semi-detached': 'semi-detached',
-        semi: 'semi-detached',
-        terraced: 'terraced',
-        terrace: 'terraced',
-        flat: 'flat',
-        apartment: 'flat',
-        bungalow: 'detached',
-      };
-      const avmPropertyType =
-        propertyTypeMap[deal.propertyType.toLowerCase()] ?? 'terraced';
+      // Unknown types ("unknown", or a seller type that leaked in from lead
+      // conversion) still value as terraced, but the assumption is recorded
+      // on the deal below instead of passing silently.
+      const { propertyType: avmPropertyType, assumed: typeAssumed } =
+        avmPropertyTypeFor(deal.propertyType);
 
       // Map seller type
       const sellerTypeMap: Record<string, string> = {
@@ -163,12 +156,18 @@ export const POST = async (request: Request) => {
         },
       });
 
+      // Said on the activity AND the approval card: an offer on an assumed
+      // type is the one a founder must not approve without checking.
+      const typeNote = typeAssumed
+        ? ` Property type unknown ("${deal.propertyType}"), valued as terraced. Check the type before approving.`
+        : '';
+
       // Log deal activity
       await database.dealActivity.create({
         data: {
           dealId: deal.id,
           action: 'avm_completed',
-          detail: `Auto-valuation: risk ${avmResult.riskScore}/100, offer ${resultJson.finalOffer.toLocaleString('en-GB', { style: 'currency', currency: 'GBP', maximumFractionDigits: 0 })}`,
+          detail: `Auto-valuation: risk ${avmResult.riskScore}/100, offer ${resultJson.finalOffer.toLocaleString('en-GB', { style: 'currency', currency: 'GBP', maximumFractionDigits: 0 })}${typeNote}`,
         },
       });
 
@@ -198,7 +197,7 @@ export const POST = async (request: Request) => {
           title: resultJson.requiresCeoEscalation
             ? `CEO escalation: offer < 60% AVM on ${deal.address}`
             : `Approve offer on ${deal.address} — ${resultJson.finalOffer.toLocaleString('en-GB', { style: 'currency', currency: 'GBP', maximumFractionDigits: 0 })} (margin ${marginPercent !== null ? marginPercent.toFixed(1) : '—'}%)`,
-          description: `Auto-valuation complete. Risk: ${avmResult.riskScore}/100. ${resultJson.preRicsFlags.length > 0 ? `Pre-RICS flags: ${resultJson.preRicsFlags.join(', ')}` : 'No pre-RICS flags.'}${secondCheckNote}`,
+          description: `Auto-valuation complete. Risk: ${avmResult.riskScore}/100. ${resultJson.preRicsFlags.length > 0 ? `Pre-RICS flags: ${resultJson.preRicsFlags.join(', ')}` : 'No pre-RICS flags.'}${secondCheckNote}${typeNote}`,
           agent: 'appraiser',
           dealId: deal.id,
           metadata: {

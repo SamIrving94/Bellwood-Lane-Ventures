@@ -122,6 +122,12 @@ export interface EpcSearchRow {
   band: (typeof EPC_RATINGS)[number] | null;
   /** ISO-ish registration date string, as returned. Null when absent. */
   registrationDate: string | null;
+  /**
+   * The certificate's UPRN, as the register lodged it. Null when the
+   * assessor didn't record one (common on older certificates) — never
+   * filled in from anywhere else.
+   */
+  uprn: string | null;
 }
 
 /**
@@ -157,6 +163,7 @@ export function parseDomesticSearchRows(body: unknown): EpcSearchRow[] {
           ? (rawBand as (typeof EPC_RATINGS)[number])
           : null,
       registrationDate: str(rec.registrationDate),
+      uprn: parseUprn(rec.uprn),
     });
   }
   return out;
@@ -186,6 +193,21 @@ function num(v: unknown): number | null {
 
 function str(v: unknown): string | null {
   return typeof v === 'string' && v.trim() !== '' ? v : null;
+}
+
+/**
+ * The search API sends UPRN as a number; older exports used strings, some
+ * prefixed "UPRN-". Anything that isn't a plain run of digits is dropped —
+ * a malformed identifier is worse than none.
+ */
+function parseUprn(v: unknown): string | null {
+  const raw =
+    typeof v === 'number' && Number.isSafeInteger(v)
+      ? String(v)
+      : typeof v === 'string'
+        ? v.trim().replace(/^UPRN-/i, '')
+        : '';
+  return /^\d{1,12}$/.test(raw) && !/^0+$/.test(raw) ? raw : null;
 }
 
 /**
