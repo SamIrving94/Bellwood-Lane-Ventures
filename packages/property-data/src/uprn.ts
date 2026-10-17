@@ -19,7 +19,6 @@
  * most misses land — check a sample by hand before trusting the hit rate.
  */
 
-import { streetEvidenceToken } from './arbitrage';
 import { searchDomesticEpc } from './epc';
 import { listPostcodeAddresses } from './os-places';
 
@@ -63,34 +62,130 @@ export interface UprnCandidate {
 // ---------------------------------------------------------------------------
 // Address keys (pure — exported for tests)
 // ---------------------------------------------------------------------------
+//
+// Read token by token, keeping commas, because commas are what separate the
+// house from the street from the town in every source we read. Every rule
+// below fails CLOSED: when a part can't be read with certainty it is null,
+// and a null part never matches anything. Hardened against a blind red-team
+// (Oct 2026) whose wrong-match cases live in __tests__/uprn.redteam.test.ts.
 
 const FULL_POSTCODE = /^[A-Z]{1,2}\d[A-Z\d]?\s*\d[A-Z]{2}$/;
 const POSTCODE_ANYWHERE = /\b[A-Z]{1,2}\d[A-Z\d]?\s*\d[A-Z]{2}\b/g;
-const NUMBER_RANGE = /\b\d+[A-Z]?\s*(?:-|–|TO)\s*\d+/;
-const UNIT_PREFIX =
-  /\b(?:FLAT|APARTMENT|APT|UNIT|MAISONETTE|STUDIO)\s+([0-9]+[A-Z]?|[A-Z])\b/;
-const FLOOR_FLAT =
-  /\b(BASEMENT|LOWER GROUND|GROUND|FIRST|SECOND|THIRD|FOURTH|TOP)\s+FLOOR(?:\s+FLAT)?\b/;
-const UNIT_WORD = /\b(?:FLAT|APARTMENT|APT|MAISONETTE|STUDIO)\b/;
-// "Acacia Road, London" has no house in it — its first segment is a street,
-// and treating that as a house name would match every door on the road.
-const STREET_SUFFIX =
-  /\b(?:ROAD|RD|STREET|ST|AVENUE|AVE|LANE|CLOSE|GARDENS|GROVE|PARK|HILL|TERRACE|CRESCENT|PLACE|WAY|DRIVE|ROW|SQUARE|MEWS|WALK|VILLAS|PARADE|RISE|VALE)$/;
+/** 12-14, 12–14, 12 TO 14, 12 & 14, 12/14, 12 AND 14, Flat 1-2 … */
+const NUMBER_RANGE = /\d+[A-Z]?\s*(?:-|–|\/|&|\bTO\b|\bAND\b)\s*\d/;
+/** Not a dwelling: a sale of land, a plot or a garage is never the house. */
+const NON_DWELLING =
+  /^(?:LAND|PLOT|PLOTS|SITE|GARAGE|GARAGES|PARKING|STORE|STORAGE|BUILDING PLOT)\b/;
+
+const UNIT_WORDS = new Set([
+  'FLAT',
+  'APARTMENT',
+  'APT',
+  'UNIT',
+  'MAISONETTE',
+  'STUDIO',
+]);
+const FLOORS = new Set([
+  'BASEMENT',
+  'GROUND',
+  'FIRST',
+  'SECOND',
+  'THIRD',
+  'FOURTH',
+  'TOP',
+]);
+/** Agent shorthand for floor flats. */
+const FLOOR_SHORTHAND: Record<string, string> = {
+  GFF: 'GROUND',
+  FFF: 'FIRST',
+  SFF: 'SECOND',
+  TFF: 'TOP',
+  LGF: 'LOWER GROUND',
+  LGFF: 'LOWER GROUND',
+  BSMT: 'BASEMENT',
+};
+const STREET_TYPES = new Set([
+  'ROAD',
+  'STREET',
+  'AVENUE',
+  'LANE',
+  'CLOSE',
+  'GARDENS',
+  'GROVE',
+  'PARK',
+  'HILL',
+  'COURT',
+  'TERRACE',
+  'CRESCENT',
+  'PLACE',
+  'WAY',
+  'DRIVE',
+  'ROW',
+  'SQUARE',
+  'MEWS',
+  'WALK',
+  'VILLAS',
+  'PARADE',
+  'RISE',
+  'VALE',
+  'GREEN',
+  'GATE',
+  'YARD',
+  'WHARF',
+  'QUAY',
+  'BROADWAY',
+  'END',
+  'VIEW',
+]);
+/** Words that make a different street when added: Park Road North. */
+const STREET_QUALIFIERS = new Set([
+  'NORTH',
+  'SOUTH',
+  'EAST',
+  'WEST',
+  'UPPER',
+  'LOWER',
+  'GREAT',
+  'LITTLE',
+  'OLD',
+  'NEW',
+]);
+const ABBREVIATIONS: Record<string, string> = {
+  RD: 'ROAD',
+  AVE: 'AVENUE',
+  AV: 'AVENUE',
+  LN: 'LANE',
+  CRES: 'CRESCENT',
+  GDNS: 'GARDENS',
+  TERR: 'TERRACE',
+  TCE: 'TERRACE',
+  PL: 'PLACE',
+  SQ: 'SQUARE',
+  DR: 'DRIVE',
+  CT: 'COURT',
+  GRV: 'GROVE',
+  SAINT: 'ST',
+};
+
+const isNumberToken = (t: string | undefined) => !!t && /^\d+[A-Z]?$/.test(t);
+const isUnitId = (t: string | undefined) =>
+  !!t && (/^\d+[A-Z]?$/.test(t) || /^[A-Z]$/.test(t));
 
 export interface AddressKey {
-  /** "FLAT:2", "FLOOR:FIRST", or null for a whole house/building. */
+  /** "FLAT:2", "FLOOR:FIRST", "FLAT:?" (a flat, but which?), or null. */
   unit: string | null;
-  /** The house number ("12", "12A") or name ("ROSE COTTAGE"). */
+  /** The house number ("12", "12A") or the house name ("ROSE COTTAGE"). */
   designator: { kind: 'number' | 'name'; token: string } | null;
-  /** A distinctive street word, or null when there isn't one. */
+  /** The street as a phrase, abbreviations expanded ("ST JOHNS ROAD"). */
   street: string | null;
-  /** The cleaned address, for name containment checks. */
+  /** The cleaned address, for display/debugging. */
   text: string;
 }
 
 function clean(text: string): string {
   return text
     .toUpperCase()
+    .replace(/['’]/g, '')
     .replace(/[^A-Z0-9 ]+/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
@@ -100,6 +195,26 @@ export function isFullPostcode(postcode: string): boolean {
   return FULL_POSTCODE.test(postcode.toUpperCase().trim());
 }
 
+/** Tokens with commas kept as their own "," token. */
+function tokenize(upper: string): string[] {
+  return upper
+    .replace(/['’]/g, '')
+    .replace(/,/g, ' , ')
+    .replace(/[^A-Z0-9, ]+/g, ' ')
+    .split(/\s+/)
+    .filter(Boolean);
+}
+
+/** Expand abbreviations; ST is SAINT at the front of a phrase, else STREET. */
+function normaliseStreet(words: string[]): string | null {
+  if (words.length === 0) return null;
+  const out = words.map((w, i) => {
+    if (w === 'ST') return i === 0 && words.length > 1 ? 'ST' : 'STREET';
+    return ABBREVIATIONS[w] ?? w;
+  });
+  return out.join(' ');
+}
+
 /**
  * Reduce a free-text address to its matching key. Same parser for the lead
  * and every candidate, so both sides are read the same way.
@@ -107,80 +222,144 @@ export function isFullPostcode(postcode: string): boolean {
 export function addressKey(address: string): AddressKey {
   const upper = address.toUpperCase().replace(POSTCODE_ANYWHERE, ' ');
   const text = clean(upper);
+  const none: AddressKey = { unit: null, designator: null, street: null, text };
+  if (!text || NUMBER_RANGE.test(upper) || NON_DWELLING.test(text)) return none;
 
+  let tokens = tokenize(upper);
   let unit: string | null = null;
-  let rest = text;
-  const floorMatch = text.match(FLOOR_FLAT);
-  // "FIRST FLOOR FLAT 12 …" names the floor; the 12 is the house. Only when
-  // the floor phrase ends in FLAT does it outrank a "FLAT n" reading.
-  const floorFlat = Boolean(floorMatch?.[0].endsWith('FLAT'));
-  const unitMatch = floorFlat ? null : text.match(UNIT_PREFIX);
-  if (unitMatch?.[1]) {
-    unit = `FLAT:${unitMatch[1]}`;
-    rest = text.replace(unitMatch[0], ' ');
-  } else if (floorMatch?.[1]) {
-    unit = `FLOOR:${floorMatch[1]}`;
-    rest = text.replace(floorMatch[0], ' ');
-  } else if (UNIT_WORD.test(text)) {
-    // "Flat, 12 Acacia Road" — says it's a flat but not which one. Mark it
-    // so it can never pair with the whole house or a specific flat.
-    unit = 'FLAT:?';
-    rest = text.replace(UNIT_WORD, ' ');
-  }
-  rest = rest.replace(/\s+/g, ' ').trim();
 
-  // A range on the raw text, because clean() strips the hyphen and would
-  // let "12-14" through as a confident "12".
-  const rawRest = unitMatch ? upper.replace(UNIT_PREFIX, ' ') : upper;
-  const rawForName = floorMatch
-    ? clean(upper).replace(floorMatch[0], ' ')
-    : rawRest;
-  let designator: AddressKey['designator'] = null;
-  let streetPart = rest;
-  const pair = unit ? null : rest.match(/^(\d+[A-Z]?) (\d+[A-Z]?)(?=\s|$)/);
-  if (NUMBER_RANGE.test(rawRest)) {
-    // leave designator null
-  } else if (pair?.[1] && pair[2]) {
-    // "2, 12 ACACIA ROAD" — OS Places writes some flats as two bare numbers.
-    // Read it as flat 2 of number 12, never as house number 2.
-    unit = `FLAT:${pair[1]}`;
-    designator = { kind: 'number', token: pair[2] };
-    streetPart = rest.slice(pair[0].length);
-  } else {
-    const num = rest.match(/(?:^|\s)(\d+[A-Z]?)(?=\s|$)/);
-    if (num?.[1]) {
-      designator = { kind: 'number', token: num[1] };
-      streetPart = rest.slice((num.index ?? 0) + num[0].length);
-    } else {
-      // Named house: the first comma segment, when it carries no digits.
-      const firstSegment = clean(rawForName.split(',')[0] ?? '');
-      if (
-        firstSegment &&
-        !/\d/.test(firstSegment) &&
-        !STREET_SUFFIX.test(firstSegment)
-      ) {
-        designator = { kind: 'name', token: firstSegment };
-        streetPart = rest.slice(firstSegment.length);
+  // 1. The unit (flat), wherever it sits — "12 Acacia Road, Flat 1" too.
+  for (let i = 0; i < tokens.length && unit === null; i++) {
+    const t = tokens[i] as string;
+    const next = tokens[i + 1];
+    const shorthand = FLOOR_SHORTHAND[t];
+    if (shorthand) {
+      unit = `FLOOR:${shorthand}`;
+      tokens.splice(i, 1);
+    } else if (t === 'LOWER' && next === 'GROUND') {
+      unit = 'FLOOR:LOWER GROUND';
+      const n =
+        tokens[i + 2] === 'FLOOR' ? (tokens[i + 3] === 'FLAT' ? 4 : 3) : 2;
+      tokens.splice(i, n);
+    } else if (FLOORS.has(t) && (next === 'FLOOR' || t === 'BASEMENT')) {
+      // "Ground Floor Flat", "Top Floor", "Basement Flat", "Basement, 12 …"
+      unit = `FLOOR:${t}`;
+      let n = next === 'FLOOR' ? 2 : 1;
+      if (tokens[i + n] === 'FLAT') n++;
+      tokens.splice(i, n);
+    } else if (UNIT_WORDS.has(t)) {
+      if (isUnitId(next)) {
+        unit = `FLAT:${next}`;
+        tokens.splice(i, 2);
+      } else {
+        // "Flat, 12 …", "Upper Maisonette, 12 …" — a flat, but which one?
+        unit = 'FLAT:?';
+        tokens.splice(i, 1);
       }
     }
   }
+  while (tokens[0] === ',') tokens = tokens.slice(1);
 
-  return { unit, designator, street: streetEvidenceToken(streetPart), text };
+  // 2. The house: a number at the very front, or a name as the first segment.
+  let designator: AddressKey['designator'] = null;
+  let rest: string[] = [];
+  const t0 = tokens[0];
+  const after0 = tokens[1] === ',' ? tokens[2] : tokens[1];
+  if (isNumberToken(t0)) {
+    if (unit === null && isNumberToken(after0)) {
+      // "2, 12 ACACIA ROAD": OS Places writes some flats as two bare
+      // numbers. Flat 2 of number 12, never house number 2.
+      unit = `FLAT:${t0}`;
+      designator = { kind: 'number', token: after0 as string };
+      rest = tokens.slice(tokens.indexOf(after0 as string, 1) + 1);
+    } else if (
+      tokens[1] &&
+      /^[A-Z]$/.test(tokens[1]) &&
+      tokens[2] &&
+      tokens[2] !== ','
+    ) {
+      // "12 A Acacia Road": 12A, or 12 with a stray letter? Can't tell.
+      return { ...none };
+    } else {
+      designator = { kind: 'number', token: t0 as string };
+      rest = tokens.slice(1);
+    }
+  } else if (t0) {
+    const comma = tokens.indexOf(',');
+    const first = comma < 0 ? tokens : tokens.slice(0, comma);
+    const last = first.at(-1);
+    // A first segment ending in ROAD/STREET… is a street, not a house name
+    // ("Acacia Road, London" has no house in it). A digit makes it neither.
+    // Except a building: "Albert Court, 12 High Street", where a numbered
+    // street follows.
+    const looksLikeStreet =
+      !!last &&
+      (STREET_TYPES.has(ABBREVIATIONS[last] ?? last) || last === 'ST');
+    const numberedStreetFollows =
+      comma >= 0 && isNumberToken(tokens[comma + 1]);
+    if (
+      first.length > 0 &&
+      !first.some((w) => /\d/.test(w)) &&
+      (!looksLikeStreet || numberedStreetFollows)
+    ) {
+      designator = { kind: 'name', token: first.join(' ') };
+      rest = comma < 0 ? [] : tokens.slice(comma + 1);
+    }
+  }
+
+  // 3. The street: the rest of the house's segment, else the next segment.
+  while (rest[0] === ',') rest = rest.slice(1);
+  const streetEnd = rest.indexOf(',');
+  const street = normaliseStreet(
+    streetEnd < 0 ? rest : rest.slice(0, streetEnd)
+  );
+
+  return { unit, designator, street, text };
+}
+
+/**
+ * Same street? Exact phrase, or one phrase is the other plus trailing town
+ * words ("ACACIA ROAD LONDON" when a source left out the comma). The shorter
+ * must end in a street type, and the extra words must not themselves make a
+ * different street ("PARK ROAD" vs "PARK ROAD NORTH", "ACACIA" vs "ACACIA
+ * ROAD").
+ */
+function sameStreet(a: string, b: string): boolean {
+  if (a === b) return true;
+  const [short, long] = a.length < b.length ? [a, b] : [b, a];
+  const sw = short.split(' ');
+  const lw = long.split(' ');
+  if (!sw.every((w, i) => lw[i] === w)) return false;
+  const lastShort = sw.at(-1) as string;
+  if (!STREET_TYPES.has(lastShort)) return false;
+  return lw
+    .slice(sw.length)
+    .every(
+      (w) => !STREET_TYPES.has(w) && !STREET_QUALIFIERS.has(w) && w !== 'ST'
+    );
 }
 
 function keysMatch(lead: AddressKey, candidate: AddressKey): boolean {
-  if (!(lead.designator && candidate.designator)) return false;
+  const a = lead.designator;
+  const b = candidate.designator;
+  if (!(a && b)) return false;
   if (lead.unit === 'FLAT:?' || candidate.unit === 'FLAT:?') return false;
   if (lead.unit !== candidate.unit) return false;
+  // Exact: 12 ≠ 12A, "ROSE COTTAGE" ≠ "ROSE COTTAGE BARN".
+  if (a.kind !== b.kind || a.token !== b.token) return false;
 
-  if (lead.designator.kind === 'number') {
-    if (candidate.designator.kind !== 'number') return false;
-    if (lead.designator.token !== candidate.designator.token) return false;
-  } else if (!candidate.text.includes(lead.designator.token)) {
-    return false;
+  if (a.kind === 'number') {
+    // A number means nothing without its street.
+    return (
+      !!(lead.street && candidate.street) &&
+      sameStreet(lead.street, candidate.street)
+    );
   }
-
-  return lead.street === null || candidate.text.includes(lead.street);
+  // A named house may come without a street; when both give one it must agree.
+  return (
+    !(lead.street && candidate.street) ||
+    sameStreet(lead.street, candidate.street)
+  );
 }
 
 /**

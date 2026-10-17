@@ -37,7 +37,7 @@ describe('addressKey', () => {
     const k = addressKey('12 Acacia Road, London SE22 8EW');
     expect(k.unit).toBeNull();
     expect(k.designator).toEqual({ kind: 'number', token: '12' });
-    expect(k.street).toBe('ACACIA');
+    expect(k.street).toBe('ACACIA ROAD');
   });
 
   it('reads "Flat 2, 12 …" as flat 2 of number 12', () => {
@@ -64,6 +64,18 @@ describe('addressKey', () => {
 
   it('refuses a street with no house in it', () => {
     expect(addressKey('Acacia Road, London').designator).toBeNull();
+  });
+
+  it('reads a flat in a named block on a numbered street', () => {
+    const k = addressKey('Flat 3, Albert Court, 12 High Street');
+    expect(k.unit).toBe('FLAT:3');
+    expect(k.designator).toEqual({ kind: 'name', token: 'ALBERT COURT' });
+    expect(
+      matchCandidates(k, [
+        { uprn: '3', address: 'FLAT 3, ALBERT COURT, 12 HIGH STREET, LONDON' },
+        { uprn: '4', address: 'FLAT 4, ALBERT COURT, 12 HIGH STREET, LONDON' },
+      ])
+    ).toEqual({ kind: 'match', uprn: '3' });
   });
 
   it('reads a named house', () => {
