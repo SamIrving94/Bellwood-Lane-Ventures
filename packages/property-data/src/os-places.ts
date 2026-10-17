@@ -11,7 +11,10 @@
  * Required env var (see keys.ts):
  *   OS_PLACES_API_KEY  — API key from OS Data Hub dashboard
  *
- * Falls back to a synthetic UPRN when credentials are absent or the call fails.
+ * When credentials are absent or the call fails, the record comes back with
+ * `uprn: null` and `source: 'unavailable'`. It used to hash the address into
+ * a "synthetic" UPRN; that is a fabricated identifier, and a fake UPRN that
+ * looks real is exactly what downstream joins would trust (the SW3 rule).
  */
 
 import { z } from 'zod';
@@ -37,30 +40,23 @@ export const OsPlaceSchema = z.object({
 export type OsPlace = z.infer<typeof OsPlaceSchema>;
 
 // ---------------------------------------------------------------------------
-// Synthetic fallback
+// Unresolved fallback
 // ---------------------------------------------------------------------------
 
 function normaliseAddress(raw: string): string {
   return raw.trim().replace(/\s+/g, ' ').replace(/,\s*/g, ', ').toUpperCase();
 }
 
-function syntheticUprn(address: string, postcode: string): OsPlace {
-  // Generate a stable-ish synthetic UPRN from the combined address string
-  let hash = 10_000_000_000;
-  const str = `${address}${postcode}`.toLowerCase();
-  for (let i = 0; i < str.length; i++) {
-    hash = ((hash << 5) - hash + (str.charCodeAt(i) | 0)) >>> 0;
-  }
-  const uprn = String(100_000_000_000 + (hash % 900_000_000_000)).slice(0, 12);
-
+/** The address we were given, tidied, with no identifier attached. */
+function unresolvedPlace(address: string, postcode: string): OsPlace {
   return {
-    uprn,
+    uprn: null,
     address: address ? normaliseAddress(address) : null,
     postcode: postcode ? postcode.toUpperCase().trim() : null,
     latitude: null,
     longitude: null,
-    classificationCode: 'RD', // Residential Dwelling
-    source: 'synthetic',
+    classificationCode: null,
+    source: 'unavailable',
   };
 }
 
@@ -118,8 +114,7 @@ function parseResult(item: Record<string, unknown>): OsPlace {
       null,
     latitude: (dpa.LAT as number | undefined) ?? null,
     longitude: (dpa.LNG as number | undefined) ?? null,
-    classificationCode:
-      (dpa.CLASSIFICATION_CODE as string | undefined) ?? null,
+    classificationCode: (dpa.CLASSIFICATION_CODE as string | undefined) ?? null,
     source: 'os_places',
   };
 }
@@ -162,10 +157,7 @@ async function lookupByAddressLive(address: string): Promise<OsPlace[]> {
  * Returns [] (not synthetic) on failure so the UI can fall back to its
  * own resolver or show "no suggestions".
  */
-export async function findPlaces(
-  query: string,
-  limit = 8,
-): Promise<OsPlace[]> {
+export async function findPlaces(query: string, limit = 8): Promise<OsPlace[]> {
   const apiKey = process.env.OS_PLACES_API_KEY ?? '';
   if (!apiKey || !query.trim()) return [];
   try {
@@ -179,14 +171,15 @@ export async function findPlaces(
     return results.map(parseResult).filter((r) => !!r.postcode);
   } catch (err) {
     console.warn(
-      `[property-data/os-places] findPlaces failed: ${(err as Error).message}`,
+      `[property-data/os-places] findPlaces failed: ${(err as Error).message}`
     );
     return [];
   }
 }
 
 /**
- * Look up all residential addresses within a postcode, returning their UPRNs.
+ * Look up addresses within a postcode (first 10), returning their UPRNs.
+ * Empty when OS can't answer.
  */
 export async function lookupByPostcode(postcode: string): Promise<OsPlace[]> {
   const apiKey = process.env.OS_PLACES_API_KEY ?? '';
@@ -196,16 +189,63 @@ export async function lookupByPostcode(postcode: string): Promise<OsPlace[]> {
       if (results.length) return results;
     } catch (err) {
       console.warn(
-        `[property-data/os-places] postcode lookup failed (${(err as Error).message}), using synthetic`
+        `[property-data/os-places] postcode lookup failed (${(err as Error).message})`
       );
     }
   }
-  return [syntheticUprn('', postcode)];
+  return [];
+}
+
+/** OS Places caps one page at 100; a unit postcode rarely passes 300. */
+const POSTCODE_PAGE_SIZE = 100;
+const POSTCODE_MAX_PAGES = 3;
+
+/**
+ * Every addressable record in a postcode, for UPRN matching. Distinguishes
+ * "OS couldn't answer" (null: no key, or the call failed) from "OS answered
+ * and the postcode is empty" ([]), so a resolver never records an outage as
+ * a confirmed no-match.
+ */
+export async function listPostcodeAddresses(
+  postcode: string
+): Promise<OsPlace[] | null> {
+  if (!process.env.OS_PLACES_API_KEY) return null;
+  const out: OsPlace[] = [];
+  try {
+    for (let page = 0; page < POSTCODE_MAX_PAGES; page++) {
+      const data = (await osGet('/postcode', {
+        postcode: postcode.toUpperCase().trim(),
+        maxresults: POSTCODE_PAGE_SIZE,
+        offset: page * POSTCODE_PAGE_SIZE,
+        dataset: 'DPA',
+      })) as Record<string, unknown>;
+      const results =
+        (data.results as Record<string, unknown>[] | undefined) ?? [];
+      out.push(...results.map(parseResult));
+      const total = Number(
+        (data.header as Record<string, unknown> | undefined)?.totalresults
+      );
+      if (results.length < POSTCODE_PAGE_SIZE || out.length >= total) break;
+    }
+    return out;
+  } catch (err) {
+    // OS answers an unknown postcode with 400; that is "no addresses", not
+    // an outage.
+    if ((err as Error).message === 'OS Places 400') return [];
+    console.warn(
+      `[property-data/os-places] listPostcodeAddresses failed for ${postcode}: ${(err as Error).message}`
+    );
+    return null;
+  }
 }
 
 /**
- * Resolve a free-text address to a canonical OS Places record with UPRN.
- * Returns the best-matching result or a synthetic fallback.
+ * Resolve a free-text address to a canonical OS Places record.
+ *
+ * Returns OS's top hit, which is a search ranking, not a verified match. For
+ * an identifier to store against a lead or deal, use `resolveUprn` (it
+ * checks house number, flat and street). Without a key or on failure the
+ * record carries `uprn: null`.
  */
 export async function resolveAddress(
   address: string,
@@ -220,9 +260,9 @@ export async function resolveAddress(
       if (results.length && results[0]) return results[0];
     } catch (err) {
       console.warn(
-        `[property-data/os-places] address resolve failed (${(err as Error).message}), using synthetic`
+        `[property-data/os-places] address resolve failed (${(err as Error).message})`
       );
     }
   }
-  return syntheticUprn(address, postcode ?? '');
+  return unresolvedPlace(address, postcode ?? '');
 }

@@ -46,6 +46,7 @@ export * from './propertydata';
 export * from './market-signals';
 export * from './postcodes-io';
 export * from './registered-leases';
+export * from './uprn';
 export {
   getPersistentStore,
   setPersistentStore,

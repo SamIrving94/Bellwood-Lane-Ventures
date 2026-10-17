@@ -292,7 +292,7 @@ const WEAK_STREET_TOKENS = new Set([
   'LOWER',
 ]);
 
-function streetEvidenceToken(street: string | null): string | null {
+export function streetEvidenceToken(street: string | null): string | null {
   if (!street) return null;
   for (const word of normalise(street).split(' ')) {
     if (word.length >= 3 && !WEAK_STREET_TOKENS.has(word)) return word;

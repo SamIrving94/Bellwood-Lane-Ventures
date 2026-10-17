@@ -16,6 +16,7 @@ import {
 } from '@repo/valuation';
 import { NextResponse } from 'next/server';
 import { recordCronHeartbeat } from '../_lib/heartbeat';
+import { resolveLeadUprns } from '../_lib/uprn';
 
 // Auto-appraise cron — runs the in-house AVM + photo-condition vision on the
 // strongest un-appraised leads so the numbers are ready on the Leads page
@@ -461,8 +462,17 @@ export const POST = async (request: Request) => {
     }
   }
 
+  // One stable property ID per lead (EPC + OS Places, strict match). Its own
+  // try: an identity lookup must never fail the appraisal run.
+  let uprns = { checked: 0, resolved: 0 };
+  try {
+    uprns = await resolveLeadUprns();
+  } catch (err) {
+    console.warn('[cron/lead-appraise] UPRN resolution failed', err);
+  }
+
   await recordCronHeartbeat('lead-appraise', {
-    note: `appraised ${appraised}/${pending.length}${declined ? `, ${declined} declined (no evidence)` : ''}`,
+    note: `appraised ${appraised}/${pending.length}${declined ? `, ${declined} declined (no evidence)` : ''}; UPRN ${uprns.resolved}/${uprns.checked}`,
   });
 
   return NextResponse.json({
@@ -471,6 +481,7 @@ export const POST = async (request: Request) => {
     pending: pending.length,
     appraised,
     declined,
+    uprns,
     errors,
   });
 };

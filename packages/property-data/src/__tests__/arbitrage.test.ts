@@ -49,6 +49,7 @@ function epcRow(overrides: Partial<EpcSearchRow> = {}): EpcSearchRow {
     postcode: 'SE22 8EW',
     band: 'F',
     registrationDate: '2024-05-01',
+    uprn: null,
     ...overrides,
   };
 }
