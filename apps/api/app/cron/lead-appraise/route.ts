@@ -1,6 +1,7 @@
 import { env } from '@/env';
 import { screenPropertyCondition } from '@repo/auctions';
 import { type Prisma, database } from '@repo/database';
+import { canonicalPropertyType } from '@repo/property-data/src/property-type';
 import { getPropertySnapshot } from '@repo/property-data/src/propertydata';
 import { type ScoreFactor, type Verdict, combineScore } from '@repo/scouting';
 import {
@@ -33,31 +34,6 @@ const MAX_APPRAISALS_PER_RUN = 8;
 // this long before the cron tries again — new Land Registry rows land
 // monthly, so daily retries only spend credits on the same answer.
 const NO_VALUATION_RETRY_MS = 7 * 24 * 60 * 60 * 1000;
-
-type PropertyType =
-  | 'detached'
-  | 'semi-detached'
-  | 'terraced'
-  | 'flat'
-  | 'bungalow';
-
-function normalisePropertyType(raw: unknown): PropertyType | undefined {
-  if (typeof raw !== 'string') return undefined;
-  const lower = raw.toLowerCase();
-  if (lower.includes('detached') && lower.includes('semi'))
-    return 'semi-detached';
-  if (lower.includes('detached')) return 'detached';
-  if (lower.includes('terraced') || lower.includes('terrace'))
-    return 'terraced';
-  if (
-    lower.includes('flat') ||
-    lower.includes('apartment') ||
-    lower.includes('studio')
-  )
-    return 'flat';
-  if (lower.includes('bungalow')) return 'bungalow';
-  return undefined;
-}
 
 // Mirror the manual appraise action's seller-type resolver so the cron AVM and
 // the button AVM classify the same lead identically.
@@ -165,7 +141,9 @@ export const POST = async (request: Request) => {
     const pd = raw.propertyData as Record<string, unknown> | undefined;
 
     try {
-      const normalised = normalisePropertyType(pd?.propertyType);
+      const normalised = canonicalPropertyType(
+        typeof pd?.propertyType === 'string' ? pd.propertyType : null
+      );
       const avmPropertyType =
         normalised === 'bungalow' ? 'detached' : (normalised ?? 'terraced');
       const bedrooms =
@@ -182,7 +160,7 @@ export const POST = async (request: Request) => {
         : await getPropertySnapshot({
             postcode: lead.postcode,
             address: lead.address,
-            propertyType: normalised,
+            propertyType: normalised ?? undefined,
             bedrooms,
           });
 
