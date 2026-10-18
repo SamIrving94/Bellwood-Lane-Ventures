@@ -1,9 +1,15 @@
 'use client';
 
+import { latestWhatsNew } from '@/lib/whats-new';
 import { SparklesIcon, XIcon } from 'lucide-react';
 import Link from 'next/link';
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { latestWhatsNew } from '@/lib/whats-new';
+import {
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
 
 /**
  * The login "moment of joy" — a one-time celebration card announcing the
@@ -141,7 +147,7 @@ export function WhatsNewPopup() {
           ref={closeRef}
           type="button"
           aria-label="Close"
-          className="absolute right-4 top-4 rounded-md p-1 text-muted-foreground transition-colors hover:text-foreground"
+          className="absolute top-4 right-4 rounded-md p-1 text-muted-foreground transition-colors hover:text-foreground"
           onClick={dismiss}
         >
           <XIcon className="h-4 w-4" />
@@ -149,7 +155,7 @@ export function WhatsNewPopup() {
 
         <div className="flex items-center gap-2">
           <SparklesIcon className="h-4 w-4 text-amber-500" />
-          <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
+          <p className="font-mono text-[10px] text-muted-foreground uppercase tracking-[0.22em]">
             New this week
           </p>
         </div>
@@ -162,7 +168,7 @@ export function WhatsNewPopup() {
             <h2 className="font-semibold text-xl leading-tight tracking-tight">
               {entry.title}
             </h2>
-            <p className="mt-1 text-sm text-muted-foreground">{entry.intro}</p>
+            <p className="mt-1 text-muted-foreground text-sm">{entry.intro}</p>
           </div>
         </div>
 
@@ -172,7 +178,7 @@ export function WhatsNewPopup() {
               <span aria-hidden className="mt-px shrink-0">
                 {b.emoji}
               </span>
-              <span>{b.text}</span>
+              <span>{renderBold(b.text)}</span>
             </li>
           ))}
         </ul>
@@ -180,7 +186,7 @@ export function WhatsNewPopup() {
         <div className="mt-5 flex items-center justify-between gap-3">
           <button
             type="button"
-            className="text-xs text-muted-foreground hover:text-foreground"
+            className="text-muted-foreground text-xs hover:text-foreground"
             onClick={dismiss}
           >
             Maybe later
@@ -188,7 +194,7 @@ export function WhatsNewPopup() {
           {entry.cta ? (
             <Link
               href={entry.cta.href}
-              className="rounded-full bg-foreground px-4 py-2 text-xs font-medium text-background hover:opacity-90"
+              className="rounded-full bg-foreground px-4 py-2 font-medium text-background text-xs hover:opacity-90"
               onClick={dismiss}
             >
               {entry.cta.label} →
@@ -196,7 +202,7 @@ export function WhatsNewPopup() {
           ) : (
             <button
               type="button"
-              className="rounded-full bg-foreground px-4 py-2 text-xs font-medium text-background hover:opacity-90"
+              className="rounded-full bg-foreground px-4 py-2 font-medium text-background text-xs hover:opacity-90"
               onClick={dismiss}
             >
               Love it
@@ -206,4 +212,25 @@ export function WhatsNewPopup() {
       </div>
     </div>
   );
+}
+
+/**
+ * Bullets are written with **bold** keywords (see lib/whats-new.ts), but the
+ * popup printed them raw, so every release showed literal asterisks. Turn
+ * each **pair** into <strong>; anything unpaired stays as typed.
+ */
+function renderBold(text: string): ReactNode[] {
+  return text
+    .split(/(\*\*[^*]+\*\*)/g)
+    .filter(Boolean)
+    .map((part, i) =>
+      part.startsWith('**') && part.endsWith('**') && part.length > 4 ? (
+        // biome-ignore lint/suspicious/noArrayIndexKey: static, never reordered
+        <strong key={i} className="font-semibold">
+          {part.slice(2, -2)}
+        </strong>
+      ) : (
+        part
+      )
+    );
 }

@@ -77,7 +77,7 @@ export function PinHomePanel({
 
   if (pinned) {
     return (
-      <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-5 text-emerald-900 text-sm">
+      <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-5 text-emerald-900 text-sm dark:border-emerald-900 dark:bg-emerald-950 dark:text-emerald-100">
         📍 Pinned: <strong>{pinned}</strong>. Refreshing…
       </div>
     );
@@ -86,7 +86,7 @@ export function PinHomePanel({
   return (
     <section
       aria-labelledby="pin-home-title"
-      className="rounded-2xl border border-amber-200 bg-amber-50/60 p-5"
+      className="rounded-2xl border border-amber-200 bg-amber-50/60 p-5 dark:border-amber-900 dark:bg-amber-950/40"
     >
       <h2 id="pin-home-title" className="font-semibold text-base">
         📍 Which home is this?
@@ -161,7 +161,7 @@ export function PinHomePanel({
                     <span className="min-w-0">
                       {h.address}
                       {h.uprn === suggested && (
-                        <span className="ml-2 rounded bg-emerald-100 px-1.5 py-0.5 text-emerald-800 text-xs">
+                        <span className="ml-2 rounded bg-emerald-100 px-1.5 py-0.5 text-emerald-800 text-xs dark:bg-emerald-900 dark:text-emerald-100">
                           Listing points here
                         </span>
                       )}
@@ -207,7 +207,9 @@ export function PinHomePanel({
           )}
         </div>
       )}
-      {error && <p className="mt-3 text-rose-700 text-sm">{error}</p>}
+      {error && (
+        <p className="mt-3 text-rose-700 text-sm dark:text-rose-400">{error}</p>
+      )}
     </section>
   );
 }
