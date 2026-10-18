@@ -440,7 +440,7 @@ export const POST = async (request: Request) => {
     }
   }
 
-  // One stable property ID per lead (EPC + OS Places, strict match). Its own
+  // One stable property ID per lead (EPC + PropertyData, strict match). Its own
   // try: an identity lookup must never fail the appraisal run.
   let uprns = { checked: 0, resolved: 0 };
   try {
