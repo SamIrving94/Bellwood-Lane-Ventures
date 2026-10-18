@@ -26,6 +26,32 @@ export type WhatsNewEntry = {
 /** Newest first. The popup shows index 0. */
 export const WHATS_NEW: WhatsNewEntry[] = [
   {
+    id: '2026-10-17-deal-property-types',
+    date: '2026-10-17',
+    emoji: '🏠',
+    title: 'Deals now know if they’re a flat or a house',
+    intro:
+      'Converting a lead used to label the deal "probate" and value it as a terraced house. Fixed.',
+    bullets: [
+      {
+        emoji: '🔁',
+        text: '**New deals keep the real type** and bedrooms from the lead.',
+      },
+      {
+        emoji: '⚠️',
+        text: '**"Type unknown"** shows on a deal when we don’t know it.',
+      },
+      {
+        emoji: '✋',
+        text: '**Offers on an unknown type are flagged** before you approve them.',
+      },
+      {
+        emoji: '🆔',
+        text: '**Every lead is getting a UPRN**, one ID per home, checked two ways.',
+      },
+    ],
+  },
+  {
     id: '2026-10-11-investor-packs',
     date: '2026-10-11',
     emoji: '🏡',
