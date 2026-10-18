@@ -43,10 +43,10 @@ const REASONS = [
 
 const STATS = [
   {
-    stat: '~1 in 3',
+    stat: '~1 in 4',
     t: 'agreed sales collapse',
     note: '1',
-    d: 'Roughly a third of sales agreed in England and Wales never reach completion.',
+    d: 'Roughly a quarter of sales agreed in England and Wales never reach completion.',
   },
   {
     stat: '4–6 months',
@@ -68,23 +68,29 @@ const SITUATIONS: Array<{
   k: string;
   t: string;
   b: string;
+  /** Every box opens its situation page (founder note, 18 Oct 2026). */
+  href: string;
 }> = [
   {
+    href: '/probate',
     k: 'Probate',
     t: 'You’re the executor of an estate',
     b: 'There is a lot to carry, and the house is only part of it. We complete with speed and certainty, at whatever pace the grant allows, so you and your loved ones can move on and focus on the important things.',
   },
   {
+    href: '/chain-break',
     k: 'Chain break',
     t: 'Your buyer pulled out',
     b: 'Months of work, undone weeks from the finish. We step in and hold the chain together so your onward move survives.',
   },
   {
+    href: '/relocation',
     k: 'Relocation',
     t: 'You’re moving abroad or for work',
     b: 'Signatures across time zones, an empty house behind you, a life starting somewhere else. You sign once. We complete when you need us to.',
   },
   {
+    href: '/separation',
     k: 'Divorce or separation',
     t: 'You need a clean break',
     b: 'Court-ordered timelines, a joint mortgage to clear, emotional weight. We move quietly and quickly. Solicitors talk to solicitors.',
@@ -95,12 +101,14 @@ const SITUATIONS: Array<{
   // won't-buy page until the dedicated distress page is built.
   {
     id: 'problem-property',
+    href: '/problem-property',
     k: 'Problem property',
     t: 'Your property has a problem or needs work',
     b: 'Major refurbishments, structural issues, knotweed. If your property has an issue that is causing you problems, we can complete quickly and allow you to put it behind you.',
   },
   {
     id: 'something-else',
+    href: '/your-situation',
     k: 'Your situation',
     t: 'Something else?',
     b: 'If you need to move on quickly, quietly, and discreetly, we will tailor a process to meet whatever your unique needs are.',
@@ -111,8 +119,8 @@ const STEPS = [
   {
     n: '01',
     t: 'You get in touch',
-    sla: 'Same day',
-    d: 'Tell us the address and a little about your situation. We come back to you the same day. Before we bother you for anything else, we pull what we can ourselves: Land Registry, EPC, planning.',
+    sla: 'Within 24 hours',
+    d: 'Tell us the address and a little about your situation. We come back to you within 24 hours. Before we bother you for anything else, we pull what we can ourselves: Land Registry, EPC, planning.',
   },
   {
     n: '02',
@@ -368,7 +376,7 @@ export default function SellPage() {
             </dl>
 
             <p className="mt-10 max-w-[62ch] text-[#44403c] text-[17px] leading-[1.7]">
-              Months of uncertainty. A fee for the privilege. And a one in three
+              Months of uncertainty. A fee for the privilege. And a one in four
               chance that after all of it, you are back where you started.
             </p>
             {/* Founder direction, 12 Sep 2026: the cash-buyer concern comes
@@ -398,9 +406,9 @@ export default function SellPage() {
               <p className="mt-4 text-[#44403c] text-[17px] leading-[1.75]">
                 When selling on the open market isn&rsquo;t right for you,
                 we&rsquo;re here to make things simpler. We&rsquo;ll treat you
-                with honesty and respect, give you a clear cash offer in writing
-                and never reduce it at the last minute. That&rsquo;s our
-                promise: a promise made is a promise Kept.
+                with honesty and respect, give you a clear cash offer in
+                writing, and never reduce it at the last minute. That&rsquo;s
+                our promise: a promise made is a promise Kept.
               </p>
               <p className="mt-6 text-[15px]">
                 <Link
@@ -496,26 +504,33 @@ export default function SellPage() {
         </div>
         <div className="grid grid-cols-1 gap-px overflow-hidden rounded-[2px] border border-hair bg-hair md:grid-cols-2">
           {SITUATIONS.map((c) => (
-            <div key={c.k} id={c.id} className="scroll-mt-24 bg-white p-8">
+            <Link
+              key={c.k}
+              id={c.id}
+              href={c.href}
+              className="group block scroll-mt-24 bg-white p-8 transition-colors hover:bg-cream/60"
+            >
               <p className="m-0 text-[#8B9489] text-[10.5px] uppercase tracking-[0.16em] [font-family:var(--font-courier)]">
                 {c.k}
               </p>
-              <p className="mt-3.5 font-bold font-serif text-[21px]">{c.t}</p>
+              <p className="mt-3.5 font-bold font-serif text-[21px] text-forest">
+                {c.t}
+              </p>
               <p className="mt-3 text-[14px] text-stone-600 leading-[1.65]">
                 {c.b}
               </p>
-            </div>
+              <p className="mt-4 text-[14px] text-leaf">
+                Read more{' '}
+                <span
+                  aria-hidden
+                  className="inline-block transition-transform group-hover:translate-x-0.5"
+                >
+                  →
+                </span>
+              </p>
+            </Link>
           ))}
         </div>
-        <p className="mt-7 text-[14px] text-stone-600">
-          Dealing with probate and not sure what happens next?{' '}
-          <Link
-            href="/probate"
-            className="underline decoration-leaf/50 underline-offset-4 hover:decoration-leaf"
-          >
-            Read our plain-English guide for executors →
-          </Link>
-        </p>
 
         {/* Merged into this section per the editorial pass */}
         <div className="mt-11 max-w-[70ch] border-hair border-t pt-[34px]">

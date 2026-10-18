@@ -45,8 +45,17 @@ export function SituationLanding({
 
       <main className="mx-auto max-w-[1100px] px-5 pb-24 max-md:pb-[104px] md:px-10 md:pb-24">
         {/* ————— HERO ————— */}
-        <section className="grid grid-cols-1 items-start gap-10 pt-9 md:pt-[52px] lg:grid-cols-[minmax(0,1fr)_minmax(0,0.82fr)] lg:gap-16">
-          <div>
+        {/* Without a photo the copy column ends far above the form and the
+            offer card, leaving a hole before "where we fit" (founder note on
+            /separation, 18 Oct 2026). On lg those pages lift the fit heading
+            and body into that hole; below lg the order stays copy, form,
+            fit, so the form is not pushed down a phone screen. */}
+        <section
+          className={`grid grid-cols-1 items-start gap-10 pt-9 md:pt-[52px] lg:grid-cols-[minmax(0,1fr)_minmax(0,0.82fr)] ${
+            c.photo ? 'lg:gap-16' : 'lg:gap-x-16 lg:gap-y-[56px]'
+          }`}
+        >
+          <div className="lg:col-start-1 lg:row-start-1">
             <Eyebrow>{c.eyebrow}</Eyebrow>
             <h1
               className="mt-5 text-balance font-bold font-serif text-forest leading-[1.04] tracking-[-0.03em]"
@@ -78,7 +87,11 @@ export function SituationLanding({
             ) : null}
           </div>
 
-          <div className="flex flex-col gap-5">
+          <div
+            className={`flex flex-col gap-5 lg:col-start-2 lg:row-start-1 ${
+              c.photo ? '' : 'lg:row-span-2'
+            }`}
+          >
             <SituationOfferForm
               situation={c.situation}
               triggerLabel={c.triggerLabel}
@@ -126,20 +139,40 @@ export function SituationLanding({
               </div>
             </div>
           </div>
+
+          {c.photo ? null : (
+            <div className="lg:col-start-1 lg:row-start-2">
+              <h2
+                className="m-0 max-w-[20ch] font-bold font-serif leading-[1.1] tracking-[-0.02em]"
+                style={{ fontSize: 'clamp(28px, 3.4vw, 40px)' }}
+              >
+                {c.fitTitle}
+              </h2>
+              <p className="mt-5 max-w-[62ch] text-[#44403c] text-[17px] leading-[1.7]">
+                {c.fitBody}
+              </p>
+            </div>
+          )}
         </section>
 
         {/* ————— WHERE WE FIT ————— */}
-        <section className="pt-[72px]">
-          <h2
-            className="m-0 max-w-[20ch] font-bold font-serif leading-[1.1] tracking-[-0.02em]"
-            style={{ fontSize: 'clamp(28px, 3.4vw, 40px)' }}
+        <section className={c.photo ? 'pt-[72px]' : 'pt-10 lg:pt-[56px]'}>
+          {c.photo ? (
+            <>
+              <h2
+                className="m-0 max-w-[20ch] font-bold font-serif leading-[1.1] tracking-[-0.02em]"
+                style={{ fontSize: 'clamp(28px, 3.4vw, 40px)' }}
+              >
+                {c.fitTitle}
+              </h2>
+              <p className="mt-5 max-w-[62ch] text-[#44403c] text-[17px] leading-[1.7]">
+                {c.fitBody}
+              </p>
+            </>
+          ) : null}
+          <div
+            className={`${c.photo ? 'mt-9 ' : ''}grid grid-cols-1 gap-px overflow-hidden rounded-[2px] border border-hair bg-hair md:grid-cols-3`}
           >
-            {c.fitTitle}
-          </h2>
-          <p className="mt-5 max-w-[62ch] text-[#44403c] text-[17px] leading-[1.7]">
-            {c.fitBody}
-          </p>
-          <div className="mt-9 grid grid-cols-1 gap-px overflow-hidden rounded-[2px] border border-hair bg-hair md:grid-cols-3">
             {c.cards.map((card) => (
               <div key={card.t} className="bg-white p-[26px]">
                 <p className="m-0 font-bold font-serif text-[17px] text-forest">

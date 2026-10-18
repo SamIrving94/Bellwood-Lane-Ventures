@@ -1,6 +1,6 @@
 # Kept. — brand & design system
 
-_Last verified against the live site: 2026-10-11._
+_Last verified against the live site: 2026-10-18._
 
 **Status:** exploration approved by both founders, July 2026. Domain secured:
 **wearekept.co.uk**. Legal/trading structure TBC (trademark class 36 search
@@ -136,7 +136,7 @@ principles her edits demonstrate:
 ## Copy truth rules (binding)
 
 The live site copy is the source of truth for every claim. The promise is:
-**same-day response → we view every property → confirmed written offer sent
+**24-hour response → we view every property → confirmed written offer sent
 within two working days of viewing, binding upon Kept for a week →
 completion in weeks not months, as little as two weeks.** Three documented
 renegotiation exceptions, always stated. Never advertise internal ops

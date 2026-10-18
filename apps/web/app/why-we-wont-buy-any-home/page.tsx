@@ -75,12 +75,6 @@ const SITUATIONS_WE_WONT_BUY: Array<{
       'StepChange (stepchange.org) and Citizens Advice will work through your options without judgement. ' +
       'A property sale is only one of the levers. Talk to them before you talk to us.',
   },
-  {
-    k: 'A property we have no expertise to underwrite',
-    b: 'Commercial properties, equestrian, agricultural, unusual heritage assets, properties under £80k or over £2m. Our model is sized for residential UK property in the £150k–£800k range.',
-    recommend:
-      'A specialist auction house or a buyer focused on your property type will outperform us. We can recommend names if you email sam@wearekept.co.uk with a one-line description.',
-  },
 ];
 
 const SITUATIONS_WE_BUY_FROM: Array<{
@@ -144,11 +138,10 @@ export default function WhyWeWontBuyAnyHomePage() {
             <span className="text-leaf">We won&rsquo;t.</span>
           </h1>
           <p className="mt-8 max-w-2xl text-lg text-stone-600 leading-relaxed">
-            We&rsquo;re a UK direct-to-vendor cash buyer. We buy six specific
-            kinds of property situations &mdash; the ones where speed and
-            certainty matter more than maximum price. If your situation
-            isn&rsquo;t one of those, the open market will probably get you
-            more, and we&rsquo;ll tell you that for free.
+            We&rsquo;re a UK direct-to-vendor cash buyer. We buy where speed and
+            certainty matter more than maximum price. If that isn&rsquo;t your
+            situation, the open market will probably get you more, and
+            we&rsquo;ll tell you that for free.
           </p>
         </div>
       </section>
@@ -158,13 +151,12 @@ export default function WhyWeWontBuyAnyHomePage() {
         <div className="mx-auto max-w-6xl">
           <p className="font-serif text-[13px] text-leaf">What we buy</p>
           <h2 className="mt-3 font-semibold font-serif text-3xl leading-[1.05] tracking-[-0.02em] md:text-5xl">
-            Six situations. That&rsquo;s the list.
+            Where we&rsquo;re most useful.
           </h2>
           <p className="mt-5 max-w-2xl text-[15px] text-stone-600 leading-relaxed">
-            We&rsquo;ve built a business around being good at these specific
-            problems. We invest in the data, the legal workflow, the insurance,
-            and the operational speed each one needs. Outside this list, we
-            don&rsquo;t pretend.
+            We&rsquo;ve built a business around being good at problems like
+            these. We invest in the data, the legal workflow, the insurance, and
+            the operational speed each one needs.
           </p>
           <div className="mt-12 grid grid-cols-1 gap-6 md:grid-cols-2">
             {SITUATIONS_WE_BUY.map((s) => (

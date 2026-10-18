@@ -215,7 +215,7 @@ function EnquiryReceived() {
       <div className="mt-3 space-y-3 text-sm text-stone-700 leading-relaxed">
         <p>
           We have everything we need to start. One of us will come back to you
-          the same day, Monday to Friday, to talk through your situation and
+          within 24 hours, Monday to Friday, to talk through your situation and
           arrange a time to come and see the property.
         </p>
         <p>
