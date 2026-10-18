@@ -10,7 +10,6 @@ import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 const KEYS = vi.hoisted(() => {
   const keys = {
     EPC_API_TOKEN: 'epc-secret-token-123',
-    OS_PLACES_API_KEY: 'os-secret-key-456',
     PROPERTYDATA_API_KEY: 'pd-secret-key-789',
   };
   // propertydata.ts reads its key once at import, so set before any import.
@@ -98,17 +97,14 @@ const json = (body: unknown, status = 200) =>
     headers: { 'content-type': 'application/json' },
   });
 
-let osStatus = 200;
+let epcStatus = 200;
 let pdEchoesKey = false;
 const fetchMock = vi.fn(async (input: string | URL) => {
   const url = String(input);
-  if (url.includes('api.os.uk')) {
-    return osStatus === 200
-      ? json({ header: { totalresults: 3 }, results: [{}] })
-      : json({ error: 'nope' }, osStatus);
-  }
   if (url.includes('get-energy-performance-data')) {
-    return json({ data: [{ certificateNumber: '1', postcode: 'SW1A 2AA' }] });
+    return epcStatus === 200
+      ? json({ data: [{ certificateNumber: '1', postcode: 'SW1A 2AA' }] })
+      : json({ error: 'nope' }, epcStatus);
   }
   if (url.includes('propertydata.co.uk')) {
     // Some upstreams echo the credential back in an error body.
@@ -133,7 +129,7 @@ beforeEach(() => {
   db.settings.clear();
   db.actions.clear();
   db.events.length = 0;
-  osStatus = 200;
+  epcStatus = 200;
   pdEchoesKey = false;
   fetchMock.mockClear();
   vi.stubGlobal('fetch', fetchMock);
@@ -153,8 +149,12 @@ describe('/cron/provider-health', () => {
   test('all healthy: one call per provider, logged, no card', async () => {
     const res = await run();
     const body = await res.json();
-    expect(body.checks.map((c: Row) => c.status)).toEqual(['ok', 'ok', 'ok']);
-    expect(fetchMock).toHaveBeenCalledTimes(3);
+    expect(body.checks.map((c: Row) => c.status)).toEqual(['ok', 'ok']);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    // OS Places' licence has expired: it must never be probed.
+    expect(
+      fetchMock.mock.calls.some(([u]) => String(u).includes('api.os.uk'))
+    ).toBe(false);
     expect(db.events).toHaveLength(1);
     expect(db.events[0]).toMatchObject({
       eventType: 'provider_health',
@@ -163,46 +163,44 @@ describe('/cron/provider-health', () => {
     expect(db.actions.size).toBe(0);
   });
 
-  test('a dead OS Places key raises one card with the error', async () => {
-    osStatus = 401;
+  test('a dead EPC token raises one card with the error', async () => {
+    epcStatus = 401;
     const body = await (await run()).json();
-    expect(body.raised).toEqual(['os-places']);
-    const card = db.actions.get('provider-health:os-places');
+    expect(body.raised).toEqual(['epc']);
+    const card = db.actions.get('provider-health:epc');
     expect(card).toMatchObject({ status: 'pending', priority: 'high' });
-    expect(String(card?.description)).toContain('OS Places: invalid API key');
+    expect(String(card?.description)).toContain(
+      'EPC API: invalid bearer token'
+    );
     expect(db.events[0]).toMatchObject({ count: 1 });
   });
 
   test('a known outage does not reopen a card the founder closed', async () => {
-    osStatus = 401;
+    epcStatus = 401;
     await run();
-    db.actions.set('provider-health:os-places', {
-      ...db.actions.get('provider-health:os-places'),
+    db.actions.set('provider-health:epc', {
+      ...db.actions.get('provider-health:epc'),
       status: 'dismissed',
     });
     const body = await (await run()).json();
     expect(body.raised).toEqual([]);
-    expect(db.actions.get('provider-health:os-places')?.status).toBe(
-      'dismissed'
-    );
+    expect(db.actions.get('provider-health:epc')?.status).toBe('dismissed');
   });
 
   test('recovery closes the card; a later failure raises it again', async () => {
-    osStatus = 401;
+    epcStatus = 401;
     await run();
-    osStatus = 200;
+    epcStatus = 200;
     await run();
-    expect(db.actions.get('provider-health:os-places')?.status).toBe(
-      'completed'
-    );
-    osStatus = 401;
+    expect(db.actions.get('provider-health:epc')?.status).toBe('completed');
+    epcStatus = 401;
     const body = await (await run()).json();
-    expect(body.raised).toEqual(['os-places']);
-    expect(db.actions.get('provider-health:os-places')?.status).toBe('pending');
+    expect(body.raised).toEqual(['epc']);
+    expect(db.actions.get('provider-health:epc')?.status).toBe('pending');
   });
 
   test('no key value appears in anything stored or returned', async () => {
-    osStatus = 500;
+    epcStatus = 500;
     pdEchoesKey = true;
     const body = await (await run()).json();
     const everything = JSON.stringify({
@@ -212,7 +210,6 @@ describe('/cron/provider-health', () => {
       settings: [...db.settings.values()],
     });
     expect(body.checks.map((c: Row) => c.status)).toEqual([
-      'ok',
       'failing',
       'failing',
     ]);

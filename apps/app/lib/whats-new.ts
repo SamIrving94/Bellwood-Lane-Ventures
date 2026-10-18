@@ -31,11 +31,11 @@ export const WHATS_NEW: WhatsNewEntry[] = [
     emoji: '🩺',
     title: 'A morning check-up for our data keys',
     intro:
-      'A dead OS Places key went unnoticed and quietly weakened every UPRN match. Never again.',
+      'A dead data key once went unnoticed and quietly weakened every UPRN match. Never again.',
     bullets: [
       {
         emoji: '⏰',
-        text: '**Every morning at 06:45** we test EPC, OS Places and PropertyData.',
+        text: '**Every morning at 06:45** we test our EPC and PropertyData keys.',
       },
       {
         emoji: '🚨',

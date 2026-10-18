@@ -2,7 +2,6 @@ import { database } from '@repo/database';
 import {
   type ProviderProbe,
   probeEpc,
-  probeOsPlaces,
   probePropertyData,
 } from '@repo/property-data';
 
@@ -24,11 +23,16 @@ import {
  *     and fails again. No daily nagging about a known outage.
  *   - Recovery auto-completes the card.
  *
+ * OS Places is deliberately NOT probed: its trial licence expired and won't
+ * be renewed (founder decision, 18 Oct 2026), so a probe would be a card
+ * that can never close. PropertyData /uprns replaces it as the UPRN
+ * matcher's second source.
+ *
  * Key values never leave this module: every message is redacted before it
- * is stored or returned (OS Places carries its key in the query string).
+ * is stored or returned.
  */
 
-export const PROVIDERS = ['epc', 'os-places', 'propertydata'] as const;
+export const PROVIDERS = ['epc', 'propertydata'] as const;
 export type ProviderName = (typeof PROVIDERS)[number];
 export type ProviderStatus = 'ok' | 'failing';
 
@@ -43,33 +47,28 @@ export type ProviderCheck = {
 export type CardAction = 'raise' | 'refresh' | 'resolve';
 
 // Any valid unit postcode works: an empty answer still proves the key was
-// accepted. Downing Street is stable and known to both registers.
+// accepted. Downing Street is a stable, real postcode.
 export const PROBE_POSTCODE = 'SW1A 2AA';
 
 const PROVIDER_LABEL: Record<ProviderName, string> = {
   epc: 'EPC register',
-  'os-places': 'OS Places',
   propertydata: 'PropertyData',
 };
 
 const PROVIDER_KEY_VAR: Record<ProviderName, string> = {
   epc: 'EPC_API_TOKEN',
-  'os-places': 'OS_PLACES_API_KEY',
   propertydata: 'PROPERTYDATA_API_KEY',
 };
 
 // What a dead key quietly does downstream — so the card says why it matters.
 const PROVIDER_IMPACT: Record<ProviderName, string> = {
   epc: 'UPRN matching and EPC enrichment get no certificates, so leads lose floor area and energy band.',
-  'os-places':
-    'The UPRN matcher falls back to EPC-only, so no lead can reach "high" confidence.',
   propertydata:
     'Appraisals, comps and scouting calls fail, so the AVM records no-valuation.',
 };
 
 const PROBES: Record<ProviderName, () => Promise<ProviderProbe>> = {
   epc: () => probeEpc(PROBE_POSTCODE),
-  'os-places': () => probeOsPlaces(PROBE_POSTCODE),
   propertydata: () => probePropertyData(),
 };
 
