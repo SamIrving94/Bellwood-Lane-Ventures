@@ -5,6 +5,10 @@
       "schedule": "30 5 * * *"
     },
     {
+      "path": "/cron/provider-health",
+      "schedule": "45 6 * * *"
+    },
+    {
       "path": "/cron/lead-appraise",
       "schedule": "50 7 * * *"
     },

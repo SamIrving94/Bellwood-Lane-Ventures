@@ -22,6 +22,7 @@ export type { PropertyDataType };
 import { z } from 'zod';
 import { keys } from '../keys';
 import { type MarketSignals, buildMarketSignals } from './market-signals';
+import type { ProviderProbe } from './provider-probe';
 
 const env = keys();
 
@@ -2249,6 +2250,36 @@ export async function getAccountCredits() {
       }
     )
   );
+}
+
+/**
+ * Health probe: the free /account/credits read, kept in the result model so
+ * the error survives (see provider-probe.ts). Chosen because it spends no
+ * credits; the 1-minute cache can't mask a key that died a day ago.
+ */
+export async function probePropertyData(): Promise<ProviderProbe> {
+  const res = await fetchPropertyData(
+    '/account/credits',
+    {},
+    {
+      ttlMs: 60 * 1000,
+      estimatedCredits: 0,
+      schema: CreditsSchema,
+      hasContent: (d) => d.result !== undefined,
+    }
+  );
+  if (res.outcome === 'failed') return { ok: false, error: res.error };
+  if (res.outcome === 'not_found') {
+    return { ok: false, error: '/account/credits returned 404' };
+  }
+  const remaining = res.value.result?.credits_remaining;
+  return {
+    ok: true,
+    detail:
+      remaining === undefined
+        ? 'answered'
+        : `${remaining} credits remaining`,
+  };
 }
 
 // ---------------------------------------------------------------------------

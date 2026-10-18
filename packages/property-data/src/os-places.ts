@@ -18,6 +18,7 @@
  */
 
 import { z } from 'zod';
+import { type ProviderProbe, probeError } from './provider-probe';
 
 const OS_BASE = 'https://api.os.uk/search/places/v1';
 
@@ -236,6 +237,38 @@ export async function listPostcodeAddresses(
       `[property-data/os-places] listPostcodeAddresses failed for ${postcode}: ${(err as Error).message}`
     );
     return null;
+  }
+}
+
+/**
+ * Health probe: one page-of-one postcode lookup that keeps the error instead
+ * of returning null (see provider-probe.ts). OS answers an unknown postcode
+ * with 400 — the key was accepted, so that is still a healthy reply.
+ */
+export async function probeOsPlaces(postcode: string): Promise<ProviderProbe> {
+  if (!process.env.OS_PLACES_API_KEY) {
+    return { ok: false, error: 'OS_PLACES_API_KEY not set' };
+  }
+  try {
+    const data = (await osGet('/postcode', {
+      postcode: postcode.toUpperCase().trim(),
+      maxresults: 1,
+      dataset: 'DPA',
+    })) as Record<string, unknown>;
+    const total = Number(
+      (data.header as Record<string, unknown> | undefined)?.totalresults
+    );
+    return {
+      ok: true,
+      detail: Number.isFinite(total)
+        ? `${total} addresses in ${postcode}`
+        : 'answered',
+    };
+  } catch (err) {
+    if ((err as Error).message === 'OS Places 400') {
+      return { ok: true, detail: `postcode ${postcode} unknown to OS` };
+    }
+    return probeError(err);
   }
 }
 

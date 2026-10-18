@@ -26,6 +26,32 @@ export type WhatsNewEntry = {
 /** Newest first. The popup shows index 0. */
 export const WHATS_NEW: WhatsNewEntry[] = [
   {
+    id: '2026-10-18-provider-health',
+    date: '2026-10-18',
+    emoji: '🩺',
+    title: 'A morning check-up for our data keys',
+    intro:
+      'A dead OS Places key went unnoticed and quietly weakened every UPRN match. Never again.',
+    bullets: [
+      {
+        emoji: '⏰',
+        text: '**Every morning at 06:45** we test EPC, OS Places and PropertyData.',
+      },
+      {
+        emoji: '🚨',
+        text: '**One card in the Action Centre** the day a key stops working, with the exact error.',
+      },
+      {
+        emoji: '🤫',
+        text: '**No nagging:** close the card and it stays closed until the key fails again.',
+      },
+      {
+        emoji: '✅',
+        text: '**Fixed the key? The card closes itself** after the next passing check.',
+      },
+    ],
+  },
+  {
     id: '2026-10-17-deal-property-types',
     date: '2026-10-17',
     emoji: '🏠',

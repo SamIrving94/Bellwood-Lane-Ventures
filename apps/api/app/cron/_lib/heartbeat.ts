@@ -23,7 +23,8 @@ export type CronName =
   | 'deep-appraisal'
   | 'ch-stream'
   | 'avm-backtest'
-  | 'guide-research';
+  | 'guide-research'
+  | 'provider-health';
 
 // Max age (hours) between successful runs before the watchdog alerts. Tuned to
 // the documented daily schedules with head-room for timezone/retry jitter.
@@ -51,6 +52,8 @@ export const CRON_MAX_STALENESS_HOURS: Partial<Record<CronName, number>> = {
   // Weekly (Saturday 06:00). Nine days clears one late run; two silent
   // Saturdays means no guide drafted for a fortnight, which is a failure.
   'guide-research': 9 * 24,
+  // Daily. If the key check itself goes silent, a dead key goes unseen again.
+  'provider-health': 28,
 };
 
 export type CronHeartbeat = {
