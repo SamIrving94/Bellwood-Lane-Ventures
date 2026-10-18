@@ -3434,6 +3434,9 @@ const UprnsSchema = z.object({
 /** One home in a postcode, as the UPRN matcher consumes it. */
 export type PostcodeUprn = { uprn: string; address: string };
 
+/** AddressBase classifications that can be someone's home (see below). */
+const HOME_CLASSIFICATION = /^(?:R[DH]|CH02$|X$)/;
+
 /** The most homes /uprns returns for one postcode (API docs). */
 export const UPRNS_MAX_RESULTS = 200;
 
@@ -3445,8 +3448,11 @@ export const UPRNS_MAX_RESULTS = 200;
  * Homes only. The list also carries the block itself ("Argyll Mansions",
  * classification P/PP "parent shell") and non-residential units; a block's
  * UPRN is not a home, and matching one hands a lead with no flat number the
- * whole building. AddressBase classifications starting RD (dwellings) or RH
- * (HMOs) are kept.
+ * whole building. Kept: AddressBase RD* (dwellings), RH* (HMOs), CH02
+ * (holiday lets) and X (dual use, e.g. live/work), since each can be the home
+ * a seller owns. Dropped: shells (P, PP), shops, offices, pubs, surgeries,
+ * churches, schools. Checked on 41 real leads (Oct 2026): the filter cost
+ * no match.
  *
  * `strict` keeps the answer to this postcode only. A postcode with more than
  * 200 homes comes back truncated; the matcher then reports no match for the
@@ -3472,7 +3478,7 @@ export async function getPostcodeUprnsResult(
   const homes: PostcodeUprn[] = [];
   for (const row of res.value.data ?? []) {
     if (row.uprn === undefined || !row.address) continue;
-    if (!/^R[DH]/.test(row.classificationCode ?? '')) continue;
+    if (!HOME_CLASSIFICATION.test(row.classificationCode ?? '')) continue;
     homes.push({ uprn: String(row.uprn), address: row.address });
   }
   return { outcome: 'ok', value: homes };

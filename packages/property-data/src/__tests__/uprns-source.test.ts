@@ -51,6 +51,12 @@ const SW6_3EF = {
       'CO01',
       'Office / Work Studio'
     ),
+    row(
+      34063150,
+      '57, THE PIPER BUILDING, PETERBOROUGH ROAD, LONDON, SW6 3EF',
+      'CH02',
+      'Holiday Let'
+    ),
   ],
 };
 
@@ -78,12 +84,13 @@ afterEach(() => {
 });
 
 describe('getPostcodeUprnsResult', () => {
-  it('keeps the homes and drops the block shell and the offices', async () => {
+  it('keeps the homes (holiday lets too) and drops the block shell and the offices', async () => {
     const r = await getPostcodeUprnsResult('SW6 3EF');
     expect(r.outcome).toBe('ok');
     expect(r.outcome === 'ok' && r.value.map((h) => h.uprn)).toEqual([
       '34063172',
       '34063189',
+      '34063150',
     ]);
   });
 
