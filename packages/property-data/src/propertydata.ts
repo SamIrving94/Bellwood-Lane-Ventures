@@ -3483,3 +3483,62 @@ export async function getPostcodeUprnsResult(
   }
   return { outcome: 'ok', value: homes };
 }
+
+// ---------------------------------------------------------------------------
+// Endpoint: /listing-address
+// ---------------------------------------------------------------------------
+
+const ListingAddressSchema = z.object({
+  status: z.string().optional(),
+  data: z
+    .object({
+      uprn: z.union([z.number(), z.string()]),
+      address: z.string(),
+      postcode: z.string(),
+    })
+    .partial()
+    .optional(),
+});
+
+/** The home a portal listing is for, as PropertyData resolved it. */
+export type ListingAddress = {
+  uprn: string;
+  address: string;
+  postcode: string;
+};
+
+/**
+ * Which home a Rightmove sale listing is for: its UPRN and full address.
+ * The fix for street-only leads ("Ecclesall Road, Sheffield S11"), whose
+ * listing never states a house number. Beta: PropertyData resolves about 45%
+ * of live listings, and a listing that has come off the market is usually
+ * "not found" (Oct 2026 test on old leads: 2 of 10), so call it while the
+ * listing is fresh. 10 credits when it resolves; a 404 ("could not be
+ * resolved") is free. Cached 60 days.
+ *
+ * The address it returns is still put through the strict UPRN matcher by the
+ * caller, so a wrong resolution can't become a stored UPRN on its own.
+ */
+export async function getListingAddressResult(
+  rightmoveUrl: string
+): Promise<PropertyDataResult<ListingAddress>> {
+  const res = await fetchPropertyData(
+    '/listing-address',
+    { url: rightmoveUrl },
+    {
+      ttlMs: MAX_CACHE_TTL_MS,
+      estimatedCredits: 10,
+      schema: ListingAddressSchema,
+      hasContent: (d) => d.data !== undefined,
+    }
+  );
+  if (res.outcome !== 'ok') return res;
+  const d = res.value.data;
+  if (d?.uprn === undefined || !d.address || !d.postcode) {
+    return { outcome: 'not_found' };
+  }
+  return {
+    outcome: 'ok',
+    value: { uprn: String(d.uprn), address: d.address, postcode: d.postcode },
+  };
+}

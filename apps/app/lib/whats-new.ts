@@ -26,6 +26,32 @@ export type WhatsNewEntry = {
 /** Newest first. The popup shows index 0. */
 export const WHATS_NEW: WhatsNewEntry[] = [
   {
+    id: '2026-10-18-pin-the-home',
+    date: '2026-10-18',
+    emoji: '📍',
+    title: 'Pin the home on street-only leads',
+    intro:
+      'Lots of listings say "Ecclesall Road" and nothing more. Now you can tell us which house it is.',
+    bullets: [
+      {
+        emoji: '📍',
+        text: '**Shortlist a street-only lead** and a "Which home is this?" box appears.',
+      },
+      {
+        emoji: '🔎',
+        text: '**Search the postcode’s homes**, open the listing, tap the right one.',
+      },
+      {
+        emoji: '🏠',
+        text: '**Rightmove listings get checked for you** straight after each scout run.',
+      },
+      {
+        emoji: '🆔',
+        text: '**65 leads now have their UPRN**, most of them confirmed two ways.',
+      },
+    ],
+  },
+  {
     id: '2026-10-17-deal-property-types',
     date: '2026-10-17',
     emoji: '🏠',
