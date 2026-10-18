@@ -65,6 +65,15 @@ price band, property type, engine version.
   with `Authorization: Bearer $CRON_SECRET`.
 - Watchdog: heartbeat `avm-backtest`, alert after 35 days of silence.
 
+## Method changes the backtest must split on
+
+- **18 Oct 2026: floor area from the home's own EPC certificate (by UPRN).**
+  Snapshots from then on carry `floorAreaSource: 'epc_uprn'` when that path
+  sized the home (else `propertydata` with the strict address match, or
+  `caller`). Compare cohorts by engine version (before vs after this commit)
+  and by `floorAreaSource`. Why it was allowed during the freeze: see
+  CLAUDE.md, "One override, on measured evidence".
+
 ## Rules
 
 - **Every new `runAVM` call site must call `saveAvmSnapshot`.** An

@@ -43,6 +43,7 @@ export const POST = async (request: Request) => {
       propertyType: true,
       bedrooms: true,
       sellerType: true,
+      uprn: true,
     },
     take: 10, // Cap per run to avoid timeouts
   });
@@ -100,6 +101,7 @@ export const POST = async (request: Request) => {
         postcode: deal.postcode,
         propertyType: avmPropertyType as never,
         address: deal.address,
+        uprn: deal.uprn ?? undefined,
         bedrooms: deal.bedrooms ?? undefined,
         sellerType: avmSellerType as never,
         dealId: deal.id,

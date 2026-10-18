@@ -205,6 +205,8 @@ export interface AvmInput {
   postcode: string;
   propertyType: PropertyType;
   address?: string;
+  /** The home's UPRN when known: its own EPC certificate gives the size. */
+  uprn?: string;
   floorAreaSqm?: number;
   bedrooms?: number;
 
@@ -243,7 +245,7 @@ export interface AvmResultJson {
   propertyType: PropertyType;
   floorAreaSqm: number | null;
   /** Where floorAreaSqm came from — null means we have no verified size. */
-  floorAreaSource: 'caller' | 'propertydata' | null;
+  floorAreaSource: 'caller' | 'epc_uprn' | 'propertydata' | null;
   /** Address the floor area was matched to (carries the house number). */
   resolvedAddress: string | null;
   /** floorAreaSqm in square feet — the unit the founder reads. */
@@ -400,6 +402,7 @@ export async function runAVM(input: AvmInput): Promise<AvmResultPayload> {
     postcode,
     propertyType,
     address,
+    uprn,
     floorAreaSqm,
     bedrooms,
     sellerType,
@@ -425,6 +428,7 @@ export async function runAVM(input: AvmInput): Promise<AvmResultPayload> {
     floorAreaSqm,
     bedrooms,
     address,
+    uprn,
   };
   const [baseValuation, marketSignals] = await Promise.all([
     getBaseValuation(baseValuationInput),

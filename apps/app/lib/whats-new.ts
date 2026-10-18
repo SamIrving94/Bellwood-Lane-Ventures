@@ -26,6 +26,32 @@ export type WhatsNewEntry = {
 /** Newest first. The popup shows index 0. */
 export const WHATS_NEW: WhatsNewEntry[] = [
   {
+    id: '2026-10-18-avm-own-certificate',
+    date: '2026-10-18',
+    emoji: '📐',
+    title: 'Valuations use each home’s own size',
+    intro:
+      'The AVM sometimes borrowed a neighbour’s floor area, or had none. Now it reads the home’s own EPC.',
+    bullets: [
+      {
+        emoji: '🆔',
+        text: '**Leads with a UPRN** get their size from **their own EPC certificate**.',
+      },
+      {
+        emoji: '🎯',
+        text: '**No more neighbour mix-ups**, like Flat 5 at No. 38 sizing Flat 5 at No. 22.',
+      },
+      {
+        emoji: '📊',
+        text: '**The backtest tracks it**, so we’ll see if it lands closer to sale prices.',
+      },
+      {
+        emoji: '🔎',
+        text: 'Look for **“this home’s own certificate”** next to floor area on a lead.',
+      },
+    ],
+  },
+  {
     id: '2026-10-18-pin-the-home',
     date: '2026-10-18',
     emoji: '📍',

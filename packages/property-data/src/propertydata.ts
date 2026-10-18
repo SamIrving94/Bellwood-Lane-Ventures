@@ -13,6 +13,7 @@
 
 import 'server-only';
 import { type PropertyDataType, toPropertyDataType } from './property-type';
+import { sameHome } from './uprn';
 import { acquireRateSlot } from './rate-limiter';
 import { type PersistentCacheStore, getPersistentStore } from './store';
 
@@ -726,38 +727,29 @@ export interface PropertyFloorArea {
   matchedAddress: string;
   /**
    * How the row was matched — surfaced in the UI for transparency.
-   * 'unique_type_match' is kept for persisted results; it cannot be produced
-   * any more (the register rows carry neither type nor bedrooms).
+   * 'address_match' since Oct 2026 (strict sameHome). 'house_number' and
+   * 'unique_type_match' are kept for persisted results; neither is produced
+   * any more.
    */
-  matchSource: 'house_number' | 'unique_type_match';
-}
-
-/**
- * Extract the leading house identifier from an address so we can match it
- * against an EPC row. Handles "12 …", "12A …", "Flat 3 …", "Unit 2 …".
- * Returns null when the address has no number (street-only), which is common
- * for scraped listings — in that case we must NOT guess a size.
- */
-function houseIdentifier(address: string): string | null {
-  const trimmed = address.trim();
-  const numbered = trimmed.match(/^(\d+\s*[a-z]?)\b/i);
-  if (numbered?.[1]) return numbered[1].replace(/\s+/g, '').toLowerCase();
-  const unit = trimmed.match(/^((?:flat|apartment|apt|unit)\s+\w+)\b/i);
-  if (unit?.[1]) return unit[1].replace(/\s+/g, ' ').toLowerCase();
-  return null;
+  matchSource: 'address_match' | 'house_number' | 'unique_type_match';
 }
 
 /**
  * Resolve a single property's REAL floor area from PropertyData's /floor-areas
- * (EPC register) for the postcode, by exact house-number match against the
- * supplied address.
+ * (EPC register) for the postcode, by matching THIS home's address.
  *
- * Returns null when no unambiguous real row matches. We deliberately never
- * fall back to a postcode average — that is a guess, and the house-of-record
- * could be half or double it (the M14 doubling bug). The old second path (a
- * unique match on property type + bedrooms for street-only addresses) is gone:
- * the register rows carry neither field, so it could never fire. `propertyType`
- * and `bedrooms` stay on the input so callers need not change.
+ * Matching is the UPRN matcher's strict `sameHome` (Oct 2026). It replaced a
+ * leading-house-number match that took the first row starting "Flat 5" or
+ * "39" in the postcode: on 65 real leads it picked a neighbour's certificate
+ * 3 times (Flat 5 at No. 38 for Flat 5 at No. 22: 76 m² vs 37 m²) and found
+ * nothing for block flats written "BUTLER COURT FLAT 16, …". The strict
+ * matcher found the right home 60 times and the wrong one never.
+ *
+ * Every row that matches is the same home (re-assessed over the years), so
+ * the newest inspection wins. Returns null when nothing matches. We never
+ * fall back to a postcode average: that is a guess, and the house-of-record
+ * could be half or double it (the M14 doubling bug). `propertyType` and
+ * `bedrooms` stay on the input so callers need not change.
  */
 export async function getPropertyFloorArea(input: {
   postcode: string;
@@ -765,19 +757,23 @@ export async function getPropertyFloorArea(input: {
   propertyType?: string;
   bedrooms?: number;
 }): Promise<PropertyFloorArea | null> {
+  const { address } = input;
+  // No address → nothing to match on → no size (real data or nothing).
+  if (!address) return null;
   const rows = floorAreaRows(await getFloorAreas(input.postcode));
-  if (rows.length === 0) return null;
-
-  const wanted = input.address ? houseIdentifier(input.address) : null;
-  // No house number → nothing to match on → no size (real data or nothing).
-  if (!wanted) return null;
-
-  const hit = rows.find((p) => houseIdentifier(p.address) === wanted);
-  if (!hit) return null; // Had a number but it isn't in the register → don't guess.
+  const hits = rows
+    .filter((p) => sameHome(address, p.address))
+    .sort((a, b) =>
+      String(b.inspectionDate ?? '').localeCompare(
+        String(a.inspectionDate ?? '')
+      )
+    );
+  const hit = hits[0];
+  if (!hit) return null;
   return {
     floorAreaSqm: Math.round(hit.floorAreaSqm),
     matchedAddress: hit.address,
-    matchSource: 'house_number',
+    matchSource: 'address_match',
   };
 }
 

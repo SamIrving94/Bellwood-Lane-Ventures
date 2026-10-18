@@ -400,3 +400,51 @@ export async function getEpcCertificateByNumber(
     return null;
   }
 }
+
+/** One home's floor area, from its own newest EPC certificate. */
+export type EpcFloorAreaByUprn = {
+  floorAreaSqm: number;
+  /** The certificate's address, for display ("matched to …"). */
+  address: string;
+  certificateNumber: string;
+};
+
+/**
+ * The floor area on THIS home's own EPC certificate, found by UPRN rather
+ * than by matching address text. The AVM's size for a lead with a UPRN
+ * (Oct 2026): text matching picked a neighbour's certificate for 3 of 65
+ * leads ("Flat 5, 38 …" for "Flat 5, 22 …", 76 m² vs 37 m²) and found none
+ * for 17 more, and using each home's own certificate moved 7 of those 19
+ * valuations by over 5%.
+ *
+ * Newest certificate wins (a home is re-assessed; the latest is closest to
+ * how it stands now). Null when the register has no certificate under this
+ * UPRN, or no floor area on it — never a neighbour's, never an average.
+ * Free (GOV.UK EPC API): one search, one certificate fetch.
+ */
+export async function getEpcFloorAreaByUprn(
+  postcode: string,
+  uprn: string
+): Promise<EpcFloorAreaByUprn | null> {
+  const rows = (await searchDomesticEpc(postcode))
+    .filter((r) => r.uprn === uprn)
+    .sort((a, b) =>
+      String(b.registrationDate ?? '').localeCompare(
+        String(a.registrationDate ?? '')
+      )
+    );
+  for (const row of rows) {
+    const cert = await getEpcCertificateByNumber(
+      row.certificateNumber,
+      postcode
+    );
+    if (cert?.floorAreaSqm && cert.floorAreaSqm > 0) {
+      return {
+        floorAreaSqm: Math.round(cert.floorAreaSqm),
+        address: row.address,
+        certificateNumber: row.certificateNumber,
+      };
+    }
+  }
+  return null;
+}

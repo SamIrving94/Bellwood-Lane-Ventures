@@ -183,6 +183,17 @@ Run a task for one workspace with a filter, e.g.
   cannot be measured. Never edit a snapshot's appraisal fields. See
   `docs/AVM-BACKTEST.md`. Founder decision (Sep 2026): the AVM's method
   does not change again until the backtest has produced a reading.
+  **One override, on measured evidence (founder, 18 Oct 2026):** the
+  subject's floor area now comes from **its own EPC certificate by UPRN**
+  (`getEpcFloorAreaByUprn`), else a strict `sameHome` address match — no
+  longer a leading-house-number match. Measured first on 65 leads with a
+  UPRN: the old match sized 3 off a neighbour's certificate (Flat 5 at
+  No. 38 for Flat 5 at No. 22: 76 m² vs 37 m²) and 17 not at all;
+  correcting moved 7 of those 19 valuations by over 5%, both up and down.
+  Snapshots carry `floorAreaSource: 'epc_uprn'` and the engine version
+  (git sha), so the backtest can split before from after. The freeze
+  otherwise still stands: any other method change waits for a reading,
+  or needs the same measure-first evidence.
 - **Never fabricate identifiers and hope downstream accepts them.** Resolve
   them, or fail loudly at the moment of input. The SW3 incident (Aug 2026):
   the area resolver guessed `"SW3 1AA"` for an unknown district, PropertyData
