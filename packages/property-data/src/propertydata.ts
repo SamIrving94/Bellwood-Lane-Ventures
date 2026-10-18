@@ -3410,3 +3410,70 @@ export async function askGeorge(input: {
     clearTimeout(timer);
   }
 }
+
+// ---------------------------------------------------------------------------
+// Endpoint: /uprns
+// ---------------------------------------------------------------------------
+
+const UprnsSchema = z.object({
+  status: z.string().optional(),
+  api_calls_cost: z.number().optional(),
+  data: z
+    .array(
+      z
+        .object({
+          uprn: z.union([z.number(), z.string()]),
+          address: z.string(),
+          classificationCode: z.string().nullable(),
+        })
+        .partial()
+    )
+    .optional(),
+});
+
+/** One home in a postcode, as the UPRN matcher consumes it. */
+export type PostcodeUprn = { uprn: string; address: string };
+
+/** The most homes /uprns returns for one postcode (API docs). */
+export const UPRNS_MAX_RESULTS = 200;
+
+/**
+ * Every home in a postcode with its UPRN: the UPRN matcher's second source,
+ * independent of the EPC register (Oct 2026: replaced OS Places, whose trial
+ * licence had lapsed and failed silently for weeks).
+ *
+ * Homes only. The list also carries the block itself ("Argyll Mansions",
+ * classification P/PP "parent shell") and non-residential units; a block's
+ * UPRN is not a home, and matching one hands a lead with no flat number the
+ * whole building. AddressBase classifications starting RD (dwellings) or RH
+ * (HMOs) are kept.
+ *
+ * `strict` keeps the answer to this postcode only. A postcode with more than
+ * 200 homes comes back truncated; the matcher then reports no match for the
+ * homes past the cut, which fails closed. Cost is the response's own
+ * `api_calls_cost` (6-9 credits per postcode in the Oct 2026 test), cached
+ * for the 60-day licence maximum since UPRNs don't change.
+ */
+export async function getPostcodeUprnsResult(
+  postcode: string
+): Promise<PropertyDataResult<PostcodeUprn[]>> {
+  const res = await fetchPropertyData(
+    '/uprns',
+    { postcode, strict: 'true', results: UPRNS_MAX_RESULTS },
+    {
+      ttlMs: MAX_CACHE_TTL_MS,
+      estimatedCredits: 6,
+      creditsFor: (d) => d.api_calls_cost ?? 6,
+      schema: UprnsSchema,
+      hasContent: (d) => Array.isArray(d.data),
+    }
+  );
+  if (res.outcome !== 'ok') return res;
+  const homes: PostcodeUprn[] = [];
+  for (const row of res.value.data ?? []) {
+    if (row.uprn === undefined || !row.address) continue;
+    if (!/^R[DH]/.test(row.classificationCode ?? '')) continue;
+    homes.push({ uprn: String(row.uprn), address: row.address });
+  }
+  return { outcome: 'ok', value: homes };
+}

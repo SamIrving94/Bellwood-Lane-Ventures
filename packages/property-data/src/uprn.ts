@@ -6,7 +6,9 @@
  * nothing else:
  *
  *   1. EPC register — most certificates carry the UPRN the assessor lodged.
- *   2. OS Places    — the canonical address list for the postcode.
+ *   2. PropertyData /uprns — the postcode's homes from the AddressBase list.
+ *      (Until Oct 2026 this was OS Places; its trial licence lapsed and every
+ *      call failed silently, so nothing could reach "high".)
  *
  * Both answer "which addresses exist in this postcode"; we then match the
  * lead's address against each list ourselves. The match is strict by design:
@@ -20,12 +22,11 @@
  */
 
 import { searchDomesticEpc } from './epc';
-import { listPostcodeAddresses } from './os-places';
 
-export type UprnSource = 'epc' | 'os_places';
+export type UprnSource = 'epc' | 'propertydata';
 
 /**
- * high   — EPC and OS Places independently found the same UPRN.
+ * high   — EPC and PropertyData independently found the same UPRN.
  * medium — one source found a single clean match; the other had none or
  *          couldn't answer.
  */
@@ -40,7 +41,7 @@ export type UprnUnresolvedReason =
   | 'no_match'
   /** More than one property matched (often a house split into flats). */
   | 'ambiguous'
-  /** EPC and OS Places matched different UPRNs. */
+  /** EPC and PropertyData matched different UPRNs. */
   | 'sources_disagree'
   /** Neither source could answer (no keys, or both calls failed). */
   | 'sources_unavailable';
@@ -537,7 +538,7 @@ export function matchCandidates(
 /** Combine the two sources' outcomes into one decision. */
 export function combineOutcomes(
   epc: SourceOutcome,
-  os: SourceOutcome
+  pd: SourceOutcome
 ): UprnResolution {
   const unresolved = (reason: UprnUnresolvedReason): UprnResolution => ({
     uprn: null,
@@ -546,19 +547,19 @@ export function combineOutcomes(
     reason,
   });
 
-  if (epc.kind === 'match' && os.kind === 'match') {
-    return epc.uprn === os.uprn
+  if (epc.kind === 'match' && pd.kind === 'match') {
+    return epc.uprn === pd.uprn
       ? {
           uprn: epc.uprn,
           confidence: 'high',
-          sources: ['epc', 'os_places'],
+          sources: ['epc', 'propertydata'],
           reason: null,
         }
       : unresolved('sources_disagree');
   }
   // One clean match is enough only when the other source didn't see
   // several candidates — an ambiguous answer is a warning, not silence.
-  if (epc.kind === 'ambiguous' || os.kind === 'ambiguous') {
+  if (epc.kind === 'ambiguous' || pd.kind === 'ambiguous') {
     return unresolved('ambiguous');
   }
   if (epc.kind === 'match') {
@@ -569,15 +570,15 @@ export function combineOutcomes(
       reason: null,
     };
   }
-  if (os.kind === 'match') {
+  if (pd.kind === 'match') {
     return {
-      uprn: os.uprn,
+      uprn: pd.uprn,
       confidence: 'medium',
-      sources: ['os_places'],
+      sources: ['propertydata'],
       reason: null,
     };
   }
-  if (epc.kind === 'unavailable' && os.kind === 'unavailable') {
+  if (epc.kind === 'unavailable' && pd.kind === 'unavailable') {
     return unresolved('sources_unavailable');
   }
   return unresolved('no_match');
@@ -590,8 +591,8 @@ export function combineOutcomes(
 export interface UprnLookups {
   /** EPC certificates in the postcode; null when the register can't answer. */
   epc: (postcode: string) => Promise<UprnCandidate[] | null>;
-  /** OS Places addresses in the postcode; null when OS can't answer. */
-  os: (postcode: string) => Promise<UprnCandidate[] | null>;
+  /** PropertyData's homes in the postcode; null when it can't answer. */
+  addresses: (postcode: string) => Promise<UprnCandidate[] | null>;
 }
 
 const liveLookups: UprnLookups = {
@@ -602,17 +603,22 @@ const liveLookups: UprnLookups = {
     const rows = await searchDomesticEpc(postcode);
     return rows.map((r) => ({ uprn: r.uprn, address: r.address }));
   },
-  async os(postcode) {
-    const rows = await listPostcodeAddresses(postcode);
-    return (
-      rows?.map((r) => ({ uprn: r.uprn, address: r.address ?? '' })) ?? null
-    );
+  async addresses(postcode) {
+    // Loaded on first use: propertydata.ts is server-only, and scripts that
+    // pass their own lookups (the golden-set pre-fill) must not pull it in.
+    const { getPostcodeUprnsResult } = await import('./propertydata');
+    const res = await getPostcodeUprnsResult(postcode);
+    if (res.outcome === 'ok') return res.value;
+    // 404 is a real "no homes here"; a failure is "couldn't answer".
+    return res.outcome === 'not_found' ? [] : null;
   },
 };
 
 /**
  * Resolve a lead's address to a UPRN, or null with a reason. Two lookups per
- * call (EPC search + OS Places postcode), both free-tier.
+ * call: an EPC search (free) and PropertyData /uprns (6-9 credits per
+ * postcode, cached 60 days). An address with no house in it is refused
+ * before either is called, so a street-only lead costs nothing.
  */
 export async function resolveUprn(
   input: { address: string; postcode: string },
@@ -637,12 +643,12 @@ export async function resolveUprn(
     };
   }
 
-  const [epcRows, osRows] = await Promise.all([
+  const [epcRows, pdRows] = await Promise.all([
     lookups.epc(postcode).catch(() => null),
-    lookups.os(postcode).catch(() => null),
+    lookups.addresses(postcode).catch(() => null),
   ]);
   return combineOutcomes(
     matchCandidates(key, epcRows),
-    matchCandidates(key, osRows)
+    matchCandidates(key, pdRows)
   );
 }

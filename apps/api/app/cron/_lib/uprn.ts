@@ -4,8 +4,10 @@ import { resolveUprn } from '@repo/property-data';
 /**
  * Stamp a UPRN on live scout leads that don't have one yet.
  *
- * Bounded per run: each lead is two free-tier lookups (EPC search + OS
- * Places postcode). A lead that came back unresolved is retried after
+ * Bounded per run: each lead is two lookups, an EPC search (free) and a
+ * PropertyData /uprns postcode list (6-9 credits, cached 60 days per
+ * postcode; a street-only lead is refused before either call, so it costs
+ * nothing). A lead that came back unresolved is retried after
  * RETRY_MS, since new EPC certificates and addresses do land; leads whose
  * address or postcode can't be matched at all are not, because nothing
  * upstream will change that. When neither source could answer, the lead is
