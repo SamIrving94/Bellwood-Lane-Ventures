@@ -453,7 +453,7 @@ const LeadDetailPage = async ({
     assumedPropertyType: string | null;
     /** Verified internal floor area (m²) + where it came from. */
     floorAreaSqm?: number | null;
-    floorAreaSource?: 'caller' | 'propertydata' | null;
+    floorAreaSource?: 'caller' | 'epc_uprn' | 'propertydata' | null;
     /** The same size in sqft, and this house's £/sqft at the AVM. */
     floorAreaSqft?: number | null;
     pricePerSqft?: number | null;
@@ -687,7 +687,9 @@ const LeadDetailPage = async ({
                         ({Math.round(avmFull.floorAreaSqm)} m² · EPC
                         {avmFull.floorAreaSource === 'caller'
                           ? ', entered'
-                          : ''}
+                          : avmFull.floorAreaSource === 'epc_uprn'
+                            ? ', this home’s own certificate'
+                            : ''}
                         )
                       </span>
                     </span>

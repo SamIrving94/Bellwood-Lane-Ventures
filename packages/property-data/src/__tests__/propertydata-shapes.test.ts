@@ -203,14 +203,23 @@ describe('/floor-areas', () => {
     expect(rows[1]?.floorAreaSqm).toBe(80); // 861 sq ft = 79.99 m²
   });
 
-  it('resolves one property by house number, and refuses to guess without one', async () => {
+  it('resolves one property by its address, and refuses to guess without one', async () => {
     await expect(
-      getPropertyFloorArea({ postcode: 'DL2 3JP', address: '34A North Green' })
+      getPropertyFloorArea({
+        postcode: 'DL2 3JP',
+        address: '34A Redacted Green, Staindrop',
+      })
     ).resolves.toEqual({
       floorAreaSqm: 112,
       matchedAddress: '34a Redacted Green, Staindrop',
-      matchSource: 'house_number',
+      matchSource: 'address_match',
     });
+    // Same number, different street: a neighbour's certificate, not this
+    // home's. The old house-number match took it (Oct 2026: "Flat 5, 38 …"
+    // sized "Flat 5, 22 …" at double its real floor area).
+    await expect(
+      getPropertyFloorArea({ postcode: 'DL2 3JP', address: '34A North Green' })
+    ).resolves.toBeNull();
     // Street-only address: the register has no type/bedrooms to match on.
     await expect(
       getPropertyFloorArea({

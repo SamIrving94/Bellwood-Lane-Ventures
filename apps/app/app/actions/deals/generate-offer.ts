@@ -39,6 +39,7 @@ export async function generateDealOffer(dealId: string) {
       propertyType: true,
       bedrooms: true,
       sellerType: true,
+      uprn: true,
     },
   });
   if (!deal) throw new Error('Deal not found');
@@ -64,6 +65,7 @@ export async function generateDealOffer(dealId: string) {
     postcode: deal.postcode,
     propertyType: avmPropertyType as never,
     address: deal.address,
+    uprn: deal.uprn ?? undefined,
     bedrooms: deal.bedrooms ?? undefined,
     sellerType: avmSellerType as never,
     dealId: deal.id,

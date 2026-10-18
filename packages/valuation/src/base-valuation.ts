@@ -29,6 +29,7 @@ import {
   getEpcData,
   getPropertyDataValuation,
   getPropertyFloorArea,
+  getEpcFloorAreaByUprn,
   getFloorAreaRows,
   getPricesPerSqf,
   getSectorPricePaid,
@@ -63,6 +64,11 @@ export interface BaseValuationInput {
   floorAreaSqm?: number;
   bedrooms?: number;
   address?: string;
+  /**
+   * The home's UPRN when we know it (lead/deal `uprn`). Lets the size come
+   * from THIS home's own EPC certificate instead of address text matching.
+   */
+  uprn?: string;
 }
 
 export interface ComparableSale {
@@ -99,8 +105,11 @@ export interface BaseValuation {
   hpi: Hpi;
   epc: Epc;
   floorAreaSqm: number | null;
-  /** Where floorAreaSqm came from. null when we have no real size. */
-  floorAreaSource: 'caller' | 'propertydata' | null;
+  /**
+   * Where floorAreaSqm came from. null when we have no real size.
+   * 'epc_uprn' = this home's own EPC certificate, found by UPRN (Oct 2026).
+   */
+  floorAreaSource: 'caller' | 'epc_uprn' | 'propertydata' | null;
   /** The address the floor area was matched to (includes the house number). */
   resolvedAddress: string | null;
   pricePerSqm: number | null;
@@ -310,61 +319,82 @@ function hedonicEstimate(
 export async function getBaseValuation(
   input: BaseValuationInput
 ): Promise<BaseValuation> {
-  const { postcode, propertyType, floorAreaSqm, bedrooms, address } = input;
+  const { postcode, propertyType, floorAreaSqm, bedrooms, address, uprn } =
+    input;
 
-  const [pricePaid, hpi, epc, externalAvm, distanceWeighted, pdFloorArea] =
-    await Promise.all([
-      getPricePaid(postcode, 20),
-      getHousepriceIndex(postcode),
-      getEpcData(postcode, address),
-      // PropertyData's £/sqft-driven AVM. Cached 7 days per postcode+type+
-      // bedrooms so we burn ~3 credits per unique property per week.
-      //
-      // A FAILED lookup now throws rather than returning null. We catch it here so
-      // one dark cross-check can't take down a valuation that has HMLR comps — but
-      // we log it, because "no AVM" and "AVM unreachable" are different facts and
-      // only one of them is a reason to distrust the estimate.
-      getPropertyDataValuation({
-        postcode,
-        propertyType,
-        bedrooms: bedrooms ?? undefined,
-        // m², matching this package's units. See the unit caveat on
-        // getPropertyDataValuation — /valuation-sale's expected unit is unconfirmed.
-        internalAreaSqm: floorAreaSqm ?? undefined,
-      }).catch((err) => {
-        console.warn(
-          `[base-valuation] external AVM cross-check unavailable for ${postcode}`,
-          err
-        );
-        return null;
-      }),
-      // Distance-weighted sold comps (last 12mo, 0.25mi=60% / 0.5mi=40%).
-      // Returns null when the subject can't be geolocated or there are no
-      // comps — we then fall back to the Land-Registry exact-postcode path.
-      getDistanceWeightedValuation({
-        postcode,
-        propertyType,
-        bedrooms: bedrooms ?? undefined,
-        maxAgeMonths: 12,
-      }),
-      // Real, EPC-derived floor area for THIS property (house-number matched).
-      // Returns null when we can't pin an unambiguous record — we then show no
-      // size rather than a guess. NOT the postcode average.
-      // Same treatment: a failed /floor-areas lookup must not masquerade as
-      // "no unambiguous record for this address".
-      getPropertyFloorArea({
-        postcode,
-        address,
-        propertyType,
-        bedrooms: bedrooms ?? undefined,
-      }).catch((err) => {
-        console.warn(
-          `[base-valuation] PropertyData floor-area lookup unavailable for ${postcode}`,
-          err
-        );
-        return null;
-      }),
-    ]);
+  const [
+    pricePaid,
+    hpi,
+    epc,
+    externalAvm,
+    distanceWeighted,
+    pdFloorArea,
+    uprnFloorArea,
+  ] = await Promise.all([
+    getPricePaid(postcode, 20),
+    getHousepriceIndex(postcode),
+    getEpcData(postcode, address),
+    // PropertyData's £/sqft-driven AVM. Cached 7 days per postcode+type+
+    // bedrooms so we burn ~3 credits per unique property per week.
+    //
+    // A FAILED lookup now throws rather than returning null. We catch it here so
+    // one dark cross-check can't take down a valuation that has HMLR comps — but
+    // we log it, because "no AVM" and "AVM unreachable" are different facts and
+    // only one of them is a reason to distrust the estimate.
+    getPropertyDataValuation({
+      postcode,
+      propertyType,
+      bedrooms: bedrooms ?? undefined,
+      // m², matching this package's units. See the unit caveat on
+      // getPropertyDataValuation — /valuation-sale's expected unit is unconfirmed.
+      internalAreaSqm: floorAreaSqm ?? undefined,
+    }).catch((err) => {
+      console.warn(
+        `[base-valuation] external AVM cross-check unavailable for ${postcode}`,
+        err
+      );
+      return null;
+    }),
+    // Distance-weighted sold comps (last 12mo, 0.25mi=60% / 0.5mi=40%).
+    // Returns null when the subject can't be geolocated or there are no
+    // comps — we then fall back to the Land-Registry exact-postcode path.
+    getDistanceWeightedValuation({
+      postcode,
+      propertyType,
+      bedrooms: bedrooms ?? undefined,
+      maxAgeMonths: 12,
+    }),
+    // Real, EPC-derived floor area for THIS property (house-number matched).
+    // Returns null when we can't pin an unambiguous record — we then show no
+    // size rather than a guess. NOT the postcode average.
+    // Same treatment: a failed /floor-areas lookup must not masquerade as
+    // "no unambiguous record for this address".
+    getPropertyFloorArea({
+      postcode,
+      address,
+      propertyType,
+      bedrooms: bedrooms ?? undefined,
+    }).catch((err) => {
+      console.warn(
+        `[base-valuation] PropertyData floor-area lookup unavailable for ${postcode}`,
+        err
+      );
+      return null;
+    }),
+    // THIS home's own EPC certificate, by UPRN (free). Beats the text
+    // match above whenever we know the UPRN: no neighbour's certificate,
+    // no "no size" for block flats the text match can't read. A failure is
+    // logged and treated as "no certificate", never as a size.
+    uprn
+      ? getEpcFloorAreaByUprn(postcode, uprn).catch((err) => {
+          console.warn(
+            `[base-valuation] EPC-by-UPRN lookup unavailable for ${postcode}`,
+            err
+          );
+          return null;
+        })
+      : Promise.resolve(null),
+  ]);
 
   // Real Land Registry sales only — a hash-derived placeholder must never be
   // presented as a comparable. When the feed was synthetic this empties the
@@ -378,17 +408,29 @@ export async function getBaseValuation(
 
   // Floor-area resolution — real data or nothing. Priority:
   //   1. Caller-supplied size (a human typed it).
-  //   2. PropertyData /floor-areas exact/unique match (real EPC record).
+  //   2. This home's own EPC certificate, by UPRN (Oct 2026 — the founder
+  //      overrode the AVM method freeze for this on measured evidence; see
+  //      CLAUDE.md).
+  //   3. PropertyData /floor-areas, strict address match (real EPC record).
   // We deliberately DO NOT fall back to epc.floorAreaSqm here: that comes from
   // a street-level EPC search that can grab a neighbouring property (the M14
   // "doubled size" bug). No match → null → the UI shows no size.
-  const effectiveFloorArea = floorAreaSqm ?? pdFloorArea?.floorAreaSqm ?? null;
+  const effectiveFloorArea =
+    floorAreaSqm ??
+    uprnFloorArea?.floorAreaSqm ??
+    pdFloorArea?.floorAreaSqm ??
+    null;
   const floorAreaSource: BaseValuation['floorAreaSource'] = floorAreaSqm
     ? 'caller'
-    : pdFloorArea
-      ? 'propertydata'
-      : null;
-  const resolvedAddress = pdFloorArea?.matchedAddress ?? null;
+    : uprnFloorArea
+      ? 'epc_uprn'
+      : pdFloorArea
+        ? 'propertydata'
+        : null;
+  const resolvedAddress =
+    (floorAreaSqm ? null : uprnFloorArea?.address) ??
+    pdFloorArea?.matchedAddress ??
+    null;
   const effectiveBedrooms = bedrooms ?? epc.totalBedrooms ?? undefined;
 
   // CSA value — comparable sales adjusted value. Priority:
