@@ -199,7 +199,7 @@ export function OfferForm() {
       setStep('done');
     } catch {
       setError(
-        'That didn’t go through. Try again, or email us and a person will pick it up the same day.'
+        'That didn’t go through. Try again, or email us and a person will pick it up within 24 hours.'
       );
     } finally {
       setSending(false);
@@ -217,7 +217,7 @@ export function OfferForm() {
           Thank you. We will be in touch.
         </p>
         <p className="mt-2.5 text-[13.5px] text-stone-600 leading-relaxed">
-          One of us will come back to you the same day, Monday to Friday, to
+          One of us will come back to you within 24 hours, Monday to Friday, to
           talk through your situation and arrange a time to come and see the
           property. No figure until we&rsquo;ve stood in the house; once we
           have, your written offer follows within two working days.
@@ -492,7 +492,7 @@ export function OfferForm() {
             </button>
           </div>
           <p className="mt-3.5 text-[13px] text-stone-600 leading-normal">
-            A real person reads it. Same-day response, Monday to Friday. We only
+            A real person reads it. 24-hour response, Monday to Friday. We only
             use these to get back to you; your details are never sold or passed
             to anyone else. <BackLink onClick={() => setStep('situation')} />
           </p>

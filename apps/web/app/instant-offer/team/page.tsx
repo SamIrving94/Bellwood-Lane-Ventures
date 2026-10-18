@@ -61,7 +61,7 @@ export default function TeamPage() {
           >
             Start with the address
           </Link>{' '}
-          and Anthony will come back to you the same day, Monday to Friday.
+          and Anthony will come back to you within 24 hours, Monday to Friday.
         </p>
       </section>
     </>

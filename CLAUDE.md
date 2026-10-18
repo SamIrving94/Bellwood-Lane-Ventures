@@ -194,7 +194,7 @@ Run a task for one workspace with a filter, e.g.
   layer being edited. SW3 happened because the prime-track work edited the
   classifier and the seed script but never opened the area resolver.
 - **Public promises — live site copy is the source of truth.** The promise is:
-  same-day response → we view every property → confirmed written offer sent
+  24-hour response (founder, 18 Oct 2026; was same-day) → we view every property → confirmed written offer sent
   within two working days of viewing, binding upon Kept for a week →
   completion in weeks not months, as little as two weeks. (Updated with the
   signed-off Aug 2026 homepage copy; the backend `lockedUntil` in

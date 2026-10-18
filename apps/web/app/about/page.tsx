@@ -106,7 +106,7 @@ export default function AboutPage() {
               is automated, which is why it&rsquo;s fast. The judgment
               isn&rsquo;t. No figure reaches you until one of us has read it,
               checked it and put our name to it. Write to us and it&rsquo;s
-              Anthony who reads it. Same-day response, Monday to Friday.
+              Anthony who reads it. 24-hour response, Monday to Friday.
             </p>
             <p className="mt-4 max-w-xl text-[15px] text-stone-600 leading-[1.7]">
               We view every property before we price it, and the price we send
@@ -143,7 +143,7 @@ export default function AboutPage() {
           <div>
             <Button href="/sell#offer">Send us your details</Button>
             <p className="mt-[18px] text-[14px] text-stone-600 leading-[1.6]">
-              Same-day response, Monday to Friday. No figure until we&rsquo;ve
+              24-hour response, Monday to Friday. No figure until we&rsquo;ve
               stood in the house.
             </p>
           </div>

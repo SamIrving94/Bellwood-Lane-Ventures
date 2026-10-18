@@ -65,7 +65,7 @@ const KEPT_STEPS: SituationContent['steps'] = [
   {
     n: '01',
     t: 'You get in touch',
-    d: 'Tell us the address and a little about your situation. We come back to you the same day. Before we bother you for anything else, we pull what we can ourselves: Land Registry, EPC, planning.',
+    d: 'Tell us the address and a little about your situation. We come back to you within 24 hours. Before we bother you for anything else, we pull what we can ourselves: Land Registry, EPC, planning.',
   },
   {
     n: '02',
@@ -91,7 +91,7 @@ export const SITUATION_CONTENT: Record<SituationKey, SituationContent> = {
     eyebrow: 'a guide for executors',
     h1a: 'Probate,',
     h1b: 'in plain English.',
-    sub: 'You have lost someone, and now there is a house to deal with as well. This page sets out what happens next: the steps in the order they come, the two dates that genuinely matter, and where selling fits. Nothing here needs doing today. And if you would rather talk it through than read it, Anthony answers himself, the same day.',
+    sub: 'You have lost someone, and now there is a house to deal with as well. This page sets out what happens next: the steps in the order they come, the two dates that genuinely matter, and where selling fits. Nothing here needs doing today. And if you would rather talk it through than read it, Anthony answers himself, within 24 hours.',
     disclaimer:
       'This is general information, not legal or tax advice. For the estate’s specific position, speak to a solicitor.',
     fitTitle: 'Agree the price now. Complete on the grant date.',
@@ -177,7 +177,7 @@ export const SITUATION_CONTENT: Record<SituationKey, SituationContent> = {
     sub: 'Months of work, undone weeks from the finish. Tell us the address today. We view the property, then we confirm an offer in writing within two working days of that viewing, and the price we write down is the price we complete at.',
     fitTitle: 'We step in where your buyer stepped out.',
     fitBody:
-      'Roughly a third of agreed sales in England and Wales never reach completion. When yours is one of them, the question is no longer what the house is worth in six months, it is whether your onward move survives the next three weeks.',
+      'Roughly a quarter of agreed sales in England and Wales never reach completion. When yours is one of them, the question is no longer what the house is worth in six months, it is whether your onward move survives the next three weeks.',
     cards: [
       {
         t: 'No chain to collapse',
@@ -206,7 +206,7 @@ export const SITUATION_CONTENT: Record<SituationKey, SituationContent> = {
     honestBody:
       'If your onward purchase is safe and you can put the house back on the market for a few more months, the open market will almost certainly get you a better price. Speed is the trade you are paying for with us.',
     ctaLabel: 'Send us your details',
-    mobileNote: 'Same-day response',
+    mobileNote: '24-hour response',
   },
   separation: {
     situation: 'other',
@@ -287,7 +287,7 @@ export const SITUATION_CONTENT: Record<SituationKey, SituationContent> = {
     honestBody:
       'If the property is in excellent condition and high demand, and your move can absorb a few months of chain risk, a good high-street agent will very likely net you more. That is their wedge, not ours.',
     ctaLabel: 'Send us your details',
-    mobileNote: 'Same-day response',
+    mobileNote: '24-hour response',
   },
   'problem-property': {
     situation: 'problem_property',
