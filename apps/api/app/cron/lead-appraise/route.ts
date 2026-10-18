@@ -442,7 +442,7 @@ export const POST = async (request: Request) => {
 
   // One stable property ID per lead (EPC + PropertyData, strict match). Its own
   // try: an identity lookup must never fail the appraisal run.
-  let uprns = { checked: 0, resolved: 0 };
+  let uprns = { checked: 0, resolved: 0, listingLookups: 0 };
   try {
     uprns = await resolveLeadUprns();
   } catch (err) {
@@ -450,7 +450,7 @@ export const POST = async (request: Request) => {
   }
 
   await recordCronHeartbeat('lead-appraise', {
-    note: `appraised ${appraised}/${pending.length}${declined ? `, ${declined} declined (no evidence)` : ''}; UPRN ${uprns.resolved}/${uprns.checked}`,
+    note: `appraised ${appraised}/${pending.length}${declined ? `, ${declined} declined (no evidence)` : ''}; UPRN ${uprns.resolved}/${uprns.checked}, listing lookups ${uprns.listingLookups}`,
   });
 
   return NextResponse.json({
