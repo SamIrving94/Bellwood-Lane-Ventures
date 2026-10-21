@@ -37,7 +37,6 @@ const SEED_CONFIGS = {
       hmlr_price_paid: 1.0,
       hmlr_hpi: 0.8,
       epc: 0.6,
-      os_places: 0.5,
     },
     monthlyAppreciationRate: 0.004,
     typeDiscounts: {

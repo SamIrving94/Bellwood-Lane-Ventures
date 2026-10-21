@@ -1,7 +1,7 @@
 # @repo/mcp-server
 
 Bellwood Ventures **Model Context Protocol** server. Exposes Bellwood's
-domain primitives — HMLR / EPC / OS Places / HPI / Companies House /
+domain primitives — HMLR / EPC / HPI / Companies House /
 scout DB / deal pipeline / founder action centre — as MCP tools that
 Claude Code, Cursor, or any in-product agent can call in natural language.
 
@@ -19,7 +19,6 @@ Claude Code, Cursor, or any in-product agent can call in natural language.
 |---|---|---|
 | `lookup_hmlr_pricepaid` | HMLR Price Paid Data | Recent comparables for a postcode |
 | `lookup_epc` | EPC Register | Energy band, floor area, bedrooms for a property |
-| `lookup_os_places` | Ordnance Survey Places | Address ↔ UPRN resolution |
 | `lookup_hpi` | HMLR HPI | Annual / monthly trend for a region |
 | `search_companies_house` | Companies House | Company status, address, SIC codes |
 | `search_dissolved_property_companies` | Companies House | Dissolved property-related firms (lead source) |
@@ -57,7 +56,6 @@ Claude Code, Cursor, or any in-product agent can call in natural language.
 
    ```sh
    export DATABASE_URL="postgres://..."
-   export OS_PLACES_API_KEY="..."
    export EPC_API_TOKEN="..."   # bearer token from get-energy-performance-data.communities.gov.uk My account
    export COMPANIES_HOUSE_API_KEY="..."
    export PROPERTYDATA_API_KEY="..."
@@ -108,7 +106,6 @@ src/
 ├── tools/
 │   ├── lookup-hmlr.ts         ← one file per tool
 │   ├── lookup-epc.ts
-│   ├── lookup-os-places.ts
 │   ├── lookup-hpi.ts
 │   ├── search-companies-house.ts  ← search + dissolved together
 │   ├── query-scout-db.ts

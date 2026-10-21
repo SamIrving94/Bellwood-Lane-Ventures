@@ -10,7 +10,6 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { registerLookupHmlr } from './lookup-hmlr';
 import { registerLookupEpc } from './lookup-epc';
-import { registerLookupOsPlaces } from './lookup-os-places';
 import { registerLookupHpi } from './lookup-hpi';
 import { registerSearchCompaniesHouse } from './search-companies-house';
 import { registerQueryScoutDb } from './query-scout-db';
@@ -20,7 +19,6 @@ import { registerReadFounderActions } from './read-founder-actions';
 export function registerAll(server: McpServer): void {
   registerLookupHmlr(server);
   registerLookupEpc(server);
-  registerLookupOsPlaces(server);
   registerLookupHpi(server);
   registerSearchCompaniesHouse(server);
   registerQueryScoutDb(server);
@@ -31,7 +29,6 @@ export function registerAll(server: McpServer): void {
 export const TOOL_NAMES = [
   'lookup_hmlr_pricepaid',
   'lookup_epc',
-  'lookup_os_places',
   'lookup_hpi',
   'search_companies_house',
   'search_dissolved_property_companies',
