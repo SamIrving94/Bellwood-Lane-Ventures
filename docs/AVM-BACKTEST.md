@@ -1,6 +1,6 @@
 # The AVM backtest: how we know if the valuation engine is any good
 
-_Last verified against the code: 2026-09-12._
+_Last verified against the code: 2026-10-21._
 
 The Sep 2026 review (`docs/research/scout-appraisal-review-2026-09.md`)
 said the AVM should not change again until it is measured. This is the
@@ -47,13 +47,29 @@ the engine said £X, what did the house actually sell for?**
 
 Segments: confidence label, comps path (radius comps / postcode comps /
 no comps), source (scout lead / deal / quote / batch / backfill), sale
-price band, property type, engine version.
+price band, property type, engine version, floor-area source.
+
+The floor-area segment (`byFloorAreaSource` in the stored rollup) reads
+`resultJson.floorAreaSource` off each frozen snapshot:
+
+| Label | Meaning |
+|:--|:--|
+| `epc_uprn` | Sized from the home's own EPC certificate, by UPRN (from 18 Oct 2026) |
+| `propertydata` | Sized by an address match. Before 18 Oct 2026 a leading-house-number match; after, a strict same-home match |
+| `caller` | Someone typed the size in |
+| `none` | The engine ran with no verified size (`null`) |
+| `unknown` | Field missing or not one of the above. Kept apart from `none` on purpose |
+
+Rollups stored before 21 Oct 2026 have no `byFloorAreaSource`; the
+dashboard table appears from the next monthly run.
 
 ## Sample-size honesty
 
 - Under **30** matched sales: no verdict. The card says "too few".
 - Under **200**: directional only.
-- A **segment** needs about **100** sales before it means anything.
+- A **segment** needs about **100** sales before it means anything
+  (`MIN_SAMPLE_FOR_SEGMENT`). The dashboard greys out any segment row
+  under 100 and marks it "too few".
 - The first matches land a few months after the first snapshots. A sale
   takes months to complete and register.
 
@@ -71,7 +87,10 @@ price band, property type, engine version.
   Snapshots from then on carry `floorAreaSource: 'epc_uprn'` when that path
   sized the home (else `propertydata` with the strict address match, or
   `caller`). Compare cohorts by engine version (before vs after this commit)
-  and by `floorAreaSource`. Why it was allowed during the freeze: see
+  and by the floor-area segment. Read `epc_uprn` against `propertydata`
+  only once each has about 100 matched sales; until then the table is a
+  count, not a verdict. `propertydata` mixes the old loose match and the
+  new strict one, so pair it with the engine version. Why it was allowed during the freeze: see
   CLAUDE.md, "One override, on measured evidence".
 
 ## Rules

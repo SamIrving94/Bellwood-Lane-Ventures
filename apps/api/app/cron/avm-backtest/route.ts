@@ -9,6 +9,7 @@ import {
   type MatchedRow,
   RECHECK_AFTER_DAYS,
   buildBacktestActionCopy,
+  floorAreaSourceOf,
   pickOutcomeSale,
   summariseMatched,
 } from '../_lib/avm-backtest';
@@ -28,8 +29,9 @@ import { recordCronHeartbeat } from '../_lib/heartbeat';
  *      the appraisal, one free HMLR call per postcode, confident address
  *      matches only. Rows past the 18-month window are written off.
  *   3. REPORT: roll the whole matched cohort up (overall + by confidence,
- *      source, type, comps path, price band, engine version), store it as an
- *      AgentEvent, and refresh one deduped founder card for the month.
+ *      source, type, comps path, price band, engine version, floor-area
+ *      source), store it as an AgentEvent, and refresh one deduped founder
+ *      card for the month.
  *
  * Nothing here edits a snapshot's frozen appraisal fields — only the outcome
  * columns are appended. The AVM itself is NOT changed by this cron: the
@@ -184,11 +186,17 @@ async function handle(request: Request) {
       propertyType: true,
       csaSource: true,
       engineVersion: true,
+      // Only for floorAreaSource; reduced to a label below, never stored.
+      resultJson: true,
     },
   });
   const cohort: MatchedRow[] = matchedRows
     .filter((r) => r.soldPricePence != null)
-    .map((r) => ({ ...r, soldPricePence: r.soldPricePence as number }));
+    .map(({ resultJson, ...r }) => ({
+      ...r,
+      soldPricePence: r.soldPricePence as number,
+      floorAreaSource: floorAreaSourceOf(resultJson),
+    }));
   const summary = summariseMatched(cohort);
 
   const counts = await database.avmSnapshot.groupBy({

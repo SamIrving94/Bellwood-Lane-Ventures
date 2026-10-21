@@ -26,6 +26,33 @@ export type WhatsNewEntry = {
 /** Newest first. The popup shows index 0. */
 export const WHATS_NEW: WhatsNewEntry[] = [
   {
+    id: '2026-10-21-backtest-floor-area',
+    date: '2026-10-21',
+    emoji: '📏',
+    title: 'AVM accuracy, split by home size source',
+    intro:
+      'Did sizing homes from their own EPC help? The accuracy page will show it.',
+    bullets: [
+      {
+        emoji: '🆕',
+        text: '**New table:** accuracy by **where the floor area came from**.',
+      },
+      {
+        emoji: '🆚',
+        text: '**Own EPC vs address match** sit side by side.',
+      },
+      {
+        emoji: '🌫️',
+        text: 'Any row **under 100 sales** is greyed out and marked **too few**.',
+      },
+      {
+        emoji: '📅',
+        text: 'It fills in from the **next monthly check** (28th).',
+      },
+    ],
+    cta: { label: 'Open AVM accuracy', href: '/appraisals/backtest' },
+  },
+  {
     id: '2026-10-21-provider-health',
     date: '2026-10-21',
     emoji: '🩺',

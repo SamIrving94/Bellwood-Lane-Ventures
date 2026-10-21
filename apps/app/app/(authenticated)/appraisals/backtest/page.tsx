@@ -18,11 +18,12 @@ export const dynamic = 'force-dynamic';
  * Reads the cohort /cron/avm-backtest maintains: every appraisal frozen at
  * decision time, matched monthly to the property's first Land Registry sale
  * after it. Shows the latest roll-up (overall + by confidence, comps path,
- * source, price band, engine version) and the most recent matched sales so
- * a number can be traced to a house.
+ * source, price band, engine version, floor-area source) and the most
+ * recent matched sales so a number can be traced to a house.
  *
  * Sample-size honesty is the page's job: under 30 matched sales it says
- * "too few", under 200 it says "directional".
+ * "too few", under 200 it says "directional", and a segment row under 100
+ * sales is greyed out and marked "too few".
  */
 
 type Report = {
@@ -46,6 +47,8 @@ type Summary = {
   byCsaSource: Record<string, Report>;
   byPriceBand: Record<string, Report>;
   byEngineVersion: Record<string, Report>;
+  // Added Oct 2026; events stored before then do not carry it.
+  byFloorAreaSource?: Record<string, Report>;
 };
 
 type Payload = {
@@ -83,6 +86,17 @@ const CSA_LABELS: Record<string, string> = {
   hmlr: 'Postcode comps',
   synthetic: 'No comps (fallback)',
 };
+// The 18 Oct 2026 change sized homes from their own EPC by UPRN; this
+// table is how the backtest sets those rows against the rest.
+const FLOOR_AREA_LABELS: Record<string, string> = {
+  epc_uprn: 'Own EPC (by UPRN)',
+  propertydata: 'Address match',
+  caller: 'Typed in by hand',
+  none: 'No size',
+  unknown: 'Not recorded',
+};
+// Matches MIN_SAMPLE_FOR_SEGMENT in apps/api/app/cron/_lib/avm-backtest.ts.
+const MIN_SAMPLE_FOR_SEGMENT = 100;
 const SOURCE_LABELS: Record<string, string> = {
   scout_lead: 'Scout leads',
   deal: 'Deals',
@@ -95,11 +109,14 @@ const SegmentTable = ({
   title,
   rows,
   labels,
+  note,
 }: {
   title: string;
-  rows: Record<string, Report>;
+  rows: Record<string, Report> | undefined;
   labels?: Record<string, string>;
+  note?: string;
 }) => {
+  if (!rows) return null;
   const entries = Object.entries(rows).sort((a, b) => b[1].n - a[1].n);
   if (entries.length === 0) return null;
   return (
@@ -119,9 +136,19 @@ const SegmentTable = ({
           </thead>
           <tbody>
             {entries.map(([key, r]) => (
-              <tr key={key} className="border-t">
+              <tr
+                key={key}
+                className={`border-t ${
+                  r.n < MIN_SAMPLE_FOR_SEGMENT ? 'text-muted-foreground' : ''
+                }`}
+              >
                 <td className="px-4 py-2">{labels?.[key] ?? key}</td>
-                <td className="px-4 py-2 text-right tabular-nums">{r.n}</td>
+                <td className="px-4 py-2 text-right tabular-nums">
+                  {r.n}
+                  {r.n < MIN_SAMPLE_FOR_SEGMENT ? (
+                    <span className="ml-1 text-xs">· too few</span>
+                  ) : null}
+                </td>
                 <td className="px-4 py-2 text-right tabular-nums">
                   {pct(r.medianApe)}
                 </td>
@@ -140,7 +167,8 @@ const SegmentTable = ({
         </table>
       </div>
       <p className="px-4 py-2 text-muted-foreground text-xs">
-        Read a segment only once it has about 100 sales.
+        {note ? `${note} ` : ''}Read a segment only once it has about{' '}
+        {MIN_SAMPLE_FOR_SEGMENT} sales.
       </p>
     </section>
   );
@@ -321,6 +349,12 @@ const BacktestPage = async () => {
             />
             <SegmentTable title="By property type" rows={summary.byPropertyType} />
             <SegmentTable title="By engine version" rows={summary.byEngineVersion} />
+            <SegmentTable
+              title="By where the floor area came from"
+              rows={summary.byFloorAreaSource}
+              labels={FLOOR_AREA_LABELS}
+              note="Own-EPC sizing started 18 Oct 2026. Address matches before then used a looser match, so compare engine versions too."
+            />
           </div>
         ) : null}
 

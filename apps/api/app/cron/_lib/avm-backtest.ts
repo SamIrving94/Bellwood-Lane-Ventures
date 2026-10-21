@@ -127,6 +127,38 @@ export function priceBand(pence: number): string {
   return 'over_1m';
 }
 
+/**
+ * Where the snapshot's floor area came from, read off the frozen resultJson.
+ *
+ * The one method change allowed during the freeze (18 Oct 2026) sizes the
+ * home from its own EPC certificate by UPRN; the backtest has to be able to
+ * set those rows against the rest. Labels:
+ *  - `epc_uprn` / `propertydata` / `caller` — as the engine recorded them;
+ *  - `none` — the engine ran but had no verified size (`null`);
+ *  - `unknown` — the field is missing or holds something we do not expect.
+ *    Never folded into `none`: "no size" and "can't tell" are different.
+ *
+ * `propertydata` spans two methods: before PR #142 it was a leading-house-
+ * number match, after it a strict same-home match. Cross it with the engine
+ * version to tell them apart.
+ */
+export function floorAreaSourceOf(resultJson: unknown): string {
+  if (!resultJson || typeof resultJson !== 'object') {
+    return 'unknown';
+  }
+  if (!('floorAreaSource' in resultJson)) {
+    return 'unknown';
+  }
+  const v = (resultJson as { floorAreaSource: unknown }).floorAreaSource;
+  if (v === null) {
+    return 'none';
+  }
+  if (v === 'epc_uprn' || v === 'propertydata' || v === 'caller') {
+    return v;
+  }
+  return 'unknown';
+}
+
 export interface MatchedRow {
   pointEstimatePence: number;
   lowPence: number | null;
@@ -137,6 +169,8 @@ export interface MatchedRow {
   propertyType: string;
   csaSource: string | null;
   engineVersion: string | null;
+  /** From `floorAreaSourceOf(resultJson)`. */
+  floorAreaSource: string;
 }
 
 export interface BacktestSummary {
@@ -148,6 +182,7 @@ export interface BacktestSummary {
   byCsaSource: Record<string, BacktestReport>;
   byPriceBand: Record<string, BacktestReport>;
   byEngineVersion: Record<string, BacktestReport>;
+  byFloorAreaSource: Record<string, BacktestReport>;
 }
 
 const toSample = (r: MatchedRow): BacktestSample => ({
@@ -186,6 +221,7 @@ export function summariseMatched(rows: MatchedRow[]): BacktestSummary {
     byCsaSource: groupBy(rows, (r) => r.csaSource ?? 'unknown'),
     byPriceBand: groupBy(rows, (r) => priceBand(r.soldPricePence)),
     byEngineVersion: groupBy(rows, (r) => r.engineVersion ?? 'unknown'),
+    byFloorAreaSource: groupBy(rows, (r) => r.floorAreaSource),
   };
 }
 
@@ -196,6 +232,8 @@ export function summariseMatched(rows: MatchedRow[]): BacktestSummary {
  */
 export const MIN_SAMPLE_FOR_HEADLINE = 30;
 export const SAMPLE_FOR_TRUST = 200;
+/** A segment cell means little below this many matched sales. */
+export const MIN_SAMPLE_FOR_SEGMENT = 100;
 
 const pct = (f: number) => `${(f * 100).toFixed(1)}%`;
 
