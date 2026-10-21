@@ -23,6 +23,7 @@ export type { PropertyDataType };
 import { z } from 'zod';
 import { keys } from '../keys';
 import { type MarketSignals, buildMarketSignals } from './market-signals';
+import type { ProviderProbe } from './provider-probe';
 
 const env = keys();
 
@@ -2247,6 +2248,36 @@ export async function getAccountCredits() {
   );
 }
 
+/**
+ * Health probe: the free /account/credits read, kept in the result model so
+ * the error survives (see provider-probe.ts). Chosen because it spends no
+ * credits; the 1-minute cache can't mask a key that died a day ago.
+ */
+export async function probePropertyData(): Promise<ProviderProbe> {
+  const res = await fetchPropertyData(
+    '/account/credits',
+    {},
+    {
+      ttlMs: 60 * 1000,
+      estimatedCredits: 0,
+      schema: CreditsSchema,
+      hasContent: (d) => d.result !== undefined,
+    }
+  );
+  if (res.outcome === 'failed') return { ok: false, error: res.error };
+  if (res.outcome === 'not_found') {
+    return { ok: false, error: '/account/credits returned 404' };
+  }
+  const remaining = res.value.result?.credits_remaining;
+  return {
+    ok: true,
+    detail:
+      remaining === undefined
+        ? 'answered'
+        : `${remaining} credits remaining`,
+  };
+}
+
 // ---------------------------------------------------------------------------
 // Endpoint: /planning-applications — local planning activity
 // Properties with active planning applications are often in transition
@@ -3478,6 +3509,51 @@ export async function getPostcodeUprnsResult(
     homes.push({ uprn: String(row.uprn), address: row.address });
   }
   return { outcome: 'ok', value: homes };
+}
+
+/**
+ * Health probe for /uprns, the UPRN matcher's second source (see
+ * provider-probe.ts). Deliberately NOT via getPostcodeUprnsResult: that is
+ * cached for 60 days, so a daily probe through it would answer from cache
+ * and never notice the endpoint dying. A smaller `results` gives this probe
+ * its own cache key, and a 1-minute TTL means each daily run really calls
+ * PropertyData (a few credits a day).
+ *
+ * Healthy = PropertyData answered AND returned homes. The probe postcode is
+ * a residential street, so an answer with no homes means the shape or the
+ * classification filter has drifted — exactly the silent failure to catch.
+ */
+export async function probePostcodeUprns(
+  postcode: string
+): Promise<ProviderProbe> {
+  const res = await fetchPropertyData(
+    '/uprns',
+    { postcode, strict: 'true', results: 20 },
+    {
+      ttlMs: 60 * 1000,
+      estimatedCredits: 2,
+      creditsFor: (d) => d.api_calls_cost ?? 2,
+      schema: UprnsSchema,
+      hasContent: (d) => Array.isArray(d.data),
+    }
+  );
+  if (res.outcome === 'failed') return { ok: false, error: res.error };
+  if (res.outcome === 'not_found') {
+    return { ok: false, error: `/uprns returned 404 for ${postcode}` };
+  }
+  const homes = (res.value.data ?? []).filter(
+    (row) =>
+      row.uprn !== undefined &&
+      !!row.address &&
+      HOME_CLASSIFICATION.test(row.classificationCode ?? '')
+  ).length;
+  if (homes === 0) {
+    return {
+      ok: false,
+      error: `/uprns answered but returned no homes for ${postcode}`,
+    };
+  }
+  return { ok: true, detail: `${homes} homes in ${postcode}` };
 }
 
 // ---------------------------------------------------------------------------
