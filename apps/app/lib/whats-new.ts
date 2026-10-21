@@ -26,8 +26,8 @@ export type WhatsNewEntry = {
 /** Newest first. The popup shows index 0. */
 export const WHATS_NEW: WhatsNewEntry[] = [
   {
-    id: '2026-10-18-provider-health',
-    date: '2026-10-18',
+    id: '2026-10-21-provider-health',
+    date: '2026-10-21',
     emoji: '🩺',
     title: 'A morning check-up for our data keys',
     intro:
@@ -35,7 +35,7 @@ export const WHATS_NEW: WhatsNewEntry[] = [
     bullets: [
       {
         emoji: '⏰',
-        text: '**Every morning at 06:45** we test our EPC and PropertyData keys.',
+        text: '**Every morning at 06:45** we test EPC, PropertyData and its UPRN lookup.',
       },
       {
         emoji: '🚨',
@@ -48,6 +48,58 @@ export const WHATS_NEW: WhatsNewEntry[] = [
       {
         emoji: '✅',
         text: '**Fixed the key? The card closes itself** after the next passing check.',
+      },
+    ],
+  },
+  {
+    id: '2026-10-18-avm-own-certificate',
+    date: '2026-10-18',
+    emoji: '📐',
+    title: 'Valuations use each home’s own size',
+    intro:
+      'The AVM sometimes borrowed a neighbour’s floor area, or had none. Now it reads the home’s own EPC.',
+    bullets: [
+      {
+        emoji: '🆔',
+        text: '**Leads with a UPRN** get their size from **their own EPC certificate**.',
+      },
+      {
+        emoji: '🎯',
+        text: '**No more neighbour mix-ups**, like Flat 5 at No. 38 sizing Flat 5 at No. 22.',
+      },
+      {
+        emoji: '📊',
+        text: '**The backtest tracks it**, so we’ll see if it lands closer to sale prices.',
+      },
+      {
+        emoji: '🔎',
+        text: 'Look for **“this home’s own certificate”** next to floor area on a lead.',
+      },
+    ],
+  },
+  {
+    id: '2026-10-18-pin-the-home',
+    date: '2026-10-18',
+    emoji: '📍',
+    title: 'Pin the home on street-only leads',
+    intro:
+      'Lots of listings say "Ecclesall Road" and nothing more. Now you can tell us which house it is.',
+    bullets: [
+      {
+        emoji: '📍',
+        text: '**Shortlist a street-only lead** and a "Which home is this?" box appears.',
+      },
+      {
+        emoji: '🔎',
+        text: '**Search the postcode’s homes**, open the listing, tap the right one.',
+      },
+      {
+        emoji: '🏠',
+        text: '**Rightmove listings get checked for you** straight after each scout run.',
+      },
+      {
+        emoji: '🆔',
+        text: '**65 leads now have their UPRN**, most of them confirmed two ways.',
       },
     ],
   },

@@ -194,12 +194,12 @@ model Deal {
   updatedAt                 DateTime   @updatedAt
 
   // One stable property ID — see @repo/property-data `resolveUprn`. Matched
-  // from the EPC register and OS Places, never guessed: null + uprnReason
+  // from the EPC register and PropertyData /uprns, never guessed: null + uprnReason
   // when the match wasn't clean. Confidence: high (both sources agree) |
   // medium (one source, the other silent).
   uprn           String?
   uprnConfidence String?
-  uprnSources    String? // comma-separated: epc,os_places
+  uprnSources    String? // comma-separated: epc,propertydata
   uprnReason     String? // why it's null: ambiguous | no_match | …
   uprnCheckedAt  DateTime?
 
@@ -319,12 +319,12 @@ model ScoutLead {
   whatsAppIntake WhatsAppIntake?
 
   // One stable property ID — see @repo/property-data `resolveUprn`. Matched
-  // from the EPC register and OS Places, never guessed: null + uprnReason
+  // from the EPC register and PropertyData /uprns, never guessed: null + uprnReason
   // when the match wasn't clean. Confidence: high (both sources agree) |
   // medium (one source, the other silent).
   uprn           String?
   uprnConfidence String?
-  uprnSources    String? // comma-separated: epc,os_places
+  uprnSources    String? // comma-separated: epc,propertydata
   uprnReason     String? // why it's null: ambiguous | no_match | …
   uprnCheckedAt  DateTime?
 

@@ -1,6 +1,7 @@
 import { auth } from '@repo/auth/server';
 import { getBookingLink } from '@repo/calendly';
 import { database } from '@repo/database';
+import { addressKey } from '@repo/property-data/src/uprn';
 import { mergeValuationConfig } from '@repo/valuation';
 import type { Metadata } from 'next';
 import { notFound, redirect } from 'next/navigation';
@@ -12,6 +13,7 @@ import { ConnectionsPanel } from './connections-panel';
 import { ConvertButton } from './convert-button';
 import { DealModelPanel } from './deal-model-panel';
 import { EnrichLeadButton } from './enrich-button';
+import { PinHomePanel } from './pin-home-panel';
 import { PropertyImage } from './property-image';
 
 export const metadata: Metadata = {
@@ -175,6 +177,23 @@ const LeadDetailPage = async ({
     null;
   const listingType = (pd?.listingType as string | undefined) ?? null;
   const listingUrl = (pd?.listingUrl as string | undefined) ?? null;
+  // "Which home is this?" — a shortlisted lead with no UPRN after the matcher
+  // ran, or whose listing gives no house number at all. A person picks it
+  // from the postcode's list (see pin-home-panel.tsx).
+  const needsPin =
+    lead.status === 'shortlisted' &&
+    !lead.uprn &&
+    (lead.uprnReason !== null ||
+      !addressKey((pd?.preciseAddress as string | undefined) ?? lead.address)
+        .designator);
+  const pinFacts =
+    [
+      bedrooms ? `${bedrooms} bed` : null,
+      propertyType,
+      pricePence ? formatGBP(pricePence) : null,
+    ]
+      .filter(Boolean)
+      .join(' · ') || null;
 
   const planningProposal = (planning?.proposal as string | undefined) ?? null;
   const planningAuthority = (planning?.authority as string | undefined) ?? null;
@@ -434,7 +453,7 @@ const LeadDetailPage = async ({
     assumedPropertyType: string | null;
     /** Verified internal floor area (m²) + where it came from. */
     floorAreaSqm?: number | null;
-    floorAreaSource?: 'caller' | 'propertydata' | null;
+    floorAreaSource?: 'caller' | 'epc_uprn' | 'propertydata' | null;
     /** The same size in sqft, and this house's £/sqft at the AVM. */
     floorAreaSqft?: number | null;
     pricePerSqft?: number | null;
@@ -562,6 +581,14 @@ const LeadDetailPage = async ({
     <>
       <Header pages={[{ title: 'Leads', url: '/leads' }]} page={lead.address} />
       <div className="flex flex-1 flex-col gap-6 p-6">
+        {needsPin && (
+          <PinHomePanel
+            leadId={lead.id}
+            postcode={lead.postcode}
+            listingUrl={listingUrl}
+            facts={pinFacts}
+          />
+        )}
         {/* Hero — image + price + key facts */}
         <div className="overflow-hidden rounded-2xl border bg-card">
           <div className="grid gap-0 md:grid-cols-[2fr_3fr]">
@@ -660,7 +687,9 @@ const LeadDetailPage = async ({
                         ({Math.round(avmFull.floorAreaSqm)} m² · EPC
                         {avmFull.floorAreaSource === 'caller'
                           ? ', entered'
-                          : ''}
+                          : avmFull.floorAreaSource === 'epc_uprn'
+                            ? ', this home’s own certificate'
+                            : ''}
                         )
                       </span>
                     </span>

@@ -473,7 +473,7 @@ const lk = (epc: Rec[] | null, os: Rec[] | null) => ({
   // Triage fix: the UprnLookups contract is async (resolveUprn calls
   // .catch on the result). Sync stubs were a test error, not a bug.
   epc: async (_pc: string) => epc,
-  os: async (_pc: string) => os,
+  addresses: async (_pc: string) => os,
 });
 const run = async (
   address: string,

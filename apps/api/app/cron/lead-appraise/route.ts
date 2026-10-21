@@ -53,6 +53,18 @@ export const POST = async (request: Request) => {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
+  // One stable property ID per lead (EPC + PropertyData, strict match), done
+  // BEFORE appraising: the AVM takes its floor area from the UPRN's own EPC
+  // certificate (Oct 2026), so a lead valued first and identified later
+  // never got that. Its own try: an identity lookup must never fail the
+  // appraisal run.
+  let uprns = { checked: 0, resolved: 0, listingLookups: 0 };
+  try {
+    uprns = await resolveLeadUprns();
+  } catch (err) {
+    console.warn('[cron/lead-appraise] UPRN resolution failed', err);
+  }
+
   // Candidate pool: worth-pursuing leads that are still live. Shortlisted and
   // watching leads (founder triage) stay in the pool — a shortlisted lead
   // needs its appraisal MORE, not less. Passed/converted drop out. We pull a
@@ -170,10 +182,19 @@ export const POST = async (request: Request) => {
         typeof pd?.preciseAddress === 'string'
           ? (pd.preciseAddress as string)
           : null;
+      // A Rightmove listing PropertyData resolved to its home carries the
+      // house number the display address lacks (see _lib/uprn.ts).
+      const listingLookup = pd?.listingLookup as
+        | { resolved?: boolean; address?: string }
+        | undefined;
       const avmInput = {
         postcode: lead.postcode,
         propertyType: avmPropertyType as never,
-        address: preciseAddress ?? lead.address,
+        address:
+          preciseAddress ??
+          (listingLookup?.resolved ? listingLookup.address : undefined) ??
+          lead.address,
+        uprn: lead.uprn ?? undefined,
         bedrooms,
         sellerType: resolveSellerType(lead.leadType) as never,
         offerConfig,
@@ -440,17 +461,8 @@ export const POST = async (request: Request) => {
     }
   }
 
-  // One stable property ID per lead (EPC + OS Places, strict match). Its own
-  // try: an identity lookup must never fail the appraisal run.
-  let uprns = { checked: 0, resolved: 0 };
-  try {
-    uprns = await resolveLeadUprns();
-  } catch (err) {
-    console.warn('[cron/lead-appraise] UPRN resolution failed', err);
-  }
-
   await recordCronHeartbeat('lead-appraise', {
-    note: `appraised ${appraised}/${pending.length}${declined ? `, ${declined} declined (no evidence)` : ''}; UPRN ${uprns.resolved}/${uprns.checked}`,
+    note: `appraised ${appraised}/${pending.length}${declined ? `, ${declined} declined (no evidence)` : ''}; UPRN ${uprns.resolved}/${uprns.checked}, listing lookups ${uprns.listingLookups}`,
   });
 
   return NextResponse.json({

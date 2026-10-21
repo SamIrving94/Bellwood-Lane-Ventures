@@ -28,6 +28,9 @@ vi.mock('@repo/property-data', () => ({
   getEpcData: vi.fn(),
   getPropertyDataValuation: vi.fn(),
   getPropertyFloorArea: vi.fn(),
+  // This home's own EPC certificate by UPRN (Oct 2026). Dark by default so
+  // the golden scenarios keep their pre-UPRN sizes.
+  getEpcFloorAreaByUprn: vi.fn(),
   // Size pillar dependencies — stubbed to "no rows / no benchmark" so the
   // golden math stays the pre-size blend. Failing to stub them would leave
   // the pillar undefined and throw inside the valuation.
@@ -60,6 +63,7 @@ const {
   getEpcData,
   getPropertyDataValuation,
   getPropertyFloorArea,
+  getEpcFloorAreaByUprn,
   getFloorAreaRows,
   getPricesPerSqf,
   getSectorPricePaid,
@@ -92,6 +96,7 @@ function applyScenario(scn: {
   );
   // No verified per-property floor area in the golden scenarios (real-or-null).
   vi.mocked(getPropertyFloorArea).mockResolvedValue(null as never);
+  vi.mocked(getEpcFloorAreaByUprn).mockResolvedValue(null as never);
   vi.mocked(getFloorAreaRows).mockResolvedValue([] as never);
   vi.mocked(getPricesPerSqf).mockResolvedValue(null as never);
   // Disable the distance path for the golden (HMLR fallback) scenarios.
@@ -311,5 +316,75 @@ describe('runAVM — confidence is capped by comp volume', () => {
     ).resultJson;
     expect(r.comparableCount).toBeGreaterThanOrEqual(4);
     expect(r.confidenceLevel).toBe('high');
+  });
+});
+
+describe("runAVM — floor area: this home's own certificate by UPRN", () => {
+  // Oct 2026, measured on 65 real leads: the address-text match sized 3 of
+  // them off a neighbour's certificate and 17 not at all. A UPRN reaches
+  // the home's own certificate, so it outranks the text match.
+  beforeEach(() => applyScenario(SCENARIO_NORMAL_TERRACED));
+  const input = {
+    postcode: 'M14 5AB',
+    propertyType: 'terraced' as const,
+    address: 'Flat 5, 22 Test Street, Manchester',
+    sellerType: 'standard' as const,
+    bedrooms: 2,
+  };
+  const neighbour = {
+    floorAreaSqm: 76,
+    matchedAddress: 'Flat 5, 38 Test Street',
+    matchSource: 'address_match',
+  };
+  const ownCert = {
+    floorAreaSqm: 37,
+    address: 'Flat 5, 22 Test Street',
+    certificateNumber: '0000-0000-0000-0000-0001',
+  };
+
+  it("with a UPRN, the size comes from that home's own certificate", async () => {
+    vi.mocked(getPropertyFloorArea).mockResolvedValue(neighbour as never);
+    vi.mocked(getEpcFloorAreaByUprn).mockResolvedValue(ownCert as never);
+    const r = (await runAVM({ ...input, uprn: '100021843769' })).resultJson;
+    expect(getEpcFloorAreaByUprn).toHaveBeenCalledWith(
+      'M14 5AB',
+      '100021843769'
+    );
+    expect(r.floorAreaSqm).toBe(37);
+    expect(r.floorAreaSource).toBe('epc_uprn');
+    expect(r.resolvedAddress).toBe('Flat 5, 22 Test Street');
+  });
+
+  it('a UPRN with no certificate falls back to the address match', async () => {
+    vi.mocked(getPropertyFloorArea).mockResolvedValue({
+      ...neighbour,
+      floorAreaSqm: 40,
+      matchedAddress: 'Flat 5, 22 Test Street',
+    } as never);
+    const r = (await runAVM({ ...input, uprn: '100021843769' })).resultJson;
+    expect(r.floorAreaSqm).toBe(40);
+    expect(r.floorAreaSource).toBe('propertydata');
+  });
+
+  it('a size a person typed in still wins', async () => {
+    vi.mocked(getEpcFloorAreaByUprn).mockResolvedValue(ownCert as never);
+    const r = (
+      await runAVM({ ...input, uprn: '100021843769', floorAreaSqm: 45 })
+    ).resultJson;
+    expect(r.floorAreaSqm).toBe(45);
+    expect(r.floorAreaSource).toBe('caller');
+  });
+
+  it('without a UPRN, the register is not searched by UPRN at all', async () => {
+    await runAVM(input);
+    expect(getEpcFloorAreaByUprn).not.toHaveBeenCalled();
+  });
+
+  it('a failed UPRN lookup is "no certificate", never a crash or a size', async () => {
+    vi.mocked(getEpcFloorAreaByUprn).mockRejectedValue(new Error('EPC down'));
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const r = (await runAVM({ ...input, uprn: '100021843769' })).resultJson;
+    expect(r.floorAreaSource).toBeNull();
+    expect(r.floorAreaSqm).toBeNull();
   });
 });

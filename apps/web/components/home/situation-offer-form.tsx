@@ -140,7 +140,7 @@ export function SituationOfferForm({
       setStep('done');
     } catch {
       setError(
-        'That didn’t go through. Try again, or email us and a person will pick it up the same day.'
+        'That didn’t go through. Try again, or email us and a person will pick it up within 24 hours.'
       );
     } finally {
       setSending(false);
@@ -178,8 +178,8 @@ export function SituationOfferForm({
             Continue <span aria-hidden>→</span>
           </button>
           <p className="mt-3.5 text-[13px] text-stone-600 leading-[1.55]">
-            Three quick questions after this. Anthony reads it himself, same
-            day, Monday to Friday. No figure until we&rsquo;ve stood in the
+            Three quick questions after this. Anthony reads it himself, within
+            24 hours, Monday to Friday. No figure until we&rsquo;ve stood in the
             house.
           </p>
         </div>
@@ -363,7 +363,7 @@ export function SituationOfferForm({
             Thank you. We will be in touch.
           </p>
           <p className="mt-2.5 text-[13.5px] text-stone-600 leading-relaxed">
-            One of us will come back to you the same day, Monday to Friday, to
+            One of us will come back to you within 24 hours, Monday to Friday, to
             talk through your situation and arrange a time to come and see the
             property. No figure until we&rsquo;ve stood in the house; once we
             have, your written offer follows within two working days.

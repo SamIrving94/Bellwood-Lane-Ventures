@@ -2,11 +2,11 @@
  * Pre-fill the golden-set sheet so a person only checks the hard rows.
  *
  * For each row of the sheet written by export-golden-set.mts, pulls the
- * postcode's EPC certificates, OS Places addresses and Land Registry sales,
+ * postcode's EPC certificates, PropertyData homes (/uprns) and Land Registry sales,
  * and fills the correct_* columns with what the sources say about THIS
  * home. Each row gets a `status`:
  *
- *   AUTO     a house where EPC and OS Places independently agree on one
+ *   AUTO     a house where EPC and PropertyData independently agree on one
  *            UPRN. Filled in, no human needed (except spot checks below).
  *   CHECK    a random 1 in 10 of the AUTO rows. Filled in, but a person
  *            confirms it — otherwise the matcher is marking its own homework.
@@ -19,17 +19,20 @@
  * Only CHECK, CONFIRM and PICK rows need a person. When you've checked a
  * row, put your name in labelled_by.
  *
- *   npx tsx scripts/run-with-prod-env.mts scripts/prefill-golden-set.mts
+ *   npx tsx --conditions=react-server scripts/prefill-golden-set.mts
  *   … --in=docs/data-quality/golden-set.csv --out=docs/data-quality/golden-set.prefilled.csv
  *
- * Needs EPC_API_TOKEN and OS_PLACES_API_KEY. Read-only: no database writes.
+ * Needs EPC_API_TOKEN and PROPERTYDATA_API_KEY (both in apps/api/.env.local;
+ * export them first). `--conditions=react-server` lets the server-only
+ * PropertyData client load outside Next. Read-only: no database writes.
+ * Costs ~6-9 PropertyData credits per postcode, cached 60 days in-process.
  * Never overwrites --out.
  */
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import * as EpcNs from '../packages/property-data/src/epc.ts';
 import * as HmlrNs from '../packages/property-data/src/hmlr.ts';
-import * as OsNs from '../packages/property-data/src/os-places.ts';
 import * as TypeNs from '../packages/property-data/src/property-type.ts';
+import * as PdNs from '../packages/property-data/src/propertydata.ts';
 import * as UprnNs from '../packages/property-data/src/uprn.ts';
 
 // @repo/property-data has no `"type": "module"`, so under tsx its TS source
@@ -40,7 +43,7 @@ function unwrap<T>(ns: T): T {
 }
 const { getEpcCertificateByNumber, searchDomesticEpc } = unwrap(EpcNs);
 const { getPricePaidWithAddresses } = unwrap(HmlrNs);
-const { listPostcodeAddresses } = unwrap(OsNs);
+const { getPostcodeUprnsResult } = unwrap(PdNs);
 const { canonicalPropertyType } = unwrap(TypeNs);
 const { addressKey, resolveUprn, sameHome } = unwrap(UprnNs);
 
@@ -100,11 +103,17 @@ type Fill = {
 };
 
 async function prefill(address: string, postcode: string): Promise<Fill> {
-  const [epcRows, osRows, sales] = await Promise.all([
+  const [epcRows, pdRes, sales] = await Promise.all([
     searchDomesticEpc(postcode),
-    listPostcodeAddresses(postcode),
+    getPostcodeUprnsResult(postcode),
     getPricePaidWithAddresses(postcode),
   ]);
+  const pdRows =
+    pdRes.outcome === 'ok'
+      ? pdRes.value
+      : pdRes.outcome === 'not_found'
+        ? []
+        : null;
   const fill: Fill = {
     status: 'PICK',
     uprn: '',
@@ -115,7 +124,7 @@ async function prefill(address: string, postcode: string): Promise<Fill> {
     candidates: '',
     note: '',
   };
-  if (!epcRows.length && !osRows?.length && !sales.length) {
+  if (!epcRows.length && !pdRows?.length && !sales.length) {
     return { ...fill, status: 'NO_DATA', note: 'no source answered' };
   }
 
@@ -135,9 +144,7 @@ async function prefill(address: string, postcode: string): Promise<Fill> {
         process.env.EPC_API_TOKEN
           ? epcRows.map((e) => ({ uprn: e.uprn, address: e.address }))
           : null,
-      os: async () =>
-        osRows?.map((o) => ({ uprn: o.uprn, address: o.address ?? '' })) ??
-        null,
+      addresses: async () => pdRows,
     }
   );
   const isFlat = addressKey(address).unit !== null;
@@ -175,8 +182,8 @@ async function prefill(address: string, postcode: string): Promise<Fill> {
   }
 
   if (fill.status !== 'AUTO') {
-    // What a person picks from: OS Places addresses (canonical) first.
-    const list = (osRows ?? [])
+    // What a person picks from: the postcode's homes, from PropertyData.
+    const list = (pdRows ?? [])
       .filter((o) => o.uprn)
       .map((o) => `${o.uprn}=${o.address}`);
     fill.candidates = list.slice(0, 40).join(' | ');

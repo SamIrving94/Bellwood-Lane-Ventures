@@ -10,7 +10,7 @@ import { useState } from 'react';
  * what this audience must reject; a dated, binding cash position they can
  * weigh against the open-market route is something the file wants
  * whichever way the estate decides. Copy holds the public promise exactly
- * (same-day response, we view every property, confirmed written offer
+ * (24-hour response, we view every property, confirmed written offer
  * within two working days of viewing, binding upon Kept for a week,
  * completion in as little as two weeks), names the trade-off, and says who
  * we are wrong for. Print-hidden: the printed report stays a neutral
@@ -83,7 +83,7 @@ export function ReferralPanel({
         A written offer, for the decision file
       </h2>
       <p className="mt-2 max-w-[62ch] text-[14px] text-body leading-[1.65]">
-        Kept buys property directly, with cash. We respond the same day, we view
+        Kept buys property directly, with cash. We respond within 24 hours, we view
         every property, and a confirmed written offer follows within two working
         days of the viewing. The offer is binding upon Kept for a week, and
         completion can take as little as two weeks. We buy below market value:
@@ -99,7 +99,7 @@ export function ReferralPanel({
 
       {done ? (
         <p className="mt-4 font-semibold text-[14.5px] text-forest">
-          Sent. A person will reply the same day, to the contact you left.
+          Sent. A person will reply within 24 hours, to the contact you left.
         </p>
       ) : open ? (
         <div className="mt-4 max-w-[520px]">

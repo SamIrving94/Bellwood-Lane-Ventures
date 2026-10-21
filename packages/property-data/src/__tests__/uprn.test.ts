@@ -22,7 +22,7 @@ function lookups(
   epc: UprnCandidate[] | null,
   os: UprnCandidate[] | null
 ): UprnLookups {
-  return { epc: async () => epc, os: async () => os };
+  return { epc: async () => epc, addresses: async () => os };
 }
 
 const street: UprnCandidate[] = [
@@ -164,7 +164,7 @@ describe('resolveUprn', () => {
     expect(r).toEqual({
       uprn: '100',
       confidence: 'high',
-      sources: ['epc', 'os_places'],
+      sources: ['epc', 'propertydata'],
       reason: null,
     });
   });
@@ -173,7 +173,7 @@ describe('resolveUprn', () => {
     const r = await resolveUprn(lead, lookups(null, street));
     expect(r.uprn).toBe('100');
     expect(r.confidence).toBe('medium');
-    expect(r.sources).toEqual(['os_places']);
+    expect(r.sources).toEqual(['propertydata']);
   });
 
   it('refuses when the sources disagree', async () => {
@@ -201,7 +201,7 @@ describe('resolveUprn', () => {
   it('treats a thrown lookup as unavailable', async () => {
     const r = await resolveUprn(lead, {
       epc: () => Promise.reject(new Error('boom')),
-      os: async () => [],
+      addresses: async () => [],
     });
     expect(r.reason).toBe('no_match');
   });

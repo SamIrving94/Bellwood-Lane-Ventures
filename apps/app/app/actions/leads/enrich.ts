@@ -137,6 +137,7 @@ export async function enrichLeadById(leadId: string): Promise<{
       postcode: lead.postcode,
       propertyType: avmPropertyType as never,
       address: preciseAddress ?? lead.address,
+      uprn: lead.uprn ?? undefined,
       bedrooms,
       sellerType: avmSellerType as never,
       offerConfig,

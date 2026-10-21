@@ -13,6 +13,7 @@
 
 import 'server-only';
 import { type PropertyDataType, toPropertyDataType } from './property-type';
+import { sameHome } from './uprn';
 import { acquireRateSlot } from './rate-limiter';
 import { type PersistentCacheStore, getPersistentStore } from './store';
 
@@ -727,38 +728,29 @@ export interface PropertyFloorArea {
   matchedAddress: string;
   /**
    * How the row was matched — surfaced in the UI for transparency.
-   * 'unique_type_match' is kept for persisted results; it cannot be produced
-   * any more (the register rows carry neither type nor bedrooms).
+   * 'address_match' since Oct 2026 (strict sameHome). 'house_number' and
+   * 'unique_type_match' are kept for persisted results; neither is produced
+   * any more.
    */
-  matchSource: 'house_number' | 'unique_type_match';
-}
-
-/**
- * Extract the leading house identifier from an address so we can match it
- * against an EPC row. Handles "12 …", "12A …", "Flat 3 …", "Unit 2 …".
- * Returns null when the address has no number (street-only), which is common
- * for scraped listings — in that case we must NOT guess a size.
- */
-function houseIdentifier(address: string): string | null {
-  const trimmed = address.trim();
-  const numbered = trimmed.match(/^(\d+\s*[a-z]?)\b/i);
-  if (numbered?.[1]) return numbered[1].replace(/\s+/g, '').toLowerCase();
-  const unit = trimmed.match(/^((?:flat|apartment|apt|unit)\s+\w+)\b/i);
-  if (unit?.[1]) return unit[1].replace(/\s+/g, ' ').toLowerCase();
-  return null;
+  matchSource: 'address_match' | 'house_number' | 'unique_type_match';
 }
 
 /**
  * Resolve a single property's REAL floor area from PropertyData's /floor-areas
- * (EPC register) for the postcode, by exact house-number match against the
- * supplied address.
+ * (EPC register) for the postcode, by matching THIS home's address.
  *
- * Returns null when no unambiguous real row matches. We deliberately never
- * fall back to a postcode average — that is a guess, and the house-of-record
- * could be half or double it (the M14 doubling bug). The old second path (a
- * unique match on property type + bedrooms for street-only addresses) is gone:
- * the register rows carry neither field, so it could never fire. `propertyType`
- * and `bedrooms` stay on the input so callers need not change.
+ * Matching is the UPRN matcher's strict `sameHome` (Oct 2026). It replaced a
+ * leading-house-number match that took the first row starting "Flat 5" or
+ * "39" in the postcode: on 65 real leads it picked a neighbour's certificate
+ * 3 times (Flat 5 at No. 38 for Flat 5 at No. 22: 76 m² vs 37 m²) and found
+ * nothing for block flats written "BUTLER COURT FLAT 16, …". The strict
+ * matcher found the right home 60 times and the wrong one never.
+ *
+ * Every row that matches is the same home (re-assessed over the years), so
+ * the newest inspection wins. Returns null when nothing matches. We never
+ * fall back to a postcode average: that is a guess, and the house-of-record
+ * could be half or double it (the M14 doubling bug). `propertyType` and
+ * `bedrooms` stay on the input so callers need not change.
  */
 export async function getPropertyFloorArea(input: {
   postcode: string;
@@ -766,19 +758,23 @@ export async function getPropertyFloorArea(input: {
   propertyType?: string;
   bedrooms?: number;
 }): Promise<PropertyFloorArea | null> {
+  const { address } = input;
+  // No address → nothing to match on → no size (real data or nothing).
+  if (!address) return null;
   const rows = floorAreaRows(await getFloorAreas(input.postcode));
-  if (rows.length === 0) return null;
-
-  const wanted = input.address ? houseIdentifier(input.address) : null;
-  // No house number → nothing to match on → no size (real data or nothing).
-  if (!wanted) return null;
-
-  const hit = rows.find((p) => houseIdentifier(p.address) === wanted);
-  if (!hit) return null; // Had a number but it isn't in the register → don't guess.
+  const hits = rows
+    .filter((p) => sameHome(address, p.address))
+    .sort((a, b) =>
+      String(b.inspectionDate ?? '').localeCompare(
+        String(a.inspectionDate ?? '')
+      )
+    );
+  const hit = hits[0];
+  if (!hit) return null;
   return {
     floorAreaSqm: Math.round(hit.floorAreaSqm),
     matchedAddress: hit.address,
-    matchSource: 'house_number',
+    matchSource: 'address_match',
   };
 }
 
@@ -3440,4 +3436,136 @@ export async function askGeorge(input: {
   } finally {
     clearTimeout(timer);
   }
+}
+
+// ---------------------------------------------------------------------------
+// Endpoint: /uprns
+// ---------------------------------------------------------------------------
+
+const UprnsSchema = z.object({
+  status: z.string().optional(),
+  api_calls_cost: z.number().optional(),
+  data: z
+    .array(
+      z
+        .object({
+          uprn: z.union([z.number(), z.string()]),
+          address: z.string(),
+          classificationCode: z.string().nullable(),
+        })
+        .partial()
+    )
+    .optional(),
+});
+
+/** One home in a postcode, as the UPRN matcher consumes it. */
+export type PostcodeUprn = { uprn: string; address: string };
+
+/** AddressBase classifications that can be someone's home (see below). */
+const HOME_CLASSIFICATION = /^(?:R[DH]|CH02$|X$)/;
+
+/** The most homes /uprns returns for one postcode (API docs). */
+export const UPRNS_MAX_RESULTS = 200;
+
+/**
+ * Every home in a postcode with its UPRN: the UPRN matcher's second source,
+ * independent of the EPC register (Oct 2026: replaced OS Places, whose trial
+ * licence had lapsed and failed silently for weeks).
+ *
+ * Homes only. The list also carries the block itself ("Argyll Mansions",
+ * classification P/PP "parent shell") and non-residential units; a block's
+ * UPRN is not a home, and matching one hands a lead with no flat number the
+ * whole building. Kept: AddressBase RD* (dwellings), RH* (HMOs), CH02
+ * (holiday lets) and X (dual use, e.g. live/work), since each can be the home
+ * a seller owns. Dropped: shells (P, PP), shops, offices, pubs, surgeries,
+ * churches, schools. Checked on 41 real leads (Oct 2026): the filter cost
+ * no match.
+ *
+ * `strict` keeps the answer to this postcode only. A postcode with more than
+ * 200 homes comes back truncated; the matcher then reports no match for the
+ * homes past the cut, which fails closed. Cost is the response's own
+ * `api_calls_cost` (6-9 credits per postcode in the Oct 2026 test), cached
+ * for the 60-day licence maximum since UPRNs don't change.
+ */
+export async function getPostcodeUprnsResult(
+  postcode: string
+): Promise<PropertyDataResult<PostcodeUprn[]>> {
+  const res = await fetchPropertyData(
+    '/uprns',
+    { postcode, strict: 'true', results: UPRNS_MAX_RESULTS },
+    {
+      ttlMs: MAX_CACHE_TTL_MS,
+      estimatedCredits: 6,
+      creditsFor: (d) => d.api_calls_cost ?? 6,
+      schema: UprnsSchema,
+      hasContent: (d) => Array.isArray(d.data),
+    }
+  );
+  if (res.outcome !== 'ok') return res;
+  const homes: PostcodeUprn[] = [];
+  for (const row of res.value.data ?? []) {
+    if (row.uprn === undefined || !row.address) continue;
+    if (!HOME_CLASSIFICATION.test(row.classificationCode ?? '')) continue;
+    homes.push({ uprn: String(row.uprn), address: row.address });
+  }
+  return { outcome: 'ok', value: homes };
+}
+
+// ---------------------------------------------------------------------------
+// Endpoint: /listing-address
+// ---------------------------------------------------------------------------
+
+const ListingAddressSchema = z.object({
+  status: z.string().optional(),
+  data: z
+    .object({
+      uprn: z.union([z.number(), z.string()]),
+      address: z.string(),
+      postcode: z.string(),
+    })
+    .partial()
+    .optional(),
+});
+
+/** The home a portal listing is for, as PropertyData resolved it. */
+export type ListingAddress = {
+  uprn: string;
+  address: string;
+  postcode: string;
+};
+
+/**
+ * Which home a Rightmove sale listing is for: its UPRN and full address.
+ * The fix for street-only leads ("Ecclesall Road, Sheffield S11"), whose
+ * listing never states a house number. Beta: PropertyData resolves about 45%
+ * of live listings, and a listing that has come off the market is usually
+ * "not found" (Oct 2026 test on old leads: 2 of 10), so call it while the
+ * listing is fresh. 10 credits when it resolves; a 404 ("could not be
+ * resolved") is free. Cached 60 days.
+ *
+ * The address it returns is still put through the strict UPRN matcher by the
+ * caller, so a wrong resolution can't become a stored UPRN on its own.
+ */
+export async function getListingAddressResult(
+  rightmoveUrl: string
+): Promise<PropertyDataResult<ListingAddress>> {
+  const res = await fetchPropertyData(
+    '/listing-address',
+    { url: rightmoveUrl },
+    {
+      ttlMs: MAX_CACHE_TTL_MS,
+      estimatedCredits: 10,
+      schema: ListingAddressSchema,
+      hasContent: (d) => d.data !== undefined,
+    }
+  );
+  if (res.outcome !== 'ok') return res;
+  const d = res.value.data;
+  if (d?.uprn === undefined || !d.address || !d.postcode) {
+    return { outcome: 'not_found' };
+  }
+  return {
+    outcome: 'ok',
+    value: { uprn: String(d.uprn), address: d.address, postcode: d.postcode },
+  };
 }

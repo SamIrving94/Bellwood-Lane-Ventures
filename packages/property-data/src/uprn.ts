@@ -6,7 +6,9 @@
  * nothing else:
  *
  *   1. EPC register — most certificates carry the UPRN the assessor lodged.
- *   2. OS Places    — the canonical address list for the postcode.
+ *   2. PropertyData /uprns — the postcode's homes from the AddressBase list.
+ *      (Until Oct 2026 this was OS Places; its trial licence lapsed and every
+ *      call failed silently, so nothing could reach "high".)
  *
  * Both answer "which addresses exist in this postcode"; we then match the
  * lead's address against each list ourselves. The match is strict by design:
@@ -20,12 +22,11 @@
  */
 
 import { searchDomesticEpc } from './epc';
-import { listPostcodeAddresses } from './os-places';
 
-export type UprnSource = 'epc' | 'os_places';
+export type UprnSource = 'epc' | 'propertydata';
 
 /**
- * high   — EPC and OS Places independently found the same UPRN.
+ * high   — EPC and PropertyData independently found the same UPRN.
  * medium — one source found a single clean match; the other had none or
  *          couldn't answer.
  */
@@ -40,7 +41,7 @@ export type UprnUnresolvedReason =
   | 'no_match'
   /** More than one property matched (often a house split into flats). */
   | 'ambiguous'
-  /** EPC and OS Places matched different UPRNs. */
+  /** EPC and PropertyData matched different UPRNs. */
   | 'sources_disagree'
   /** Neither source could answer (no keys, or both calls failed). */
   | 'sources_unavailable';
@@ -104,6 +105,27 @@ const FLOOR_SHORTHAND: Record<string, string> = {
   LGFF: 'LOWER GROUND',
   BSMT: 'BASEMENT',
 };
+/**
+ * Last words of a block of flats' name. COURT is also a street type (Damery
+ * Court is a road of houses), so a COURT only counts as a block where the
+ * address shows a flat or a street after it.
+ */
+const BLOCK_WORDS = new Set([
+  'HOUSE',
+  'BUILDING',
+  'APARTMENTS',
+  'COURT',
+  'MANSIONS',
+  'TOWER',
+  'MILL',
+  'MILLS',
+  'HALL',
+  'LODGE',
+  'POINT',
+  'HEIGHTS',
+  'CHAMBERS',
+  'WHARF',
+]);
 const STREET_TYPES = new Set([
   'ROAD',
   'STREET',
@@ -168,8 +190,9 @@ const ABBREVIATIONS: Record<string, string> = {
 };
 
 const isNumberToken = (t: string | undefined) => !!t && /^\d+[A-Z]?$/.test(t);
+// Flat ids: 2, 2A, B, A54 (Du Cane Court), 4.03 (floor.flat).
 const isUnitId = (t: string | undefined) =>
-  !!t && (/^\d+[A-Z]?$/.test(t) || /^[A-Z]$/.test(t));
+  !!t && (/^[A-Z]?\d+(?:\.\d+)?[A-Z]?$/.test(t) || /^[A-Z]$/.test(t));
 
 export interface AddressKey {
   /** "FLAT:2", "FLOOR:FIRST", "FLAT:?" (a flat, but which?), or null. */
@@ -195,12 +218,16 @@ export function isFullPostcode(postcode: string): boolean {
   return FULL_POSTCODE.test(postcode.toUpperCase().trim());
 }
 
-/** Tokens with commas kept as their own "," token. */
+/**
+ * Tokens with commas kept as their own "," token. A dot between digits stays
+ * ("Flat 4.03" is one flat, not flat 4 of number 03).
+ */
 function tokenize(upper: string): string[] {
   return upper
     .replace(/['’]/g, '')
     .replace(/,/g, ' , ')
-    .replace(/[^A-Z0-9, ]+/g, ' ')
+    .replace(/[^A-Z0-9,. ]+/g, ' ')
+    .replace(/(?<!\d)\.|\.(?!\d)/g, ' ')
     .split(/\s+/)
     .filter(Boolean);
 }
@@ -227,12 +254,19 @@ export function addressKey(address: string): AddressKey {
 
   let tokens = tokenize(upper);
   let unit: string | null = null;
+  // Where the unit words were cut out, for "BUTLER COURT FLAT 16, …".
+  let unitAt = -1;
 
   // 1. The unit (flat), wherever it sits — "12 Acacia Road, Flat 1" too.
   for (let i = 0; i < tokens.length && unit === null; i++) {
     const t = tokens[i] as string;
+    // PropertyData writes some flats as "FLAT FLAT 29": one word too many.
+    while (UNIT_WORDS.has(t) && UNIT_WORDS.has(tokens[i + 1] as string)) {
+      tokens.splice(i + 1, 1);
+    }
     const next = tokens[i + 1];
     const shorthand = FLOOR_SHORTHAND[t];
+    unitAt = i;
     if (shorthand) {
       unit = `FLOOR:${shorthand}`;
       tokens.splice(i, 1);
@@ -248,7 +282,11 @@ export function addressKey(address: string): AddressKey {
       if (tokens[i + n] === 'FLAT') n++;
       tokens.splice(i, n);
     } else if (UNIT_WORDS.has(t)) {
-      if (isUnitId(next)) {
+      if (next && FLOORS.has(next) && tokens[i + 2] === 'FLOOR') {
+        // "Flat First Floor, 55 …" — the first-floor flat.
+        unit = `FLOOR:${next}`;
+        tokens.splice(i, 3);
+      } else if (isUnitId(next)) {
         unit = `FLAT:${next}`;
         tokens.splice(i, 2);
       } else {
@@ -258,14 +296,27 @@ export function addressKey(address: string): AddressKey {
       }
     }
   }
-  while (tokens[0] === ',') tokens = tokens.slice(1);
+  if (unit === null) unitAt = -1;
+  while (tokens[0] === ',') {
+    tokens = tokens.slice(1);
+    unitAt--;
+  }
 
   // 2. The house: a number at the very front, or a name as the first segment.
   let designator: AddressKey['designator'] = null;
   let rest: string[] = [];
   const t0 = tokens[0];
   const after0 = tokens[1] === ',' ? tokens[2] : tokens[1];
-  if (isNumberToken(t0)) {
+  const blockBeforeUnit = unitAt > 0 ? tokens.slice(0, unitAt) : [];
+  if (
+    blockBeforeUnit.length > 0 &&
+    tokens[unitAt] === ',' &&
+    !blockBeforeUnit.some((w) => w === ',' || /\d/.test(w))
+  ) {
+    // "BUTLER COURT FLAT 16, HYDE LANE": the block's name, then its flat.
+    designator = { kind: 'name', token: blockBeforeUnit.join(' ') };
+    rest = tokens.slice(unitAt + 1);
+  } else if (isNumberToken(t0)) {
     if (unit === null && isNumberToken(after0)) {
       // "2, 12 ACACIA ROAD": OS Places writes some flats as two bare
       // numbers. Flat 2 of number 12, never house number 2.
@@ -286,7 +337,20 @@ export function addressKey(address: string): AddressKey {
     }
   } else if (t0) {
     const comma = tokens.indexOf(',');
-    const first = comma < 0 ? tokens : tokens.slice(0, comma);
+    let first = comma < 0 ? tokens : tokens.slice(0, comma);
+    let streetNumber: string[] = [];
+    // "WOODFORD COURT 33, SHEPHERDS BUSH GREEN": PropertyData glues the
+    // block's street number onto its name. The register writes "Woodford
+    // Court, 33 Shepherds Bush Green", so move the 33 onto the street.
+    if (
+      comma >= 0 &&
+      first.length > 1 &&
+      isNumberToken(first.at(-1)) &&
+      !first.slice(0, -1).some((w) => /\d/.test(w))
+    ) {
+      streetNumber = first.slice(-1);
+      first = first.slice(0, -1);
+    }
     const last = first.at(-1);
     // A first segment ending in ROAD/STREET… is a street, not a house name
     // ("Acacia Road, London" has no house in it). A digit makes it neither.
@@ -296,23 +360,59 @@ export function addressKey(address: string): AddressKey {
       !!last &&
       (STREET_TYPES.has(ABBREVIATIONS[last] ?? last) || last === 'ST');
     const numberedStreetFollows =
-      comma >= 0 && isNumberToken(tokens[comma + 1]);
+      streetNumber.length > 0 ||
+      (comma >= 0 && isNumberToken(tokens[comma + 1]));
+    // "Flat 65, Ralph Court, Queensway": with a flat in front, a COURT is
+    // the block, not the road.
+    const blockWithFlat = unit !== null && !!last && BLOCK_WORDS.has(last);
     if (
       first.length > 0 &&
       !first.some((w) => /\d/.test(w)) &&
-      (!looksLikeStreet || numberedStreetFollows)
+      (!looksLikeStreet || numberedStreetFollows || blockWithFlat)
     ) {
       designator = { kind: 'name', token: first.join(' ') };
-      rest = comma < 0 ? [] : tokens.slice(comma + 1);
+      rest = comma < 0 ? [] : [...streetNumber, ...tokens.slice(comma + 1)];
     }
   }
 
   // 3. The street: the rest of the house's segment, else the next segment.
   while (rest[0] === ',') rest = rest.slice(1);
   const streetEnd = rest.indexOf(',');
-  const street = normaliseStreet(
-    streetEnd < 0 ? rest : rest.slice(0, streetEnd)
-  );
+  let streetWords = streetEnd < 0 ? rest : rest.slice(0, streetEnd);
+  const after = streetEnd < 0 ? [] : rest.slice(streetEnd + 1);
+  const nextEnd = after.indexOf(',');
+  const nextSegment = nextEnd < 0 ? after : after.slice(0, nextEnd);
+  // "Thackrah Court, 1, Squirrel Way": a bare number is the next street's.
+  if (
+    streetWords.length === 1 &&
+    isNumberToken(streetWords[0]) &&
+    nextSegment.length > 0
+  ) {
+    streetWords = [...streetWords, ...nextSegment];
+  }
+  // "20, HITHERLANDS 25, LITTLE DIMOCKS": a name carrying its own street
+  // number, with the street after it, is a block, and the 20 its flat. The
+  // register writes "Flat 20, Hitherlands, 25 Little Dimocks".
+  const blockNumber =
+    streetWords.length > 1 && isNumberToken(streetWords.at(-1))
+      ? (streetWords.at(-1) as string)
+      : null;
+  if (blockNumber) streetWords = streetWords.slice(0, -1);
+  if (
+    blockNumber &&
+    unit === null &&
+    designator?.kind === 'number' &&
+    nextSegment.length > 0 &&
+    !streetWords.some((w) => /\d/.test(w))
+  ) {
+    return {
+      unit: `FLAT:${designator.token}`,
+      designator: { kind: 'name', token: streetWords.join(' ') },
+      street: normaliseStreet([blockNumber, ...nextSegment]),
+      text,
+    };
+  }
+  const street = normaliseStreet(streetWords);
 
   return { unit, designator, street, text };
 }
@@ -339,7 +439,45 @@ function sameStreet(a: string, b: string): boolean {
     );
 }
 
+/** "33 SHEPHERDS BUSH GREEN" → "SHEPHERDS BUSH GREEN". */
+const streetName = (s: string) => s.replace(/^\d+[A-Z]? /, '');
+
+/**
+ * The ways one key can be written. "16 Butler Court" (number 16 on a road
+ * called Butler Court) and "Flat 16, Butler Court" are the same home when
+ * the "road" is a block: the register writes flats both ways, even within
+ * one postcode. Only for block words, so "2 Acacia Road" never becomes
+ * "Flat 2, Acacia Road".
+ */
+function readings(k: AddressKey): AddressKey[] {
+  const d = k.designator;
+  const last = k.street?.split(' ').at(-1);
+  if (
+    k.unit === null &&
+    d?.kind === 'number' &&
+    last &&
+    BLOCK_WORDS.has(last)
+  ) {
+    return [
+      k,
+      {
+        ...k,
+        unit: `FLAT:${d.token}`,
+        designator: { kind: 'name', token: k.street as string },
+        street: null,
+      },
+    ];
+  }
+  return [k];
+}
+
 function keysMatch(lead: AddressKey, candidate: AddressKey): boolean {
+  return readings(lead).some((l) =>
+    readings(candidate).some((c) => keysMatchExact(l, c))
+  );
+}
+
+function keysMatchExact(lead: AddressKey, candidate: AddressKey): boolean {
   const a = lead.designator;
   const b = candidate.designator;
   if (!(a && b)) return false;
@@ -355,10 +493,13 @@ function keysMatch(lead: AddressKey, candidate: AddressKey): boolean {
       sameStreet(lead.street, candidate.street)
     );
   }
-  // A named house may come without a street; when both give one it must agree.
+  // A named house may come without a street; when both give one it must
+  // agree. A block's street number is often left off ("Crompton Court,
+  // Brompton Road" vs "Crompton Court, 276 Brompton Road"), so it is not
+  // compared.
   return (
     !(lead.street && candidate.street) ||
-    sameStreet(lead.street, candidate.street)
+    sameStreet(streetName(lead.street), streetName(candidate.street))
   );
 }
 
@@ -397,7 +538,7 @@ export function matchCandidates(
 /** Combine the two sources' outcomes into one decision. */
 export function combineOutcomes(
   epc: SourceOutcome,
-  os: SourceOutcome
+  pd: SourceOutcome
 ): UprnResolution {
   const unresolved = (reason: UprnUnresolvedReason): UprnResolution => ({
     uprn: null,
@@ -406,19 +547,19 @@ export function combineOutcomes(
     reason,
   });
 
-  if (epc.kind === 'match' && os.kind === 'match') {
-    return epc.uprn === os.uprn
+  if (epc.kind === 'match' && pd.kind === 'match') {
+    return epc.uprn === pd.uprn
       ? {
           uprn: epc.uprn,
           confidence: 'high',
-          sources: ['epc', 'os_places'],
+          sources: ['epc', 'propertydata'],
           reason: null,
         }
       : unresolved('sources_disagree');
   }
   // One clean match is enough only when the other source didn't see
   // several candidates — an ambiguous answer is a warning, not silence.
-  if (epc.kind === 'ambiguous' || os.kind === 'ambiguous') {
+  if (epc.kind === 'ambiguous' || pd.kind === 'ambiguous') {
     return unresolved('ambiguous');
   }
   if (epc.kind === 'match') {
@@ -429,15 +570,15 @@ export function combineOutcomes(
       reason: null,
     };
   }
-  if (os.kind === 'match') {
+  if (pd.kind === 'match') {
     return {
-      uprn: os.uprn,
+      uprn: pd.uprn,
       confidence: 'medium',
-      sources: ['os_places'],
+      sources: ['propertydata'],
       reason: null,
     };
   }
-  if (epc.kind === 'unavailable' && os.kind === 'unavailable') {
+  if (epc.kind === 'unavailable' && pd.kind === 'unavailable') {
     return unresolved('sources_unavailable');
   }
   return unresolved('no_match');
@@ -450,8 +591,8 @@ export function combineOutcomes(
 export interface UprnLookups {
   /** EPC certificates in the postcode; null when the register can't answer. */
   epc: (postcode: string) => Promise<UprnCandidate[] | null>;
-  /** OS Places addresses in the postcode; null when OS can't answer. */
-  os: (postcode: string) => Promise<UprnCandidate[] | null>;
+  /** PropertyData's homes in the postcode; null when it can't answer. */
+  addresses: (postcode: string) => Promise<UprnCandidate[] | null>;
 }
 
 const liveLookups: UprnLookups = {
@@ -462,17 +603,22 @@ const liveLookups: UprnLookups = {
     const rows = await searchDomesticEpc(postcode);
     return rows.map((r) => ({ uprn: r.uprn, address: r.address }));
   },
-  async os(postcode) {
-    const rows = await listPostcodeAddresses(postcode);
-    return (
-      rows?.map((r) => ({ uprn: r.uprn, address: r.address ?? '' })) ?? null
-    );
+  async addresses(postcode) {
+    // Loaded on first use: propertydata.ts is server-only, and scripts that
+    // pass their own lookups (the golden-set pre-fill) must not pull it in.
+    const { getPostcodeUprnsResult } = await import('./propertydata');
+    const res = await getPostcodeUprnsResult(postcode);
+    if (res.outcome === 'ok') return res.value;
+    // 404 is a real "no homes here"; a failure is "couldn't answer".
+    return res.outcome === 'not_found' ? [] : null;
   },
 };
 
 /**
  * Resolve a lead's address to a UPRN, or null with a reason. Two lookups per
- * call (EPC search + OS Places postcode), both free-tier.
+ * call: an EPC search (free) and PropertyData /uprns (6-9 credits per
+ * postcode, cached 60 days). An address with no house in it is refused
+ * before either is called, so a street-only lead costs nothing.
  */
 export async function resolveUprn(
   input: { address: string; postcode: string },
@@ -497,12 +643,12 @@ export async function resolveUprn(
     };
   }
 
-  const [epcRows, osRows] = await Promise.all([
+  const [epcRows, pdRows] = await Promise.all([
     lookups.epc(postcode).catch(() => null),
-    lookups.os(postcode).catch(() => null),
+    lookups.addresses(postcode).catch(() => null),
   ]);
   return combineOutcomes(
     matchCandidates(key, epcRows),
-    matchCandidates(key, osRows)
+    matchCandidates(key, pdRows)
   );
 }
