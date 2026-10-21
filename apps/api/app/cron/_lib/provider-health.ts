@@ -2,6 +2,7 @@ import { database } from '@repo/database';
 import {
   type ProviderProbe,
   probeEpc,
+  probePostcodeUprns,
   probePropertyData,
 } from '@repo/property-data';
 
@@ -32,7 +33,7 @@ import {
  * is stored or returned.
  */
 
-export const PROVIDERS = ['epc', 'propertydata'] as const;
+export const PROVIDERS = ['epc', 'propertydata', 'propertydata-uprns'] as const;
 export type ProviderName = (typeof PROVIDERS)[number];
 export type ProviderStatus = 'ok' | 'failing';
 
@@ -50,14 +51,20 @@ export type CardAction = 'raise' | 'refresh' | 'resolve';
 // accepted. Downing Street is a stable, real postcode.
 export const PROBE_POSTCODE = 'SW1A 2AA';
 
+// /uprns must return HOMES to count as healthy, so it needs a residential
+// postcode, not Downing Street.
+export const UPRNS_PROBE_POSTCODE = 'SW6 3EF';
+
 const PROVIDER_LABEL: Record<ProviderName, string> = {
   epc: 'EPC register',
   propertydata: 'PropertyData',
+  'propertydata-uprns': 'PropertyData UPRN lookup',
 };
 
 const PROVIDER_KEY_VAR: Record<ProviderName, string> = {
   epc: 'EPC_API_TOKEN',
   propertydata: 'PROPERTYDATA_API_KEY',
+  'propertydata-uprns': 'PROPERTYDATA_API_KEY',
 };
 
 // What a dead key quietly does downstream — so the card says why it matters.
@@ -65,11 +72,14 @@ const PROVIDER_IMPACT: Record<ProviderName, string> = {
   epc: 'UPRN matching and EPC enrichment get no certificates, so leads lose floor area and energy band.',
   propertydata:
     'Appraisals, comps and scouting calls fail, so the AVM records no-valuation.',
+  'propertydata-uprns':
+    'The UPRN matcher loses its second source, so no lead can reach "high" confidence and own-certificate floor areas stop.',
 };
 
 const PROBES: Record<ProviderName, () => Promise<ProviderProbe>> = {
   epc: () => probeEpc(PROBE_POSTCODE),
   propertydata: () => probePropertyData(),
+  'propertydata-uprns': () => probePostcodeUprns(UPRNS_PROBE_POSTCODE),
 };
 
 const settingKey = (p: ProviderName) => `provider-health:${p}`;

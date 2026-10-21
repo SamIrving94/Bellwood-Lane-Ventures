@@ -6,7 +6,11 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { probeEpc } from '../epc';
-import { __clearMemoryCache, probePropertyData } from '../propertydata';
+import {
+  __clearMemoryCache,
+  probePostcodeUprns,
+  probePropertyData,
+} from '../propertydata';
 import { __resetRateLimiter } from '../rate-limiter';
 
 function jsonResponse(body: unknown, status = 200) {
@@ -81,6 +85,59 @@ describe('probePropertyData', () => {
       new Response('Invalid API key', { status: 401 })
     );
     const res = await probePropertyData();
+    expect(res.ok).toBe(false);
+  });
+});
+
+describe('probePostcodeUprns', () => {
+  it('is healthy when PropertyData returns homes', async () => {
+    fetchMock.mockResolvedValue(
+      jsonResponse({
+        status: 'success',
+        data: [
+          { uprn: 1, address: '1 A Road', classificationCode: 'RD04' },
+          { uprn: 2, address: 'Shop', classificationCode: 'CR08' },
+        ],
+      })
+    );
+    expect(await probePostcodeUprns('SW6 3EF')).toEqual({
+      ok: true,
+      detail: '1 homes in SW6 3EF',
+    });
+    const url = String(fetchMock.mock.calls[0][0]);
+    expect(url).toContain('/uprns');
+    expect(url).toContain('results=20');
+  });
+
+  it('does not share the 60-day cache, so every run really calls out', async () => {
+    const body = {
+      status: 'success',
+      data: [{ uprn: 1, address: '1 A Road', classificationCode: 'RD04' }],
+    };
+    fetchMock.mockImplementation(async () => jsonResponse(body));
+    await probePostcodeUprns('SW6 3EF');
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(Date.now() + 2 * 60 * 1000);
+    await probePostcodeUprns('SW6 3EF');
+    vi.useRealTimers();
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('fails when the answer holds no homes', async () => {
+    fetchMock.mockResolvedValue(
+      jsonResponse({
+        status: 'success',
+        data: [{ uprn: 2, address: 'Shop', classificationCode: 'CR08' }],
+      })
+    );
+    expect((await probePostcodeUprns('SW6 3EF')).ok).toBe(false);
+  });
+
+  it('fails with the reason on a rejected key', async () => {
+    fetchMock.mockResolvedValue(
+      new Response('Invalid API key', { status: 401 })
+    );
+    const res = await probePostcodeUprns('SW6 3EF');
     expect(res.ok).toBe(false);
   });
 });

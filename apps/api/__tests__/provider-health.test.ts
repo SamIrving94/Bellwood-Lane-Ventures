@@ -99,6 +99,7 @@ const json = (body: unknown, status = 200) =>
 
 let epcStatus = 200;
 let pdEchoesKey = false;
+let uprnsHaveHomes = true;
 const fetchMock = vi.fn(async (input: string | URL) => {
   const url = String(input);
   if (url.includes('get-energy-performance-data')) {
@@ -111,6 +112,26 @@ const fetchMock = vi.fn(async (input: string | URL) => {
     if (pdEchoesKey) {
       return new Response(`bad key ${KEYS.PROPERTYDATA_API_KEY}`, {
         status: 403,
+      });
+    }
+    if (url.includes('/uprns')) {
+      return json({
+        status: 'success',
+        data: uprnsHaveHomes
+          ? [
+              {
+                uprn: 217012345,
+                address: '1 Test Road',
+                classificationCode: 'RD04',
+              },
+            ]
+          : [
+              {
+                uprn: 217099999,
+                address: 'Corner Shop',
+                classificationCode: 'CR08',
+              },
+            ],
       });
     }
     return json({ status: 'success', result: { credits_remaining: 500 } });
@@ -131,6 +152,7 @@ beforeEach(() => {
   db.events.length = 0;
   epcStatus = 200;
   pdEchoesKey = false;
+  uprnsHaveHomes = true;
   fetchMock.mockClear();
   vi.stubGlobal('fetch', fetchMock);
   __clearMemoryCache();
@@ -149,8 +171,8 @@ describe('/cron/provider-health', () => {
   test('all healthy: one call per provider, logged, no card', async () => {
     const res = await run();
     const body = await res.json();
-    expect(body.checks.map((c: Row) => c.status)).toEqual(['ok', 'ok']);
-    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(body.checks.map((c: Row) => c.status)).toEqual(['ok', 'ok', 'ok']);
+    expect(fetchMock).toHaveBeenCalledTimes(3);
     // OS Places' licence has expired: it must never be probed.
     expect(
       fetchMock.mock.calls.some(([u]) => String(u).includes('api.os.uk'))
@@ -173,6 +195,23 @@ describe('/cron/provider-health', () => {
       'EPC API: invalid bearer token'
     );
     expect(db.events[0]).toMatchObject({ count: 1 });
+  });
+
+  test('/uprns answering with no homes is a failure of its own', async () => {
+    uprnsHaveHomes = false;
+    const body = await (await run()).json();
+    expect(body.raised).toEqual(['propertydata-uprns']);
+    const statuses = Object.fromEntries(
+      body.checks.map((c: Row) => [c.provider, c.status])
+    );
+    expect(statuses).toEqual({
+      epc: 'ok',
+      propertydata: 'ok',
+      'propertydata-uprns': 'failing',
+    });
+    expect(
+      String(db.actions.get('provider-health:propertydata-uprns')?.description)
+    ).toContain('returned no homes for SW6 3EF');
   });
 
   test('a known outage does not reopen a card the founder closed', async () => {
@@ -210,6 +249,7 @@ describe('/cron/provider-health', () => {
       settings: [...db.settings.values()],
     });
     expect(body.checks.map((c: Row) => c.status)).toEqual([
+      'failing',
       'failing',
       'failing',
     ]);
