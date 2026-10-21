@@ -22,7 +22,7 @@ import {
   saveAvmSnapshot,
 } from '@repo/valuation';
 import { DEFAULT_OFFER_CONFIG } from '@repo/valuation/src/offer-config';
-import { NextResponse } from 'next/server';
+import { NextResponse, after } from 'next/server';
 import { z } from 'zod';
 
 /**
@@ -168,6 +168,333 @@ function mapPropertyType(
     case 'other':
     default:
       return 'terraced'; // fallback
+  }
+}
+
+/**
+ * Price a saved quote request: the AVM (frozen for the backtest), the
+ * PropertyData preflight, the stored QuoteOffer and the founder actions.
+ * Throws when pricing fails; the caller marks the request draft.
+ *
+ * Seller forms run this AFTER replying (see POST). It used to run first, so
+ * a seller watched "Sending…" for ~25 s (21 Oct 2026: 05:05:57 → 05:06:23,
+ * mostly the PropertyData rate limiter) for a figure we never show them.
+ */
+async function priceQuote(
+  input: z.infer<typeof InputSchema>,
+  quoteRequest: { id: string }
+) {
+  // Generate offer + run PropertyData preflight (EPC + tenure + market
+  // temperature) in parallel. Preflight findings are merged into the offer
+  // reasoning, and a small ±% adjustment is applied to the headline offer.
+  const [offerBase, preflight] = await Promise.all([
+    generateInstantOffer(
+      {
+        postcode: input.postcode,
+        address: input.address,
+        propertyType: mapPropertyType(input.propertyType),
+        bedrooms: input.bedrooms,
+        condition: input.condition,
+        situation: input.situation as InstantOfferSituation,
+        urgencyDays: input.urgencyDays,
+        askingPricePence: input.askingPricePence,
+      },
+      {
+        // Freeze the appraisal for the monthly Land Registry backtest.
+        // Public quotes are the cleanest cohort: mostly homes we never buy.
+        onAvm: (avmInput, avm) =>
+          saveAvmSnapshot(database, {
+            input: avmInput,
+            result: avm,
+            source: 'quote',
+            sourceId: quoteRequest.id,
+          }).then(() => undefined),
+      }
+    ),
+    runPreflightChecks({
+      postcode: input.postcode,
+      address: input.address,
+    }).catch((err) => {
+      console.warn('[quote] preflight failed (non-fatal)', err);
+      return null;
+    }),
+  ]);
+
+  // Apply the preflight adjustment to the offer. `applyPreflightAdjustment`
+  // owns the ±5% clamp AND re-tests the 60%-of-AVM floor against the final
+  // figure — the adjustment lands after generateInstantOffer computed
+  // requiresReview, so without that re-test a negative adjustment could take
+  // an offer under the floor with no escalation card raised.
+  const adjusted = applyPreflightAdjustment(
+    offerBase,
+    preflight?.offerAdjustment ?? 0
+  );
+
+  const offer = {
+    ...adjusted,
+    reasoning: [
+      ...adjusted.reasoning,
+      ...(preflight?.reasoning ?? []),
+      ...(preflight?.tenure.isShortLease
+        ? [
+            `⚠ SHORT LEASE: ${preflight.tenure.remainingLeaseYears ?? '?'} years remaining — Appraiser must confirm before binding offer.`,
+          ]
+        : []),
+      ...(preflight?.degraded
+        ? [
+            `⚠ PREFLIGHT DEGRADED: ${preflight.failedSources.join(', ')} could not be checked — the offer omits those factors rather than assuming they are clear.`,
+          ]
+        : []),
+      ...(preflight === null
+        ? [
+            '⚠ PREFLIGHT UNAVAILABLE: EPC, tenure and market checks did not run.',
+          ]
+        : []),
+    ],
+    // Force review if preflight surfaced a short-lease leasehold — we
+    // don't auto-commit to those without founder eyeballs. Same for a
+    // DEGRADED preflight: a lookup that failed is not a lookup that came
+    // back clear, and the untested factors (short lease, low EPC) are the
+    // ones that would have pushed the offer DOWN.
+    requiresReview:
+      adjusted.requiresReview ||
+      !!preflight?.tenure.isShortLease ||
+      !!preflight?.degraded ||
+      preflight === null,
+  };
+
+  // Persist offer
+  const offerRow = await database.quoteOffer.create({
+    data: {
+      estimatedMarketValueMinPence: offer.estimatedMarketValueMinPence,
+      estimatedMarketValueMaxPence: offer.estimatedMarketValueMaxPence,
+      offerPence: offer.offerPence,
+      offerPercentOfAvm: offer.offerPercentOfAvm,
+      confidenceScore: offer.confidenceScore,
+      completionDays: offer.completionDays,
+      reasoning: offer.reasoning,
+      lockedUntil: offer.lockedUntil,
+    },
+  });
+
+  await database.quoteRequest.update({
+    where: { id: quoteRequest.id },
+    data: {
+      status: 'quoted',
+      offerId: offerRow.id,
+    },
+  });
+
+  // If the offer requires founder review, surface it in the Action Centre.
+  // Best-effort — never block the response.
+  if (offer.requiresReview) {
+    try {
+      await database.founderAction.create({
+        data: {
+          type: 'ceo_escalation',
+          priority: 'high',
+          status: 'pending',
+          agent: 'appraiser',
+          title: `Review offer: ${input.address}, ${input.postcode}`,
+          // The old copy asserted "Below the 60% floor" on EVERY review,
+          // including the short-lease and thin-evidence ones that are
+          // nowhere near the floor. State the actual position instead.
+          description: `Auto-generated offer of £${Math.round(offer.offerPence / 100).toLocaleString('en-GB')} (${Math.round(offer.offerPercentOfAvm * 100)}% of AVM)${offer.belowAvmFloor ? ` — BELOW the ${Math.round(OFFER_FLOOR_FRACTION * 100)}% floor` : ''}. Needs your sign-off before the seller is committed to. Reasons are in the offer reasoning trail.`,
+          metadata: {
+            quoteRequestId: quoteRequest.id,
+            offerPence: offer.offerPence,
+            offerPercentOfAvm: offer.offerPercentOfAvm,
+            belowAvmFloor: offer.belowAvmFloor,
+            avmMid: Math.round(
+              (offer.estimatedMarketValueMinPence +
+                offer.estimatedMarketValueMaxPence) /
+                2
+            ),
+            link: `/quotes/${quoteRequest.id}`,
+          },
+        },
+      });
+    } catch (err) {
+      console.warn('[quote] founder-action create failed (non-fatal)', err);
+    }
+  }
+
+  // For every agent quick-form submission, raise a Founder Action so the
+  // submission lands in Sam's queue regardless of whether the offer
+  // requires review. The 4-working-hour signed-PDF SLA is enforced
+  // operationally - this is the trigger for that workflow.
+  if (input.submissionSource === 'agent_quick_form') {
+    // Run the LLM triage. Null-tolerant — null falls through to the existing
+    // deterministic description.
+    const triage = await triageSubmission({
+      address: input.address,
+      postcode: input.postcode,
+      propertyType: input.propertyType,
+      bedrooms: input.bedrooms,
+      condition: input.condition,
+      situation: input.situation,
+      urgencyDays: input.urgencyDays,
+      askingPricePence: input.askingPricePence,
+      role: input.role,
+      firmName: input.firmName,
+      triggerLabel: input.triggerLabel,
+      notes: input.notes,
+    }).catch((err) => {
+      console.warn('[quote] LLM triage failed (non-fatal)', err);
+      return null;
+    });
+
+    try {
+      const offerGbp = Math.round(offer.offerPence / 100).toLocaleString(
+        'en-GB'
+      );
+      const slaDeadline = new Date(Date.now() + 24 * 60 * 60 * 1000);
+
+      // Shared metadata for the trio of actions this creates
+      const commonMeta = {
+        quoteRequestId: quoteRequest.id,
+        offerPence: offer.offerPence,
+        offerPercentOfAvm: offer.offerPercentOfAvm,
+        triggerLabel: input.triggerLabel,
+        firmName: input.firmName,
+        contactName: input.contactName,
+        contactEmail: input.contactEmail,
+        contactPhone: input.contactPhone,
+        slaHours: 24,
+        link: `/quotes/${quoteRequest.id}`,
+        triage: triage ?? undefined,
+      } as const;
+
+      // Build the SLA description, prepending the LLM triage when present.
+      const baseDescription = `${input.firmName ?? 'Agent'} submitted via /save-the-sale. Trigger: ${input.triggerLabel ?? 'unspecified'}. Indicative offer £${offerGbp} (${Math.round(offer.offerPercentOfAvm * 100)}% of AVM). Signed PDF promised within 24h.`;
+      const slaDescription = triage
+        ? [
+            `**${triage.summary}** — urgency: ${triage.urgencySignal}.`,
+            triage.watchOuts.length > 0
+              ? `Watch-outs: ${triage.watchOuts.join('; ')}.`
+              : null,
+            `Next step: ${triage.recommendedNextStep}`,
+            '',
+            baseDescription,
+          ]
+            .filter(Boolean)
+            .join('\n')
+        : baseDescription;
+
+      // 1) Board-facing SLA tracking action
+      await database.founderAction.create({
+        data: {
+          type: 'ceo_escalation',
+          // Promote to "critical" when the triage flags high urgency.
+          priority: triage?.urgencySignal === 'high' ? 'critical' : 'high',
+          status: 'pending',
+          agent: 'system',
+          title: `Sign + send offer: ${input.address}, ${input.postcode}`,
+          description: slaDescription,
+          expiresAt: slaDeadline,
+          metadata: { ...commonMeta, assignedToAgent: 'board' },
+        },
+      });
+
+      // 2) Appraiser draft action (Paperclip picks up on next heartbeat)
+      await database.founderAction.create({
+        data: {
+          type: 'approve_offer',
+          priority: 'high',
+          status: 'pending',
+          agent: 'appraiser',
+          title: `Draft signed offer PDF: ${input.address}`,
+          description: `Enrich + draft a signed binding offer for ${input.address}, ${input.postcode}. Indicative figure: £${offerGbp}. Use docs/templates/binding-offer-letter.md. The quote-ops cron picks this up automatically (enrichment, dedup, signed PDF); review the draft it produces before anything is sent.`,
+          expiresAt: new Date(Date.now() + 4 * 60 * 60 * 1000),
+          metadata: {
+            ...commonMeta,
+            assignedToAgent: 'appraiser',
+            workflow: 'draft_signed_pdf',
+          },
+        },
+      });
+
+      // (The Liaison send action gets created later — when Appraiser
+      // PATCHes the signedOfferUrl. See apps/api/.../quote-ops/[id]/route.ts.)
+    } catch (err) {
+      console.warn('[quote] founder-action (agent SLA) create failed', err);
+    }
+
+    // Confirmation email to the agent. The signed PDF will arrive
+    // separately within 24 hours - this is just acknowledgement.
+    try {
+      const offerGbp = Math.round(offer.offerPence / 100).toLocaleString(
+        'en-GB'
+      );
+      const followUpLine = input.contactPhone
+        ? "We'll also drop you a WhatsApp on the number you gave us when the signed offer is ready."
+        : 'If you share a work mobile on reply, we can WhatsApp you the moment the signed offer is ready.';
+      await sendEmail({
+        to: input.contactEmail,
+        subject: `Your indicative offer for ${input.address}`,
+        text: [
+          `Hi ${input.contactName.split(' ')[0]},`,
+          '',
+          `Thanks for sending us ${input.address}, ${input.postcode}.`,
+          '',
+          `Indicative cash offer: £${offerGbp}.`,
+          '',
+          'This is our honest starting point, based on comparable sales and public records. We need to view the property before we can confirm. We send the confirmed price in writing within two working days of the viewing, and that is the price we complete at.',
+          '',
+          'The price can only change for three reasons, all documented in writing:',
+          '  1. A structural survey reveals a material defect not visible or disclosed at viewing.',
+          '  2. A title issue emerges during conveyancing that materially affects value.',
+          '  3. Information provided about the property turns out to be materially incorrect.',
+          '',
+          'We will be in touch to arrange the viewing.',
+          followUpLine,
+          '',
+          brand.name,
+          'Member of the Property Redress Scheme (PRS) · HMRC AML supervised · ICO registered',
+          brand.email,
+        ].join('\n'),
+      });
+    } catch (err) {
+      console.warn('[quote] agent confirmation email failed', err);
+    }
+  }
+
+  return { offer, narrative: offerBase.narrative };
+}
+
+/** Mark a request draft so a person follows up by hand. Never throws. */
+async function markDraft(quoteRequestId: string) {
+  await database.quoteRequest
+    .update({ where: { id: quoteRequestId }, data: { status: 'draft' } })
+    .catch((err) => console.warn('[quote] could not mark draft', err));
+}
+
+/**
+ * Record that the request arrived and send the plain acknowledgement.
+ * Deliberately NOT 'offer_sent' and NO figure: the founder rule is no
+ * price in front of a seller before a viewing, and every offer is checked
+ * by a person (docs/mcp/01-audit.md, P0). The generated quote stays on
+ * QuoteOffer for the founder; the only event that reveals a figure is the
+ * human approve-and-send in @repo/quote-ops (SIGNED_OFFER_NOTIFIER).
+ * `requiresReview` is null when it is recorded before pricing.
+ */
+async function recordQuoteReceived(
+  quoteRequestId: string,
+  requiresReview: boolean | null
+): Promise<string | null> {
+  try {
+    const recorded = await recordDealUpdate({
+      quoteRequestId,
+      kind: 'quote_requested',
+      title: 'We have your details',
+      detail:
+        'A person reads every request the same working day and will be in touch to arrange a viewing. No figure until we have seen the property; once we have, your written offer follows within two working days.',
+      metadata: requiresReview === null ? {} : { requiresReview },
+    });
+    return recorded.trackUrl;
+  } catch (err) {
+    console.warn('[quote] deal-update record failed (non-fatal)', err);
+    return null;
   }
 }
 
@@ -346,303 +673,35 @@ export async function POST(request: Request) {
     );
   }
 
-  // Generate offer + run PropertyData preflight (EPC + tenure + market
-  // temperature) in parallel. Preflight findings are merged into the offer
-  // reasoning, and a small ±% adjustment is applied to the headline offer.
-  try {
-    const [offerBase, preflight] = await Promise.all([
-      generateInstantOffer(
-        {
-          postcode: input.postcode,
-          address: input.address,
-          propertyType: mapPropertyType(input.propertyType),
-          bedrooms: input.bedrooms,
-          condition: input.condition,
-          situation: input.situation as InstantOfferSituation,
-          urgencyDays: input.urgencyDays,
-          askingPricePence: input.askingPricePence,
-        },
-        {
-          // Freeze the appraisal for the monthly Land Registry backtest.
-          // Public quotes are the cleanest cohort: mostly homes we never buy.
-          onAvm: (avmInput, avm) =>
-            saveAvmSnapshot(database, {
-              input: avmInput,
-              result: avm,
-              source: 'quote',
-              sourceId: quoteRequest.id,
-            }).then(() => undefined),
+  // Seller-facing forms show no figure (SHOW_ONSCREEN_OFFER, and the
+  // homepage forms only check that the request was saved), so reply as soon
+  // as it is saved and price it in the background. The agent quick form
+  // still waits: it shows the agent the indicative figure.
+  const sellerFacing =
+    input.role !== 'agent' && input.submissionSource !== 'agent_quick_form';
+  if (sellerFacing) {
+    const trackUrl = await recordQuoteReceived(quoteRequest.id, null);
+    after(async () => {
+      try {
+        await priceQuote(input, quoteRequest);
+      } catch (err) {
+        await markDraft(quoteRequest.id);
+        if (isInsufficientEvidence(err)) {
+          console.warn('[quote] no valuation', input.postcode, err.message);
+        } else {
+          console.error('[quote] offer engine failed (background)', err);
         }
-      ),
-      runPreflightChecks({
-        postcode: input.postcode,
-        address: input.address,
-      }).catch((err) => {
-        console.warn('[quote] preflight failed (non-fatal)', err);
-        return null;
-      }),
-    ]);
+      }
+    });
+    return NextResponse.json({ quoteId: quoteRequest.id, trackUrl });
+  }
 
-    // Apply the preflight adjustment to the offer. `applyPreflightAdjustment`
-    // owns the ±5% clamp AND re-tests the 60%-of-AVM floor against the final
-    // figure — the adjustment lands after generateInstantOffer computed
-    // requiresReview, so without that re-test a negative adjustment could take
-    // an offer under the floor with no escalation card raised.
-    const adjusted = applyPreflightAdjustment(
-      offerBase,
-      preflight?.offerAdjustment ?? 0
+  try {
+    const { offer, narrative } = await priceQuote(input, quoteRequest);
+    const trackUrl = await recordQuoteReceived(
+      quoteRequest.id,
+      offer.requiresReview
     );
-
-    const offer = {
-      ...adjusted,
-      reasoning: [
-        ...adjusted.reasoning,
-        ...(preflight?.reasoning ?? []),
-        ...(preflight?.tenure.isShortLease
-          ? [
-              `⚠ SHORT LEASE: ${preflight.tenure.remainingLeaseYears ?? '?'} years remaining — Appraiser must confirm before binding offer.`,
-            ]
-          : []),
-        ...(preflight?.degraded
-          ? [
-              `⚠ PREFLIGHT DEGRADED: ${preflight.failedSources.join(', ')} could not be checked — the offer omits those factors rather than assuming they are clear.`,
-            ]
-          : []),
-        ...(preflight === null
-          ? [
-              '⚠ PREFLIGHT UNAVAILABLE: EPC, tenure and market checks did not run.',
-            ]
-          : []),
-      ],
-      // Force review if preflight surfaced a short-lease leasehold — we
-      // don't auto-commit to those without founder eyeballs. Same for a
-      // DEGRADED preflight: a lookup that failed is not a lookup that came
-      // back clear, and the untested factors (short lease, low EPC) are the
-      // ones that would have pushed the offer DOWN.
-      requiresReview:
-        adjusted.requiresReview ||
-        !!preflight?.tenure.isShortLease ||
-        !!preflight?.degraded ||
-        preflight === null,
-    };
-
-    // Persist offer
-    const offerRow = await database.quoteOffer.create({
-      data: {
-        estimatedMarketValueMinPence: offer.estimatedMarketValueMinPence,
-        estimatedMarketValueMaxPence: offer.estimatedMarketValueMaxPence,
-        offerPence: offer.offerPence,
-        offerPercentOfAvm: offer.offerPercentOfAvm,
-        confidenceScore: offer.confidenceScore,
-        completionDays: offer.completionDays,
-        reasoning: offer.reasoning,
-        lockedUntil: offer.lockedUntil,
-      },
-    });
-
-    await database.quoteRequest.update({
-      where: { id: quoteRequest.id },
-      data: {
-        status: 'quoted',
-        offerId: offerRow.id,
-      },
-    });
-
-    // If the offer requires founder review, surface it in the Action Centre.
-    // Best-effort — never block the response.
-    if (offer.requiresReview) {
-      try {
-        await database.founderAction.create({
-          data: {
-            type: 'ceo_escalation',
-            priority: 'high',
-            status: 'pending',
-            agent: 'appraiser',
-            title: `Review offer: ${input.address}, ${input.postcode}`,
-            // The old copy asserted "Below the 60% floor" on EVERY review,
-            // including the short-lease and thin-evidence ones that are
-            // nowhere near the floor. State the actual position instead.
-            description: `Auto-generated offer of £${Math.round(offer.offerPence / 100).toLocaleString('en-GB')} (${Math.round(offer.offerPercentOfAvm * 100)}% of AVM)${offer.belowAvmFloor ? ` — BELOW the ${Math.round(OFFER_FLOOR_FRACTION * 100)}% floor` : ''}. Needs your sign-off before the seller is committed to. Reasons are in the offer reasoning trail.`,
-            metadata: {
-              quoteRequestId: quoteRequest.id,
-              offerPence: offer.offerPence,
-              offerPercentOfAvm: offer.offerPercentOfAvm,
-              belowAvmFloor: offer.belowAvmFloor,
-              avmMid: Math.round(
-                (offer.estimatedMarketValueMinPence +
-                  offer.estimatedMarketValueMaxPence) /
-                  2
-              ),
-              link: `/quotes/${quoteRequest.id}`,
-            },
-          },
-        });
-      } catch (err) {
-        console.warn('[quote] founder-action create failed (non-fatal)', err);
-      }
-    }
-
-    // For every agent quick-form submission, raise a Founder Action so the
-    // submission lands in Sam's queue regardless of whether the offer
-    // requires review. The 4-working-hour signed-PDF SLA is enforced
-    // operationally - this is the trigger for that workflow.
-    if (input.submissionSource === 'agent_quick_form') {
-      // Run the LLM triage. Null-tolerant — null falls through to the existing
-      // deterministic description.
-      const triage = await triageSubmission({
-        address: input.address,
-        postcode: input.postcode,
-        propertyType: input.propertyType,
-        bedrooms: input.bedrooms,
-        condition: input.condition,
-        situation: input.situation,
-        urgencyDays: input.urgencyDays,
-        askingPricePence: input.askingPricePence,
-        role: input.role,
-        firmName: input.firmName,
-        triggerLabel: input.triggerLabel,
-        notes: input.notes,
-      }).catch((err) => {
-        console.warn('[quote] LLM triage failed (non-fatal)', err);
-        return null;
-      });
-
-      try {
-        const offerGbp = Math.round(offer.offerPence / 100).toLocaleString(
-          'en-GB'
-        );
-        const slaDeadline = new Date(Date.now() + 24 * 60 * 60 * 1000);
-
-        // Shared metadata for the trio of actions this creates
-        const commonMeta = {
-          quoteRequestId: quoteRequest.id,
-          offerPence: offer.offerPence,
-          offerPercentOfAvm: offer.offerPercentOfAvm,
-          triggerLabel: input.triggerLabel,
-          firmName: input.firmName,
-          contactName: input.contactName,
-          contactEmail: input.contactEmail,
-          contactPhone: input.contactPhone,
-          slaHours: 24,
-          link: `/quotes/${quoteRequest.id}`,
-          triage: triage ?? undefined,
-        } as const;
-
-        // Build the SLA description, prepending the LLM triage when present.
-        const baseDescription = `${input.firmName ?? 'Agent'} submitted via /save-the-sale. Trigger: ${input.triggerLabel ?? 'unspecified'}. Indicative offer £${offerGbp} (${Math.round(offer.offerPercentOfAvm * 100)}% of AVM). Signed PDF promised within 24h.`;
-        const slaDescription = triage
-          ? [
-              `**${triage.summary}** — urgency: ${triage.urgencySignal}.`,
-              triage.watchOuts.length > 0
-                ? `Watch-outs: ${triage.watchOuts.join('; ')}.`
-                : null,
-              `Next step: ${triage.recommendedNextStep}`,
-              '',
-              baseDescription,
-            ]
-              .filter(Boolean)
-              .join('\n')
-          : baseDescription;
-
-        // 1) Board-facing SLA tracking action
-        await database.founderAction.create({
-          data: {
-            type: 'ceo_escalation',
-            // Promote to "critical" when the triage flags high urgency.
-            priority: triage?.urgencySignal === 'high' ? 'critical' : 'high',
-            status: 'pending',
-            agent: 'system',
-            title: `Sign + send offer: ${input.address}, ${input.postcode}`,
-            description: slaDescription,
-            expiresAt: slaDeadline,
-            metadata: { ...commonMeta, assignedToAgent: 'board' },
-          },
-        });
-
-        // 2) Appraiser draft action (Paperclip picks up on next heartbeat)
-        await database.founderAction.create({
-          data: {
-            type: 'approve_offer',
-            priority: 'high',
-            status: 'pending',
-            agent: 'appraiser',
-            title: `Draft signed offer PDF: ${input.address}`,
-            description: `Enrich + draft a signed binding offer for ${input.address}, ${input.postcode}. Indicative figure: £${offerGbp}. Use docs/templates/binding-offer-letter.md. The quote-ops cron picks this up automatically (enrichment, dedup, signed PDF); review the draft it produces before anything is sent.`,
-            expiresAt: new Date(Date.now() + 4 * 60 * 60 * 1000),
-            metadata: {
-              ...commonMeta,
-              assignedToAgent: 'appraiser',
-              workflow: 'draft_signed_pdf',
-            },
-          },
-        });
-
-        // (The Liaison send action gets created later — when Appraiser
-        // PATCHes the signedOfferUrl. See apps/api/.../quote-ops/[id]/route.ts.)
-      } catch (err) {
-        console.warn('[quote] founder-action (agent SLA) create failed', err);
-      }
-
-      // Confirmation email to the agent. The signed PDF will arrive
-      // separately within 24 hours - this is just acknowledgement.
-      try {
-        const offerGbp = Math.round(offer.offerPence / 100).toLocaleString(
-          'en-GB'
-        );
-        const followUpLine = input.contactPhone
-          ? "We'll also drop you a WhatsApp on the number you gave us when the signed offer is ready."
-          : 'If you share a work mobile on reply, we can WhatsApp you the moment the signed offer is ready.';
-        await sendEmail({
-          to: input.contactEmail,
-          subject: `Your indicative offer for ${input.address}`,
-          text: [
-            `Hi ${input.contactName.split(' ')[0]},`,
-            '',
-            `Thanks for sending us ${input.address}, ${input.postcode}.`,
-            '',
-            `Indicative cash offer: £${offerGbp}.`,
-            '',
-            'This is our honest starting point, based on comparable sales and public records. We need to view the property before we can confirm. We send the confirmed price in writing within two working days of the viewing, and that is the price we complete at.',
-            '',
-            'The price can only change for three reasons, all documented in writing:',
-            '  1. A structural survey reveals a material defect not visible or disclosed at viewing.',
-            '  2. A title issue emerges during conveyancing that materially affects value.',
-            '  3. Information provided about the property turns out to be materially incorrect.',
-            '',
-            'We will be in touch to arrange the viewing.',
-            followUpLine,
-            '',
-            brand.name,
-            'Member of the Property Redress Scheme (PRS) · HMRC AML supervised · ICO registered',
-            brand.email,
-          ].join('\n'),
-        });
-      } catch (err) {
-        console.warn('[quote] agent confirmation email failed', err);
-      }
-    }
-
-    // Record that the request arrived and send the plain acknowledgement.
-    // Deliberately NOT 'offer_sent' and NO figure: the founder rule is no
-    // price in front of a seller before a viewing, and every offer is checked
-    // by a person (docs/mcp/01-audit.md, P0). The generated quote stays on
-    // QuoteOffer for the founder; the only event that reveals a figure is the
-    // human approve-and-send in @repo/quote-ops (SIGNED_OFFER_NOTIFIER).
-    let trackUrl: string | null = null;
-    try {
-      const recorded = await recordDealUpdate({
-        quoteRequestId: quoteRequest.id,
-        kind: 'quote_requested',
-        title: 'We have your details',
-        detail:
-          'A person reads every request the same working day and will be in touch to arrange a viewing. No figure until we have seen the property; once we have, your written offer follows within two working days.',
-        metadata: { requiresReview: offer.requiresReview },
-      });
-      trackUrl = recorded.trackUrl;
-    } catch (err) {
-      console.warn('[quote] deal-update record failed (non-fatal)', err);
-    }
-
     return NextResponse.json({
       quoteId: quoteRequest.id,
       estimatedMarketValueMinPence: offer.estimatedMarketValueMinPence,
@@ -652,7 +711,7 @@ export async function POST(request: Request) {
       confidenceScore: offer.confidenceScore,
       completionDays: offer.completionDays,
       reasoning: offer.reasoning,
-      narrative: offerBase.narrative,
+      narrative,
       lockedUntil: offer.lockedUntil.toISOString(),
       requiresReview: offer.requiresReview,
       trackUrl,
@@ -666,10 +725,7 @@ export async function POST(request: Request) {
     });
   } catch (err) {
     // Mark as draft so we can follow up manually
-    await database.quoteRequest.update({
-      where: { id: quoteRequest.id },
-      data: { status: 'draft' },
-    });
+    await markDraft(quoteRequest.id);
     // No sold evidence anywhere → the AVM declines to put a number on it.
     // Not an outage: the request is saved and a person prices it. (No figure
     // is shown on screen in any case — SHOW_ONSCREEN_OFFER.)
