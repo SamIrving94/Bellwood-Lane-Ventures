@@ -5,6 +5,7 @@ import {
   MIN_SAMPLE_FOR_HEADLINE,
   type MatchedRow,
   buildBacktestActionCopy,
+  floorAreaSourceOf,
   pickOutcomeSale,
   priceBand,
   summariseMatched,
@@ -118,6 +119,7 @@ const row = (over: Partial<MatchedRow>): MatchedRow => ({
   propertyType: 'terraced',
   csaSource: 'distance',
   engineVersion: 'abc1234',
+  floorAreaSource: 'propertydata',
   ...over,
 });
 
@@ -138,6 +140,51 @@ describe('summariseMatched', () => {
     expect(s.bySource.quote.n).toBe(1);
     expect(s.byPriceBand.under_250k.n).toBe(2);
     expect(s.byEngineVersion.abc1234.n).toBe(2);
+    expect(s.byFloorAreaSource.propertydata.n).toBe(2);
+  });
+
+  test('splits the cohort by where the floor area came from', () => {
+    const s = summariseMatched([
+      row({ floorAreaSource: 'epc_uprn' }),
+      row({ floorAreaSource: 'epc_uprn', soldPricePence: 125_000_00 }),
+      row({ floorAreaSource: 'propertydata', soldPricePence: 80_000_00 }),
+      row({ floorAreaSource: 'caller' }),
+      row({ floorAreaSource: 'none' }),
+      row({ floorAreaSource: 'unknown' }),
+    ]);
+    expect(Object.keys(s.byFloorAreaSource).sort()).toEqual([
+      'caller',
+      'epc_uprn',
+      'none',
+      'propertydata',
+      'unknown',
+    ]);
+    expect(s.byFloorAreaSource.epc_uprn.n).toBe(2);
+    // Each segment is scored on its own rows only.
+    expect(s.byFloorAreaSource.epc_uprn.medianApe).toBeCloseTo(0.1, 3);
+    expect(s.byFloorAreaSource.propertydata.medianApe).toBeCloseTo(0.25, 3);
+    expect(s.byFloorAreaSource.caller.medianApe).toBe(0);
+  });
+});
+
+describe('floorAreaSourceOf', () => {
+  test('passes through the three sources the engine records', () => {
+    expect(floorAreaSourceOf({ floorAreaSource: 'epc_uprn' })).toBe('epc_uprn');
+    expect(floorAreaSourceOf({ floorAreaSource: 'propertydata' })).toBe(
+      'propertydata'
+    );
+    expect(floorAreaSourceOf({ floorAreaSource: 'caller' })).toBe('caller');
+  });
+
+  test('null means the engine had no verified size', () => {
+    expect(floorAreaSourceOf({ floorAreaSource: null })).toBe('none');
+  });
+
+  test('a missing or unexpected field is unknown, not none', () => {
+    expect(floorAreaSourceOf({})).toBe('unknown');
+    expect(floorAreaSourceOf({ floorAreaSource: 'epc' })).toBe('unknown');
+    expect(floorAreaSourceOf(null)).toBe('unknown');
+    expect(floorAreaSourceOf('epc_uprn')).toBe('unknown');
   });
 });
 
