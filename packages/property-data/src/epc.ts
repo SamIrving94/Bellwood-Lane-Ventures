@@ -38,6 +38,7 @@
  */
 
 import { z } from 'zod';
+import { type ProviderProbe, probeError } from './provider-probe';
 
 const EPC_API_BASE =
   'https://api.get-energy-performance-data.communities.gov.uk';
@@ -374,6 +375,33 @@ export async function searchDomesticEpc(
       );
     }
     return [];
+  }
+}
+
+/**
+ * Health probe: the same search `searchDomesticEpc` makes, at page_size 1,
+ * keeping the error instead of returning [] (see provider-probe.ts). A 404
+ * means the register answered and holds nothing there — the token works.
+ */
+export async function probeEpc(postcode: string): Promise<ProviderProbe> {
+  const token = process.env.EPC_API_TOKEN ?? '';
+  if (!token) return { ok: false, error: 'EPC_API_TOKEN not set' };
+
+  const params = new URLSearchParams();
+  params.set('postcode', postcode.toUpperCase().trim());
+  params.set('page_size', '1');
+  try {
+    const body = await apiGet(
+      `/api/domestic/search?${params.toString()}`,
+      token
+    );
+    const rows = parseDomesticSearchRows(body);
+    return { ok: true, detail: `${rows.length} certificate(s) returned` };
+  } catch (err) {
+    if ((err as Error).message.includes('No EPC records')) {
+      return { ok: true, detail: `no certificates in ${postcode}` };
+    }
+    return probeError(err);
   }
 }
 
