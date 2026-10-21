@@ -563,6 +563,9 @@ export type ValuationSaleResult = {
  * unit against PropertyData's /valuation-sale documentation and convert here if
  * it turns out to want square feet — do NOT change it on a hunch (docs/LEARNINGS.md).
  */
+/** See getPropertyDataValuation: we can't supply the inputs it now requires. */
+const VALUATION_SALE_INPUTS_AVAILABLE = false;
+
 export async function getPropertyDataValuation(input: {
   postcode: string;
   propertyType: 'detached' | 'semi-detached' | 'terraced' | 'flat';
@@ -570,6 +573,14 @@ export async function getPropertyDataValuation(input: {
   /** Internal floor area in SQUARE METRES. See the unit caveat above. */
   internalAreaSqm?: number;
 }): Promise<ValuationSaleResult> {
+  // /valuation-sale now requires construction_date, bathrooms,
+  // finish_quality, outdoor_space and off_street_parking as well (400, code
+  // 701 — seen on every quote, 21 Oct 2026). We hold none of those, so the
+  // call could only ever fail, and each attempt spent one of the 4-per-10s
+  // rate-limit slots the seller was waiting on. Return "no cross-check"
+  // without calling — callers already treat null exactly that way, so no
+  // valuation changes. Restore the call if we ever collect those fields.
+  if (!VALUATION_SALE_INPUTS_AVAILABLE) return null;
   const data = unwrap(
     '/valuation-sale',
     await fetchPropertyData(
@@ -1223,6 +1234,9 @@ export type SourcedListType = (typeof SOURCED_LIST_TYPES)[number];
  */
 const DEFAULT_LIST = SOURCED_LIST_TYPES.slice(0, 7).join(',');
 
+/** PropertyData refuses more lists than this in one /sourced-properties call. */
+const MAX_LISTS_PER_REQUEST = 5;
+
 /**
  * Per-list-type probe — call /sourced-properties once per list type,
  * record what works, return a breakdown. Resilient to any single type
@@ -1561,8 +1575,9 @@ export async function getSourcedPropertiesMulti(
 /**
  * Market signals for ONE subject property — its own listing behaviour (days
  * on market, cuts, velocity, distress-list membership) plus the other
- * distress-flagged listings around it. One /sourced-properties call with all
- * seven lists combined (cached 24h by postcode+list+radius), ~1 credit.
+ * distress-flagged listings around it. Two /sourced-properties calls (the
+ * seven lists in chunks of five, PropertyData's per-request cap), each
+ * cached 24h by postcode+list+radius, ~2 credits.
  *
  * `sstc` listings are INCLUDED here: for an appraisal, "under offer after 3
  * cuts" is signal, not noise. Throws when PropertyData is unreachable —
@@ -1575,11 +1590,38 @@ export async function getSubjectMarketSignals(input: {
   radiusMiles?: number;
 }): Promise<MarketSignals> {
   const radiusMiles = input.radiusMiles ?? 0.25;
-  const listings = await getSourcedProperties(input.postcode, {
-    list: DEFAULT_LIST,
-    radiusMiles,
-    includeSstc: true,
-  });
+  // PropertyData caps a request at MAX_LISTS_PER_REQUEST lists ("Too many
+  // lists: maximum 5 per request", code 1108). The seven-list call this used
+  // to make was refused on every valuation (seen 21 Oct 2026), so signals
+  // were always null. Ask in chunks and merge; one chunk failing still
+  // returns what the other found, and only all failing counts as unreachable.
+  const lists = SOURCED_LIST_TYPES.slice(0, 7);
+  const chunks: string[] = [];
+  for (let i = 0; i < lists.length; i += MAX_LISTS_PER_REQUEST) {
+    chunks.push(lists.slice(i, i + MAX_LISTS_PER_REQUEST).join(','));
+  }
+  const byId = new Map<string, SourcedProperty>();
+  let lastError: unknown = null;
+  let answered = 0;
+  for (const list of chunks) {
+    try {
+      const found = await getSourcedProperties(input.postcode, {
+        list,
+        radiusMiles,
+        includeSstc: true,
+      });
+      answered++;
+      for (const p of found) {
+        const key =
+          p.id ?? `${p.address.toLowerCase()}|${p.postcode.toLowerCase()}`;
+        if (!byId.has(key)) byId.set(key, p);
+      }
+    } catch (err) {
+      lastError = err;
+    }
+  }
+  if (answered === 0 && lastError) throw lastError;
+  const listings = Array.from(byId.values());
   return buildMarketSignals({
     subject: { address: input.address, postcode: input.postcode },
     listings,
@@ -2272,9 +2314,7 @@ export async function probePropertyData(): Promise<ProviderProbe> {
   return {
     ok: true,
     detail:
-      remaining === undefined
-        ? 'answered'
-        : `${remaining} credits remaining`,
+      remaining === undefined ? 'answered' : `${remaining} credits remaining`,
   };
 }
 
