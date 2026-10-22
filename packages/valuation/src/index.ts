@@ -23,7 +23,11 @@ import 'server-only';
 
 import {
   type MarketSignals,
+  getHomeDwellingType,
+  getHomeLastSale,
+  getLocalHpiMove,
   getSubjectMarketSignals,
+  namesOneHome,
 } from '@repo/property-data';
 import {
   type BaseValuationInput,
@@ -49,6 +53,12 @@ import {
 } from './risk-scoring';
 import { type TrendProjection, projectTrend } from './trend-projection';
 import { readUncertainty } from './uncertainty';
+import {
+  type EvidenceChecks,
+  type HomeEvidence,
+  OWN_SALE_MAX_YEARS,
+  assessEvidence,
+} from './evidence-checks';
 
 // ---------------------------------------------------------------------------
 // Re-exports for consumers
@@ -195,6 +205,21 @@ export type {
   ShareShift,
   UncertaintyReading,
 } from './uncertainty';
+export {
+  OWN_SALE_GAP,
+  OWN_SALE_MAX_YEARS,
+  RING_GAP_MIN,
+  RING_THIN_MAX_NEAR,
+  assessEvidence,
+  readDwellingType,
+  typesDisagree,
+} from './evidence-checks';
+export type {
+  EvidenceChecks,
+  EvidenceFlag,
+  EvidenceFlagCode,
+  HomeEvidence,
+} from './evidence-checks';
 
 // ---------------------------------------------------------------------------
 // Input type
@@ -278,10 +303,18 @@ export interface AvmResultJson {
   /** The configured throttle bound this run was judged against. */
   uncertaintyMaxWidthRatio: number;
   /**
-   * Interval wider than the bound — a person must re-check the comparables
-   * before any offer, regardless of score. Surfaced, never enforced.
+   * A person must re-check the comparables before any offer, regardless of
+   * score: the interval is wider than the bound, OR the evidence disagrees
+   * with itself (see `evidenceChecks`). Surfaced, never enforced.
    */
   secondCheckRequired: boolean;
+  /** Plain-English reasons behind `secondCheckRequired`, one per cause. */
+  secondCheckReasons: string[];
+  /**
+   * Evidence-disagreement checks (ring gap, own sale, EPC type). Flags only —
+   * they never change a figure. Null when the run predates them.
+   */
+  evidenceChecks: EvidenceChecks | null;
   /** The actual sold comps that drove the estimate (address/price/date/dist). */
   comparables: {
     address: string | null;
@@ -397,6 +430,54 @@ export interface AvmResultPayload {
 // Orchestrator
 // ---------------------------------------------------------------------------
 
+/**
+ * Fetch what the evidence checks need about THIS home: its own recent sale
+ * (moved to today's prices by local UK HPI) and its EPC dwelling type. All
+ * free government sources. An address that doesn't name one home gets no
+ * sale lookup — there is no single home to find.
+ */
+async function gatherHomeEvidence(input: {
+  postcode: string;
+  address?: string | null;
+  uprn?: string | null;
+  propertyType: PropertyType;
+}): Promise<HomeEvidence> {
+  const address = input.address ?? '';
+  const oneHome = namesOneHome(address);
+  const now = new Date();
+  const [ownSale, dwelling] = await Promise.all([
+    oneHome
+      ? getHomeLastSale({
+          postcode: input.postcode,
+          address,
+          before: now,
+          maxYears: OWN_SALE_MAX_YEARS,
+        })
+      : Promise.resolve(null),
+    oneHome || input.uprn
+      ? getHomeDwellingType({
+          postcode: input.postcode,
+          address,
+          uprn: input.uprn,
+        })
+      : Promise.resolve(null),
+  ]);
+  const hpiMove = ownSale
+    ? await getLocalHpiMove({
+        postcode: input.postcode,
+        propertyType: input.propertyType,
+        sinceDate: ownSale.date,
+        upTo: now,
+      })
+    : null;
+  return {
+    namesOneHome: oneHome,
+    ownSale: ownSale ? { price: ownSale.price, date: ownSale.date } : null,
+    hpiMove: hpiMove ? { ratio: hpiMove.ratio, region: hpiMove.region } : null,
+    epcDwellingType: dwelling?.dwellingType ?? null,
+  };
+}
+
 export async function runAVM(input: AvmInput): Promise<AvmResultPayload> {
   const {
     postcode,
@@ -430,12 +511,20 @@ export async function runAVM(input: AvmInput): Promise<AvmResultPayload> {
     address,
     uprn,
   };
-  const [baseValuation, marketSignals] = await Promise.all([
+  // Home-level facts for the evidence checks run alongside — they never
+  // feed a figure, so a failure is "no flag", never a failed valuation.
+  const [baseValuation, marketSignals, homeEvidence] = await Promise.all([
     getBaseValuation(baseValuationInput),
     getSubjectMarketSignals({ postcode, address }).catch((err) => {
       console.warn(`[runAVM] market signals unavailable for ${postcode}`, err);
       return null;
     }),
+    gatherHomeEvidence({ postcode, address, uprn, propertyType }).catch(
+      (err) => {
+        console.warn(`[runAVM] home evidence unavailable for ${postcode}`, err);
+        return null;
+      }
+    ),
   ]);
 
   // Step 2: Risk scoring
@@ -488,6 +577,33 @@ export async function runAVM(input: AvmInput): Promise<AvmResultPayload> {
     comparableCount: baseValuation.comparables.length,
     maxWidthRatio: offerConfig.maxIntervalWidthRatio,
   });
+  // Does the evidence disagree with itself? Read AFTER the figure is fixed:
+  // these checks only ask a person to look, they never move a number.
+  const dw = baseValuation.distanceWeighted;
+  const evidence = assessEvidence({
+    pointEstimate: baseValuation.pointEstimate,
+    propertyType,
+    rings: dw
+      ? {
+          nearMedian:
+            dw.nearMedianPence != null ? dw.nearMedianPence / 100 : null,
+          farMedian: dw.farMedianPence != null ? dw.farMedianPence / 100 : null,
+          nearCount: dw.nearCount,
+          farCount: dw.farCount,
+        }
+      : null,
+    home: homeEvidence,
+  });
+  const secondCheckReasons = [
+    ...(uncertainty.secondCheckRequired
+      ? [
+          uncertainty.intervalWidthRatio !== null
+            ? `The valuation range is ${Math.round(uncertainty.intervalWidthRatio * 100)}% of the estimate, wider than our ${Math.round(uncertainty.maxWidthRatio * 100)}% bound.`
+            : 'The valuation range could not be measured.',
+        ]
+      : []),
+    ...evidence.flags.map((f) => f.message),
+  ];
 
   const resultJson: AvmResultJson = {
     address,
@@ -511,7 +627,10 @@ export async function runAVM(input: AvmInput): Promise<AvmResultPayload> {
     pricePerSqm: baseValuation.pricePerSqm,
     intervalWidthRatio: uncertainty.intervalWidthRatio,
     uncertaintyMaxWidthRatio: uncertainty.maxWidthRatio,
-    secondCheckRequired: uncertainty.secondCheckRequired,
+    secondCheckRequired:
+      uncertainty.secondCheckRequired || evidence.secondCheckRequired,
+    secondCheckReasons,
+    evidenceChecks: evidence,
     comparables: baseValuation.comparables.map((c) => ({
       address: c.address,
       postcode: c.postcode,
