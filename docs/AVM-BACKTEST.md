@@ -92,6 +92,9 @@ dashboard table appears from the next monthly run.
   count, not a verdict. `propertydata` mixes the old loose match and the
   new strict one, so pair it with the engine version. Why it was allowed during the freeze: see
   CLAUDE.md, "One override, on measured evidence".
+- **Proposed, not built (22 Oct 2026): category A, same-type comps only on
+  the Land Registry postcode fallback.** Evidence and the case against:
+  `docs/proposals/AVM-COMP-FILTER-FIX.md`.
 
 ## Rules
 
