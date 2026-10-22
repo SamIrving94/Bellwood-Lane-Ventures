@@ -38,10 +38,20 @@ import { useEffect, useState } from 'react';
  * would be too late. Add new token-bearing routes to PRIVATE_PATHS.
  *
  * Google Tag Manager is for EXTRA tags only (founder decision, Oct 2026):
- * GA, Google Ads and Meta stay here in code, so never add a GA4 tag for the
+ * GA and Google Ads stay here in code, so never add a GA4 tag for the
  * site's own measurement ID inside GTM (every visit would count twice).
- * GTM loads only after analytics or advertising consent and never on a
- * private page. It sees the same Consent Mode signals, plus two dataLayer
+ * GTM is run by our ad manager and carries the Meta Pixel, so it is an
+ * ADVERTISING tag: it loads only after advertising consent (analytics alone
+ * is not enough) and never on a private page. Live test, 22 Oct 2026: when
+ * it loaded on analytics consent, its Meta tag fired for visitors who had
+ * never been asked about advertising. Once loaded, GTM can't be muted in
+ * place: its Meta tag calls fbq('consent','grant') itself on every fire,
+ * undoing our revoke (tested 22 Oct 2026). So while GTM is loaded,
+ * withdrawing advertising reloads the page, and a client-side move to a
+ * private page becomes a full page load. Either way the next page starts
+ * without GTM. Leave NEXT_PUBLIC_META_PIXEL_ID unset while Meta lives in
+ * GTM, or every PageView counts twice.
+ * GTM sees the same Consent Mode signals, plus two dataLayer
  * events: `kept_consent` (kept_analytics / kept_advertising = granted|denied)
  * and `kept_page_privacy` (kept_private_page = true|false, pushed before
  * every client-side URL change). A non-Google tag added in GTM must fire
@@ -92,6 +102,7 @@ const w = () => window as unknown as TagWindow;
 let tags: ConsentTags = {};
 let granted: Consent = { analytics: false, advertising: false };
 let guardInstalled = false;
+let gtmLoaded = false;
 const configured = new Set<string>();
 
 /** Mute every loaded tag that is not allowed on `path`. */
@@ -119,12 +130,10 @@ const installPrivacyGuard = () => {
     return;
   }
   guardInstalled = true;
-  const sync = (url?: string | URL | null) =>
-    syncFlags(
-      url == null
-        ? window.location.pathname
-        : new URL(String(url), window.location.href).pathname
-    );
+  const target = (url?: string | URL | null) =>
+    url == null
+      ? new URL(window.location.href)
+      : new URL(String(url), window.location.href);
   for (const method of ['pushState', 'replaceState'] as const) {
     const original = window.history[method];
     window.history[method] = function (
@@ -133,11 +142,24 @@ const installPrivacyGuard = () => {
       unused: string,
       url?: string | URL | null
     ) {
-      sync(url);
+      const next = target(url);
+      // GTM can't be muted in place (see the GTM note above): load the
+      // private page fresh, without it.
+      if (gtmLoaded && isPrivatePath(next.pathname)) {
+        window.location.assign(next.href);
+        return;
+      }
+      syncFlags(next.pathname);
       return original.call(this, data, unused, url);
     };
   }
-  window.addEventListener('popstate', () => sync());
+  window.addEventListener('popstate', () => {
+    if (gtmLoaded && isPrivatePath(window.location.pathname)) {
+      window.location.reload();
+      return;
+    }
+    syncFlags(window.location.pathname);
+  });
 };
 
 const injectScript = (src: string) => {
@@ -234,8 +256,9 @@ const loadAllowedTags = () => {
       injectScript(`https://www.googletagmanager.com/gtag/js?id=${loaderId}`)
     );
   }
-  if (gtmId && (granted.analytics || granted.advertising)) {
+  if (gtmId && granted.advertising) {
     loadOnce('gtm', () => {
+      gtmLoaded = true;
       w().dataLayer?.push({ 'gtm.start': Date.now(), event: 'gtm.js' });
       injectScript(`https://www.googletagmanager.com/gtm.js?id=${gtmId}`);
     });
@@ -341,7 +364,11 @@ const ADVERTISING_COOKIES = /^(_gcl_|_fbp$|_fbc$)/;
 export function CookieConsent(props: ConsentTags) {
   const pathname = usePathname() ?? '/';
   const hasAnalytics = Boolean(props.gaId);
-  const hasAdvertising = Boolean(props.adsId || props.metaPixelId);
+  // GTM counts as advertising (it carries the Meta Pixel), so a deploy with
+  // only GA + GTM still asks the advertising question.
+  const hasAdvertising = Boolean(
+    props.adsId || props.metaPixelId || props.gtmId
+  );
 
   // null until mounted: the server cannot know the choice, so render nothing
   // rather than flash the banner at someone who already answered.
@@ -363,6 +390,11 @@ export function CookieConsent(props: ConsentTags) {
     const saved = readConsent();
     if (saved) {
       granted = saved;
+      // Sweep up after a withdrawal: GTM's tags can re-set their cookies in
+      // the moment between our delete and the reload.
+      if (!saved.advertising) {
+        clearCookies(ADVERTISING_COOKIES);
+      }
       if (saved.analytics || saved.advertising) {
         installPrivacyGuard();
       }
@@ -400,6 +432,12 @@ export function CookieConsent(props: ConsentTags) {
     }
     if (was.advertising && !next.advertising) {
       clearCookies(ADVERTISING_COOKIES);
+      // GTM can't be unloaded or muted in place: start the page again
+      // without it.
+      if (gtmLoaded) {
+        window.location.reload();
+        return;
+      }
     }
     setConsent(next);
     setOpen(false);
