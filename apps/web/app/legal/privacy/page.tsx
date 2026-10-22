@@ -43,9 +43,12 @@ export const metadata: Metadata = {
  * config in app/layout.tsx: memory-only persistence, no autocapture, no
  * session recording, ip: false, and the same PRIVATE_PATHS redaction Google
  * gets. Loosen any of those and PostHog moves behind the analytics consent.
+ *
+ * v1.4: GTM loads only after advertising consent, because it carries the
+ * ad manager's Meta Pixel (it used to load on analytics consent too).
  */
-const LAST_UPDATED = '3 October 2026';
-const VERSION = '1.3';
+const LAST_UPDATED = '22 October 2026';
+const VERSION = '1.4';
 
 /** Verified against the Companies House register, 2026-07-31. */
 const REGISTERED_OFFICE = '20 Wenlock Road, London N1 7GU';
@@ -345,8 +348,8 @@ const SECTIONS: Array<{
         </p>
         <p>
           <strong>Google Tag Manager</strong> is how we switch these tools on.
-          It sets no cookies of its own, loads only after you accept analytics
-          or advertising, and runs only the tools named on this page.
+          It sets no cookies of its own, loads only after you accept
+          advertising, and runs only the tools named on this page.
         </p>
         <p>
           You choose each kind separately, and nothing is ticked for you. Until
