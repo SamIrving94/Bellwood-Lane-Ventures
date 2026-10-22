@@ -26,6 +26,32 @@ export type WhatsNewEntry = {
 /** Newest first. The popup shows index 0. */
 export const WHATS_NEW: WhatsNewEntry[] = [
   {
+    id: '2026-10-22-evidence-second-check',
+    date: '2026-10-22',
+    emoji: '🔎',
+    title: 'The AVM now says when its own evidence disagrees',
+    intro:
+      'A narrow range is not the same as being right. Now the valuation flags it when the evidence argues with itself.',
+    bullets: [
+      {
+        emoji: '📍',
+        text: '**Nearest sales vs the rest:** flagged when 1–3 nearby sales sit **25%+** away from the wider area.',
+      },
+      {
+        emoji: '🏷️',
+        text: '**Its own last sale:** flagged when the estimate is **10%+** off what the home sold for (last 5 years, at today’s prices).',
+      },
+      {
+        emoji: '🏠',
+        text: '**Wrong kind of home:** flagged when the sheet says house but the **EPC says flat** (or detached vs terrace).',
+      },
+      {
+        emoji: '✋',
+        text: 'Flags **never change a number.** They put the quote in your review queue and say why.',
+      },
+    ],
+  },
+  {
     id: '2026-10-21-backtest-floor-area',
     date: '2026-10-21',
     emoji: '📏',

@@ -304,8 +304,15 @@ export async function generateInstantOffer(
     r.avmSources,
     r.comparableCount
   );
+  // Evidence that disagrees with itself (ring gap, the home's own recent
+  // sale, EPC type) — the Clarendon Rise lesson. Review only: the offer
+  // figure is untouched.
+  const evidenceFlags = r.evidenceChecks?.flags ?? [];
   const requiresReview =
-    r.requiresCeoEscalation || r.discountCapped || lowEvidence;
+    r.requiresCeoEscalation ||
+    r.discountCapped ||
+    lowEvidence ||
+    evidenceFlags.length > 0;
 
   if (r.requiresCeoEscalation) {
     reasoning.push(
@@ -316,6 +323,9 @@ export async function generateInstantOffer(
     reasoning.push(
       'Limited comparable evidence for this property — founder review required before commitment'
     );
+  }
+  for (const flag of evidenceFlags) {
+    reasoning.push(`⚠ Second check: ${flag.message}`);
   }
 
   // Problem property note
