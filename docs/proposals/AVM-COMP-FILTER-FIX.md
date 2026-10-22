@@ -1,15 +1,24 @@
-# Proposal: two comp-filter fixes on the Land Registry fallback
+# Proposals: two AVM comp fixes, measured first
 
-_Status: **proposed, not built.** Needs a founder yes to lift the AVM freeze
-for this one change._
+_Status: **proposed, not built.** Each needs its own founder yes to lift the
+AVM freeze._
 _Measured: 2026-10-22, read-only against production._
-
-## The ask
 
 The AVM method is frozen until the backtest reads (CLAUDE.md). The one
 exception so far was the EPC-by-UPRN floor area (18 Oct), allowed because
-it was **measured first**. This note asks for a second exception, on the
-same terms.
+it was **measured first**. This note asks for two more, on the same terms.
+They are **independent**: say yes to either, both or neither.
+
+| | Proposal | Path | Fixes |
+|:--|:--|:--|:--|
+| **A** | Open-market, same-type comps only | Land Registry postcode fallback | Bad evidence |
+| **B** | Near ring earns its 60% weight | PropertyData radius comps (the main path) | Thin evidence |
+
+---
+
+# Proposal A: two comp filters on the Land Registry fallback
+
+## The ask
 
 **Fix two filters in the Land Registry postcode fallback, so it only uses
 real, same-type, open-market sales as comps.**
@@ -126,3 +135,134 @@ untouched.
 - **Property type from partner sheets** is taken on trust (14 Monarch Court:
   the sheet said terraced; the EPC says maisonette). Not part of this
   change.
+
+---
+
+# Proposal B: the near ring earns its weight
+
+## The ask
+
+**Give the 0.25-mile ring its full 60% weight only when it has 4 or more
+sales. Below that, scale it down by count.**
+
+This is the main path now. Proposal A does not touch it.
+
+## The problem
+
+`getDistanceWeightedValuation` in `packages/valuation/src/distance-comps.ts`
+splits comps into two rings and blends their medians:
+
+- **Near** (within 0.25 miles): **60%**
+- **Far** (0.25 to 0.5 miles): **40%**
+
+The weights are fixed. **One or two sales in the near ring still decide 60%
+of the comp figure**, however many sales the far ring has.
+
+**Worked case: Flat 1, 24 Clarendon Rise (SE13), 75 m².**
+
+- Near ring: **2 sales**, median about **£320k**. One is a 49 m² lower flat.
+- Far ring: **15 sales**, median about **£450k**.
+- Blend: 60% × £320k + 40% × £450k ≈ **£372k**.
+- The median of all 17 sales is about **£425k**. A hand valuation (own 2023
+  sale, block sales, local £/m²) came out at **£420–450k**.
+- All 17 comps are clean, standard flat sales. Proposal A does nothing here.
+
+## How it was measured
+
+- **Cohort:** every radius-path appraisal with its comps stored. That's 41
+  appraisals, or **25 after removing exact repeats** (about 23 homes; two
+  homes appear twice under different address text).
+- The blend was rebuilt from the stored comps (distance and time-adjusted
+  price are stored per comp). Ring counts matched the engine's own label
+  for **5 of 7** labelled rows. The other 2 were one sale off at the
+  0.25-mile edge (distances are stored rounded), and neither is in the
+  result below.
+- **The tested rule:** near weight = 60% × min(sales, 4) ÷ 4.
+
+| Sales within 0.25 miles | Near weight |
+|:--|:--|
+| 1 | 15% |
+| 2 | 30% |
+| 3 | 45% |
+| 4 or more | 60% (unchanged) |
+
+- The comp figure plus the bedroom adjustment built on it make up about
+  60–100% of the estimate on this path. So **the estimate moves by about
+  60–100% of the comp-figure move**.
+
+## What it found
+
+| Sales within 0.25 miles | Appraisals |
+|:--|:--|
+| 1 | 1 |
+| 2 | 6 |
+| 3 | 5 |
+| 4 or more | 12 |
+
+**12 of 25 appraisals (10 homes)** let 3 or fewer sales carry 60% of the
+comp figure.
+
+For those 12:
+
+| | Result |
+|:--|:--|
+| Typical size of move | **6%** |
+| Direction | **7 up, 5 down** |
+| Moves over 5% | 6 |
+| Moves over 10% | 4 |
+
+The biggest moves:
+
+| Area | Near / far sales | Comp figure moves |
+|:--|:--|:--|
+| SW3 | 2 / 4 | **+16.7%** |
+| W12 | 2 / 5 | **−11.6%** |
+| SE13 (Clarendon Rise) | 2 / 15 | **+10.5%** |
+| W12 | 3 / 5 | −9.2% |
+| SW3 | 3 / 8 | −8.3% |
+
+For Clarendon Rise the comp figure goes from about **£372k to £411k**, and
+the estimate to about **£435k**, in line with the hand valuation.
+
+## The fix (when approved)
+
+1. In `distance-comps.ts`, set the near weight to
+   `NEAR_WEIGHT × min(nearCount, 4) / 4` and the far weight to the rest,
+   when both rings have sales. Keep the one-ring cases as they are.
+2. Return the weights actually used (`weighting` already exists).
+3. Tests: 2 near + 15 far gets 30/70; 4 near + 15 far stays 60/40; near
+   only stays 100%.
+4. Log it under "Method changes the backtest must split on" in
+   `docs/AVM-BACKTEST.md`.
+
+The confidence ceiling, comp selection, offer maths and triangulation
+weights are untouched.
+
+## The case against
+
+- **It isn't proven more accurate.** None of these homes has sold since its
+  appraisal. Only Clarendon Rise has an independent check, and that is one
+  hand valuation, not a sale. **This proposal rests on reasoning, not on
+  measured accuracy.**
+- **It cuts noise, not bias.** Moves go both ways, so it won't shift
+  values up or down overall. If the AVM leans low, this won't fix it.
+- **Nearest sales can be the best evidence.** In a mixed area (W12, SW3),
+  two sales on the same street may beat fifteen a quarter-mile away.
+  Scaling them down trades that for stability.
+- **4 is a judgement call.** It matches the confidence rule of about 4
+  sales within half a mile, but no other cut-off was tested.
+- **The sample is small and skews prime London.** 25 appraisals, mostly
+  SW3, W12 and SW6.
+- **It splits the backtest cohort again**, on top of proposal A and the
+  UPRN change.
+
+## Not covered
+
+- **Size-adjusting comps.** Clarendon Rise had a floor area for only 2 of
+  its 17 comps. A smaller comp still counts at its full price. That is a
+  separate, bigger change.
+- **The comp window.** Radius comps only go back 12 months, so a home's own
+  sale and its block's sales from 2023 are never seen.
+- **Comps with no location.** A comp whose postcode can't be geocoded is
+  placed at 0 miles, so it lands in the near ring. Only 1 was seen in this
+  cohort.
