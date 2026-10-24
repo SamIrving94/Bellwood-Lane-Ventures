@@ -20,6 +20,7 @@
 
 import 'server-only';
 
+import { brand } from '@repo/brand';
 import {
   type DealUpdateKind,
   type DealUpdateVisibility,
@@ -252,7 +253,7 @@ async function resolveChain(input: RecordUpdateInput): Promise<{
     }
   }
 
-  // Always notify Bellwoods Lane founder
+  // Always notify the founder
   recipients.add(getFounderEmail());
 
   return {
@@ -277,9 +278,24 @@ function getFounderEmail(): string {
   return process.env.BELLWOODS_FOUNDER_EMAIL || 'sam@wearekept.co.uk';
 }
 
+/**
+ * Origin for links that go out to sellers, agents and solicitors.
+ *
+ * In production this is always the brand domain (wearekept.co.uk),
+ * never NEXT_PUBLIC_WEB_URL: that env var still points at
+ * bellwood-web.vercel.app on the Vercel projects, and a seller was sent a
+ * "Live timeline" link on the old Bellwood host (Oct 2026). Both hosts serve
+ * the same /track pages, so the brand domain is a drop-in. Previews and
+ * local dev keep the env var so links stay on the deploy being tested.
+ */
+const TRAILING_SLASH = /\/$/;
+
 function getWebOrigin(): string {
+  if (process.env.VERCEL_ENV === 'production') {
+    return brand.url.replace(TRAILING_SLASH, '');
+  }
   return (process.env.NEXT_PUBLIC_WEB_URL || 'http://localhost:3001').replace(
-    /\/$/,
+    TRAILING_SLASH,
     ''
   );
 }
