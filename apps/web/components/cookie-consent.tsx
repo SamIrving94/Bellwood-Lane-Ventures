@@ -21,7 +21,8 @@ import { useEffect, useState } from 'react';
  *
  * The choice lives in localStorage (not a cookie): remembering a refusal is
  * strictly necessary. Bump CONSENT_KEY's version whenever what we ask for
- * changes, so everyone is asked again (v2 = advertising added).
+ * changes, so everyone is asked again (v2 = advertising added, v3 = hashed
+ * contact details sent with a form, for ad matching).
  *
  * Withdrawing: <CookieSettingsButton /> (footer + privacy notice) re-opens
  * the banner. Turning a category off stops its tags at once and deletes the
@@ -30,12 +31,30 @@ import { useEffect, useState } from 'react';
  * Private URLs never reach Google or Meta. Several pages are reached by a
  * secret link (deal timeline token, offer id, investor token) and
  * /save-the-sale carries the vendor's address in its query string. On those
- * paths no tag is loaded, and if one already is, it is muted: GA/Ads via
+ * paths no tag is loaded in the page itself, and if one already is, it is
+ * muted: GA/Ads via
  * gtag's `ga-disable-<id>` flag (checked before every hit), Meta via
  * fbq('consent','revoke'). Both are flipped inside a history.pushState/
  * replaceState wrapper — before the URL changes — so the tags' own
  * "page changed" hits, which fire after, are already muted. A React effect
  * would be too late. Add new token-bearing routes to PRIVATE_PATHS.
+ *
+ * The private pages that are part of a seller's journey still count for
+ * audiences (founder decision, 24 Oct 2026: the ads need "reached the offer
+ * letter" and the like, to build audiences and exclusions). They do it
+ * through a stand-in: a hidden same-origin frame at /journey/<name> (see
+ * JOURNEY_STAND_INS), which loads the tags the visitor allowed. The tags
+ * then report /journey/offer-letter, never the link, and the frame's
+ * referrer is cut to our origin so the link can't leak that way either.
+ * Admin and partner surfaces (/investors, /portal) and Keyhole get no
+ * stand-in.
+ *
+ * Events: every funnel step and every form sent goes to the tags too (see
+ * sendTagEvent / sendLead below), as GTM dataLayer events, GA/Ads gtag
+ * events and Meta custom events, so the ad manager can build conversions
+ * from them. A form sent with advertising consent also sends hashed contact
+ * details (Google enhanced conversions, Meta advanced matching). Never on a
+ * private page, and never what the seller wrote about the property.
  *
  * Google Tag Manager is for EXTRA tags only (founder decision, Oct 2026):
  * GA and Google Ads stay here in code, so never add a GA4 tag for the
@@ -63,7 +82,7 @@ import { useEffect, useState } from 'react';
  * With no tag IDs configured the layout does not render this component, so
  * there is no banner asking for consent to nothing.
  */
-const CONSENT_KEY = 'kept-cookie-consent-v2';
+const CONSENT_KEY = 'kept-cookie-consent-v3';
 const OPEN_EVENT = 'kept:open-cookie-settings';
 
 export type ConsentTags = {
@@ -88,6 +107,34 @@ const PRIVATE_PATHS = [
 
 export const isPrivatePath = (path: string) =>
   PRIVATE_PATHS.some((p) => path === p || path.startsWith(`${p}/`));
+
+/**
+ * Private journey pages and the stand-in address their tags report instead.
+ * The names are what the ad manager types into audience rules ("URL
+ * contains /journey/offer-letter"), so don't rename one without telling them.
+ */
+export const JOURNEY_STAND_INS = {
+  '/instant-offer/offer': 'offer-letter',
+  '/track': 'deal-timeline',
+  '/viewing': 'viewing-booking',
+  '/save-the-sale': 'save-the-sale',
+} as const;
+
+export type JourneyStandIn =
+  (typeof JOURNEY_STAND_INS)[keyof typeof JOURNEY_STAND_INS];
+
+/** Paths that send PostHog no page view: private ones, and the stand-ins. */
+export const noPostHogPageView = (path: string) =>
+  isPrivatePath(path) || path.startsWith('/journey/');
+
+export const journeyStandIn = (path: string): JourneyStandIn | null => {
+  for (const [p, name] of Object.entries(JOURNEY_STAND_INS)) {
+    if (path === p || path.startsWith(`${p}/`)) {
+      return name;
+    }
+  }
+  return null;
+};
 
 type TagWindow = Window & {
   dataLayer?: unknown[];
@@ -282,6 +329,172 @@ const configureAllowedTags = () => {
   }
 };
 
+type TagParams = Record<string, string | number | boolean | undefined>;
+
+/** True when the tags may hear about something on the current page. */
+const canSend = () =>
+  typeof window !== 'undefined' &&
+  (granted.analytics || granted.advertising) &&
+  !isPrivatePath(window.location.pathname);
+
+/**
+ * A funnel event, sent to every tag the visitor allowed: a dataLayer event
+ * for GTM triggers, a gtag event for GA (and Ads, which ignores names it
+ * doesn't know), and a Meta custom event. Callers pass only what PostHog
+ * gets: no name, contact detail or street address.
+ */
+export const sendTagEvent = (name: string, params: TagParams = {}) => {
+  if (!canSend()) {
+    return;
+  }
+  w().dataLayer?.push({ event: name, ...params });
+  w().gtag?.('event', name, params);
+  if (granted.advertising) {
+    // Defined by the Meta tag in GTM (or our own stub) once it has loaded.
+    w().fbq?.('trackCustom', name, params);
+  }
+};
+
+export type LeadContact = {
+  name?: string;
+  email?: string;
+  phone?: string;
+  postcode?: string;
+};
+
+const sha256 = async (value: string) => {
+  const bytes = await crypto.subtle.digest(
+    'SHA-256',
+    new TextEncoder().encode(value)
+  );
+  return Array.from(new Uint8Array(bytes), (b) =>
+    b.toString(16).padStart(2, '0')
+  ).join('');
+};
+
+/** A UK number as E.164 ("+447700900123"), or null if it isn't one. */
+export const toE164 = (phone: string): string | null => {
+  const digits = phone.replace(/\D/g, '');
+  let national: string;
+  if (digits.startsWith('44')) {
+    national = digits.slice(2);
+  } else if (digits.startsWith('0')) {
+    national = digits.slice(1);
+  } else {
+    return null;
+  }
+  national = national.replace(/^0/, '');
+  return national.length >= 9 && national.length <= 10
+    ? `+44${national}`
+    : null;
+};
+
+/**
+ * Contact details normalised the way Google and Meta ask, then hashed here
+ * so no plain email or phone ever sits in the dataLayer, where every GTM
+ * tag could read it. Only the postcode goes unhashed, to Google only:
+ * its address match requires it in the clear.
+ */
+export const hashContact = async ({
+  name,
+  email,
+  phone,
+  postcode,
+}: LeadContact) => {
+  const words = (name ?? '')
+    .toLowerCase()
+    .replace(/[^\p{L}\s'-]/gu, '')
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+  const first = words[0];
+  const last = words.length > 1 ? words.at(-1) : undefined;
+  const mail = email?.trim().toLowerCase() || undefined;
+  const e164 = phone ? toE164(phone) : null;
+  const [em, ph, fn, ln] = await Promise.all([
+    mail ? sha256(mail) : undefined,
+    e164 ? sha256(e164) : undefined,
+    first ? sha256(first) : undefined,
+    last ? sha256(last) : undefined,
+  ]);
+  const postal = postcode?.trim().toUpperCase() || undefined;
+  return {
+    google: {
+      sha256_email_address: em,
+      sha256_phone_number: ph,
+      // Google matches on an address only with all four parts.
+      ...(fn && ln && postal
+        ? {
+            address: {
+              sha256_first_name: fn,
+              sha256_last_name: ln,
+              postal_code: postal,
+              country: 'GB',
+            },
+          }
+        : {}),
+    },
+    // Meta wants the phone as digits without the "+".
+    meta: {
+      em,
+      ph: e164 ? await sha256(e164.slice(1)) : undefined,
+      fn,
+      ln,
+      country: await sha256('gb'),
+    },
+  };
+};
+
+/** Meta pixel ids on the page: ours, or those GTM's Meta tag set up. */
+const metaPixelIds = (): string[] => {
+  if (tags.metaPixelId) {
+    return [tags.metaPixelId];
+  }
+  const state = (
+    w().fbq?.getState as (() => { pixels?: Array<{ id?: string }> }) | undefined
+  )?.();
+  return (state?.pixels ?? []).flatMap((p) => (p.id ? [p.id] : []));
+};
+
+/**
+ * A form was sent: the lead conversion. Everyone allowed gets the event
+ * (`generate_lead` is GA4's own name for it; Meta gets its standard Lead).
+ * With advertising consent the contact details go too, hashed (see
+ * hashContact): Google reads them as enhanced-conversion user data, GTM
+ * tags as `user_data` on the event, and Meta as advanced matching on every
+ * event from here on.
+ */
+export const sendLead = async (form: string, contact: LeadContact) => {
+  if (!canSend()) {
+    return;
+  }
+  const params = { form };
+  if (granted.advertising) {
+    try {
+      const hashed = await hashContact(contact);
+      w().gtag?.('set', 'user_data', hashed.google);
+      w().dataLayer?.push({
+        event: 'generate_lead',
+        ...params,
+        user_data: hashed.google,
+        meta_user_data: hashed.meta,
+      });
+      for (const id of metaPixelIds()) {
+        // Calling init again on a loaded pixel attaches the matching data
+        // to the events that follow it.
+        w().fbq?.('init', id, hashed.meta);
+      }
+    } catch {
+      // No WebCrypto (very old browser): the lead still counts, unmatched.
+      w().dataLayer?.push({ event: 'generate_lead', ...params });
+    }
+    w().fbq?.('track', 'Lead', params);
+  } else {
+    w().dataLayer?.push({ event: 'generate_lead', ...params });
+  }
+  w().gtag?.('event', 'generate_lead', params);
+};
+
 /**
  * Load (or mute) every tag to match `granted` on the current page. Order
  * matters: the stub (denied defaults) → the visitor's real choices → only
@@ -307,11 +520,15 @@ const applyConsent = (path: string) => {
 
 /** Banner lead-in, naming only the purposes that are actually configured. */
 const purposeLine = (analytics: boolean, advertising: boolean) => {
+  // The advertising line names the hashed contact details up front: they go
+  // further than a cookie, so "Accept all" must not hide them behind Choose.
+  const matching =
+    ' If you send us a form, the advertising tools also get a scrambled copy of your contact details.';
   if (analytics && advertising) {
-    return 'We’d like to use cookies to see which pages help people, and to measure and show our adverts.';
+    return `We’d like to use cookies to see which pages help people, and to measure and show our adverts.${matching}`;
   }
   if (advertising) {
-    return 'We’d like to use cookies to measure and show our adverts.';
+    return `We’d like to use cookies to measure and show our adverts.${matching}`;
   }
   return 'We’d like to use cookies to see which pages help people.';
 };
@@ -444,8 +661,26 @@ export function CookieConsent(props: ConsentTags) {
     setChoosing(false);
   };
 
+  // On a private journey page the tags run in a stand-in frame instead (see
+  // the note at the top). Keyed on the choice, so a change reloads the
+  // frame: its own copy of this component reads the new choice and starts
+  // without whatever was withdrawn.
+  const standIn = journeyStandIn(pathname);
+  const standInFrame =
+    standIn && consent && (consent.analytics || consent.advertising) ? (
+      <iframe
+        key={`${standIn}-${consent.analytics}-${consent.advertising}`}
+        src={`/journey/${standIn}`}
+        title="Measurement"
+        hidden
+        aria-hidden
+        tabIndex={-1}
+        referrerPolicy="origin"
+      />
+    ) : null;
+
   if (!open || isPrivatePath(pathname)) {
-    return null;
+    return standInFrame;
   }
 
   const primary =
@@ -501,7 +736,9 @@ export function CookieConsent(props: ConsentTags) {
               <span>
                 <strong className="text-forest">Advertising.</strong> Google and
                 Meta learn which of our adverts brought you here, and may show
-                you our adverts again on their sites.
+                you our adverts again on their sites. If you send us a form,
+                they also get a scrambled copy of your email, phone and name, to
+                match your visit to an account they hold.
               </span>
             </label>
           )}

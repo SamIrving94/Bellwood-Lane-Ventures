@@ -1,4 +1,8 @@
-import { CookieConsent, isPrivatePath } from '@/components/cookie-consent';
+import {
+  CookieConsent,
+  isPrivatePath,
+  noPostHogPageView,
+} from '@/components/cookie-consent';
 import { consentTags, hasConsentTags } from '@/lib/consent-tags';
 import { PostHogProvider } from '@repo/analytics/posthog/client';
 import { PostHogPageView } from '@repo/analytics/posthog/pageview';
@@ -33,10 +37,12 @@ export default function RootLayout({ children }: { children: ReactNode }) {
             banner — the banner gates tools that set cookies. The same private
             URL list that mutes Google (PRIVATE_PATHS in cookie-consent.tsx)
             redacts token-bearing URLs before PostHog sees them, and no page
-            view is sent from those pages at all. Change one, change the other. */}
+            view is sent from those pages at all. Change one, change the other.
+            /journey/* is the hidden stand-in frame for the ad tags, not a
+            page anyone sees, so it sends no page view either. */}
         <PostHogProvider cookieless privatePath={isPrivatePath}>
           <Suspense fallback={null}>
-            <PostHogPageView exclude={isPrivatePath} />
+            <PostHogPageView exclude={noPostHogPageView} />
           </Suspense>
           {children}
         </PostHogProvider>
