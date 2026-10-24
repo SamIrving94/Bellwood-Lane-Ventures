@@ -39,3 +39,15 @@ describe('renderUpdateEmail — no figure before a person sends the offer', () =
     ).toContain('£150,000');
   });
 });
+
+describe('renderUpdateEmail — footer speaks as Kept', () => {
+  it('leads with the Kept name and domain, naming the entity as a trading name', () => {
+    const { html, text } = renderUpdateEmail({
+      ...base,
+      kind: 'quote_requested',
+    });
+    expect(html).toContain('wearekept.co.uk');
+    expect(html).toContain('Kept is the trading name of');
+    expect(text).toContain('wearekept.co.uk');
+  });
+});

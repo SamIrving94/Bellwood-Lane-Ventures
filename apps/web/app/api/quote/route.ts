@@ -488,7 +488,7 @@ async function recordQuoteReceived(
       kind: 'quote_requested',
       title: 'We have your details',
       detail:
-        'A person reads every request the same working day and will be in touch to arrange a viewing. No figure until we have seen the property; once we have, your written offer follows within two working days.',
+        'A person reads every request and will be in touch within 24 hours, Monday to Friday, to arrange a viewing. No figure until we have seen the property; once we have, your written offer follows within two working days.',
       metadata: requiresReview === null ? {} : { requiresReview },
     });
     return recorded.trackUrl;
