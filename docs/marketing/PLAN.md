@@ -1,6 +1,6 @@
 # Bellwood Lane — Marketing Plan
 
-_Last verified against the live site: 2026-10-11._
+_Last verified against the live site: 2026-10-24._
 
 > **Hidden for now (founder decision, 11 Oct 2026):** the agent side
 > (`/agents`, `/agents/score`, `/save-the-sale`, `/partners/signup`, the
@@ -158,8 +158,13 @@ load only for visitors who accept *advertising* cookies in the site banner;
 Google Analytics only for those who accept *analytics*. Retargeting audiences
 and conversion counts therefore cover consenting visitors only — expect them
 to under-count, and judge CPA on enquiries in the dashboard, not ad-platform
-numbers alone. Tags never fire on private pages (offer, timeline, viewing,
-`/save-the-sale`). Setup: `NEXT_PUBLIC_GOOGLE_ADS_ID`, `NEXT_PUBLIC_META_PIXEL_ID`,
+numbers alone. Private pages (offer, timeline, viewing, `/save-the-sale`)
+never send their own URL; they count under a stand-in (`/journey/offer-letter`
+etc.) so they can still feed audiences and exclusions. Every funnel step and
+form submission is sent as an event, and a submission with advertising consent
+carries hashed contact details (Google enhanced conversions, Meta advanced
+matching). Event names for the ad manager: `docs/marketing/TRACKING-EVENTS.md`.
+Setup: `NEXT_PUBLIC_GOOGLE_ADS_ID`, `NEXT_PUBLIC_META_PIXEL_ID`,
 `NEXT_PUBLIC_GA_MEASUREMENT_ID` on the web Vercel project; settings the privacy
 notice relies on are listed in `apps/web/app/legal/privacy/page.tsx`.
 
