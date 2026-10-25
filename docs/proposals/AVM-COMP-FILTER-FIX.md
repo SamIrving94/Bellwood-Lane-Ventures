@@ -12,7 +12,7 @@ They are **independent**: say yes to either, both or neither.
 | | Proposal | Path | Fixes |
 |:--|:--|:--|:--|
 | **A** | Open-market, same-type comps only | Land Registry postcode fallback | Bad evidence |
-| **B** | Near ring earns its 60% weight | PropertyData radius comps (the main path) | Thin evidence |
+| ~~**B**~~ | ~~Near ring earns its 60% weight~~ **Withdrawn 25 Oct 2026** | PropertyData radius comps (the main path) | No measured gain |
 
 ---
 
@@ -138,7 +138,15 @@ untouched.
 
 ---
 
-# Proposal B: the near ring earns its weight
+# Proposal B: the near ring earns its weight — WITHDRAWN
+
+> **Withdrawn 25 Oct 2026.** A hold-out test on 209 real May–Jul 2026
+> sales (`scripts/avm-holdout.mts`, PR #151) showed **no gain**: median
+> error 15.9% with B vs 15.6% without, never better in any of 2,000
+> resamples. What did help was letting size lead the blend (15.6% →
+> 12.3%) — shipped separately in PR #151. The reasoning below is kept as a
+> record of what was proposed and why it didn't hold up.
+
 
 ## The ask
 
