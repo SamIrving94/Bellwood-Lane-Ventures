@@ -32,10 +32,9 @@ export const metadata: Metadata = {
  * this page in the same breath:
  *   - GA4 data retention: 2 months (the default)
  *   - GA4 Google signals: OFF
- *   - Meta Events Manager → automatic advanced matching: OFF
- *   - Google Ads → enhanced conversions: OFF
- * The last two are what lets "they never see what you type into our forms"
- * stay true. Google Tag Manager (GTM-WNM6MJGZ) may only run tools this page
+ *   - Meta Events Manager → advanced matching: ON from v1.5 (see below)
+ *   - Google Ads → enhanced conversions: ON from v1.5 (see below)
+ * Google Tag Manager (GTM-WNM6MJGZ) may only run tools this page
  * already names: add a tag in GTM and you must add it here first. The consent gate and the private-URL guard live in
  * components/cookie-consent.tsx.
  *
@@ -43,9 +42,23 @@ export const metadata: Metadata = {
  * config in app/layout.tsx: memory-only persistence, no autocapture, no
  * session recording, ip: false, and the same PRIVATE_PATHS redaction Google
  * gets. Loosen any of those and PostHog moves behind the analytics consent.
+ *
+ * v1.4: GTM loads only after advertising consent, because it carries the
+ * ad manager's Meta Pixel (it used to load on analytics consent too).
+ *
+ * v1.5 (founder decision, 24 Oct 2026: ad matching is essential after the
+ * iOS tracking changes). With advertising consent, a form sent on the site
+ * passes Google and Meta a hashed email, phone and name (Google also gets
+ * the postcode, which its address match needs in the clear). Never the
+ * property, the situation or anything typed in a free-text box. The old
+ * promise "they never see what you type into our forms" is withdrawn, and
+ * the banner (consent v3) names the matching before anyone accepts. Also
+ * new: private journey pages count for audiences under a stand-in address
+ * (/journey/offer-letter etc.), never the link. Both live in
+ * components/cookie-consent.tsx.
  */
-const LAST_UPDATED = '3 October 2026';
-const VERSION = '1.3';
+const LAST_UPDATED = '24 October 2026';
+const VERSION = '1.5';
 
 /** Verified against the Companies House register, 2026-07-31. */
 const REGISTERED_OFFICE = '20 Wenlock Road, London N1 7GU';
@@ -130,13 +143,24 @@ const SECTIONS: Array<{
           how they can later show you our adverts on their own sites and apps.
         </p>
         <p>
-          Neither sees what you type into our forms. Both are switched off on
-          private pages such as offer and timeline links. If you say no, none of
-          this is collected.
+          <strong>If you accept advertising cookies and send us a form</strong>,
+          we also give Google and Meta a scrambled copy (a &ldquo;hash&rdquo;)
+          of your email address, phone number and name. Google also gets your
+          postcode. They compare it with the details on accounts they already
+          hold, so they can tell that an advert led to an enquiry, and keep
+          people who have already been in touch out of, or in, the audiences for
+          our adverts. They do not get your address, anything about the property
+          or your situation, or anything you write in a message box.
         </p>
         <p>
-          <strong>We do not</strong> buy marketing lists, and we never hand the
-          details you give us to an advertiser.
+          Private pages, such as your offer or timeline link, are counted under
+          a stand-in address (for example{' '}
+          <span className="font-mono text-[14px]">/journey/offer-letter</span>
+          ). Google and Meta never see the link itself. If you say no, none of
+          this is collected or sent.
+        </p>
+        <p>
+          <strong>We do not</strong> buy marketing lists or sell your data.
         </p>
       </>
     ),
@@ -177,9 +201,10 @@ const SECTIONS: Array<{
         </p>
         <p>
           <strong>
-            We do not sell your data. What you tell us when you ask for an offer
-            &mdash; your name, contact details, property and situation &mdash;
-            is never used for advertising.
+            We do not sell your data. The property and your situation are never
+            used for advertising. Your name, email and phone are, only in the
+            scrambled form described above, and only if you accepted advertising
+            cookies.
           </strong>
         </p>
       </>
@@ -253,8 +278,9 @@ const SECTIONS: Array<{
           Agreement.
         </p>
         <p>
-          We never sell your data, and we never pass the details you give us to
-          marketing companies.
+          We never sell your data. Apart from the scrambled matching above,
+          which needs your consent, we never pass the details you give us to
+          advertisers or marketing companies.
         </p>
       </>
     ),
@@ -314,14 +340,14 @@ const SECTIONS: Array<{
         </p>
         <p>
           <strong>Also always on, because it stores nothing: PostHog.</strong>{' '}
-          It counts page views and shows us at which step people leave the
-          offer form. It runs without a cookie or any other storage on your
-          device, so it forgets you when you close the page and cannot tell a
-          returning visitor from a new one. We ask it not to record your IP
-          address, nothing you type into a form is sent to it, and it never
-          sees the private links we send you, such as your deal timeline or
-          your offer. Because nothing is stored on your device, it is not
-          something we ask consent for.
+          It counts page views and shows us at which step people leave the offer
+          form. It runs without a cookie or any other storage on your device, so
+          it forgets you when you close the page and cannot tell a returning
+          visitor from a new one. We ask it not to record your IP address,
+          nothing you type into a form is sent to it, and it never sees the
+          private links we send you, such as your deal timeline or your offer.
+          Because nothing is stored on your device, it is not something we ask
+          consent for.
         </p>
         <p>
           <strong>Only if you accept analytics: Google Analytics.</strong> It
@@ -345,8 +371,8 @@ const SECTIONS: Array<{
         </p>
         <p>
           <strong>Google Tag Manager</strong> is how we switch these tools on.
-          It sets no cookies of its own, loads only after you accept analytics
-          or advertising, and runs only the tools named on this page.
+          It sets no cookies of its own, loads only after you accept
+          advertising, and runs only the tools named on this page.
         </p>
         <p>
           You choose each kind separately, and nothing is ticked for you. Until
@@ -355,6 +381,9 @@ const SECTIONS: Array<{
         <p>
           Changed your mind? <CookieSettingsButton />. If you withdraw, we stop
           those tools straight away and delete their cookies from your browser.
+          Scrambled details already sent with a form stay with Google or Meta
+          under their own policies; ask us and we will tell you how to have them
+          removed.
         </p>
       </>
     ),
