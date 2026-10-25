@@ -26,6 +26,32 @@ export type WhatsNewEntry = {
 /** Newest first. The popup shows index 0. */
 export const WHATS_NEW: WhatsNewEntry[] = [
   {
+    id: '2026-10-25-size-led-avm',
+    date: '2026-10-25',
+    emoji: '📐',
+    title: 'The AVM now values by size when it can',
+    intro:
+      'Tested on 209 real sales first: valuations land closer to the real price.',
+    bullets: [
+      {
+        emoji: '📏',
+        text: 'When we know the home’s size, **£ per sq ft leads** the valuation (70%).',
+      },
+      {
+        emoji: '🔍',
+        text: 'Every nearby sale is now **sized from its EPC**, not just a handful.',
+      },
+      {
+        emoji: '🎯',
+        text: 'On the test: typical miss **15.6% → 12.3%**, and **44%** land within 10% (was 32%).',
+      },
+      {
+        emoji: '🏷️',
+        text: 'Look for **sqft_led** in a valuation’s sources to see it in action.',
+      },
+    ],
+  },
+  {
     id: '2026-10-24-ad-tracking',
     date: '2026-10-24',
     emoji: '🎯',

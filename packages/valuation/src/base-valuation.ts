@@ -30,10 +30,12 @@ import {
   getPropertyDataValuation,
   getPropertyFloorArea,
   getEpcFloorAreaByUprn,
+  getEpcCompFloorAreas,
   getFloorAreaRows,
   getPricesPerSqf,
   getSectorPricePaid,
   realTransactions,
+  sameHome,
   type PpdTransaction,
   type Epc,
   type Hpi,
@@ -124,6 +126,8 @@ export interface BaseValuation {
   sqft: SqftEvidence | null;
   /** Share of the point estimate the size pillar carried (0 when unused). */
   sqftWeight: number;
+  /** The size pillar led the blend (70%) — see SIZE_LED_MIN_MATCHED. */
+  sqftSizeLed: boolean;
   source: string;
   /** Present when the distance-weighted PropertyData path produced the CSA. */
   distanceWeighted?: DistanceWeightedValuation | null;
@@ -574,7 +578,8 @@ export async function getBaseValuation(
   const weights = triangulationWeights(
     csaSource,
     Boolean(externalAvm),
-    sqftEstimate != null ? (sqft?.source ?? null) : null
+    sqftEstimate != null ? (sqft?.source ?? null) : null,
+    sqft?.matchedCount ?? 0
   );
   const pointEstimate = Math.round(
     csaValue * weights.csa +
@@ -629,7 +634,9 @@ export async function getBaseValuation(
   const epcTag = epc.source === 'epc_register' ? '+epc' : '';
   // The size pillar only earns a tag when it actually moved the estimate.
   const sqftTag =
-    sqftEstimate != null && sqft?.source === 'matched_comps'
+    sqftEstimate != null && sqft?.source === 'matched_comps' && weights.sizeLed
+      ? `+sqft_led(${sqft.matchedCount})`
+      : sqftEstimate != null && sqft?.source === 'matched_comps'
       ? `+sqft(${sqft.matchedCount})`
       : sqftEstimate != null && sqft?.source === 'area_benchmark'
         ? '+sqft_benchmark'
@@ -662,6 +669,7 @@ export async function getBaseValuation(
     floorAreaSqft,
     sqft,
     sqftWeight: weights.sqft,
+    sqftSizeLed: weights.sizeLed,
     source,
     distanceWeighted: distanceWeighted ?? null,
   };
@@ -721,6 +729,37 @@ async function resolveSqftEvidence(input: {
     compKeys.forEach((key, i) => {
       floorAreasByPostcode.set(key, compRows[i] ?? []);
     });
+    // Every comp, from the free EPC register (size-led AVM, Oct 2026). The
+    // PropertyData cap above sized 2 of Clarendon Rise's 17 comps; the
+    // register sized 15. A home's own newest certificate replaces any
+    // PropertyData row for the same home, so two certificates that disagree
+    // can't cancel each other out in the matcher.
+    const epcSizes = await getEpcCompFloorAreas(
+      addressed.map((c) => ({
+        address: c.address,
+        postcode: c.postcode,
+        distanceMiles: c.distanceMiles,
+      }))
+    ).catch((err) => {
+      console.warn(
+        `[base-valuation] EPC comp sizes unavailable for ${input.postcode}`,
+        err
+      );
+      return new Map<string, { address: string; floorAreaSqm: number }[]>();
+    });
+    for (const [key, homes] of epcSizes) {
+      const existing = floorAreasByPostcode.get(key) ?? [];
+      const others = existing.filter(
+        (row) => !homes.some((h) => sameHome(h.address, row.address))
+      );
+      floorAreasByPostcode.set(key, [
+        ...homes.map((h) => ({
+          address: h.address,
+          floorAreaSqm: h.floorAreaSqm,
+        })),
+        ...others,
+      ]);
+    }
 
     return buildSqftEvidence({
       comps: addressed.map((c) => ({
