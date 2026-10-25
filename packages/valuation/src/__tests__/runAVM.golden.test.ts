@@ -54,6 +54,13 @@ vi.mock('@repo/property-data', () => ({
   // Market signals (listing body language) — display-context only, mocked
   // dark so the golden valuation math stays untouched.
   getSubjectMarketSignals: vi.fn(),
+  // Evidence-check lookups (Oct 2026) — flags only, dark by default.
+  // namesOneHome stays REAL: it is pure, and the checks hinge on it.
+  namesOneHome: (address: string | null | undefined) =>
+    Boolean(address && /\d/.test(address)),
+  getHomeLastSale: vi.fn(),
+  getHomeDwellingType: vi.fn(),
+  getLocalHpiMove: vi.fn(),
 }));
 
 // Imported AFTER vi.mock so the mocked module is in scope.
@@ -71,6 +78,9 @@ const {
   geocodePostcodes,
   getSoldPrices,
   getSubjectMarketSignals,
+  getHomeLastSale,
+  getHomeDwellingType,
+  getLocalHpiMove,
 } = await import('@repo/property-data');
 const { runAVM, InsufficientEvidenceError } = await import('../index');
 
@@ -109,6 +119,10 @@ function applyScenario(scn: {
   );
   // Benchmark dark — the size anchor sits out, original weights apply.
   vi.mocked(getPricesPerSqf).mockResolvedValue(null as never);
+  // Evidence-check lookups dark — no flags unless a test turns them on.
+  vi.mocked(getHomeLastSale).mockResolvedValue(null as never);
+  vi.mocked(getHomeDwellingType).mockResolvedValue(null as never);
+  vi.mocked(getLocalHpiMove).mockResolvedValue(null as never);
 }
 
 beforeEach(() => {
@@ -386,5 +400,81 @@ describe("runAVM — floor area: this home's own certificate by UPRN", () => {
     const r = (await runAVM({ ...input, uprn: '100021843769' })).resultJson;
     expect(r.floorAreaSource).toBeNull();
     expect(r.floorAreaSqm).toBeNull();
+  });
+});
+
+describe('runAVM — evidence checks flag, never move a number', () => {
+  // The Clarendon Rise lesson (Oct 2026): flags ask a person to look. They
+  // must not change the estimate, the range, the confidence or the offer.
+  beforeEach(() => applyScenario(SCENARIO_NORMAL_TERRACED));
+  const input = {
+    postcode: 'M14 5AB',
+    propertyType: 'terraced' as const,
+    address: '1 Test Street, Manchester',
+    sellerType: 'standard' as const,
+    bedrooms: 3,
+  };
+
+  it('quiet evidence: no flags, reasons empty', async () => {
+    const r = (await runAVM(input)).resultJson;
+    expect(r.evidenceChecks?.flags).toEqual([]);
+    expect(r.evidenceChecks?.ownSale).toBeNull();
+  });
+
+  it('disagreeing evidence raises the second check with reasons, and every figure is identical', async () => {
+    const quiet = (await runAVM(input)).resultJson;
+
+    applyScenario(SCENARIO_NORMAL_TERRACED);
+    vi.mocked(getHomeLastSale).mockResolvedValue({
+      price: 450_000,
+      date: '2023-08-24',
+      address: '1, TEST STREET, MANCHESTER',
+    } as never);
+    vi.mocked(getLocalHpiMove).mockResolvedValue({
+      ratio: 1.0,
+      region: 'manchester',
+      fromMonth: '2023-08',
+      toMonth: '2026-07',
+      series: 'type',
+    } as never);
+    vi.mocked(getHomeDwellingType).mockResolvedValue({
+      dwellingType: 'Ground-floor maisonette',
+      certificateNumber: '0000-0000-0000-0000-0002',
+      matchedBy: 'address',
+    } as never);
+    const flagged = (await runAVM(input)).resultJson;
+
+    const codes = flagged.evidenceChecks?.flags.map((f) => f.code);
+    expect(codes).toContain('own_sale_gap');
+    expect(codes).toContain('type_mismatch');
+    expect(flagged.secondCheckRequired).toBe(true);
+    expect(flagged.secondCheckReasons.length).toBeGreaterThanOrEqual(2);
+
+    // The figures do not move.
+    expect(flagged.avmPointEstimate).toBe(quiet.avmPointEstimate);
+    expect(flagged.avmLow).toBe(quiet.avmLow);
+    expect(flagged.avmHigh).toBe(quiet.avmHigh);
+    expect(flagged.confidenceLevel).toBe(quiet.confidenceLevel);
+    expect(flagged.baseOffer).toBe(quiet.baseOffer);
+    expect(flagged.finalOffer).toBe(quiet.finalOffer);
+    expect(flagged.offerLow).toBe(quiet.offerLow);
+    expect(flagged.offerHigh).toBe(quiet.offerHigh);
+  });
+
+  it('a failed lookup is "no flag", never a failed valuation', async () => {
+    vi.mocked(getHomeLastSale).mockRejectedValue(new Error('HMLR down'));
+    vi.mocked(getHomeDwellingType).mockRejectedValue(new Error('EPC down'));
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const r = (await runAVM(input)).resultJson;
+    expect(r.avmPointEstimate).toBeGreaterThan(0);
+    expect(r.evidenceChecks?.ownSale).toBeNull();
+    expect(r.evidenceChecks?.propertyType).toBeNull();
+    expect(r.evidenceChecks?.flags).toEqual([]);
+  });
+
+  it('an address with no house number is never looked up', async () => {
+    await runAVM({ ...input, address: 'Test Street, Manchester' });
+    expect(getHomeLastSale).not.toHaveBeenCalled();
+    expect(getHomeDwellingType).not.toHaveBeenCalled();
   });
 });

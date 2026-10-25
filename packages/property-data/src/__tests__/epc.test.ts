@@ -119,6 +119,7 @@ describe('parseCertificateResponse', () => {
       epcRating: 'E', // uppercased from "e"
       epcScore: 50,
       propertyType: 'House',
+      dwellingType: 'Mid-terrace house', // kind AND built form, for the type check
       floorAreaSqm: 55,
       constructionAgeBand: 'England and Wales: 2007-2011',
       heatingType: 'Boiler and radiators, anthracite',
