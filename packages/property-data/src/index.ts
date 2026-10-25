@@ -47,6 +47,7 @@ export * from './market-signals';
 export * from './postcodes-io';
 export * from './registered-leases';
 export * from './uprn';
+export * from './epc-comp-sizes';
 export * from './provider-probe';
 export {
   getPersistentStore,
