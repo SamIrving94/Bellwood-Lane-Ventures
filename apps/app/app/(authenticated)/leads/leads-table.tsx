@@ -492,19 +492,19 @@ export function LeadsTable({
               <p className="font-medium text-foreground">
                 No new leads waiting.
               </p>
-              {/* The scout is a 7am cron — there is no run-now control, so
-                  don't send the founder looking for a button that isn't
-                  there. Point at the one thing they CAN change instead. */}
+              {/* The scout has no schedule (founder decision, Aug 2026, to
+                  control PropertyData spend) — it only runs when a founder
+                  presses "Run scout now". Say so, and point at the button. */}
               <p className="mt-1 text-muted-foreground text-sm">
-                Everything sourced so far has already been triaged. The scout
-                runs each morning — widen your target areas in{' '}
+                Everything found so far has been triaged. The scout only runs
+                when you start it. Go to{' '}
                 <a
                   href="/settings/scouting"
                   className="font-medium text-primary hover:underline"
                 >
                   Settings → Scouting
                 </a>{' '}
-                to bring in more.
+                and press <span className="font-medium">Run scout now</span>.
               </p>
             </>
           ) : activeFilter === 'shortlist' ? (

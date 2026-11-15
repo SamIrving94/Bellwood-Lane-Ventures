@@ -487,7 +487,7 @@ const CalibrationPage = async () => {
               <span className="font-medium text-slate-700">
                 EvalConfig (lead_scoring)
               </span>{' '}
-              version: the daily scout then scores with it and stamps that
+              version: the next scout run scores with it and stamps that
               version on each lead, so the numbers above always reflect the live
               config.
             </li>
