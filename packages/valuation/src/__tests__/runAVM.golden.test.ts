@@ -35,6 +35,10 @@ vi.mock('@repo/property-data', () => ({
   // golden math stays the pre-size blend. Failing to stub them would leave
   // the pillar undefined and throw inside the valuation.
   getFloorAreaRows: vi.fn(),
+  // EPC comp sizes (size-led AVM, Oct 2026) — dark, so the golden blends
+  // stay the pre-size ones.
+  getEpcCompFloorAreas: vi.fn(),
+  sameHome: (a: string, b: string) => a === b,
   getPricesPerSqf: vi.fn(),
   // Sector comps (Land Registry SPARQL) — the evidence of last resort.
   // Stubbed dark by default so the golden scenarios keep their comp sets.
@@ -71,6 +75,7 @@ const {
   geocodePostcodes,
   getSoldPrices,
   getSubjectMarketSignals,
+  getEpcCompFloorAreas,
 } = await import('@repo/property-data');
 const { runAVM, InsufficientEvidenceError } = await import('../index');
 
@@ -98,6 +103,7 @@ function applyScenario(scn: {
   vi.mocked(getPropertyFloorArea).mockResolvedValue(null as never);
   vi.mocked(getEpcFloorAreaByUprn).mockResolvedValue(null as never);
   vi.mocked(getFloorAreaRows).mockResolvedValue([] as never);
+  vi.mocked(getEpcCompFloorAreas).mockResolvedValue(new Map() as never);
   vi.mocked(getPricesPerSqf).mockResolvedValue(null as never);
   // Disable the distance path for the golden (HMLR fallback) scenarios.
   vi.mocked(geocodePostcode).mockResolvedValue(null as never);

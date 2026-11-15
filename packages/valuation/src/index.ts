@@ -315,6 +315,11 @@ export interface AvmResultJson {
     sizeVsCompsPct: number | null;
     /** Weight the size estimate carried in the triangulation (0–1). */
     weight: number;
+    /**
+     * Size led the blend (70%): subject size known and 4+ comps sized
+     * (Oct 2026). Absent on older results — read missing as false.
+     */
+    sizeLed?: boolean;
   } | null;
 
   // Environmental risk
@@ -535,6 +540,7 @@ export async function runAVM(input: AvmInput): Promise<AvmResultPayload> {
           source: baseValuation.sqft.source,
           sizeVsCompsPct: baseValuation.sqft.sizeVsCompsPct,
           weight: baseValuation.sqftWeight,
+          sizeLed: baseValuation.sqftSizeLed,
         }
       : null,
 
