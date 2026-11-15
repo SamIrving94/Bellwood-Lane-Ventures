@@ -39,7 +39,7 @@ export const TOURS: Record<TourId, TourStep[]> = {
       popover: {
         title: 'Today',
         description:
-          'Your daily start. Shows decisions waiting on you and the best leads found overnight. Open this first each morning.',
+          'Your daily start. Shows decisions waiting on you and the best new leads. Open this first each day.',
         side: 'right',
         align: 'start',
       },

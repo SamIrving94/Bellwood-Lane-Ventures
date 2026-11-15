@@ -67,7 +67,7 @@ const ScorerConfigPage = async () => {
           <p className="mt-2 max-w-2xl text-muted-foreground text-sm">
             Adjust how the scorer weighs each lead. Changes apply to the{' '}
             <span className="font-medium text-foreground">
-              next daily scout
+              next scout run
             </span>
             , not to leads already scored. Every save creates a new version you
             can roll back to in one click — so it&apos;s safe to experiment.
