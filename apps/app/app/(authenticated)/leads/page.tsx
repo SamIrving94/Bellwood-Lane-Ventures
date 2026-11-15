@@ -36,12 +36,24 @@ const LeadsPage = async ({
   // cap ever does bite, the founder is told rather than shown a silent slice.
   const LEADS_FETCH_CAP = 1000;
 
-  const [leads, totalCount] = await Promise.all([
+  //
+  // Ordered newest first (founder, Nov 2026): the question on opening this
+  // page is "what came in since I last looked?". If the cap ever bites, it
+  // now drops the OLDEST leads, not the newest low scorers.
+  //
+  // `lastRun` is the scout's own run record (same source as Settings →
+  // Scouting), so a run that found nothing new still shows as a run.
+  const [leads, totalCount, lastRun] = await Promise.all([
     database.scoutLead.findMany({
-      orderBy: [{ leadScore: 'desc' }, { createdAt: 'desc' }],
+      orderBy: [{ createdAt: 'desc' }, { leadScore: 'desc' }],
       take: LEADS_FETCH_CAP,
     }),
     database.scoutLead.count(),
+    database.agentEvent.findFirst({
+      where: { eventType: 'leads_created' },
+      orderBy: { createdAt: 'desc' },
+      select: { createdAt: true, summary: true },
+    }),
   ]);
 
   return (
@@ -122,6 +134,7 @@ const LeadsPage = async ({
               marketTrend: l.marketTrend,
               status: l.status,
               source: l.source,
+              createdAt: l.createdAt.toISOString(),
               // Rich PropertyData fields (when source is propertydata_*)
               listingType: (pd?.listingType as string | undefined) ?? null,
               listingUrl: (pd?.listingUrl as string | undefined) ?? null,
@@ -207,6 +220,8 @@ const LeadsPage = async ({
           })}
           initialFilter={filter ?? 'new'}
           totalCount={totalCount}
+          lastRunAt={lastRun?.createdAt.toISOString() ?? null}
+          lastRunSummary={lastRun?.summary ?? null}
         />
       </div>
     </>
