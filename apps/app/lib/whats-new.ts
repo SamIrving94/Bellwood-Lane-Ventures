@@ -26,6 +26,20 @@ export type WhatsNewEntry = {
 /** Newest first. The popup shows index 0. */
 export const WHATS_NEW: WhatsNewEntry[] = [
   {
+    id: '2026-11-15-leads-newest-first',
+    date: '2026-11-15',
+    emoji: '🗓️',
+    title: 'Leads now show when they came in',
+    intro: 'Open Leads and the freshest ones are on top.',
+    bullets: [
+      { emoji: '🆕', text: 'Leads are ordered **newest first**.' },
+      { emoji: '📅', text: 'Every lead says the **date it was added**.' },
+      { emoji: '⏱️', text: '**Last scout run** sits at the top of the page.' },
+      { emoji: '🏆', text: 'Want the best first? Tap **Top score**.' },
+    ],
+    cta: { label: 'See your leads', href: '/leads' },
+  },
+  {
     id: '2026-10-24-ad-tracking',
     date: '2026-10-24',
     emoji: '🎯',

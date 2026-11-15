@@ -87,8 +87,8 @@ const SettingsPage = async () => {
                 <div>
                   <p className="font-medium">Scouting · Target postcodes</p>
                   <p className="text-sm text-muted-foreground">
-                    The postcodes the daily scouting cron pulls distressed
-                    listings from. Add or remove without a code deploy.
+                    The postcodes the scout pulls distressed listings from
+                    when you press Run scout now. Add or remove without a code deploy.
                   </p>
                 </div>
                 <span aria-hidden className="text-muted-foreground">→</span>
