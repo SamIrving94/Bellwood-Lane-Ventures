@@ -154,6 +154,7 @@ async function LeadsTabContent({ filter }: { filter?: string }) {
           marketTrend: l.marketTrend,
           status: l.status,
           source: l.source,
+          createdAt: l.createdAt.toISOString(),
           listingType: (pd?.listingType as string | undefined) ?? null,
           listingUrl: (pd?.listingUrl as string | undefined) ?? null,
           imageUrl: (pd?.imageUrl as string | undefined) ?? null,
