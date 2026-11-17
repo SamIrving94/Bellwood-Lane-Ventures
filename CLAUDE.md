@@ -194,6 +194,15 @@ Run a task for one workspace with a filter, e.g.
   (git sha), so the backtest can split before from after. The freeze
   otherwise still stands: any other method change waits for a reading,
   or needs the same measure-first evidence.
+  **Second override, size-led blend (founder, 25 Oct 2026):** on the
+  radius path, when the subject's size is known and 4+ comps are sized,
+  the £/sqft estimate carries 70% (`SIZE_LED_MIN_MATCHED` in
+  `sqft-comps.ts`), and every comp is sized from the free EPC register
+  (`getEpcCompFloorAreas`), not the 5-postcode PropertyData cap. Measured
+  first on a hold-out of 209 real May–Jul 2026 sales valued as of just
+  before each sold (`scripts/avm-holdout.mts`): median error 15.6% →
+  12.3%. Sources carry `+sqft_led(n)`. Judge future method changes on
+  the same hold-out before they ship.
 - **Never fabricate identifiers and hope downstream accepts them.** Resolve
   them, or fail loudly at the moment of input. The SW3 incident (Aug 2026):
   the area resolver guessed `"SW3 1AA"` for an unknown district, PropertyData

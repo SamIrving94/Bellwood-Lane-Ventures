@@ -48,6 +48,7 @@ export * from './postcodes-io';
 export * from './registered-leases';
 export * from './uprn';
 export * from './home-evidence';
+export * from './epc-comp-sizes';
 export * from './provider-probe';
 export {
   getPersistentStore,

@@ -456,7 +456,29 @@ export interface TriangulationWeights {
   hedonic: number;
   external: number;
   sqft: number;
+  /** True when the size pillar leads the blend (see SIZE_LED_MIN_MATCHED). */
+  sizeLed: boolean;
 }
+
+/**
+ * SIZE-LED BLEND (founder decision, 25 Oct 2026 — a measured exception to
+ * the AVM freeze). With the subject's own size known and at least this many
+ * comps sized, the £/sqft estimate carries 70% and the whole-price CSA
+ * (with the hedonic built on it) 30%.
+ *
+ * Measured first, on a hold-out of 209 real May–Jul 2026 sales in 14
+ * districts we appraise in, each valued as of just before it sold:
+ * median error 15.6% → 12.3% (−2.8 pts, 95% range about −5.0 to −0.9, better in
+ * 100% of 2,000 resamples); within 10% of the sale 32% → 44%. The 70% was
+ * set before the test; 50% and 100% also beat today. The test had no
+ * external AVM, so the `ext` row keeps it at a small 10%, untested.
+ * Radius (distance) CSA only — the fallback paths were not tested.
+ */
+export const SIZE_LED_MIN_MATCHED = 4;
+const SIZE_LED_WEIGHTS: Record<'ext' | 'noext', Omit<TriangulationWeights, 'sizeLed'>> = {
+  noext: { csa: 0.2, hedonic: 0.1, external: 0, sqft: 0.7 },
+  ext: { csa: 0.15, hedonic: 0.05, external: 0.1, sqft: 0.7 },
+};
 
 /**
  * The AVM's source weights, extended with the size pillar, keyed
@@ -467,7 +489,7 @@ export interface TriangulationWeights {
  * only a bedroom nudge on the CSA); an area benchmark takes a smaller 15
  * because it is a postcode average, not this street's sold evidence.
  */
-const WEIGHT_TABLE: Record<string, TriangulationWeights> = {
+const WEIGHT_TABLE: Record<string, Omit<TriangulationWeights, 'sizeLed'>> = {
   'distance/ext/matched_comps': {
     csa: 0.45,
     hedonic: 0.15,
@@ -526,9 +548,18 @@ const WEIGHT_TABLE: Record<string, TriangulationWeights> = {
 export function triangulationWeights(
   csaSource: 'distance' | 'hmlr' | 'sector' | 'fallback',
   hasExternal: boolean,
-  sqftSource: SqftEvidenceSource | null
+  sqftSource: SqftEvidenceSource | null,
+  matchedCount = 0
 ): TriangulationWeights {
+  if (
+    csaSource === 'distance' &&
+    sqftSource === 'matched_comps' &&
+    matchedCount >= SIZE_LED_MIN_MATCHED
+  ) {
+    return { ...SIZE_LED_WEIGHTS[hasExternal ? 'ext' : 'noext'], sizeLed: true };
+  }
   const csaKey = csaSource === 'distance' ? 'distance' : 'hmlr';
   const key = `${csaKey}/${hasExternal ? 'ext' : 'noext'}/${sqftSource ?? 'none'}`;
-  return WEIGHT_TABLE[key] ?? { csa: 0.5, hedonic: 0.5, external: 0, sqft: 0 };
+  const row = WEIGHT_TABLE[key] ?? { csa: 0.5, hedonic: 0.5, external: 0, sqft: 0 };
+  return { ...row, sizeLed: false };
 }
