@@ -1,6 +1,7 @@
 'use client';
 
-import { useTrack } from '@repo/analytics/posthog/client';
+import { sendLead } from '@/components/cookie-consent';
+import { useFunnelTrack } from '@/lib/use-funnel-track';
 import { type ReactNode, useState } from 'react';
 
 /**
@@ -138,7 +139,7 @@ export function OfferForm() {
   const [email, setEmail] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
-  const track = useTrack();
+  const track = useFunnelTrack();
 
   /** A Continue that passed its check. Back links call setStep directly so
    *  the funnel counts forward progress only. Nothing typed goes with it. */
@@ -196,6 +197,7 @@ export function OfferForm() {
         throw new Error(`HTTP ${res.status}`);
       }
       track('sell_form_submitted', funnel);
+      void sendLead('homepage_offer_form', { name, email, phone, postcode });
       setStep('done');
     } catch {
       setError(

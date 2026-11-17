@@ -179,7 +179,10 @@ export function renderUpdateEmail(ctx: UpdateEmailContext): {
         email and a person will pick it up.
       </p>
       <p style="margin:32px 0 0;font-family:'Courier New',monospace;font-size:11px;color:#4C5A50;border-top:1px solid #E2DCCB;padding-top:16px">
-        ${escapeHtml(brand.legalName)} · Property Redress Scheme (PRS) · HMRC AML supervised · ICO registered
+        ${escapeHtml(brand.mark)} · <a href="${brand.url}" style="color:#4C5A50">${escapeHtml(brand.domain)}</a> · ${escapeHtml(brand.dealsEmail)}
+      </p>
+      <p style="margin:8px 0 0;font-family:'Courier New',monospace;font-size:11px;color:#4C5A50;line-height:1.6">
+        ${escapeHtml(brand.name)} is the trading name of ${escapeHtml(brand.legalName)}, registered in England &amp; Wales (Company No. ${escapeHtml(brand.companyNumber)}). Property Redress Scheme (PRS) · HMRC AML supervised · ICO registered
       </p>
     </div>
   `;
@@ -194,6 +197,8 @@ export function renderUpdateEmail(ctx: UpdateEmailContext): {
     ctx.detail ?? '',
     offerLine,
     ctx.trackUrl ? `\nLive timeline: ${ctx.trackUrl}` : '',
+    `\n${brand.mark} · ${brand.domain}`,
+    `${brand.name} is the trading name of ${brand.legalName}, registered in England & Wales (Company No. ${brand.companyNumber}).`,
   ]
     .filter(Boolean)
     .join('\n');

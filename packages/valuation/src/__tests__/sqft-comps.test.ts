@@ -291,13 +291,34 @@ describe('triangulationWeights', () => {
       hedonic: 0.25,
       external: 0.15,
       sqft: 0,
+      sizeLed: false,
     });
     expect(triangulationWeights('hmlr', false, null)).toEqual({
       csa: 0.5,
       hedonic: 0.5,
       external: 0,
       sqft: 0,
+      sizeLed: false,
     });
+  });
+
+  it('size leads (70%) on the radius path once 4+ comps are sized — the hold-out winner', () => {
+    for (const ext of [true, false]) {
+      const w = triangulationWeights('distance', ext, 'matched_comps', 4);
+      expect(w.sizeLed).toBe(true);
+      expect(w.sqft).toBe(0.7);
+      expect(w.csa + w.hedonic + w.external + w.sqft).toBeCloseTo(1, 6);
+      expect(w.external > 0).toBe(ext);
+    }
+  });
+
+  it('size does not lead below 4 sized comps, on a benchmark, or off the radius path', () => {
+    expect(triangulationWeights('distance', false, 'matched_comps', 3).sizeLed).toBe(false);
+    expect(triangulationWeights('distance', false, 'area_benchmark', 9).sizeLed).toBe(false);
+    expect(triangulationWeights('hmlr', false, 'matched_comps', 9).sizeLed).toBe(false);
+    expect(triangulationWeights('sector', false, 'matched_comps', 9).sizeLed).toBe(false);
+    // Below the bar the old blend is untouched.
+    expect(triangulationWeights('distance', false, 'matched_comps', 3).sqft).toBe(0.3);
   });
 
   it('trusts matched comps more than an area benchmark', () => {

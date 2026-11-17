@@ -26,6 +26,72 @@ export type WhatsNewEntry = {
 /** Newest first. The popup shows index 0. */
 export const WHATS_NEW: WhatsNewEntry[] = [
   {
+    id: '2026-11-15-size-led-avm',
+    date: '2026-11-15',
+    emoji: '📐',
+    title: 'The AVM now values by size when it can',
+    intro:
+      'Tested on 209 real sales first: valuations land closer to the real price.',
+    bullets: [
+      {
+        emoji: '📏',
+        text: 'When we know the home’s size, **£ per sq ft leads** the valuation (70%).',
+      },
+      {
+        emoji: '🔍',
+        text: 'Every nearby sale is now **sized from its EPC**, not just a handful.',
+      },
+      {
+        emoji: '🎯',
+        text: 'On the test: typical miss **15.6% → 12.3%**, and **44%** land within 10% (was 32%).',
+      },
+      {
+        emoji: '🏷️',
+        text: 'Look for **sqft_led** in a valuation’s sources to see it in action.',
+      },
+    ],
+  },
+  {
+    id: '2026-11-15-leads-newest-first',
+    date: '2026-11-15',
+    emoji: '🗓️',
+    title: 'Leads now show when they came in',
+    intro: 'Open Leads and the freshest ones are on top.',
+    bullets: [
+      { emoji: '🆕', text: 'Leads are ordered **newest first**.' },
+      { emoji: '📅', text: 'Every lead says the **date it was added**.' },
+      { emoji: '⏱️', text: '**Last scout run** sits at the top of the page.' },
+      { emoji: '🏆', text: 'Want the best first? Tap **Top score**.' },
+    ],
+    cta: { label: 'See your leads', href: '/leads' },
+  },
+  {
+    id: '2026-10-24-ad-tracking',
+    date: '2026-10-24',
+    emoji: '🎯',
+    title: 'Ads can now see the whole journey',
+    intro:
+      'Google and Meta now hear about every step, so the ads can learn who to find.',
+    bullets: [
+      {
+        emoji: '📨',
+        text: 'Every form sent fires **generate_lead** (Meta gets **Lead**).',
+      },
+      {
+        emoji: '👣',
+        text: 'Every **form step** is an event too, for building conversions.',
+      },
+      {
+        emoji: '🔐',
+        text: '**Offer, timeline and viewing pages** count under a safe stand-in link.',
+      },
+      {
+        emoji: '🧩',
+        text: '**Hashed** email and phone go with a lead, for better matching.',
+      },
+    ],
+  },
+  {
     id: '2026-10-21-backtest-floor-area',
     date: '2026-10-21',
     emoji: '📏',

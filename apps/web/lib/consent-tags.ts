@@ -12,8 +12,9 @@ const GA_ID_PRODUCTION = 'G-ME9L86HTLT';
 
 /**
  * Kept's Google Tag Manager container, same rule as GA: public, production
- * only, NEXT_PUBLIC_GTM_ID overrides. GTM is for EXTRA tags — GA, Ads and
- * Meta are loaded directly (see the GTM note in cookie-consent.tsx).
+ * only, NEXT_PUBLIC_GTM_ID overrides. GTM carries the ad manager's Meta
+ * Pixel, so it is gated on advertising consent; GA and Ads are loaded
+ * directly (see the GTM note in cookie-consent.tsx).
  */
 const GTM_ID_PRODUCTION = 'GTM-WNM6MJGZ';
 

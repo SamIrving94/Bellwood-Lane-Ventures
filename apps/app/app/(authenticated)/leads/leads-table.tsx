@@ -28,6 +28,8 @@ type Lead = {
   marketTrend: string | null;
   status: string;
   source: string;
+  /** When the lead came in (ISO string — Dates don't cross to the client). */
+  createdAt: string;
   // PropertyData-rich fields
   listingType: string | null;
   listingUrl: string | null;
@@ -80,12 +82,37 @@ type Props = {
   initialFilter: string;
   /**
    * Total ScoutLead rows in the database. The page fetches a bounded slice
-   * (highest-scoring first), so when this exceeds `leads.length` there are
+   * (newest first), so when this exceeds `leads.length` there are
    * leads the founder simply cannot see from here — say so rather than
    * quietly presenting a truncated list as the whole picture.
    */
   totalCount?: number;
+  /** When the scout last ran (ISO), from its `leads_created` AgentEvent. */
+  lastRunAt?: string | null;
+  lastRunSummary?: string | null;
 };
+
+type SortKey = 'newest' | 'score';
+
+/** "15 Nov 2026" — day-first, month as a word, so it can't be misread. */
+const formatDay = (iso: string) =>
+  new Date(iso).toLocaleDateString('en-GB', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    timeZone: 'Europe/London',
+  });
+
+/** "15 Nov 2026, 07:04" — for the last-run line, where the time matters. */
+const formatDayTime = (iso: string) =>
+  new Date(iso).toLocaleString('en-GB', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    timeZone: 'Europe/London',
+  });
 
 /** Cards rendered per page. Keeps the DOM small on a multi-hundred-lead list. */
 const PAGE_SIZE = 50;
@@ -161,12 +188,21 @@ const SECONDARY_FILTERS: FilterKey[] = [
   'shortlease',
 ];
 
-export function LeadsTable({ leads, initialFilter, totalCount }: Props) {
+export function LeadsTable({
+  leads,
+  initialFilter,
+  totalCount,
+  lastRunAt,
+  lastRunSummary,
+}: Props) {
   const [activeFilter, setActiveFilter] = useState<FilterKey>(
     (initialFilter as FilterKey) ?? 'new'
   );
   const [page, setPage] = useState(1);
   const [showMoreFilters, setShowMoreFilters] = useState(false);
+  // Newest first by default — the founder opens this page to see what came
+  // in. "Top score" is one click away for a ranking pass.
+  const [sortBy, setSortBy] = useState<SortKey>('newest');
 
   // Switching filter must reset paging — landing on page 4 of a list you have
   // just replaced looks like an empty tab.
@@ -183,51 +219,58 @@ export function LeadsTable({ leads, initialFilter, totalCount }: Props) {
     setLocalStatus((prev) => ({ ...prev, [leadId]: status }));
   };
 
-  const filteredLeads = leads.filter((lead) => {
-    const status = getStatus(lead);
-    switch (activeFilter) {
-      case 'new':
-        // Everything freshly sourced and not yet triaged — every verdict,
-        // not just STRONG/VIABLE. This is the overnight-scout inbox: a place
-        // to see all of it without passed/watching/shortlisted mixed in.
-        return status === 'new';
-      case 'shortlist':
-        // OUR shortlist — leads a founder explicitly shortlisted.
-        return status === 'shortlisted';
-      case 'triage':
-        // The daily queue: new, worth pursuing, no decision made yet.
-        return (
-          status === 'new' &&
-          (lead.verdict === 'STRONG' || lead.verdict === 'VIABLE')
-        );
-      case 'watching':
-        return status === 'watching';
-      case 'passed':
-        return status === 'passed';
-      case 'STRONG':
-      case 'VIABLE':
-      case 'THIN':
-        return lead.verdict === activeFilter && status !== 'passed';
-      case 'propertydata':
-        return lead.source.startsWith('propertydata_');
-      case 'planning':
-        return lead.source.startsWith('planning_');
-      case 'hmo':
-        return lead.source.startsWith('hmo_');
-      case 'dissolved':
-        return lead.source === 'companies_house_dissolved';
-      case 'shortlease':
-        return lead.source.startsWith('short_lease');
-      case 'appraised':
-        return lead.appraised;
-      case 'unappraised':
-        return !lead.appraised;
-      case 'primeblock':
-        return lead.track !== 'volume';
-      default:
-        return true;
-    }
-  });
+  const filteredLeads = leads
+    .filter((lead) => {
+      const status = getStatus(lead);
+      switch (activeFilter) {
+        case 'new':
+          // Everything freshly sourced and not yet triaged — every verdict,
+          // not just STRONG/VIABLE. This is the overnight-scout inbox: a place
+          // to see all of it without passed/watching/shortlisted mixed in.
+          return status === 'new';
+        case 'shortlist':
+          // OUR shortlist — leads a founder explicitly shortlisted.
+          return status === 'shortlisted';
+        case 'triage':
+          // The daily queue: new, worth pursuing, no decision made yet.
+          return (
+            status === 'new' &&
+            (lead.verdict === 'STRONG' || lead.verdict === 'VIABLE')
+          );
+        case 'watching':
+          return status === 'watching';
+        case 'passed':
+          return status === 'passed';
+        case 'STRONG':
+        case 'VIABLE':
+        case 'THIN':
+          return lead.verdict === activeFilter && status !== 'passed';
+        case 'propertydata':
+          return lead.source.startsWith('propertydata_');
+        case 'planning':
+          return lead.source.startsWith('planning_');
+        case 'hmo':
+          return lead.source.startsWith('hmo_');
+        case 'dissolved':
+          return lead.source === 'companies_house_dissolved';
+        case 'shortlease':
+          return lead.source.startsWith('short_lease');
+        case 'appraised':
+          return lead.appraised;
+        case 'unappraised':
+          return !lead.appraised;
+        case 'primeblock':
+          return lead.track !== 'volume';
+        default:
+          return true;
+      }
+    })
+    .sort((a, b) => {
+      // ISO strings sort correctly as text.
+      const byDate = b.createdAt.localeCompare(a.createdAt);
+      const byScore = b.leadScore - a.leadScore;
+      return sortBy === 'newest' ? byDate || byScore : byScore || byDate;
+    });
 
   // Page the FILTERED list, so counts and filters keep working over the whole
   // fetched set while the DOM only ever holds one page of cards.
@@ -326,6 +369,48 @@ export function LeadsTable({ leads, initialFilter, totalCount }: Props) {
 
   return (
     <>
+      <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border bg-card px-4 py-2.5">
+        {/* Only the Leads page passes the run record; other hosts of this
+            table (Pipeline) leave it undefined and get just the sort. */}
+        {lastRunAt === undefined ? (
+          <span />
+        ) : (
+          <p className="text-sm" title={lastRunSummary ?? undefined}>
+            <span className="font-medium">Last scout run:</span>{' '}
+            {lastRunAt ? (
+              formatDayTime(lastRunAt)
+            ) : (
+              <span className="text-muted-foreground">no run recorded yet</span>
+            )}
+          </p>
+        )}
+        <div className="flex items-center gap-1 text-xs">
+          <span className="mr-1 text-muted-foreground">Order by</span>
+          {(
+            [
+              ['newest', 'Newest'],
+              ['score', 'Top score'],
+            ] as const
+          ).map(([key, label]) => (
+            <button
+              key={key}
+              type="button"
+              onClick={() => {
+                setSortBy(key);
+                setPage(1);
+              }}
+              className={`rounded-full px-3 py-1 font-medium transition-colors ${
+                sortBy === key
+                  ? 'bg-primary text-primary-foreground'
+                  : 'bg-muted text-muted-foreground hover:bg-muted/80'
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
+
       <div
         className="flex flex-wrap items-center gap-1"
         data-tour="leads-filters"
@@ -389,8 +474,8 @@ export function LeadsTable({ leads, initialFilter, totalCount }: Props) {
             <>
               {' '}
               <span className="text-amber-700">
-                · loaded the top {leads.length} of {totalCount} by score; older
-                lower-scoring leads are not shown
+                · loaded the newest {leads.length} of {totalCount}; older leads
+                are not shown
               </span>
             </>
           )}
@@ -407,19 +492,19 @@ export function LeadsTable({ leads, initialFilter, totalCount }: Props) {
               <p className="font-medium text-foreground">
                 No new leads waiting.
               </p>
-              {/* The scout is a 7am cron — there is no run-now control, so
-                  don't send the founder looking for a button that isn't
-                  there. Point at the one thing they CAN change instead. */}
+              {/* The scout has no schedule (founder decision, Aug 2026, to
+                  control PropertyData spend) — it only runs when a founder
+                  presses "Run scout now". Say so, and point at the button. */}
               <p className="mt-1 text-muted-foreground text-sm">
-                Everything sourced so far has already been triaged. The scout
-                runs each morning — widen your target areas in{' '}
+                Everything found so far has been triaged. The scout only runs
+                when you start it. Go to{' '}
                 <a
                   href="/settings/scouting"
                   className="font-medium text-primary hover:underline"
                 >
                   Settings → Scouting
                 </a>{' '}
-                to bring in more.
+                and press <span className="font-medium">Run scout now</span>.
               </p>
             </>
           ) : activeFilter === 'shortlist' ? (
@@ -751,6 +836,12 @@ function LeadCard({
                 </a>
                 <span className="font-mono text-[11px] text-muted-foreground">
                   {lead.postcode}
+                </span>
+                <span
+                  className="text-[11px] text-muted-foreground"
+                  title={`Came in ${formatDayTime(lead.createdAt)}`}
+                >
+                  · Added {formatDay(lead.createdAt)}
                 </span>
               </div>
 

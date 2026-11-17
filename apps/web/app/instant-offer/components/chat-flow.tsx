@@ -1,6 +1,7 @@
 'use client';
 
-import { useTrack } from '@repo/analytics/posthog/client';
+import { sendLead, sendTagEvent } from '@/components/cookie-consent';
+import { useFunnelTrack } from '@/lib/use-funnel-track';
 import { useSearchParams } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 
@@ -255,7 +256,7 @@ export function ChatFlow({ defaultRole }: ChatFlowProps = {}) {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const didMount = useRef(false);
-  const track = useTrack();
+  const track = useFunnelTrack();
 
   useEffect(() => {
     // Never scroll on first mount — it hijacks the page load and dumps the
@@ -267,6 +268,13 @@ export function ChatFlow({ defaultRole }: ChatFlowProps = {}) {
       return;
     }
     bottomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }, [step]);
+
+  // Every step reached, for the ad tags only (PostHog already has the
+  // funnel from the named events). The ad manager builds Meta and Google
+  // conversions from these while deciding which ones matter.
+  useEffect(() => {
+    sendTagEvent('instant_offer_step', { step });
   }, [step]);
 
   const handleAddressSubmit = (e: React.FormEvent) => {
@@ -407,6 +415,12 @@ export function ChatFlow({ defaultRole }: ChatFlowProps = {}) {
       track('instant_offer_result', {
         ...funnel,
         requires_review: Boolean(data.requiresReview),
+      });
+      void sendLead('instant_offer', {
+        name,
+        email,
+        phone,
+        postcode: state.postcode,
       });
       setOffer(data);
       setStep('result');
@@ -745,7 +759,7 @@ function OfferCard({ offer }: { offer: OfferResult }) {
   const [accepted, setAccepted] = useState(false);
   const [accepting, setAccepting] = useState(false);
   const [acceptError, setAcceptError] = useState<string | null>(null);
-  const track = useTrack();
+  const track = useFunnelTrack();
 
   // Accepting is gated on the private track token. We hold it here because the
   // same response that produced this card carried the track link.

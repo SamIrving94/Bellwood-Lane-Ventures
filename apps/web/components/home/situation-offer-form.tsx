@@ -1,6 +1,8 @@
 'use client';
 
 import type { SituationValue } from '@/lib/situations';
+import { sendLead } from '@/components/cookie-consent';
+import { useFunnelTrack } from '@/lib/use-funnel-track';
 import { useState } from 'react';
 
 /**
@@ -103,6 +105,21 @@ export function SituationOfferForm({
   const [notes, setNotes] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
+  const track = useFunnelTrack();
+
+  /** A Continue that passed its check, counted like the homepage form's
+   *  (forward progress only, nothing typed). These are the paid landing
+   *  pages, so the ad tags need every step. */
+  const advance = (next: Step) => {
+    track(
+      step === 'address' ? 'situation_form_started' : 'situation_form_step',
+      {
+        situation,
+        step: next,
+      }
+    );
+    setStep(next);
+  };
 
   const submit = async () => {
     setSending(true);
@@ -110,6 +127,19 @@ export function SituationOfferForm({
     const m = address.match(POSTCODE_RE);
     const postcode = m ? `${m[1]} ${m[2]}`.toUpperCase() : '';
     const askingDigits = askingPrice.replace(NON_DIGITS_RE, '');
+    // Funnel properties only, as on the homepage form: the outward code
+    // places a lead on a map of districts, never at a door.
+    const funnel = {
+      situation,
+      source,
+      property_type: propertyType,
+      bedrooms: bedrooms ?? undefined,
+      condition: condition ?? undefined,
+      urgency_days: urgencyDays ?? undefined,
+      outward_code: m ? m[1].toUpperCase() : undefined,
+      has_asking_price: askingDigits.length > 0,
+      has_notes: notes.trim().length > 0,
+    };
     try {
       const res = await fetch('/api/quote', {
         method: 'POST',
@@ -135,8 +165,11 @@ export function SituationOfferForm({
         }),
       });
       if (!res.ok) {
+        track('situation_form_failed', { ...funnel, status: res.status });
         throw new Error(`HTTP ${res.status}`);
       }
+      track('situation_form_submitted', funnel);
+      void sendLead(source, { name, email, phone, postcode });
       setStep('done');
     } catch {
       setError(
@@ -171,7 +204,7 @@ export function SituationOfferForm({
                 return;
               }
               setError(null);
-              setStep('property');
+              advance('property');
             }}
             type="button"
           >
@@ -225,7 +258,7 @@ export function SituationOfferForm({
                 return;
               }
               setError(null);
-              setStep('condition');
+              advance('condition');
             }}
             type="button"
           >
@@ -281,7 +314,7 @@ export function SituationOfferForm({
             className={PILL}
             onClick={() => {
               setError(null);
-              setStep('contact');
+              advance('contact');
             }}
             type="button"
           >
@@ -363,10 +396,10 @@ export function SituationOfferForm({
             Thank you. We will be in touch.
           </p>
           <p className="mt-2.5 text-[13.5px] text-stone-600 leading-relaxed">
-            One of us will come back to you within 24 hours, Monday to Friday, to
-            talk through your situation and arrange a time to come and see the
-            property. No figure until we&rsquo;ve stood in the house; once we
-            have, your written offer follows within two working days.
+            One of us will come back to you within 24 hours, Monday to Friday,
+            to talk through your situation and arrange a time to come and see
+            the property. No figure until we&rsquo;ve stood in the house; once
+            we have, your written offer follows within two working days.
           </p>
         </div>
       )}

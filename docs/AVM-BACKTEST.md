@@ -92,11 +92,28 @@ dashboard table appears from the next monthly run.
   count, not a verdict. `propertydata` mixes the old loose match and the
   new strict one, so pair it with the engine version. Why it was allowed during the freeze: see
   CLAUDE.md, "One override, on measured evidence".
+- **25 Oct 2026: size-led blend.** On the radius path, with the subject's
+  size known and 4+ comps sized, the £/sqft estimate carries 70%, and
+  comps are sized from the EPC register. Those snapshots carry
+  `+sqft_led(n)` in `avmSources` and `sqftEvidence.sizeLed: true`; split
+  on that and on engine version. Measured before shipping on the hold-out
+  (`scripts/avm-holdout.mts`): 209 real sales, median error 15.6% →
+  12.3%. The backtest is still the real verdict.
 - **Proposed, not built (22 Oct 2026): category A, same-type comps only on
   the Land Registry postcode fallback.** Evidence and the case against:
   `docs/proposals/AVM-COMP-FILTER-FIX.md`. (Its second proposal, the
   near-ring weight, was withdrawn on 25 Oct after the hold-out showed no
   gain.)
+
+## Before the backtest reads: the hold-out
+
+`scripts/avm-holdout.mts` values real recent sales as of just before each
+sold (comps from the 12 months before, never the sale itself or later
+ones), using free Land Registry, postcodes.io and EPC register data, and
+reports median error per method variant. It models the radius method; it
+does not call production (no PropertyData comps, no bedroom filter, no
+external AVM). Use it to compare a proposed change against today before
+it ships; the backtest then confirms on our own appraisals.
 
 ## Rules
 
