@@ -1,14 +1,20 @@
+_Last verified against the live site: 2026-11-17_
+
+> **This file is a summary, not the source.** The wording that is actually
+> sent lives in `packages/quote-ops/src/render-pdf.ts`. The promises it must
+> match live on the site: `/sell` (FAQ) and `/legal/fca-disclosure`. If this
+> file disagrees with either, this file is wrong.
+
 # BINDING OFFER — {{address}}
 
-**Bellwood Lane Ventures Ltd**
-Companies House registration: 16234567 (England & Wales)
-{{registeredAddress}}
+**Bellwoods Lane Ventures Ltd** (trading as Kept)
+Registered in England & Wales · Company No. 16454416
 
 ---
 
 **Date issued:** {{issueDate}}
 **Offer reference:** {{quoteRequestId}}
-**Locked until:** {{lockedUntil}}
+**Locked until:** {{lockedUntil}} _(14 days from the date issued — founder decision, Nov 2026. The site promises a week; this letter holds for longer, never shorter.)_
 
 ---
 
@@ -19,74 +25,64 @@ Following our review of the property at **{{address}}, {{postcode}}** introduced
 ## Property
 
 - **Address:** {{address}}, {{postcode}}
-- **Property type:** {{propertyType}}
-- **Bedrooms:** {{bedrooms}}
-- **Tenure:** {{tenure}}
-- **Seller situation:** {{sellerSituation}}
+- **Description:** {{propertyTypeDescribed}}
+- **EPC:** {{epcRating}}
+- **Floor area:** {{floorAreaSqm}} m²
 
 ## Valuation
 
-- **Indicative AVM range:** {{avmMinFormatted}} – {{avmMaxFormatted}}
-- **Enriched AVM (post-due-diligence):** {{enrichedAvmFormatted}}
-- **Confidence score:** {{confidencePercent}}%
+- **Indicative AVM range (80% CI):** {{avmMinFormatted}} – {{avmMaxFormatted}}
+- **ARV point estimate:** {{arvFormatted}}
+- **Confidence:** {{confidenceLevel}} (±{{estimatedErrorPercent}}%)
 
 ## Offer
 
 - **Cash offer:** **{{offerFormatted}}**
-- **Offer as % of AVM:** {{offerPercentOfAvm}}%
-- **Completion timeline:** {{completionDays}} days from acceptance
-- **Offer valid until:** {{lockedUntil}}
+- **Completion target:** 14–28 days from acceptance
 
 ## Terms and warranties (binding)
 
-This offer is binding on Bellwood Lane Ventures Ltd subject only to the carve-outs below. There is no chain. There is no mortgage finance condition. Funds are confirmed prior to instruction.
+This offer is binding upon Bellwoods Lane Ventures Ltd for 14 days from the date issued, subject only to the three exceptions below. There is no chain. There is no mortgage finance condition. Funds are confirmed prior to instruction.
 
-### RICS-defect carve-out
+### 1. A material defect found on survey
 
-This offer is conditional on no major undisclosed defect being identified by an independent RICS Level 2 (HomeBuyer) or Level 3 (Building) survey instructed by Bellwood within 7 days of acceptance. A "major undisclosed defect" means any defect that:
+An independent RICS Level 2 or Level 3 survey, instructed by Kept within 7 days of acceptance, identifies a material defect that was not visible or disclosed at viewing. A material defect means one with an estimated remediation cost of 5% or more of the offer value.
 
-1. Was not disclosed in the property information form, the agent listing, or the seller's pre-contract questionnaire; **and**
-2. Has an estimated remediation cost of **5% or more of the offer value** as confirmed by the surveyor.
+### 2. A title issue
 
-Where a major undisclosed defect is identified, Bellwood may either (a) renegotiate the offer in proportion to the remediation cost, or (b) withdraw.
+A title issue emerges during conveyancing that materially affects value: title that is not marketable, an undisclosed leasehold issue, or an outstanding consent or planning enforcement matter.
+
+### 3. Incorrect information
+
+Information provided about the property proves materially incorrect.
+
+If one of these applies we will explain it in writing. The seller may accept a revised price or walk away at no cost.
+
+> **Rule:** three exceptions, no more. They are the three the live site
+> promises. A fourth here would be a promise broken in writing.
 
 > **Note (2026-08):** the former "walk-away cover" (£1,000 compensation on
 > uncarved withdrawal) was retired in the July 2026 terms review. It must not
 > appear in offers, emails, or marketing copy.
 
-### Title and legal carve-outs
+## The seller's position
 
-This offer is conditional on:
-
-- Marketable title evidenced by HM Land Registry official copies (no restrictions, cautions, or pending applications that prevent transfer at completion).
-- No undisclosed leasehold issues if applicable: ground rent, service charges, and lease length must be as disclosed.
-- No outstanding consent, statutory notice, or planning enforcement that materially affects value.
+This offer is not binding upon the seller until exchange of contracts. The seller may withdraw at any point before exchange at no cost. Kept charges the seller no fee at any point. The seller instructs their own solicitor and pays their costs; we pay ours. We encourage the seller to take independent legal advice before accepting.
 
 ## Methodology
 
-Our offer is computed using our internal Automated Valuation Model (AVM) with a {{confidencePercent}}% confidence band against:
-
-- HM Land Registry Price Paid Data (sold comparables within 0.5 mile, last 18 months)
-- HM Land Registry UK House Price Index (regional trend adjustment)
-- EPC Register data (floor area, condition baseline)
-- Environment Agency flood risk and Coal Authority mining risk data
-- VOA council tax band reference
-
-The enriched figure additionally incorporates: **{{enrichmentNotes}}**.
-
-Full methodology reference: `docs/research/avm-methodology.md` (available on request).
+Triangulated from HMLR Price Paid comparables, HMLR HPI regional trend, EPC register data, and a deep-appraisal pass run on {{issueDate}}. {{arvReasoning}}
 
 ## Acceptance
 
-To accept, please countersign below and return to **deals@bellwoodlane.co.uk** or your introducing agent. On acceptance Bellwood will instruct conveyancers within 1 working day and we target completion in **{{completionDays}} days**.
+To accept, please countersign below and return to **sam@wearekept.co.uk**. On acceptance Kept will instruct conveyancers within 1 working day.
 
 ---
 
-**Signed for and on behalf of Bellwood Lane Ventures Ltd**
+**Signed for and on behalf of Bellwoods Lane Ventures Ltd**
 
 _________________________________
-{{signatoryName}}
-{{signatoryRole}}
+Sam Irving — Director
 Date: {{issueDate}}
 
 ---
@@ -95,10 +91,21 @@ Date: {{issueDate}}
 
 Signature: _________________________________
 
-Name: _____________________________________
+---
 
-Date: _____________________________________
+_Bellwoods Lane Ventures Ltd (trading as Kept). Registered in England & Wales, Company No. 16454416. This offer is binding upon Bellwoods Lane Ventures Ltd for 14 days from the date issued, subject to the three exceptions above. Kept is a cash property buyer, not an FCA-authorised firm, and this letter is not financial or legal advice._
 
 ---
 
-_This is a binding offer issued pursuant to the Consumer Protection from Unfair Trading Regulations 2008 and is subject to the carve-outs above. Bellwood Lane Ventures Ltd is registered in England & Wales._
+## Not yet reviewed by a lawyer
+
+This wording has been brought in line with the live site. It has **not** had
+external legal review. Open points for that review:
+
+- No statute is cited. The old footer cited the Consumer Protection from
+  Unfair Trading Regulations 2008, which no longer apply; it was removed
+  rather than replaced.
+- The valuation block still shows an "Indicative AVM range (80% CI)". Check
+  the label is accurate and whether the range belongs in the letter at all.
+- The letter is addressed to the introducing agent by default, not the seller.
+- There is no complaints or redress route in the letter.

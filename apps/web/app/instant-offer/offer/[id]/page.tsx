@@ -6,6 +6,7 @@
 // HTML print gives us identical fidelity for a fraction of the runtime cost.
 
 import { Wordmark } from '@/components/brand';
+import { brand } from '@repo/brand';
 import { database } from '@repo/database';
 import { notFound } from 'next/navigation';
 
@@ -155,7 +156,7 @@ export default async function OfferCertificatePage({
           {[
             [
               'Validity',
-              `Legally binding upon Kept until ${lockedUntil}`,
+              `Binding upon ${brand.shortName} until ${lockedUntil}. Not binding upon you until exchange of contracts.`,
             ],
             ['Completion target', `${o.completionDays} days from acceptance`],
             [
@@ -168,8 +169,8 @@ export default async function OfferCertificatePage({
             ],
             ['Withdrawal cost (you)', '£0 at any point before exchange'],
             [
-              'Vendor fees',
-              'Zero. We pay solicitors, searches, and any agent commission',
+              'Fees',
+              'No fee to us at any point. You instruct your own solicitor and pay their costs; we pay ours.',
             ],
           ].map(([k, v]) => (
             <div
@@ -219,12 +220,13 @@ export default async function OfferCertificatePage({
 
       <footer className="mt-12 border-stone-200 border-t pt-6 font-mono text-[10px] text-stone-500 leading-relaxed">
         <p>
-          Kept · Registered in England &amp; Wales · Property
-          Redress Scheme (PRS) · HMRC AML supervised · ICO registered. Kept is
-          a cash property buyer, not an FCA-authorised firm. This offer
-          does not constitute financial or legal advice. The seller is
-          encouraged to seek independent legal advice. Full regulatory
-          disclosure: bellwoodslane.co.uk/legal/fca-disclosure
+          {brand.legalName} (trading as {brand.name}) · Registered in England
+          &amp; Wales, Company No. {brand.companyNumber} · Property Redress
+          Scheme (PRS) · HMRC AML supervised · ICO registered. {brand.shortName}{' '}
+          is a cash property buyer, not an FCA-authorised firm. This offer does
+          not constitute financial or legal advice. The seller is encouraged to
+          seek independent legal advice. Full regulatory disclosure:{' '}
+          {brand.domain}/legal/fca-disclosure
         </p>
         <p className="mt-3">
           Reference {ref} · Generated {issuedAt}
