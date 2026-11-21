@@ -99,6 +99,11 @@ dashboard table appears from the next monthly run.
   on that and on engine version. Measured before shipping on the hold-out
   (`scripts/avm-holdout.mts`): 209 real sales, median error 15.6% →
   12.3%. The backtest is still the real verdict.
+- **Proposed, not built (22 Oct 2026): category A, same-type comps only on
+  the Land Registry postcode fallback.** Evidence and the case against:
+  `docs/proposals/AVM-COMP-FILTER-FIX.md`. (Its second proposal, the
+  near-ring weight, was withdrawn on 25 Oct after the hold-out showed no
+  gain.)
 
 ## Before the backtest reads: the hold-out
 
