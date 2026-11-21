@@ -178,6 +178,8 @@ export async function enrichLeadById(leadId: string): Promise<{
       intervalWidthRatio: r.intervalWidthRatio ?? null,
       uncertaintyMaxWidthRatio: r.uncertaintyMaxWidthRatio,
       secondCheckRequired: Boolean(r.secondCheckRequired),
+      // Why — the interval, or evidence that disagrees with itself.
+      secondCheckReasons: r.secondCheckReasons ?? [],
       riskScore: avm.riskScore,
       assumedPropertyType: normalised ? null : avmPropertyType, // flag a guess
       floorAreaSqm: r.floorAreaSqm ?? null,

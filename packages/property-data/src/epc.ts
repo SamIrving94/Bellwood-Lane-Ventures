@@ -56,6 +56,12 @@ export const EpcSchema = z.object({
   epcRating: z.enum(EPC_RATINGS).nullable(),
   epcScore: z.number().nullable(),
   propertyType: z.string().nullable(),
+  /**
+   * The certificate's dwelling type, e.g. "Mid-terrace house" or
+   * "Ground-floor maisonette" — kind AND built form, where `propertyType`
+   * is only "House"/"Flat". Null when the certificate doesn't carry one.
+   */
+  dwellingType: z.string().nullable(),
   floorAreaSqm: z.number().nullable(),
   constructionAgeBand: z.string().nullable(),
   heatingType: z.string().nullable(),
@@ -81,6 +87,7 @@ function unavailableEpc(postcode: string): Epc {
     epcRating: null,
     epcScore: null,
     propertyType: null,
+    dwellingType: null,
     floorAreaSqm: null,
     constructionAgeBand: null,
     heatingType: null,
@@ -249,6 +256,7 @@ export function parseCertificateResponse(
     // property-type column; dwelling_type ("Mid-terrace house") as fallback.
     propertyType:
       str(propertyType.description) ?? str(doc.dwelling_type) ?? null,
+    dwellingType: str(doc.dwelling_type) ?? null,
     floorAreaSqm: num(doc.total_floor_area),
     // construction_age_band.description is the same human string the old API
     // returned (e.g. "England and Wales: 2007-2011").

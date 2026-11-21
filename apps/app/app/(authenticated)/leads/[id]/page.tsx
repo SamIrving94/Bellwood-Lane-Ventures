@@ -422,8 +422,10 @@ const LeadDetailPage = async ({
     intervalWidthRatio?: number | null;
     /** The configured bound the run was judged against. */
     uncertaintyMaxWidthRatio?: number | null;
-    /** Interval wider than the bound — re-check comps before any offer. */
+    /** Re-check comps before any offer: wide interval or disagreeing evidence. */
     secondCheckRequired?: boolean | null;
+    /** Plain-English causes. Absent on appraisals before Oct 2026. */
+    secondCheckReasons?: string[] | null;
     /** Size economics from runAVM — implied £/m², area £/sqft benchmark. */
     pricePerSqm?: number | null;
     /** Listing body language + nearby distress, from runAVM. */
@@ -995,23 +997,35 @@ const LeadDetailPage = async ({
               {verdictReason}
             </div>
 
-            {/* Uncertainty throttle (Zillow lesson) — the interval behind this
-                valuation is wider than our bound, so the number needs a second
-                pair of eyes before any offer. Surfaced, never enforced. */}
+            {/* Second check (Zillow + Clarendon Rise lessons) — a wide
+                interval, or evidence that disagrees with itself, so the number
+                needs a second pair of eyes before any offer. Surfaced, never
+                enforced. Older appraisals carry no reasons; they were only
+                ever flagged for a wide interval. */}
             {avmFull.secondCheckRequired && (
               <div className="mt-3 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm">
                 <span className="font-semibold">
                   ⚠ Second check required before any offer.
                 </span>{' '}
-                The valuation interval is{' '}
-                {typeof avmFull.intervalWidthRatio === 'number'
-                  ? `${Math.round(avmFull.intervalWidthRatio * 100)}% of the estimate`
-                  : 'unmeasurable'}
-                {typeof avmFull.uncertaintyMaxWidthRatio === 'number'
-                  ? ` (bound ${Math.round(avmFull.uncertaintyMaxWidthRatio * 100)}%)`
-                  : ''}{' '}
-                — usually thin comparables. Check the sold comps by hand,
-                whatever the score says.
+                {avmFull.secondCheckReasons && avmFull.secondCheckReasons.length > 0 ? (
+                  <ul className="mt-1 list-disc pl-5">
+                    {avmFull.secondCheckReasons.map((reason) => (
+                      <li key={reason}>{reason}</li>
+                    ))}
+                  </ul>
+                ) : (
+                  <>
+                    The valuation interval is{' '}
+                    {typeof avmFull.intervalWidthRatio === 'number'
+                      ? `${Math.round(avmFull.intervalWidthRatio * 100)}% of the estimate`
+                      : 'unmeasurable'}
+                    {typeof avmFull.uncertaintyMaxWidthRatio === 'number'
+                      ? ` (bound ${Math.round(avmFull.uncertaintyMaxWidthRatio * 100)}%)`
+                      : ''}{' '}
+                    — usually thin comparables.
+                  </>
+                )}{' '}
+                Check the sold comps by hand, whatever the score says.
               </div>
             )}
 

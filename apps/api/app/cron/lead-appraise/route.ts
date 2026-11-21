@@ -276,6 +276,8 @@ export const POST = async (request: Request) => {
         intervalWidthRatio: r.intervalWidthRatio ?? null,
         uncertaintyMaxWidthRatio: r.uncertaintyMaxWidthRatio,
         secondCheckRequired: Boolean(r.secondCheckRequired),
+        // Why — the interval, or evidence that disagrees with itself.
+        secondCheckReasons: r.secondCheckReasons ?? [],
         riskScore: avm.riskScore,
         assumedPropertyType: normalised ? null : avmPropertyType,
         floorAreaSqm: r.floorAreaSqm ?? null,

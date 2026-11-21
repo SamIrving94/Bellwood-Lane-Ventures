@@ -181,15 +181,12 @@ export const POST = async (request: Request) => {
         ? 'critical'
         : 'medium';
 
-      // Uncertainty throttle (Zillow lesson): a wide interval means the
-      // valuation needs a second pair of eyes before the offer goes out.
-      // Surfaced on the card — never blocks the offer or changes the score.
+      // Second check (Zillow + Clarendon Rise lessons): a wide interval, or
+      // evidence that disagrees with itself, means the valuation needs a
+      // second pair of eyes before the offer goes out. Surfaced on the card —
+      // never blocks the offer or changes the score.
       const secondCheckNote = resultJson.secondCheckRequired
-        ? ` Check this one by hand before the offer goes out — the valuation interval is wider than our bound (${
-            resultJson.intervalWidthRatio !== null
-              ? `${(resultJson.intervalWidthRatio * 100).toFixed(0)}% of the estimate`
-              : 'unmeasurable'
-          }, on ${resultJson.comparableCount} comps).`
+        ? ` Check this one by hand before the offer goes out (${resultJson.comparableCount} comps): ${resultJson.secondCheckReasons.join(' ')}`
         : '';
 
       await database.founderAction.create({
