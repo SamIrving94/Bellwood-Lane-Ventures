@@ -81,12 +81,9 @@ const GuidePreviewPage = async ({
   const webUrl = (
     process.env.NEXT_PUBLIC_WEB_URL || 'http://localhost:3001'
   ).replace(/\/$/, '');
-  // Published guides are shown at their live address; everything else
-  // through the preview route, which only serves drafts.
-  const src =
-    guide.status === 'published'
-      ? `${webUrl}/guides/${guide.slug}`
-      : `${webUrl}/guides/preview/${guide.id}`;
+  // Always the preview route: the live /guides/[slug] page refuses to be
+  // framed, so a published guide is framed through it too.
+  const src = `${webUrl}/guides/preview/${guide.id}`;
   const host = webUrl.replace(/^https?:\/\//, '');
 
   const compliance = (guide.compliance ?? {}) as Compliance;
