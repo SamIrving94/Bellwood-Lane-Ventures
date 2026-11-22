@@ -22,6 +22,7 @@ export default function robots(): MetadataRoute.Robots {
           '/partners/',
           '/instant-offer/offer/',
           '/journey/',
+          '/guides/preview/',
         ],
       },
     ],

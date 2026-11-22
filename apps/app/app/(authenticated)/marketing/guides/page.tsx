@@ -3,6 +3,7 @@ import { brand } from '@repo/brand';
 import { database } from '@repo/database';
 import { format } from 'date-fns';
 import type { Metadata } from 'next';
+import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { DraftNowButton } from './draft-now-button';
 import { GuideRowActions } from './guide-row-actions';
@@ -118,7 +119,12 @@ const GuidesPage = async () => {
                 return (
                   <tr key={g.id} className="border-b last:border-0">
                     <td className="max-w-md px-4 py-3">
-                      <p className="font-medium">{g.title}</p>
+                      <Link
+                        href={`/marketing/guides/${g.id}`}
+                        className="font-medium hover:underline"
+                      >
+                        {g.title}
+                      </Link>
                       <p className="mt-0.5 truncate font-mono text-[11px] text-muted-foreground">
                         {g.questionKey} · /guides/{g.slug}
                       </p>
@@ -153,7 +159,15 @@ const GuidesPage = async () => {
                       {format(g.publishedAt ?? g.createdAt, 'd MMM yyyy')}
                     </td>
                     <td className="px-4 py-3">
-                      <GuideRowActions id={g.id} status={g.status} />
+                      <div className="flex items-center justify-end gap-2">
+                        <Link
+                          href={`/marketing/guides/${g.id}`}
+                          className="whitespace-nowrap text-xs underline"
+                        >
+                          {g.status === 'published' ? 'View' : 'Preview'}
+                        </Link>
+                        <GuideRowActions id={g.id} status={g.status} />
+                      </div>
                     </td>
                   </tr>
                 );

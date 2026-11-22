@@ -103,6 +103,7 @@ const PRIVATE_PATHS = [
   '/instant-offer/offer',
   '/keyhole/report',
   '/save-the-sale',
+  '/guides/preview',
 ];
 
 export const isPrivatePath = (path: string) =>

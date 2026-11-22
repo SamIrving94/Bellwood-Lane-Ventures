@@ -26,6 +26,33 @@ export type WhatsNewEntry = {
 /** Newest first. The popup shows index 0. */
 export const WHATS_NEW: WhatsNewEntry[] = [
   {
+    id: '2026-11-22-guide-full-preview',
+    date: '2026-11-22',
+    emoji: '👀',
+    title: 'Read a guide exactly as readers will',
+    intro:
+      'No more judging a blog post from a snippet. See the real page, then decide.',
+    bullets: [
+      {
+        emoji: '📰',
+        text: '**Read full post** opens the guide as the **real public page**: header, fonts, footer and all.',
+      },
+      {
+        emoji: '📱',
+        text: 'Flip between **Desktop** and **Phone** to see how it reads on a mobile.',
+      },
+      {
+        emoji: '🔎',
+        text: 'See how it shows **in Google**, plus Counsel’s notes, beside the page.',
+      },
+      {
+        emoji: '✅',
+        text: '**Approve** or **Publish** from the same screen. Nothing goes live until you click Publish.',
+      },
+    ],
+    cta: { label: 'Open guides', href: '/marketing/guides' },
+  },
+  {
     id: '2026-11-22-clear-all-keep-blogs',
     date: '2026-11-22',
     emoji: '🧹',
