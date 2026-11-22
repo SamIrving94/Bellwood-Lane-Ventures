@@ -105,6 +105,9 @@ importers:
       '@repo/scouting':
         specifier: workspace:*
         version: link:../../packages/scouting
+      '@repo/storage':
+        specifier: workspace:*
+        version: link:../../packages/storage
       '@repo/valuation':
         specifier: workspace:*
         version: link:../../packages/valuation

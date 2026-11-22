@@ -28,6 +28,7 @@
     "@repo/property-data": "workspace:*",
     "@repo/quote-ops": "workspace:*",
     "@repo/scouting": "workspace:*",
+    "@repo/storage": "workspace:*",
     "@repo/valuation": "workspace:*",
     "@repo/whatsapp-parser": "workspace:*",
     "@t3-oss/env-nextjs": "^0.12.0",

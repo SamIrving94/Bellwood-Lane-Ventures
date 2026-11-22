@@ -26,6 +26,41 @@ export type WhatsNewEntry = {
 /** Newest first. The popup shows index 0. */
 export const WHATS_NEW: WhatsNewEntry[] = [
   {
+    id: '2026-11-22-deal-email-log',
+    date: '2026-11-22',
+    emoji: '📬',
+    title: 'CC one address. The email lands on the deal.',
+    intro:
+      'Seller, solicitor or agent: copy the log address and the whole conversation files itself.',
+    bullets: [
+      {
+        emoji: '✉️',
+        text: '**CC the log address** on any email. It is stored on the right deal, attachments and all.',
+      },
+      {
+        emoji: '↩️',
+        text: '**Every reply-all follows.** No forwarding, no copy and paste.',
+      },
+      {
+        emoji: '🧾',
+        text: 'Each email gets a **two-line read**: who wrote, what they said, and whether they are **waiting on us**.',
+      },
+      {
+        emoji: '🧭',
+        text: '**No guessing.** If the deal is not clear, the email waits in the log for one click from you.',
+      },
+      {
+        emoji: '🔒',
+        text: 'Nothing is sent and nothing is drafted. It only **keeps the record**.',
+      },
+      {
+        emoji: '🛠️',
+        text: 'It needs a **one-time switch-on**. The email log page says what is left to do.',
+      },
+    ],
+    cta: { label: 'Open the email log', href: '/deals/email-log' },
+  },
+  {
     id: '2026-11-22-guide-editor',
     date: '2026-11-22',
     emoji: '✍️',

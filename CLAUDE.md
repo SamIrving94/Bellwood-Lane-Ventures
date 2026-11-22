@@ -118,7 +118,7 @@ Marketer, Liaison) and their onboarding prompts are documented in
 - ~40 models including `Deal`, `ScoutLead`, `AvmResult`, `OutreachCampaign`,
   `OutreachHold`, `FounderAction`, `FounderFeedback`, `AgentEvent`, `EvalConfig`,
   `AuctionLot`, `Campaign`, `Contact`, `QuoteRequest`/`QuoteOffer`,
-  `LegalStep`/`LegalDocument`, `WhatsAppIntake`, `LlmCallLog`.
+  `LegalStep`/`LegalDocument`, `DealEmail`, `WhatsAppIntake`, `LlmCallLog`.
 - **Apply schema changes** (dev): from repo root run `pnpm migrate`
   (= `prisma format && prisma generate && prisma db push` inside
   `packages/database`).
@@ -168,6 +168,16 @@ Run a task for one workspace with a filter, e.g.
 - **Safety rails (do not break these):** vendor emails are always held for
   founder review (`OutreachHold`); CEO escalation fires for offers <60% of AVM;
   SLA breaches are deduplicated so they don't spawn duplicate `FounderAction`s.
+- **The email log never guesses a deal.** A founder CCs the log address
+  and Postmark posts the email to `/webhooks/postmark/inbound`; it is stored
+  on a deal (`DealEmail`) only when that deal is the ONLY candidate
+  (`resolveDeal`: deal's own address → thread → seller/solicitor email →
+  full postcode). Otherwise it waits unfiled at `/deals/email-log`. Do not
+  widen the match (outward codes, "most recent deal"): a seller's email on
+  the wrong deal is a privacy problem. Mail from a non-founder is kept only
+  when it belongs to a thread or deal we already know. The model's read of
+  an email (`deal_email_digest`) is display-only; nothing is drafted or
+  sent from it. Setup: `docs/setup/email-forward.md`.
 - **The AVM never values without a sale.** `runAVM` tries PropertyData
   radius comps → Land Registry postcode → Land Registry postcode **sector**
   (free SPARQL, low confidence) and, if all three are empty, throws

@@ -25,11 +25,16 @@ export const env = createEnv({
     // membership — see packages/auth/require-founder.ts.
     FOUNDER_USER_IDS: z.string().optional(),
     FOUNDER_EMAIL_ALLOWLIST: z.string().optional(),
+    // The address founders CC to log an email on a deal, e.g.
+    // `log@in.wearekept.co.uk`. Shown on the deal page; the inbound side is
+    // apps/api (/webhooks/postmark/inbound). See docs/setup/email-forward.md.
+    DEAL_LOG_ADDRESS: z.string().optional(),
   },
   client: {},
   runtimeEnv: {
     PAPERCLIP_API_KEY: process.env.PAPERCLIP_API_KEY,
     FOUNDER_USER_IDS: process.env.FOUNDER_USER_IDS,
     FOUNDER_EMAIL_ALLOWLIST: process.env.FOUNDER_EMAIL_ALLOWLIST,
+    DEAL_LOG_ADDRESS: process.env.DEAL_LOG_ADDRESS,
   },
 });

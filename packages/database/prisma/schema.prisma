@@ -265,6 +265,7 @@ model Deal {
   investorPack      InvestorPack?
   viewings          Viewing[]
   worksProject      WorksProject?
+  emails            DealEmail[]
 
   @@index([status])
   @@index([postcode])
@@ -482,6 +483,58 @@ model LegalDocument {
   createdAt DateTime @default(now())
 
   @@index([dealId])
+}
+
+// ─── Deal email log ────────────────────────────────────────
+// One email captured on a deal. Written by the Postmark inbound webhook when
+// a founder CCs the log address, or when a reply continues a thread we
+// already hold. See docs/setup/email-forward.md.
+//
+// `dealId` is null while an email is UNFILED: the matcher found no single
+// deal and will not guess (a vendor's email on the wrong deal is a privacy
+// problem, not a tidy-up). A founder files it from /deals/email-log and the
+// whole thread follows.
+model DealEmail {
+  id     String  @id @default(cuid())
+  dealId String?
+  deal   Deal?   @relation(fields: [dealId], references: [id], onDelete: Cascade)
+
+  // RFC 5322 Message-ID, angle brackets stripped. Unique so a Postmark retry,
+  // or one email delivered to two of our addresses, stores a single row.
+  messageId  String   @unique
+  inReplyTo  String?
+  references String[] @default([])
+  // Root Message-ID of the conversation. Every email in a thread shares it.
+  threadKey  String
+
+  direction String // 'inbound' (from them) | 'outbound' (from us) | 'forward' (a founder's note to the log)
+  fromEmail String
+  fromName  String?
+  toEmails  String[] @default([])
+  ccEmails  String[] @default([])
+  subject   String
+  bodyText  String   @db.Text // full plain text, capped
+  replyText String?  @db.Text // the new part only, quoted history removed (Postmark's StrippedTextReply)
+  sentAt    DateTime
+
+  // How the deal was chosen: deal_tag | thread | participant | postcode | manual.
+  matchedBy String?
+
+  // LLM digest (feature `deal_email_digest`). All null when no provider is
+  // configured or the call failed: storing the email never depends on it.
+  summary    String?  @db.Text
+  party      String? // vendor | solicitor | agent | investor | other
+  needsReply Boolean?
+  nextStep   String?
+
+  // [{ filename, contentType, sizeBytes, url?, skipped?, extractId? }]
+  attachments Json?
+
+  createdAt DateTime @default(now())
+
+  @@index([dealId, sentAt])
+  @@index([threadKey])
+  @@index([sentAt])
 }
 
 // ─── Field Partner Network ─────────────────────────────────

@@ -56,8 +56,19 @@ export const env = createEnv({
     /** Postmark inbound webhook — Basic Auth credentials (set on Postmark side). */
     POSTMARK_INBOUND_USER: z.string().min(1).optional(),
     POSTMARK_INBOUND_PASS: z.string().min(1).optional(),
-    /** Comma-separated email addresses allowed to forward documents to docs@. */
+    /**
+     * Comma-separated founder addresses. Mail FROM these is ours: it is always
+     * logged, and a PDF sent to the log alone is read into /documents.
+     */
     EMAIL_FORWARD_ALLOWLIST: z.string().optional(),
+    /**
+     * Our inbound address(es) for the deal email log, comma-separated, e.g.
+     * `log@in.wearekept.co.uk`. Optional: mail is recognised as ours by the
+     * domain Postmark received it on. Set it when a vanity address forwards
+     * to Postmark's own `…@inbound.postmarkapp.com` address, so the vanity
+     * address is not mistaken for someone on the other side.
+     */
+    DEAL_LOG_ADDRESS: z.string().optional(),
     /**
      * Reddit "script" app credentials for /cron/guide-research. Reddit
      * blocks anonymous JSON, so without these the Reddit source is skipped
@@ -78,6 +89,7 @@ export const env = createEnv({
     POSTMARK_INBOUND_USER: process.env.POSTMARK_INBOUND_USER,
     POSTMARK_INBOUND_PASS: process.env.POSTMARK_INBOUND_PASS,
     EMAIL_FORWARD_ALLOWLIST: process.env.EMAIL_FORWARD_ALLOWLIST,
+    DEAL_LOG_ADDRESS: process.env.DEAL_LOG_ADDRESS,
     REDDIT_CLIENT_ID: process.env.REDDIT_CLIENT_ID,
     REDDIT_CLIENT_SECRET: process.env.REDDIT_CLIENT_SECRET,
     REDDIT_USER_AGENT: process.env.REDDIT_USER_AGENT,

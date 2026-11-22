@@ -1,3 +1,4 @@
+import { dealLogAddress, loadDealEmails, logAddress } from '@/lib/deal-emails';
 import { auth } from '@repo/auth/server';
 import { getBookingLink } from '@repo/calendly';
 import { database } from '@repo/database';
@@ -7,6 +8,7 @@ import { notFound, redirect } from 'next/navigation';
 import { FeedbackPanel } from '../../components/feedback-panel';
 import { Header } from '../../components/header';
 import { DealEconomicsPanel } from './deal-economics-panel';
+import { EmailsPanel } from './emails-panel';
 import { GenerateOfferButton } from './generate-offer-button';
 import { InvestorPackPanel } from './investor-pack-panel';
 import { InvestorPanel } from './investor-panel';
@@ -47,6 +49,7 @@ const DealDetailPage = async ({
     fieldPartners,
     chaserAction,
     investorRecipientCount,
+    emails,
   ] = await Promise.all([
     database.deal.findUnique({
       where: { id },
@@ -98,11 +101,14 @@ const DealDetailPage = async ({
     database.investorAccessToken.count({
       where: { revoked: false, email: { not: null } },
     }),
+    // The email log. Never throws: null until `pnpm migrate` adds its table.
+    loadDealEmails(id),
   ]);
 
   if (!deal) notFound();
 
   const webUrl = process.env.NEXT_PUBLIC_WEB_URL || 'http://localhost:3001';
+  const emailLogAddress = logAddress();
 
   // Chaser draft from the legal-chaser cron, if one is waiting for review.
   const chaserMeta = chaserAction?.metadata as {
@@ -631,6 +637,15 @@ const DealDetailPage = async ({
                 }
               : null
           }
+        />
+
+        {/* Emails — everything the log address was copied on, and replies */}
+        <EmailsPanel
+          dealAddress={
+            emailLogAddress ? dealLogAddress(emailLogAddress, deal.id) : null
+          }
+          emails={emails}
+          logAddress={emailLogAddress}
         />
 
         {/* Viewings — the field-partner network's eyes on the property */}

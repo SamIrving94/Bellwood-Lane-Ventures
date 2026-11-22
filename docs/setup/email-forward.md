@@ -1,106 +1,199 @@
-# Email-forward intake — setup guide
+# The deal email log — setup guide
 
-Forward any email with a PDF attachment to **`docs@bellwoodslane.co.uk`** and
-it lands in `/documents` automatically — extracted, citation-grounded,
-linked to a deal if we can match a postcode.
+_Last verified against the code: 2026-11-22_
 
-This doc covers the one-time setup with Postmark + Vercel.
+**CC one address on an email and it is stored on the deal.** So is every
+reply-all after it. Each deal page has an **Emails** panel; `/deals/email-log`
+shows everything and holds the emails that still need a deal.
+
+The same address still takes a forwarded PDF, as before.
+
+Nothing here sends or drafts anything. It keeps the record.
 
 ---
 
-## What's already shipped (in code)
+## How to use it
 
-- **`POST /webhooks/postmark/inbound`** — the endpoint that receives
-  Postmark's inbound webhook
-- **Basic Auth** validation
-- **Sender allowlist** so spammers can't probe the address
-- **PDF extraction** via `@repo/document-pipeline` (Mistral OCR + Claude
-  Citations)
-- **Deal matching** by postcode found in subject + body
-- **Persistence** as `DocumentExtract` rows with
-  `sourceType='email_forward'`
-- **Acknowledgement email** back to the sender summarising what was filed
-- **`FounderAction`** created so the inbound shows in `/actions`
+| You do | What happens |
+|:--|:--|
+| **CC the log address** on an email to a seller, solicitor or agent | Stored on the deal. Replies that keep the address in CC follow. |
+| **Use the deal's own address** (`log+<deal id>@…`, copy it from the deal page) | Stored on that deal with no matching at all. |
+| **Send a PDF to the address, nobody else on the email** | Stored, and the PDF is read into `/documents`. You get a short acknowledgement. |
+
+Use **CC, not BCC**. A reply to a BCC'd email does not come back to us.
+
+---
+
+## How an email finds its deal
+
+Strongest evidence first. The code is `resolveDeal` in
+`apps/api/app/webhooks/postmark/_lib/deal-email.ts`.
+
+1. **The deal's own address.** Sent to `log+<deal id>@…`.
+2. **The thread.** A reply in a conversation that is already on a deal.
+3. **The people.** The other side is a deal's seller or solicitor (the emails
+   saved on the deal).
+4. **The postcode.** A full postcode in the subject or body.
+
+**It must be the only candidate.** Two deals in one postcode, or one solicitor
+acting on two of our purchases, means the email is **not filed**. It waits in
+`/deals/email-log` with a "needs a deal" card on the Action Centre. Pick the
+deal once and the whole conversation follows.
+
+An outward code alone ("M14") no longer matches anything. It used to pick the
+most recently updated deal in the district, which is a guess.
+
+**Tip:** put the seller's email and the solicitor's email on the deal. That is
+what makes rule 3 work.
+
+---
+
+## Who can write into the log
+
+The address ends up in other people's inboxes the moment it is CC'd, so:
+
+- **Founders** (`EMAIL_FORWARD_ALLOWLIST`): always accepted.
+- **Anyone else**: only when the email continues a thread we hold, was sent to
+  a real deal's own address, or the **sender** is a deal's seller or solicitor.
+- **Everything else is dropped silently**, as before. A postcode in the body
+  never gets a stranger in.
+
+---
+
+## The two-line read
+
+After the email is stored, a model writes a short read of it: who wrote, what
+they said, whether they are waiting on us, and the next step. Feature tag
+`deal_email_digest`, Haiku tier by default.
+
+- It runs **after** Postmark has its reply, so a slow model cannot cause a
+  retry.
+- It **drafts and sends nothing**. Its output is only shown on the deal page.
+- The email body is treated as untrusted text: fixed output schema, and the
+  prompt tells the model the email is data, not instructions.
+- If there is no provider or the call fails, the email is still stored and the
+  panel shows its opening lines instead.
+- **Do this once:** Settings → AI models → `deal_email_digest` → tick
+  **PII-safe pinning**. The row appears after the first email. These prompts
+  carry sellers' names and addresses.
 
 ---
 
 ## What you need to set up
 
-### 1. Postmark account + verified sending domain
+### 1. The database table
 
-- Sign up at <https://postmarkapp.com>. Free tier covers 100 inbound/month
-  and most of what you'll need.
-- Add `bellwoodslane.co.uk` as a sender domain. Verify via DNS records
-  (TXT + DKIM + Return-Path).
-- Verify in their UI before continuing.
+From the repo root: `pnpm migrate`. This adds `DealEmail`. Until it is run the
+deal page says the log is not switched on, and the webhook answers 500 rather
+than pretending to have stored the email. Postmark records that as a failed
+delivery (see its Inbound activity page), so run the migration before
+pointing mail at it.
 
-### 2. Inbound stream + address
+### 2. Postmark inbound
 
-- In Postmark: **Servers → your server → Inbound stream**.
-- Set the inbound forwarding address. Postmark generates one like
-  `1234567890abcdef@inbound.postmarkapp.com`.
-- In your DNS, add an **MX record** for `docs.bellwoodslane.co.uk` (or
-  whichever subdomain you prefer) pointing at `inbound.postmarkapp.com`.
-- Postmark catches anything sent to `*@docs.bellwoodslane.co.uk` and
-  forwards to your webhook.
+- Sign up at <https://postmarkapp.com>. The free tier covers 100 inbound
+  emails a month; check their current pricing if volume grows.
+- **Servers → your server → Inbound stream.**
+- Add an **MX record** for a subdomain you choose (for example
+  `in.wearekept.co.uk`) pointing at `inbound.postmarkapp.com`, and set that as
+  the stream's inbound domain. Postmark then catches everything sent to
+  `*@in.wearekept.co.uk`, including the `+<deal id>` form.
+- The log address is then any name at that domain, for example
+  `log@in.wearekept.co.uk`.
 
-(Alternative: a single-address inbox. Use Postmark's forwarding-to-address
-feature so `docs@bellwoodslane.co.uk` (or any vanity address) lands at the
-Postmark inbound address.)
-
-### 3. Webhook URL + auth credentials
+### 3. Webhook URL + auth
 
 In Postmark: **Inbound stream → Webhook**.
 
 - **URL:** `https://bellwood-api.vercel.app/webhooks/postmark/inbound`
-- **Include Raw Email Content:** off (not needed)
-- **Basic Auth:** generate two long random strings and set them as
-  username + password (e.g. `openssl rand -hex 16` twice).
+- **Include Raw Email Content:** off
+- **Basic Auth:** two long random strings as username and password
+  (`openssl rand -hex 16`, twice).
 
-### 4. Vercel env vars (`bellwood-api` project)
+### 4. Vercel env vars
 
-Set these in **Vercel → bellwood-api → Settings → Environment Variables**:
+**`bellwood-api`:**
 
 | Var | Value |
-|---|---|
+|:--|:--|
 | `POSTMARK_INBOUND_USER` | The Basic Auth username you set in Postmark |
 | `POSTMARK_INBOUND_PASS` | The Basic Auth password you set in Postmark |
-| `EMAIL_FORWARD_ALLOWLIST` | Comma-separated: `samjlirving@gmail.com,cofounder@gmail.com,you@bellwoodslane.co.uk` |
-| `MISTRAL_API_KEY` *(optional)* | Unlocks the OCR layer; Claude reads the PDF directly without it |
-| `ANTHROPIC_API_KEY` *(already set)* | Required — drives the extraction |
-| `RESEND_TOKEN` + `RESEND_FROM` *(already set)* | Required for the acknowledgement email |
+| `EMAIL_FORWARD_ALLOWLIST` | The founders' sending addresses, comma-separated. **Must include the address you actually send from** (`sam@wearekept.co.uk`). |
+| `DEAL_LOG_ADDRESS` | The log address, e.g. `log@in.wearekept.co.uk`. Optional here; needed only if a vanity address forwards to Postmark's own `…@inbound.postmarkapp.com` address. |
+| `OPENROUTER_API_KEY` | Already set. Drives the two-line read. |
+| `RESEND_TOKEN` + `RESEND_FROM` | Already set. Sends the forward acknowledgement. |
+| `Deal_Blob_STORE_ID` | The uploads store, for attachments. Already connected if quote PDFs render. |
 
-**Redeploy** after setting the vars.
+**`bellwood-app`:**
+
+| Var | Value |
+|:--|:--|
+| `DEAL_LOG_ADDRESS` | The same log address. Shown on every deal page with a copy button. |
+
+**Redeploy** both after setting the vars.
 
 ### 5. Smoke test
 
-From an allowlisted address, forward any email with a PDF attachment to
-`docs@bellwoodslane.co.uk`. Within ~60 seconds:
+1. Open a deal with a seller email on it. Email that seller's address from
+   your own, **CC the log address**.
+2. Within a minute the email shows under **Emails** on the deal.
+3. Reply-all from the other mailbox. That shows too, marked "From them".
+4. Send one with no postcode to someone not on any deal. It should appear
+   under **Needs a deal** on `/deals/email-log`.
 
-1. You receive an acknowledgement email listing what was filed.
-2. The doc appears in `/documents` on the dashboard.
-3. A `FounderAction` of type `general` appears in `/actions`.
-
-If something fails, watch Vercel logs for `[postmark/inbound]` lines.
-
----
-
-## How matching works
-
-When an inbound email arrives we extract every UK postcode from the
-**subject + body** (regex `[A-Z]{1,2}\d{1,2}[A-Z]?\s*\d[A-Z]{2}`). We then
-search `Deal` for an active row whose `postcode` matches:
-
-1. **Full-postcode equality first** (e.g. `M14 5AB` → exact match).
-2. **Outward-code `startsWith`** (e.g. `M14` → any active M14 deal).
-
-The first match wins, ordered by most recently updated. No match → the
-extract lands in `/documents` unlinked, and the `FounderAction` is set to
-`medium` priority so the founder knows to file it manually.
+If nothing arrives, look in Vercel logs for `[postmark/inbound]`.
 
 ---
 
-## Doc type detection
+## Attachments
+
+- Every real attachment is kept and linked from the email on the deal page.
+- **Embedded images under 50 KB are skipped.** Those are signature logos.
+  Photos pasted into an email are larger and are kept.
+- Files go to the same uploads store as viewing photos and offer PDFs
+  (`@repo/storage`). **That store is public: a file is reachable by anyone
+  who has its link.** Links carry a random suffix and are only shown in the
+  dashboard. If that is not acceptable for ID documents or grants, the store
+  needs to change for the whole repo, not just here.
+- **PDFs are read into `/documents` only on a deliberate forward** (you, to
+  the address, nobody else). A solicitor's letter in a conversation is kept
+  but not run through the reader, which is tuned for probate grants.
+
+---
+
+## Known limits
+
+- **Large emails may not arrive.** Postmark POSTs the whole email, attachments
+  included, in one request, and Vercel caps a function's request body (about
+  4.5 MB, as we understand it). An email above that is rejected before our
+  code runs, so it is not logged. A big legal pack is better sent as a link,
+  or forwarded in parts. Not verified against a real oversized email yet.
+- **The PDF reader is still Anthropic-direct** (`probate-extract.ts`) and dark
+  while that account is unfunded. Forwarded PDFs are stored; the extract is
+  empty until that moves to OpenRouter. See `docs/LLM-ROUTING.md`.
+- **Only deals.** An enquiry that is not a deal yet has nothing to file on.
+  Its emails wait under "Needs a deal" until the deal exists.
+- **`From` can be forged.** The allowlist trusts the sender address. Postmark
+  is the only caller (Basic Auth), and nothing is acted on automatically, so
+  the worst case is a stored email that should not be there.
+
+---
+
+## Security posture
+
+- **Basic Auth** between Postmark and our endpoint. Rotate the password if
+  you suspect a leak.
+- **Silent drop** of mail we have no reason to keep. The sender does not
+  learn the address exists.
+- **Email bodies ARE stored now** (`DealEmail.bodyText`, capped at 100,000
+  characters). They are correspondence about a deal and are deleted with it
+  (`onDelete: Cascade`). Before this change only the subject was kept.
+- **No acknowledgement goes to anyone but a founder.** The "received your
+  forward" email is sent only when a founder writes to the log alone.
+- **25 MB per-attachment cap**, in practice bounded by the request limit
+  above.
+
+## Doc type detection (forwarded PDFs)
 
 Best-effort keyword scan of **subject + filename**:
 
@@ -109,41 +202,5 @@ Best-effort keyword scan of **subject + filename**:
 - `contract`, `redline`, `tr1`, `sale agreement`, `memorandum`, `completion statement` → **contract**
 - otherwise → **other**
 
-Full per-type prompts (lease pack extraction, contract redline analysis)
-land in a future iteration; today they all run through the probate
-extractor which produces looser field coverage on non-probate documents.
-
----
-
-## Spend per inbound email
-
-(Verify against current Anthropic / Mistral pricing — these are
-early-2026 estimates.)
-
-| Pipeline step | Cost band |
-|---|---|
-| Mistral OCR (~10 pages typical) | ~£0.01 |
-| Claude Sonnet extraction with Citations API | ~£0.04 |
-| Resend acknowledgement | free tier |
-| **Per email with one PDF** | **~£0.05** |
-
-At 200 emails/month: **~£10/month inference spend**. Trivial vs the time
-saved.
-
----
-
-## Security posture
-
-- **Basic Auth** between Postmark and our endpoint (rotate the password
-  if you suspect leak).
-- **Allowlist** prevents unknown senders from polluting the document
-  pipeline.
-- **Silent drop** of non-allowlisted senders — they don't learn the
-  address exists.
-- **No raw email body persisted** — only the subject (capped at 500 chars)
-  and the sender email. PII inside the PDF lives in `DocumentExtract` like
-  any other upload.
-- **25 MB attachment cap** prevents abuse.
-
-Want a per-attachment audit log? Add a `DocumentExtractAuditLog` model and
-write on every inbound. Not shipped in v1.
+All of them still run through the probate extractor, which gives looser
+coverage on anything that is not a grant.
