@@ -26,28 +26,27 @@ export type WhatsNewEntry = {
 /** Newest first. The popup shows index 0. */
 export const WHATS_NEW: WhatsNewEntry[] = [
   {
-    id: '2026-11-22-guide-full-preview',
+    id: '2026-11-22-guide-editor',
     date: '2026-11-22',
-    emoji: '👀',
-    title: 'Read a guide exactly as readers will',
-    intro:
-      'No more judging a blog post from a snippet. See the real page, then decide.',
+    emoji: '✍️',
+    title: 'Read, fix and approve guides in one place',
+    intro: 'The full guide, Counsel’s notes beside it, and the edit box right there.',
     bullets: [
       {
-        emoji: '📰',
-        text: '**Read full post** opens the guide as the **real public page**: header, fonts, footer and all.',
-      },
-      {
-        emoji: '📱',
-        text: 'Flip between **Desktop** and **Phone** to see how it reads on a mobile.',
+        emoji: '📖',
+        text: '**Read full post** shows the **whole guide** as formatted text.',
       },
       {
         emoji: '🔎',
-        text: 'See how it shows **in Google**, plus Counsel’s notes, beside the page.',
+        text: '**Find in text** jumps straight to the line **Counsel** flagged.',
+      },
+      {
+        emoji: '✏️',
+        text: '**Edit** the title, Google description, body and closing line, then **Save**.',
       },
       {
         emoji: '✅',
-        text: '**Approve** or **Publish** from the same screen. Nothing goes live until you click Publish.',
+        text: '**Save & approve** or **Save & publish**. Nothing goes live until you click Publish.',
       },
     ],
     cta: { label: 'Open guides', href: '/marketing/guides' },
