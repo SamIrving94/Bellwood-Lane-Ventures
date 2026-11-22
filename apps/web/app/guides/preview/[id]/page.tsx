@@ -2,7 +2,7 @@ import { SiteFooter } from '@/components/site-footer';
 import { SiteHeader } from '@/components/site-header';
 import { database } from '@repo/database';
 import type { Metadata } from 'next';
-import { notFound, redirect } from 'next/navigation';
+import { notFound } from 'next/navigation';
 import { GuideArticle } from '../../guide-article';
 
 /**
@@ -18,7 +18,9 @@ import { GuideArticle } from '../../guide-article';
  * (PRIVATE_PATHS in components/cookie-consent.tsx). The middleware lets
  * only the dashboard frame this path.
  *
- * Published guides redirect to their live address; archived ones 404.
+ * Published guides render here too (with a "live" strip), so the dashboard
+ * can frame them: the live /guides/[slug] page refuses to be framed.
+ * Archived guides 404.
  */
 
 export const dynamic = 'force-dynamic';
@@ -51,13 +53,18 @@ export default async function GuidePreviewPage({
     .catch(() => null);
 
   if (!guide || guide.status === 'archived') notFound();
-  if (guide.status === 'published') redirect(`/guides/${guide.slug}`);
 
   return (
     <>
-      <div className="bg-amber-100 px-5 py-2 text-center font-mono text-[11px] text-amber-900 uppercase tracking-[0.14em]">
-        Preview · not live · /guides/{guide.slug}
-      </div>
+      {guide.status === 'published' ? (
+        <div className="bg-emerald-100 px-5 py-2 text-center font-mono text-[11px] text-emerald-900 uppercase tracking-[0.14em]">
+          Live · /guides/{guide.slug}
+        </div>
+      ) : (
+        <div className="bg-amber-100 px-5 py-2 text-center font-mono text-[11px] text-amber-900 uppercase tracking-[0.14em]">
+          Preview · not live · /guides/{guide.slug}
+        </div>
+      )}
       <SiteHeader />
       <main className="mx-auto max-w-[1100px] px-5 pb-24 md:px-10">
         <GuideArticle guide={guide} date={new Date()} />

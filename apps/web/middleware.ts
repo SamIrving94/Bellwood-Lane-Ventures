@@ -34,12 +34,23 @@ const previewHeaders = noseconeMiddleware({
   crossOriginResourcePolicy: { policy: 'cross-origin' },
 });
 
-const dashboardOrigin = (() => {
+/**
+ * Origins allowed to frame the preview: the production dashboard, plus
+ * whatever NEXT_PUBLIC_APP_URL says (local dev, or a future custom domain).
+ * The production origin is named outright so the preview does not hang on
+ * that env var being right on the web project (22 Nov 2026: the first
+ * release showed "refused to connect" in the dashboard).
+ */
+const PRODUCTION_DASHBOARD = 'https://bellwood-app.vercel.app';
+
+const frameAncestors = (() => {
+  const origins = new Set(["'self'", PRODUCTION_DASHBOARD]);
   try {
-    return new URL(process.env.NEXT_PUBLIC_APP_URL ?? '').origin;
+    origins.add(new URL(process.env.NEXT_PUBLIC_APP_URL ?? '').origin);
   } catch {
-    return null;
+    // Unset or not a URL: the production origin above still applies.
   }
+  return [...origins].join(' ');
 })();
 
 export async function middleware(request: NextRequest) {
@@ -49,7 +60,7 @@ export async function middleware(request: NextRequest) {
   const response = await previewHeaders();
   response.headers.set(
     'Content-Security-Policy',
-    `frame-ancestors 'self'${dashboardOrigin ? ` ${dashboardOrigin}` : ''}`
+    `frame-ancestors ${frameAncestors}`
   );
   return response;
 }
