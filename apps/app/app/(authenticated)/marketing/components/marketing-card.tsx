@@ -5,9 +5,11 @@ import {
   CheckCircleIcon,
   ChevronDownIcon,
   ChevronUpIcon,
+  EyeIcon,
   GlobeIcon,
   XCircleIcon,
 } from 'lucide-react';
+import Link from 'next/link';
 import { useState, useTransition } from 'react';
 import { resolveAction } from '@/app/actions/founder-actions/resolve';
 import {
@@ -189,6 +191,15 @@ export function MarketingCard({ action }: { action: MarketingAction }) {
           can still dismiss something they don't want), but disabled while a
           publish-window is in the future. */}
       <div className="mt-3 flex items-center gap-2">
+        {/* A guide can be read as the real page before it is approved. */}
+        {guidePostId && (
+          <Button size="sm" variant="outline" asChild>
+            <Link href={`/marketing/guides/${guidePostId}`}>
+              <EyeIcon className="mr-1 h-3 w-3" />
+              Read full post
+            </Link>
+          </Button>
+        )}
         <div className="flex-1" />
         <Button
           variant="ghost"

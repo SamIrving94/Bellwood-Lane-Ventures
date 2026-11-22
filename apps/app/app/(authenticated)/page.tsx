@@ -289,7 +289,15 @@ export default async function TodayPage() {
               {/* Founder Actions */}
               {actionsSorted.slice(0, 12).map((a) => {
                 const meta = (a.metadata ?? {}) as Record<string, unknown>;
-                const link = (meta.link as string | undefined) ?? '/actions';
+                // A blog review opens its full-page preview, where it can be
+                // approved; older drafts carry only the guidePostId.
+                const guidePostId =
+                  a.type === 'approve_blog_draft'
+                    ? (meta.guidePostId as string | undefined)
+                    : undefined;
+                const link = guidePostId
+                  ? `/marketing/guides/${guidePostId}`
+                  : ((meta.link as string | undefined) ?? '/actions');
                 return (
                   <Link
                     key={a.id}
