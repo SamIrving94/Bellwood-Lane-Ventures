@@ -79,7 +79,12 @@ export async function POST(request: Request) {
     </div>
   `;
 
-  const sendResult = await sendEmail({ to: email, subject, html });
+  const sendResult = await sendEmail({
+    to: email,
+    subject,
+    html,
+    sensitive: true,
+  });
   if (sendResult.skipped) {
     console.log(`[partners/login] magic link for ${email}: ${link}`);
   }

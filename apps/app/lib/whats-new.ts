@@ -26,6 +26,33 @@ export type WhatsNewEntry = {
 /** Newest first. The popup shows index 0. */
 export const WHATS_NEW: WhatsNewEntry[] = [
   {
+    id: '2026-11-22-email-inbox',
+    date: '2026-11-22',
+    emoji: '📬',
+    title: 'An inbox, and replies that arrive',
+    intro:
+      'Replies to our emails were bouncing: they went to an address with no mailbox. Fixed, and now you can see the whole conversation.',
+    bullets: [
+      {
+        emoji: '↩️',
+        text: '**Replies reach sam@wearekept.co.uk.** Every email the app sends now says where to reply.',
+      },
+      {
+        emoji: '🗂️',
+        text: '**New Inbox page:** every email we sent, one conversation per person.',
+      },
+      {
+        emoji: '✍️',
+        text: '**Reply from the app.** You write it, you send it. Nothing is sent for you.',
+      },
+      {
+        emoji: '🔔',
+        text: '**A card in Today** when a seller we know writes back (once inbound mail is connected).',
+      },
+    ],
+    cta: { label: 'Open the Inbox', href: '/inbox' },
+  },
+  {
     id: '2026-11-15-evidence-second-check',
     date: '2026-11-15',
     emoji: '🔎',

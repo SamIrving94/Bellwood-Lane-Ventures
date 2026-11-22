@@ -59,6 +59,11 @@ export const env = createEnv({
     /** Comma-separated email addresses allowed to forward documents to docs@. */
     EMAIL_FORWARD_ALLOWLIST: z.string().optional(),
     /**
+     * Signing secret of the Resend `email.received` webhook that feeds the
+     * dashboard /inbox (see /webhooks/resend/inbound). Unset = route answers 503.
+     */
+    RESEND_INBOUND_WEBHOOK_SECRET: z.string().min(1).optional(),
+    /**
      * Reddit "script" app credentials for /cron/guide-research. Reddit
      * blocks anonymous JSON, so without these the Reddit source is skipped
      * and the weekly brief says so. Register at reddit.com/prefs/apps.
@@ -78,6 +83,7 @@ export const env = createEnv({
     POSTMARK_INBOUND_USER: process.env.POSTMARK_INBOUND_USER,
     POSTMARK_INBOUND_PASS: process.env.POSTMARK_INBOUND_PASS,
     EMAIL_FORWARD_ALLOWLIST: process.env.EMAIL_FORWARD_ALLOWLIST,
+    RESEND_INBOUND_WEBHOOK_SECRET: process.env.RESEND_INBOUND_WEBHOOK_SECRET,
     REDDIT_CLIENT_ID: process.env.REDDIT_CLIENT_ID,
     REDDIT_CLIENT_SECRET: process.env.REDDIT_CLIENT_SECRET,
     REDDIT_USER_AGENT: process.env.REDDIT_USER_AGENT,

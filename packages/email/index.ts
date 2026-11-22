@@ -1,5 +1,12 @@
 import { Resend } from 'resend';
+import {
+  DEFAULT_REPLY_TO,
+  bareAddress,
+  htmlToText,
+  isOwnAddress,
+} from './addresses';
 import { keys } from './keys';
+import { recordEmail } from './log';
 
 const env = keys();
 
@@ -17,7 +24,17 @@ export type SendEmailInput = {
   html?: string;
   /** Override the default RESEND_FROM address. */
   from?: string;
+  /** Where replies go. Defaults to RESEND_REPLY_TO, else the one live mailbox. */
   replyTo?: string;
+  /** Extra headers, e.g. In-Reply-To / References when replying in a thread. */
+  headers?: Record<string, string>;
+  /**
+   * The body holds a sign-in link or one-time code. The send is still logged
+   * (who, when, subject) but the body is not stored.
+   */
+  sensitive?: boolean;
+  /** Clerk userId when a founder wrote this by hand (replies from /inbox). */
+  sentBy?: string;
 };
 
 export type SendEmailResult =
@@ -33,6 +50,11 @@ export type SendEmailResult =
  *   skips gracefully.
  * - On Resend API error, throws — callers should handle (or swallow) as
  *   appropriate for their pipeline.
+ * - Every send carries a Reply-To that points at a mailbox that exists (see
+ *   DEFAULT_REPLY_TO for why), and every send to someone outside our own
+ *   domains is written to the correspondence log (EmailMessage) so the
+ *   dashboard /inbox can show the conversation. The log write is best-effort:
+ *   a logging failure never fails, or double-sends, an email.
  */
 export async function sendEmail(input: SendEmailInput): Promise<SendEmailResult> {
   if (!resend) {
@@ -48,13 +70,16 @@ export async function sendEmail(input: SendEmailInput): Promise<SendEmailResult>
     return { skipped: true, reason: msg };
   }
 
+  const replyTo = input.replyTo ?? env.RESEND_REPLY_TO ?? DEFAULT_REPLY_TO;
+
   const { data, error } = await resend.emails.send({
     from,
     to: input.to,
     subject: input.subject,
     text: input.text ?? '',
     html: input.html,
-    replyTo: input.replyTo,
+    replyTo,
+    headers: input.headers,
   });
 
   if (error) {
@@ -71,5 +96,28 @@ export async function sendEmail(input: SendEmailInput): Promise<SendEmailResult>
   }
 
   console.info(`[@repo/email] sent id=${data.id} to=${input.to}`);
+
+  const counterparty = bareAddress(input.to);
+  if (counterparty && !isOwnAddress(counterparty)) {
+    await recordEmail({
+      direction: 'outbound',
+      counterparty,
+      fromAddress: from,
+      toAddress: input.to,
+      subject: input.subject,
+      textBody: input.sensitive
+        ? '[Body not stored: it contained a sign-in link or code.]'
+        : (input.text ?? (input.html ? htmlToText(input.html) : null)),
+      htmlBody: input.sensitive ? null : (input.html ?? null),
+      providerId: data.id,
+      inReplyTo: input.headers?.['In-Reply-To'] ?? null,
+      sentBy: input.sentBy ?? null,
+    }).catch((err) => {
+      console.warn('[@repo/email] sent, but not logged to EmailMessage', {
+        id: data.id,
+        error: err instanceof Error ? err.message : String(err),
+      });
+    });
+  }
   return { skipped: false, messageId: data.id };
 }

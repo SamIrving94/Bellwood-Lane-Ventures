@@ -1,5 +1,7 @@
 # Resend setup — wire real-time email updates to the chain
 
+_Last checked against the code: 2026-11-22. Replies and the dashboard Inbox: see `docs/setup/email-inbox.md`._
+
 Bellwoods Lane sends a Resend-backed email to every party in the chain
 on every meaningful state change of a deal. Without a Resend token
 configured, the system gracefully falls back to console logging — no
@@ -8,7 +10,7 @@ crashes, but **no actual emails leave the building**.
 ## Get a Resend token (5 min)
 
 1. Sign up at <https://resend.com>
-2. Verify a sending domain — for production, that's `bellwoodslane.co.uk`
+2. Verify a sending domain — for production, that's `wearekept.co.uk`
 3. Create an API key with `sending` scope
 4. Copy the key (starts with `re_`)
 
@@ -20,7 +22,10 @@ Add to **all three** environments:
 
 ```bash
 RESEND_TOKEN=re_xxxxxxxxxxxxxxxxxxxx
-RESEND_FROM="Kept <sam@wearekept.co.uk>"
+# A bare address: the env schema rejects the "Name <addr>" form.
+RESEND_FROM=sam@wearekept.co.uk
+# Optional. Where replies go; defaults to sam@wearekept.co.uk.
+RESEND_REPLY_TO=sam@wearekept.co.uk
 ```
 
 ### Vercel production
