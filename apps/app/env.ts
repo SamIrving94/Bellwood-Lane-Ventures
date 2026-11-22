@@ -2,6 +2,7 @@ import { keys as auth } from '@repo/auth/keys';
 import { keys as calendly } from '@repo/calendly/keys';
 import { keys as database } from '@repo/database/keys';
 import { keys as email } from '@repo/email/keys';
+import { keys as google } from '@repo/google/keys';
 import { keys as core } from '@repo/next-config/keys';
 import { keys as observability } from '@repo/observability/keys';
 import { keys as security } from '@repo/security/keys';
@@ -15,6 +16,7 @@ export const env = createEnv({
     core(),
     database(),
     email(),
+    google(),
     observability(),
     security(),
   ],

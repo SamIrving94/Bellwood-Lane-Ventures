@@ -1,8 +1,10 @@
 'use client';
 
 import { Button } from '@repo/design-system/components/ui/button';
-import { CheckIcon, EditIcon, XIcon } from 'lucide-react';
+import { CheckIcon, EditIcon, MailIcon, XIcon } from 'lucide-react';
 import { useState, useTransition } from 'react';
+import { toast } from 'sonner';
+import { draftHoldInGmail } from '@/app/actions/google';
 import { approveHold, rejectHold } from '@/app/actions/outreach/review-hold';
 
 type Hold = {
@@ -15,7 +17,14 @@ type Hold = {
   createdAt: Date;
 };
 
-export function HoldCard({ hold }: { hold: Hold }) {
+export function HoldCard({
+  hold,
+  gmailConnected = false,
+}: {
+  hold: Hold;
+  /** Kept Google account is connected: offer "To Gmail drafts". */
+  gmailConnected?: boolean;
+}) {
   const [editing, setEditing] = useState(false);
   const [editedBody, setEditedBody] = useState(hold.renderedBody);
   const [isPending, startTransition] = useTransition();
@@ -24,6 +33,20 @@ export function HoldCard({ hold }: { hold: Hold }) {
     startTransition(async () => {
       const body = editing && editedBody !== hold.renderedBody ? editedBody : undefined;
       await approveHold(hold.id, body);
+    });
+  };
+
+  // Nothing is sent: the email lands in Gmail Drafts for the founder to
+  // finish and send from their own address.
+  const handleDraft = () => {
+    startTransition(async () => {
+      const body = editing && editedBody !== hold.renderedBody ? editedBody : undefined;
+      const result = await draftHoldInGmail(hold.id, body);
+      if (result.ok) {
+        toast.success(`In your Gmail drafts (${result.mailbox}). Not sent yet.`);
+      } else {
+        toast.error(result.error);
+      }
     });
   };
 
@@ -90,6 +113,17 @@ export function HoldCard({ hold }: { hold: Hold }) {
           <XIcon className="mr-1 h-3 w-3" />
           Reject
         </Button>
+        {gmailConnected && hold.recipientEmail && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleDraft}
+            disabled={isPending}
+          >
+            <MailIcon className="mr-1 h-3 w-3" />
+            To Gmail drafts
+          </Button>
+        )}
         <Button
           size="sm"
           onClick={handleApprove}

@@ -26,6 +26,37 @@ export type WhatsNewEntry = {
 /** Newest first. The popup shows index 0. */
 export const WHATS_NEW: WhatsNewEntry[] = [
   {
+    id: '2026-11-22-google-workspace',
+    date: '2026-11-22',
+    emoji: '🔗',
+    title: 'Kept now talks to Google',
+    intro:
+      'Connect the Kept Google account once. Gmail, Calendar and Drive do the busywork.',
+    bullets: [
+      {
+        emoji: '✉️',
+        text: '**To Gmail drafts.** Reviewed emails land in your drafts. **You** press send.',
+      },
+      {
+        emoji: '📅',
+        text: '**Viewings in your calendar**, with an **Offer due** marker two working days later.',
+      },
+      {
+        emoji: '📁',
+        text: '**A Drive folder per deal**: Photos, Legal, Offer, Comps.',
+      },
+      {
+        emoji: '🏷️',
+        text: 'Mail from **sellers, solicitors and agents** gets labelled for you.',
+      },
+      {
+        emoji: '☀️',
+        text: 'A short **morning brief** in your inbox, and a **partner sheet** with no names or addresses.',
+      },
+    ],
+    cta: { label: 'Connect Google', href: '/settings/google' },
+  },
+  {
     id: '2026-11-22-clear-all-keep-blogs',
     date: '2026-11-22',
     emoji: '🧹',
