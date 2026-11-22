@@ -4,6 +4,7 @@ import { formatDistanceToNow } from 'date-fns';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
+import { ClearActionsButton } from './components/clear-actions-button';
 import { Header } from './components/header';
 
 export const metadata: Metadata = {
@@ -83,6 +84,7 @@ export default async function TodayPage() {
     repliesLast24h,
     overnightLeads,
     shortlistedLeads,
+    clearableCount,
   ] = await Promise.all([
     database.founderAction.findMany({
       where: { status: { in: ['pending', 'in_progress'] } },
@@ -149,6 +151,15 @@ export default async function TodayPage() {
         leadScore: true,
         verdict: true,
         rawPayload: true,
+      },
+    }),
+    // What the "Clear all" button would sweep: every open action except blog
+    // reviews. A real count — the list above is capped at 20. Agent SLA
+    // quotes are not FounderActions, so they always stay.
+    database.founderAction.count({
+      where: {
+        status: { in: ['pending', 'in_progress'] },
+        type: { not: 'approve_blog_draft' },
       },
     }),
   ]);
@@ -218,9 +229,12 @@ export default async function TodayPage() {
           <div className="mb-4 flex items-baseline justify-between">
             <h2 className="font-semibold text-lg">Needs your decision</h2>
             {decisionCount > 0 && (
-              <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
-                {decisionCount} item{decisionCount === 1 ? '' : 's'}
-              </span>
+              <div className="flex items-center gap-3">
+                <ClearActionsButton count={clearableCount} />
+                <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
+                  {decisionCount} item{decisionCount === 1 ? '' : 's'}
+                </span>
+              </div>
             )}
           </div>
 

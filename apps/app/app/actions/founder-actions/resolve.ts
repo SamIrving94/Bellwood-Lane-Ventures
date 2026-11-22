@@ -45,3 +45,34 @@ export async function bulkResolveActions(
   revalidatePath('/actions');
   revalidatePath('/');
 }
+
+/**
+ * Types the "Clear all" button never touches. Blog drafts need a real read
+ * before they publish, so they survive a clear-out (founder, 22 Nov 2026).
+ */
+const CLEAR_ALL_KEEP_TYPES = ['approve_blog_draft'] as const;
+
+/**
+ * Dismiss every open action except blog reviews. Dismissed, not deleted:
+ * rows stay in the DB with resolvedBy/resolvedAt, so a clear can be traced
+ * and reversed. Returns how many were cleared.
+ */
+export async function clearAllActionsExceptBlog(): Promise<number> {
+  const { userId } = await requireFounder();
+
+  const result = await database.founderAction.updateMany({
+    where: {
+      status: { in: ['pending', 'in_progress'] },
+      type: { notIn: [...CLEAR_ALL_KEEP_TYPES] },
+    },
+    data: {
+      status: 'dismissed',
+      resolvedBy: userId,
+      resolvedAt: new Date(),
+    },
+  });
+
+  revalidatePath('/actions');
+  revalidatePath('/');
+  return result.count;
+}
