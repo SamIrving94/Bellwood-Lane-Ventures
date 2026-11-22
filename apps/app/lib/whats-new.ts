@@ -26,6 +26,29 @@ export type WhatsNewEntry = {
 /** Newest first. The popup shows index 0. */
 export const WHATS_NEW: WhatsNewEntry[] = [
   {
+    id: '2026-11-22-clear-all-keep-blogs',
+    date: '2026-11-22',
+    emoji: '🧹',
+    title: 'Clear the decks in one click',
+    intro:
+      'Today piling up? Sweep it clean and keep only what needs a real read.',
+    bullets: [
+      {
+        emoji: '🧹',
+        text: '**Clear all (keep blogs)** sits next to "Needs your decision" on **Today**.',
+      },
+      {
+        emoji: '📝',
+        text: '**Blog reviews stay.** Everything else is dismissed.',
+      },
+      {
+        emoji: '↩️',
+        text: 'Nothing is **deleted**. It asks before it clears.',
+      },
+    ],
+    cta: { label: 'Go to Today', href: '/' },
+  },
+  {
     id: '2026-11-15-evidence-second-check',
     date: '2026-11-15',
     emoji: '🔎',
