@@ -1,4 +1,6 @@
 import { fileDealEmail } from '@/app/actions/deals/file-email';
+import { removeDealEmail } from '@/app/actions/deals/remove-email';
+import { autoCopyStatus } from '@/lib/deal-email-view';
 import { logAddress, toEmailCards } from '@/lib/deal-emails';
 import { auth } from '@repo/auth/server';
 import { database } from '@repo/database';
@@ -84,6 +86,33 @@ function FileForm({
   );
 }
 
+/**
+ * Take an email out of the log. Tucked inside a <details> so it takes two
+ * deliberate clicks: it deletes our copy and cannot be undone.
+ */
+function RemoveForm({ emailId }: { emailId: string }) {
+  return (
+    <details className="mt-2">
+      <summary className="cursor-pointer text-muted-foreground text-xs">
+        Not deal mail?
+      </summary>
+      <form
+        action={removeDealEmail}
+        className="mt-2 flex flex-wrap items-center gap-2"
+      >
+        <input name="emailId" type="hidden" value={emailId} />
+        <Button size="sm" type="submit" variant="outline">
+          Remove this email
+        </Button>
+        <span className="text-muted-foreground text-xs">
+          Deletes our copy and its attachments. It stays in your mailbox. This
+          cannot be undone.
+        </span>
+      </form>
+    </details>
+  );
+}
+
 export default async function EmailLogPage() {
   const { userId } = await auth();
   if (!userId) {
@@ -120,6 +149,16 @@ export default async function EmailLogPage() {
     console.warn('[email-log] email log unavailable', err);
     return null;
   });
+
+  // Set by the webhook each time Google Workspace delivers a mailbox copy.
+  // Absent when the automatic copy is off (or has never delivered).
+  const autoCopy = autoCopyStatus(
+    (
+      await database.setting
+        .findUnique({ where: { key: 'deal_email_auto_copy' } })
+        .catch(() => null)
+    )?.value
+  );
 
   const deals = await database.deal.findMany({
     orderBy: { updatedAt: 'desc' },
@@ -180,7 +219,26 @@ export default async function EmailLogPage() {
               the dashboard project in Vercel to show it here.
             </p>
           )}
+          {autoCopy && !autoCopy.quiet && (
+            <p className="mt-2 text-muted-foreground text-sm">
+              <strong>Automatic copy is on.</strong> Last email seen{' '}
+              {WHEN.format(autoCopy.lastSeenAt)}. Deal mail is kept without a
+              CC; everything else is ignored.
+            </p>
+          )}
         </div>
+
+        {autoCopy?.quiet && (
+          <div className="max-w-3xl rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm dark:border-amber-800 dark:bg-amber-950">
+            <p className="font-medium">The automatic copy has gone quiet.</p>
+            <p className="mt-1">
+              No copied email since {WHEN.format(autoCopy.lastSeenAt)}. If you
+              have sent or received mail since then, check the Google Workspace
+              rule. Until it is back, only emails with the log address in CC are
+              stored.
+            </p>
+          </div>
+        )}
 
         {loaded === null && (
           <p className="max-w-3xl rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm dark:border-amber-800 dark:bg-amber-950">
@@ -227,6 +285,7 @@ export default async function EmailLogPage() {
                     emailId={e.id}
                     label="File on this deal"
                   />
+                  <RemoveForm emailId={e.id} />
                 </li>
               ))}
             </ul>
@@ -278,6 +337,7 @@ export default async function EmailLogPage() {
                       label="Move to this deal"
                     />
                   </details>
+                  <RemoveForm emailId={e.id} />
                 </li>
               ))}
             </ul>

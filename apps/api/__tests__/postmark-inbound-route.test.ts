@@ -21,17 +21,18 @@ const state = vi.hoisted(() => ({
   actions: [] as Row[],
   sent: [] as Row[],
   stored: [] as string[],
+  settings: new Map<string, unknown>(),
   afterTasks: [] as Promise<unknown>[],
-}));
-
-vi.mock('@/env', () => ({
   env: {
     POSTMARK_INBOUND_USER: 'pm-user',
     POSTMARK_INBOUND_PASS: 'pm-pass',
     EMAIL_FORWARD_ALLOWLIST: 'sam@wearekept.co.uk',
     DEAL_LOG_ADDRESS: 'log@in.wearekept.co.uk',
+    DEAL_LOG_AUTO_COPY: undefined as string | undefined,
   },
 }));
+
+vi.mock('@/env', () => ({ env: state.env }));
 
 vi.mock('next/server', async (importOriginal) => {
   const actual = await importOriginal<typeof import('next/server')>();
@@ -134,6 +135,18 @@ vi.mock('@repo/database', () => {
             Object.assign(row, data);
           }
           return Promise.resolve(row);
+        },
+      },
+      setting: {
+        upsert: ({
+          where,
+          create,
+        }: {
+          where: { key: string };
+          create: { value: unknown };
+        }) => {
+          state.settings.set(where.key, create.value);
+          return Promise.resolve();
         },
       },
       dealEmailDrop: {
@@ -267,7 +280,9 @@ beforeEach(() => {
   state.actions = [];
   state.sent = [];
   state.stored = [];
+  state.settings = new Map();
   state.afterTasks = [];
+  state.env.DEAL_LOG_AUTO_COPY = undefined;
 });
 
 describe('POST /webhooks/postmark/inbound', () => {
@@ -505,5 +520,101 @@ describe('POST /webhooks/postmark/inbound', () => {
     expect(state.extracts).toHaveLength(0);
     const attachments = state.emails[0]?.attachments as Row[];
     expect(attachments.map((a) => a.filename)).toEqual(['Title register.pdf']);
+  });
+});
+
+describe('with the automatic copy on (DEAL_LOG_AUTO_COPY=on)', () => {
+  const PDF = {
+    Name: 'note.pdf',
+    ContentType: 'application/pdf',
+    Content: 'AAAA',
+    ContentLength: 3,
+  };
+
+  beforeEach(() => {
+    state.env.DEAL_LOG_AUTO_COPY = 'on';
+  });
+
+  test('a founder’s ordinary email leaves no trace at all', async () => {
+    const { status, json } = await post(
+      body({ to: ['friend@example.org'], cc: [], text: 'Lunch on Friday?' })
+    );
+    expect(status).toBe(200);
+    expect(json).toEqual({ success: true, ignored: true });
+    expect(state.emails).toHaveLength(0);
+    expect(state.drops).toHaveLength(0);
+    expect(state.actions).toHaveLength(0);
+    expect(state.stored).toHaveLength(0);
+    // …except the proof that the copy rule is alive.
+    expect(state.settings.has('deal_email_auto_copy')).toBe(true);
+  });
+
+  test('a founder’s email to a deal’s seller is kept with no CC', async () => {
+    const { json } = await post(body({ cc: [] }));
+    expect(json).toMatchObject({
+      direction: 'outbound',
+      dealMatched: DEAL_ID,
+      matchedBy: 'participant',
+    });
+    expect(state.emails).toHaveLength(1);
+  });
+
+  test('the seller’s plain Reply, never copied to the log, is kept', async () => {
+    const { json } = await post(
+      body({ from: SELLER, to: [FOUNDER], cc: [], messageId: 'r@mail' })
+    );
+    expect(json).toMatchObject({ direction: 'inbound', dealMatched: DEAL_ID });
+    expect(state.sent).toHaveLength(0);
+  });
+
+  test('a newsletter is ignored without being listed as turned away', async () => {
+    const { json } = await post(
+      body({ from: 'news@shop.example', to: [FOUNDER], cc: [] })
+    );
+    expect(json).toEqual({ success: true, ignored: true });
+    expect(state.drops).toHaveLength(0);
+  });
+
+  test('a note between founders with a PDF is not read, stored or acknowledged', async () => {
+    const { json } = await post(
+      body({
+        to: ['ant@wearekept.co.uk'],
+        cc: [],
+        text: 'Thoughts on M14 5AB?',
+        attachments: [PDF],
+      })
+    );
+    expect(json).toEqual({ success: true, ignored: true });
+    expect(state.emails).toHaveLength(0);
+    expect(state.extracts).toHaveLength(0);
+    expect(state.sent).toHaveLength(0);
+  });
+
+  test('a mailbox at our domain that is not on the list gets a card, not a listing', async () => {
+    await post(
+      body({ from: 'ant@wearekept.co.uk', to: ['friend@example.org'], cc: [] })
+    );
+    expect(state.drops).toHaveLength(0);
+    expect(state.actions).toHaveLength(1);
+    expect(state.actions[0]).toMatchObject({
+      title: 'Emails from ant@wearekept.co.uk are not being logged',
+    });
+  });
+
+  test('a deliberate CC still behaves as before: kept, waiting for a deal', async () => {
+    const { json } = await post(body({ to: ['friend@example.org'] }));
+    expect(json).toMatchObject({ dealMatched: null });
+    expect(state.emails).toHaveLength(1);
+    expect(state.actions).toHaveLength(1);
+  });
+
+  test('the same email arriving twice uploads its attachment once', async () => {
+    const twice = body({ attachments: [PDF] });
+    await post(twice);
+    const second = await post(twice);
+    expect(second.json).toEqual({ success: true, duplicate: true });
+    expect(state.stored).toHaveLength(1);
+    expect(state.emails).toHaveLength(1);
+    expect(state.emails[0]?.attachments).toHaveLength(1);
   });
 });

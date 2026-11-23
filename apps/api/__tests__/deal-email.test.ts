@@ -19,6 +19,7 @@ import {
   InboundSchema,
   type KnownThread,
   type NormalisedEmail,
+  addressedToLog,
   cleanMessageId,
   directionOf,
   extractPostcodes,
@@ -356,6 +357,7 @@ describe('resolveDeal', () => {
       matchedBy: 'thread',
       threadKey: 'root@mail.gmail.com',
       accepted: true,
+      explicit: true,
     });
   });
 
@@ -484,6 +486,7 @@ describe('resolveDeal', () => {
       matchedBy: null,
       threadKey: 'root@mail.gmail.com',
       accepted: true,
+      explicit: true,
     });
   });
 
@@ -505,6 +508,244 @@ describe('resolveDeal', () => {
       lookups()
     );
     expect(m.threadKey).toBe('a@x');
+  });
+});
+
+describe('addressedToLog', () => {
+  test('the log address in To or CC is deliberate', () => {
+    expect(addressedToLog(email(), book)).toBe(true);
+    expect(
+      addressedToLog(
+        email({ ToFull: [{ Email: LOG }], CcFull: [], To: LOG, Cc: '' }),
+        book
+      )
+    ).toBe(true);
+  });
+
+  test('a deal’s own tagged address counts', () => {
+    const tagged = `log+${DEAL_ID}@in.wearekept.co.uk`;
+    expect(
+      addressedToLog(email({ CcFull: [{ Email: tagged }], Cc: tagged }), book)
+    ).toBe(true);
+  });
+
+  test('a copy that merely arrived (BCC, mailbox rule) is not', () => {
+    expect(addressedToLog(email({ CcFull: [], Cc: '' }), book)).toBe(false);
+  });
+
+  test('when we cannot recognise our own address, assume deliberate', () => {
+    const blind = { founders: book.founders, logAddresses: new Set<string>() };
+    expect(
+      addressedToLog(
+        email({
+          CcFull: [],
+          Cc: '',
+          OriginalRecipient: 'abc123@inbound.postmarkapp.com',
+        }),
+        blind
+      )
+    ).toBe(true);
+  });
+});
+
+describe('resolveDeal — mailbox copies (automatic copy on)', () => {
+  const auto = { autoCopy: true };
+  // The log address is not in To/CC: Google Workspace copied it.
+  const copied = { CcFull: [], Cc: '' };
+  const fromJane = {
+    ...copied,
+    From: 'jane@example.com',
+    FromFull: { Email: 'jane@example.com', Name: 'Jane' },
+    ToFull: [{ Email: FOUNDER }],
+    To: FOUNDER,
+  };
+  const never = (): never => {
+    throw new Error('no database question should be asked');
+  };
+
+  test('with the switch off, a copy is treated as addressed to the log', async () => {
+    const m = await resolveDeal(email(copied), book, lookups());
+    expect(m).toMatchObject({ accepted: true, explicit: true, dealId: null });
+  });
+
+  test('a founder’s email to a deal’s seller is kept, with no CC at all', async () => {
+    const m = await resolveDeal(
+      email(copied),
+      book,
+      lookups({ dealsByParticipant: async () => [deal('deal-1')] }),
+      auto
+    );
+    expect(m).toMatchObject({
+      dealId: 'deal-1',
+      matchedBy: 'participant',
+      accepted: true,
+      explicit: false,
+    });
+  });
+
+  test('the seller’s plain Reply is kept too', async () => {
+    const m = await resolveDeal(
+      email(fromJane),
+      book,
+      lookups({ dealsByParticipant: async () => [deal('deal-1')] }),
+      auto
+    );
+    expect(m).toMatchObject({ dealId: 'deal-1', accepted: true });
+  });
+
+  test('a founder’s email to anyone else is ignored, not stored unfiled', async () => {
+    const m = await resolveDeal(
+      email({ ...copied, TextBody: 'Lunch on Friday?' }),
+      book,
+      lookups(),
+      auto
+    );
+    expect(m).toMatchObject({ dealId: null, accepted: false, explicit: false });
+  });
+
+  test('…but the same email WITH the log in CC still waits for a deal', async () => {
+    const m = await resolveDeal(
+      email({ TextBody: 'Lunch on Friday?' }),
+      book,
+      lookups(),
+      auto
+    );
+    expect(m).toMatchObject({ dealId: null, accepted: true, explicit: true });
+  });
+
+  test('ordinary inbound mail is ignored', async () => {
+    const m = await resolveDeal(
+      email({
+        ...copied,
+        From: 'news@shop.example',
+        FromFull: { Email: 'news@shop.example' },
+        ToFull: [{ Email: FOUNDER }],
+        TextBody: 'Our winter sale. Visit M14 5AB.',
+      }),
+      book,
+      lookups({ dealsByPostcode: async () => [deal('deal-1')] }),
+      auto
+    );
+    expect(m).toMatchObject({ dealId: null, accepted: false, explicit: false });
+  });
+
+  test('a note between founders is never picked up, even in a deal’s thread', async () => {
+    const m = await resolveDeal(
+      email({
+        ...copied,
+        ToFull: [{ Email: 'ant@wearekept.co.uk' }],
+        To: 'ant@wearekept.co.uk',
+        TextBody: 'She is stalling on M14 5AB. Let us wait.',
+        Headers: [
+          { Name: 'Message-ID', Value: '<note@x>' },
+          { Name: 'In-Reply-To', Value: '<root@mail.gmail.com>' },
+        ],
+      }),
+      book,
+      {
+        dealById: never,
+        threadFor: never,
+        dealsByParticipant: never,
+        dealsByPostcode: never,
+      },
+      auto
+    );
+    expect(m).toMatchObject({ accepted: false, explicit: false });
+  });
+
+  test('a colleague at our domain who is not on the list is not the other side', async () => {
+    const m = await resolveDeal(
+      email({
+        ...copied,
+        ToFull: [{ Email: 'assistant@wearekept.co.uk' }],
+        To: 'assistant@wearekept.co.uk',
+      }),
+      book,
+      {
+        dealById: never,
+        threadFor: never,
+        dealsByParticipant: never,
+        dealsByPostcode: never,
+      },
+      auto
+    );
+    expect(m.accepted).toBe(false);
+  });
+
+  test('a founder writing to a surveyor about a home: the postcode keeps it', async () => {
+    const m = await resolveDeal(
+      email({
+        ...copied,
+        ToFull: [{ Email: 'surveys@firm.example' }],
+        To: 'surveys@firm.example',
+        TextBody: 'Could you quote for a survey of 12 Acacia Avenue, M14 5AB?',
+      }),
+      book,
+      lookups({ dealsByPostcode: async () => [deal('deal-1')] }),
+      auto
+    );
+    expect(m).toMatchObject({
+      dealId: 'deal-1',
+      matchedBy: 'postcode',
+      accepted: true,
+      explicit: false,
+    });
+  });
+
+  test('…and the surveyor’s reply follows by thread', async () => {
+    const m = await resolveDeal(
+      email({
+        ...copied,
+        From: 'surveys@firm.example',
+        FromFull: { Email: 'surveys@firm.example' },
+        ToFull: [{ Email: FOUNDER }],
+        TextBody: 'Happy to. £450.',
+        Headers: [
+          { Name: 'Message-ID', Value: '<quote@x>' },
+          { Name: 'In-Reply-To', Value: '<root@mail.gmail.com>' },
+        ],
+      }),
+      book,
+      lookups({
+        threadFor: async () => ({
+          threadKey: 'root@mail.gmail.com',
+          dealId: 'deal-1',
+        }),
+      }),
+      auto
+    );
+    expect(m).toMatchObject({ dealId: 'deal-1', matchedBy: 'thread' });
+  });
+
+  test('one solicitor on two purchases: kept, and left for a person', async () => {
+    const m = await resolveDeal(
+      email({ ...fromJane, TextBody: 'Enquiries attached.' }),
+      book,
+      lookups({
+        dealsByParticipant: async () => [deal('a'), deal('b', 'SW1A 1AA')],
+      }),
+      auto
+    );
+    expect(m).toMatchObject({ dealId: null, accepted: true, explicit: false });
+  });
+
+  test('a BCC to a deal’s own address is deliberate', async () => {
+    const m = await resolveDeal(
+      email({
+        ...copied,
+        ToFull: [{ Email: 'friend@example.org' }],
+        MailboxHash: DEAL_ID,
+        OriginalRecipient: `log+${DEAL_ID}@in.wearekept.co.uk`,
+      }),
+      book,
+      lookups({ dealById: async () => deal(DEAL_ID) }),
+      auto
+    );
+    expect(m).toMatchObject({
+      dealId: DEAL_ID,
+      matchedBy: 'deal_tag',
+      explicit: true,
+    });
   });
 });
 

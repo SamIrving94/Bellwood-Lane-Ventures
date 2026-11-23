@@ -58,6 +58,10 @@ export const WHATS_NEW: WhatsNewEntry[] = [
         text: 'Mail we **turn away** is listed, so nothing vanishes quietly. If it is your own address, you get a card.',
       },
       {
+        emoji: '🤖',
+        text: '**Optional: the automatic copy.** Google can copy your mailbox to the log, so you never CC again. Only deal mail is kept. The rest leaves no trace.',
+      },
+      {
         emoji: '🛠️',
         text: 'It needs a **one-time switch-on**. The email log page says what is left to do.',
       },

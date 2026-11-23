@@ -199,3 +199,36 @@ export function companyAccount(
   }
   return null;
 }
+
+// ───────────────────────────────────────────────────────────────────────────
+// The automatic copy (Google Workspace → log address)
+// ───────────────────────────────────────────────────────────────────────────
+
+export type AutoCopyStatus = {
+  lastSeenAt: Date;
+  /** No copied email for over a day. A mailbox is rarely that quiet. */
+  quiet: boolean;
+};
+
+/**
+ * Read the webhook's "last mailbox copy seen" mark (Setting
+ * `deal_email_auto_copy`). Null when the automatic copy has never delivered
+ * anything, which is also what it looks like when it is not switched on.
+ */
+export function autoCopyStatus(
+  value: unknown,
+  now: Date = new Date()
+): AutoCopyStatus | null {
+  const raw = (value as { lastSeenAt?: unknown } | null)?.lastSeenAt;
+  if (typeof raw !== 'string') {
+    return null;
+  }
+  const lastSeenAt = new Date(raw);
+  if (Number.isNaN(lastSeenAt.getTime())) {
+    return null;
+  }
+  return {
+    lastSeenAt,
+    quiet: now.getTime() - lastSeenAt.getTime() > 24 * 60 * 60 * 1000,
+  };
+}

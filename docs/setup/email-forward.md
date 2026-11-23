@@ -41,10 +41,98 @@ matching. They only open a draft; a person writes and sends it.
 - The other side presses Reply, not Reply-all. Their answer reaches you but
   not the log.
 
-The fix for both is to have Google Workspace copy the mailbox's mail to the
-log address automatically. **Do not turn that on yet**: the webhook would
-store every non-deal email you send as "needs a deal". It needs a change
-first.
+The fix for both is **the automatic copy**, below.
+
+---
+
+## The automatic copy (optional)
+
+Google Workspace copies everything your mailbox sends and receives to the log
+address. Nobody has to remember the CC, and a plain Reply is caught too.
+
+**That is your whole mailbox, so the rule for a copy is stricter.** With the
+switch on, an email that was not addressed to the log is kept only when it is
+deal mail:
+
+| A copied email is kept when | Example |
+|:--|:--|
+| it is **to or from a deal's seller or solicitor** | you email the seller; the seller replies |
+| it **continues a conversation already in the log** | a surveyor replies in a thread you started |
+| **you wrote it** to someone outside, and a full **postcode names one deal** | you ask a surveyor to quote for "M14 5AB" |
+
+**Everything else is ignored and leaves no trace.** No row, no card, not
+listed under Turned away. Newsletters, friends, your accountant: nothing.
+
+Two more rules:
+
+- **A note between founders is never picked up**, even inside a deal's
+  thread, even with a postcode. Want it on the deal? CC the log as before.
+- **A deliberate CC behaves exactly as it always did.** It is always kept,
+  and waits under "Needs a deal" if no single deal matches.
+
+### What it costs
+
+- **All of the mailbox's mail passes through Postmark** on its way to us, and
+  Postmark keeps its own copy for its retention period (45 days by default,
+  as I understand it; check your Postmark settings). Only deal mail is kept
+  by us.
+- **Volume.** The free Postmark tier is about 100 inbound emails a month. A
+  whole mailbox is far more, so this needs a paid plan. Check Postmark's
+  current pricing before switching on.
+- **The privacy notice** should say correspondence is processed this way.
+  Worth a read by Counsel.
+
+### Switch it on, in this order
+
+1. **Deploy this code and run `pnpm migrate`.**
+2. **Vercel → `bellwood-api`:** set `DEAL_LOG_AUTO_COPY` to `on`, and
+   `DEAL_LOG_ADDRESS` to the log address. Check that
+   `EMAIL_FORWARD_ALLOWLIST` lists **every mailbox the rule will copy**.
+   Redeploy.
+3. **Only then, the Google Workspace rule.** In the Admin console
+   (admin.google.com): Apps → Google Workspace → Gmail → **Routing** → add a
+   rule:
+   - Messages to affect: **Inbound** and **Outbound**.
+   - Action: **Also deliver to** → Add more recipients → the log address.
+   - Scope it to the founders' mailboxes (the organisational unit they are
+     in), not the whole company, if there are other users.
+   - _These menu names are from memory. Google's help pages could not be
+     opened from the build environment, so treat them as a guide, not a
+     script._
+4. **Check it.** Send any email. Within a few minutes `/deals/email-log`
+   shows **"Automatic copy is on. Last email seen …"**. Then email a seller
+   who is on a deal, with no CC, and see it land on that deal.
+
+**Step 3 before step 2 is the mistake to avoid.** Without the switch, every
+email you send is treated as addressed to the log and becomes a "needs a
+deal" card.
+
+**To switch it off:** remove the Google rule first, then unset
+`DEAL_LOG_AUTO_COPY`.
+
+### Knowing it is still working
+
+- The log page shows when the last copied email was seen.
+- **No copied email for over a day** turns that into an amber warning: check
+  the Google rule. Until it is back, only CC'd emails are stored.
+- A mailbox the rule copies that is **not on the founder list** raises a
+  card. Its incoming deal mail is still kept, but the emails it *sends* to
+  sellers are not, until it is added.
+
+### Taking an email back out
+
+Capture is automatic, so there is a way to undo it. On `/deals/email-log`
+every email has **Not deal mail? → Remove this email**. It deletes our copy
+and its stored attachments. Your mailbox still has it. It cannot be undone.
+
+One thing it cannot do: stop the *next* email. A later message from the same
+seller or solicitor, or in the same conversation, is kept again.
+
+### With the switch on, a BCC changes
+
+A BCC looks exactly like a mailbox copy (the address is not in the headers).
+So with the switch on, a BCC'd email that matches no deal is **ignored**
+instead of waiting to be filed. A BCC to a deal's own address still files.
 
 ---
 
@@ -158,7 +246,8 @@ In Postmark: **Inbound stream → Webhook**.
 | `POSTMARK_INBOUND_USER` | The Basic Auth username you set in Postmark |
 | `POSTMARK_INBOUND_PASS` | The Basic Auth password you set in Postmark |
 | `EMAIL_FORWARD_ALLOWLIST` | The founders' sending addresses, comma-separated. **Must include the address you actually send from** (`sam@wearekept.co.uk`). |
-| `DEAL_LOG_ADDRESS` | The log address, e.g. `log@in.wearekept.co.uk`. Optional here; needed only if a vanity address forwards to Postmark's own `…@inbound.postmarkapp.com` address. |
+| `DEAL_LOG_ADDRESS` | The log address, e.g. `log@in.wearekept.co.uk`. Optional for CC-only use; **set it when the automatic copy is on**, and whenever a vanity address forwards to Postmark's own `…@inbound.postmarkapp.com` address. |
+| `DEAL_LOG_AUTO_COPY` | `on` only when Google Workspace copies the mailbox to the log. See "The automatic copy". Leave unset otherwise. |
 | `OPENROUTER_API_KEY` | Already set. Drives the two-line read. |
 | `RESEND_TOKEN` + `RESEND_FROM` | Already set. Sends the forward acknowledgement. |
 | `Deal_Blob_STORE_ID` | The uploads store, for attachments. Already connected if quote PDFs render. |

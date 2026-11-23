@@ -70,6 +70,14 @@ export const env = createEnv({
      */
     DEAL_LOG_ADDRESS: z.string().optional(),
     /**
+     * `on` when Google Workspace copies the founders' mailbox to the log
+     * address. The webhook then keeps a copy only when it is deal mail and
+     * ignores the rest. Leave unset otherwise: with it on, a BCC that matches
+     * no deal is ignored instead of waiting to be filed. Set
+     * DEAL_LOG_ADDRESS too, so a deliberate CC is always recognised.
+     */
+    DEAL_LOG_AUTO_COPY: z.enum(['on', 'off']).optional(),
+    /**
      * Reddit "script" app credentials for /cron/guide-research. Reddit
      * blocks anonymous JSON, so without these the Reddit source is skipped
      * and the weekly brief says so. Register at reddit.com/prefs/apps.
@@ -90,6 +98,7 @@ export const env = createEnv({
     POSTMARK_INBOUND_PASS: process.env.POSTMARK_INBOUND_PASS,
     EMAIL_FORWARD_ALLOWLIST: process.env.EMAIL_FORWARD_ALLOWLIST,
     DEAL_LOG_ADDRESS: process.env.DEAL_LOG_ADDRESS,
+    DEAL_LOG_AUTO_COPY: process.env.DEAL_LOG_AUTO_COPY,
     REDDIT_CLIENT_ID: process.env.REDDIT_CLIENT_ID,
     REDDIT_CLIENT_SECRET: process.env.REDDIT_CLIENT_SECRET,
     REDDIT_USER_AGENT: process.env.REDDIT_USER_AGENT,

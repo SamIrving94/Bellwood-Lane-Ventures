@@ -344,21 +344,19 @@ export function isOwnAddress(
 }
 
 /**
- * Is the sender at the domain our log address hangs off? Mail received at
- * `log@in.wearekept.co.uk` from `someone@wearekept.co.uk` is almost always a
- * founder whose address is missing from the allowlist, and that failure is
- * total and silent: every email they copy the log on is refused. The webhook
- * raises a card for it.
+ * Is this address at the domain our log address hangs off? Mail received at
+ * `log@in.wearekept.co.uk` puts `someone@wearekept.co.uk` at our own domain.
  *
  * Postmark's own `…@inbound.postmarkapp.com` address says nothing about OUR
  * domain, so it is never used as evidence.
  */
-export function looksOurs(
-  email: Pick<NormalisedEmail, 'fromEmail' | 'originalRecipient'>,
+function isOurDomain(
+  address: string,
+  email: Pick<NormalisedEmail, 'originalRecipient'>,
   book: AddressBook
 ): boolean {
-  const sender = domainOf(email.fromEmail);
-  if (!sender.includes('.')) {
+  const domain = domainOf(normaliseAddress(address));
+  if (!domain.includes('.')) {
     return false;
   }
   const received = [
@@ -369,11 +367,57 @@ export function looksOurs(
     .filter((d) => !d.endsWith('postmarkapp.com'));
   // The same domain, or its direct parent: `in.wearekept.co.uk` ←
   // `wearekept.co.uk`. Not any suffix, or `co.uk` would count as ours.
-  const labels = sender.split('.').length;
+  const labels = domain.split('.').length;
   return received.some(
     (d) =>
-      d === sender ||
-      (d.endsWith(`.${sender}`) && d.split('.').length === labels + 1)
+      d === domain ||
+      (d.endsWith(`.${domain}`) && d.split('.').length === labels + 1)
+  );
+}
+
+/**
+ * Is the SENDER at our own domain? When such a sender is not on the founder
+ * list it is almost always a founder address missing from the allowlist, and
+ * that failure is total and silent: every email they copy the log on is
+ * refused. The webhook raises a card for it.
+ */
+export function looksOurs(
+  email: Pick<NormalisedEmail, 'fromEmail' | 'originalRecipient'>,
+  book: AddressBook
+): boolean {
+  return isOurDomain(email.fromEmail, email, book);
+}
+
+/**
+ * Did someone put the log address on this email (To or CC), or did a copy
+ * simply arrive? The difference matters once Google Workspace copies the
+ * whole mailbox to the log: a deliberate CC is always worth keeping, a
+ * mailbox copy only when it is deal mail. See `resolveDeal`.
+ *
+ * A BCC looks exactly like a mailbox copy (the address is on the envelope,
+ * not in the headers), so it is treated as one.
+ *
+ * When we have no way to recognise our own address (no DEAL_LOG_ADDRESS, and
+ * the copy came in on Postmark's hash address) this answers TRUE. Getting it
+ * wrong that way costs a visible "needs a deal" card; the other way would
+ * silently lose a deliberate CC.
+ */
+export function addressedToLog(
+  email: Pick<NormalisedEmail, 'toEmails' | 'ccEmails' | 'originalRecipient'>,
+  book: AddressBook
+): boolean {
+  const received = email.originalRecipient;
+  const receivedDomain =
+    received && !received.endsWith('postmarkapp.com')
+      ? domainOf(received)
+      : null;
+  if (book.logAddresses.size === 0 && receivedDomain === null) {
+    return true;
+  }
+  return [...email.toEmails, ...email.ccEmails].some(
+    (a) =>
+      book.logAddresses.has(stripTag(a)) ||
+      (receivedDomain !== null && domainOf(a) === receivedDomain)
   );
 }
 
@@ -395,6 +439,18 @@ export function otherParties(
  * - `outbound`: a founder wrote to someone and copied the log.
  * - `inbound`: anyone else.
  */
+/**
+ * Everyone on the email from OUTSIDE the company: `otherParties` minus
+ * anyone at our own domain. A colleague who is not on the founder list is
+ * still not the other side of a deal.
+ */
+export function outsideParties(
+  email: NormalisedEmail,
+  book: AddressBook
+): string[] {
+  return otherParties(email, book).filter((a) => !isOurDomain(a, email, book));
+}
+
 export function directionOf(
   email: NormalisedEmail,
   book: AddressBook
@@ -436,11 +492,29 @@ export type DealMatch = {
   matchedBy: MatchedBy | null;
   threadKey: string;
   /**
-   * Whether to keep the email at all. Always true for a founder. For anyone
-   * else: only when it continues a thread we hold, carries a real deal's own
-   * address, or the SENDER is a deal's seller or solicitor.
+   * Whether to keep the email at all. For an email addressed to the log:
+   * always true for a founder; for anyone else only when it continues a
+   * thread we hold, carries a real deal's own address, or the SENDER is a
+   * deal's seller or solicitor. For a mailbox copy (automatic copy on): only
+   * when it is deal mail.
    */
   accepted: boolean;
+  /**
+   * True when the email was addressed to the log (To, CC, or a deal's own
+   * address). False for a mailbox copy. A refused explicit email is worth
+   * showing a founder; a mailbox copy that is not deal mail is nobody's
+   * business and leaves no trace.
+   */
+  explicit: boolean;
+};
+
+export type ResolveOptions = {
+  /**
+   * Google Workspace is copying the founders' mailbox to the log
+   * (DEAL_LOG_AUTO_COPY=on). Off by default: without it every email counts
+   * as addressed to the log, which is how the log behaved before.
+   */
+  autoCopy?: boolean;
 };
 
 /**
@@ -478,13 +552,41 @@ export function pickOne(
  *   4. postcode     — a full postcode in the text names exactly one deal
  *
  * A postcode never makes a stranger's email acceptable: anyone can type one.
+ *
+ * TWO KINDS OF EMAIL, once the automatic copy is on (`opts.autoCopy`):
+ *
+ *  - ADDRESSED TO THE LOG (someone put it in To or CC, or used a deal's own
+ *    address). A founder's is always kept; with no single deal it waits
+ *    unfiled for a person. This is the only kind when autoCopy is off.
+ *
+ *  - A MAILBOX COPY (Google Workspace copied it; the log is not in To/CC).
+ *    This is the founders' whole mailbox, so it is kept only when it is deal
+ *    mail: it continues a conversation we hold, it is to or from a deal's
+ *    seller or solicitor, or a founder wrote it and a postcode names one
+ *    deal. It must also involve someone OUTSIDE the company: a note between
+ *    founders is never picked up unasked, even inside a deal's thread.
+ *    Anything else is ignored and leaves no trace.
  */
 export async function resolveDeal(
   email: NormalisedEmail,
   book: AddressBook,
-  lookups: DealLookups
+  lookups: DealLookups,
+  opts: ResolveOptions = {}
 ): Promise<DealMatch> {
   const senderIsFounder = book.founders.has(email.fromEmail);
+  const explicit =
+    !opts.autoCopy || email.dealTag !== null || addressedToLog(email, book);
+
+  // Decided before any database call: most of a mailbox ends here.
+  if (!explicit && outsideParties(email, book).length === 0) {
+    return {
+      dealId: null,
+      matchedBy: null,
+      threadKey: email.references[0] ?? email.inReplyTo ?? email.messageId,
+      accepted: false,
+      explicit,
+    };
+  }
 
   const ancestors = unique(
     [email.inReplyTo, ...email.references].filter(
@@ -507,6 +609,7 @@ export async function resolveDeal(
         matchedBy: 'deal_tag',
         threadKey,
         accepted: true,
+        explicit,
       };
     }
   }
@@ -517,6 +620,7 @@ export async function resolveDeal(
       matchedBy: 'thread',
       threadKey,
       accepted: true,
+      explicit,
     };
   }
 
@@ -527,7 +631,10 @@ export async function resolveDeal(
     : [email.fromEmail];
   const partyDeals =
     parties.length > 0 ? await lookups.dealsByParticipant(parties) : [];
-  const accepted = senderIsFounder || thread !== null || partyDeals.length > 0;
+  // Being a founder is enough to keep an email they addressed to the log. It
+  // is NOT enough for a mailbox copy, or every email they send would be kept.
+  const accepted =
+    (explicit && senderIsFounder) || thread !== null || partyDeals.length > 0;
 
   const byParty = pickOne(partyDeals, email.postcodes);
   if (byParty) {
@@ -536,6 +643,7 @@ export async function resolveDeal(
       matchedBy: 'participant',
       threadKey,
       accepted: true,
+      explicit,
     };
   }
 
@@ -543,10 +651,13 @@ export async function resolveDeal(
   // text did not settle it. Do not let a postcode pick a deal OUTSIDE that
   // set; leave it for a person.
   if (partyDeals.length > 0) {
-    return { dealId: null, matchedBy: null, threadKey, accepted };
+    return { dealId: null, matchedBy: null, threadKey, accepted, explicit };
   }
 
-  if (accepted && email.postcodes.length > 0) {
+  // A postcode can place an email we are keeping anyway, and it can make a
+  // founder's own mailbox copy worth keeping (they wrote to a surveyor about
+  // the home). It never does that for a stranger's.
+  if (email.postcodes.length > 0 && (accepted || senderIsFounder)) {
     const byPostcode = pickOne(
       await lookups.dealsByPostcode(email.postcodes),
       email.postcodes
@@ -556,12 +667,13 @@ export async function resolveDeal(
         dealId: byPostcode.id,
         matchedBy: 'postcode',
         threadKey,
-        accepted,
+        accepted: true,
+        explicit,
       };
     }
   }
 
-  return { dealId: null, matchedBy: null, threadKey, accepted };
+  return { dealId: null, matchedBy: null, threadKey, accepted, explicit };
 }
 
 // ───────────────────────────────────────────────────────────────────────────

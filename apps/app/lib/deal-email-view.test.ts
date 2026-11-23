@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   type EmailRow,
+  autoCopyStatus,
   companyAccount,
   dealLogAddress,
   gmailComposeUrl,
@@ -188,5 +189,27 @@ describe('companyAccount', () => {
     expect(companyAccount(['sam@gmail.com'], log)).toBeNull();
     expect(companyAccount([], log)).toBeNull();
     expect(companyAccount(['x@co.uk'], log)).toBeNull();
+  });
+});
+
+describe('autoCopyStatus', () => {
+  const now = new Date('2026-11-23T12:00:00Z');
+
+  it('reads the last-seen mark', () => {
+    expect(autoCopyStatus({ lastSeenAt: '2026-11-23T11:30:00Z' }, now)).toEqual(
+      { lastSeenAt: new Date('2026-11-23T11:30:00Z'), quiet: false }
+    );
+  });
+
+  it('flags a mailbox that has been silent for over a day', () => {
+    expect(
+      autoCopyStatus({ lastSeenAt: '2026-11-21T09:00:00Z' }, now)?.quiet
+    ).toBe(true);
+  });
+
+  it('is null when there is no mark, or it is not a date', () => {
+    expect(autoCopyStatus(null, now)).toBeNull();
+    expect(autoCopyStatus({}, now)).toBeNull();
+    expect(autoCopyStatus({ lastSeenAt: 'soon' }, now)).toBeNull();
   });
 });

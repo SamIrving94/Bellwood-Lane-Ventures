@@ -177,7 +177,12 @@ Run a task for one workspace with a filter, e.g.
   the wrong deal is a privacy problem. Mail from a non-founder is kept only
   when it belongs to a thread or deal we already know. The model's read of
   an email (`deal_email_digest`) is display-only; nothing is drafted or
-  sent from it. Setup: `docs/setup/email-forward.md`.
+  sent from it. With `DEAL_LOG_AUTO_COPY=on` Google Workspace copies the
+  founders' whole mailbox to the log: a copy that was not addressed to the
+  log is kept ONLY when it is deal mail, and otherwise leaves no trace (no
+  row, no card, not listed as turned away). Never store, list or summarise
+  ignored mailbox mail, and never pick up a note between founders unasked.
+  Setup: `docs/setup/email-forward.md`.
 - **The AVM never values without a sale.** `runAVM` tries PropertyData
   radius comps → Land Registry postcode → Land Registry postcode **sector**
   (free SPARQL, low confidence) and, if all three are empty, throws

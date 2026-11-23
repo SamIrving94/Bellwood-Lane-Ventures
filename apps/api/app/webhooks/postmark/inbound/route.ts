@@ -56,6 +56,12 @@ import { digestDealEmail } from '../_lib/digest';
  *   5. Keep the attachments, store the email.
  *   6. After responding: a two-line read of it (feature `deal_email_digest`).
  *
+ *   C. THE AUTOMATIC COPY (optional, DEAL_LOG_AUTO_COPY=on). Google
+ *      Workspace copies the founders' mailbox to the log, so nobody has to
+ *      remember the CC and a plain Reply is caught too. That is the whole
+ *      mailbox, so a copy is kept only when it is deal mail and anything
+ *      else leaves no trace. See `resolveDeal`.
+ *
  * Nothing here sends anything to a seller, and nothing is drafted.
  *
  * Postmark config (one-time, docs/setup/email-forward.md): point the inbound
@@ -273,9 +279,18 @@ async function recordTurnedAway(
     },
   });
 
-  if (!ours) {
-    return;
+  if (ours) {
+    await raiseAllowlistCard(email.fromEmail);
   }
+}
+
+/**
+ * One card a week, per address, while a sender at our own domain is not on
+ * the founder list. It closes itself when an email from the address gets
+ * through (see the after() block in the handler).
+ */
+async function raiseAllowlistCard(fromEmail: string): Promise<void> {
+  const week = Math.floor(Date.now() / (7 * DAY_MS));
   try {
     await database.founderAction.create({
       data: {
@@ -283,15 +298,15 @@ async function recordTurnedAway(
         priority: 'high',
         status: 'pending',
         agent: 'system',
-        title: `Emails from ${email.fromEmail} are not being logged`,
+        title: `Emails from ${fromEmail} are not being logged`,
         description: [
-          'The email log turned this sender away because the address is not on the founder list.',
+          'This sender is at our own domain but is not on the founder list, so the email log does not treat its mail as ours.',
           '',
-          'If it is one of yours: add it to EMAIL_FORWARD_ALLOWLIST on the bellwood-api project in Vercel, then redeploy. Until then every email it copies the log on is refused.',
+          'If it is one of yours: add it to EMAIL_FORWARD_ALLOWLIST on the bellwood-api project in Vercel, then redeploy. Until then the emails it sends are not stored.',
           '',
-          'If it is not one of yours, dismiss this card.',
+          'If its mail should not be logged: dismiss this card. If Google Workspace is copying that mailbox to the log, take it out of the rule.',
         ].join('\n'),
-        dedupKey: `${ALLOWLIST_CARD_KEY}:${email.fromEmail}:${Math.floor(now / (7 * DAY_MS))}`,
+        dedupKey: `${ALLOWLIST_CARD_KEY}:${fromEmail}:${week}`,
         metadata: { link: '/deals/email-log', sourceType: 'deal_email' },
       },
     });
@@ -300,6 +315,22 @@ async function recordTurnedAway(
     if (!isUniqueViolation(err)) {
       console.warn('[postmark/inbound] FounderAction create failed', err);
     }
+  }
+}
+
+/** Setting row the log page reads to show the automatic copy is alive. */
+const AUTO_COPY_SETTING = 'deal_email_auto_copy';
+
+async function markAutoCopySeen(): Promise<void> {
+  try {
+    const value = { lastSeenAt: new Date().toISOString() };
+    await database.setting.upsert({
+      where: { key: AUTO_COPY_SETTING },
+      create: { key: AUTO_COPY_SETTING, value },
+      update: { value },
+    });
+  } catch (err) {
+    console.warn('[postmark/inbound] could not mark automatic copy seen', err);
   }
 }
 
@@ -355,7 +386,29 @@ export const POST = async (request: Request) => {
     return NextResponse.json({ success: true, duplicate: true });
   }
 
-  const match = await resolveDeal(email, book, lookups);
+  const autoCopy = env.DEAL_LOG_AUTO_COPY === 'on';
+  const match = await resolveDeal(email, book, lookups, { autoCopy });
+
+  // A mailbox copy arrived, kept or not: proof the Google Workspace rule is
+  // still copying. The log page shows when the last one was seen.
+  if (!match.explicit) {
+    after(markAutoCopySeen);
+  }
+
+  if (!match.accepted && !match.explicit) {
+    // The founders' ordinary mail. Not deal mail, so nothing about it is
+    // kept: no row, no card, not even its sender. The one exception is a
+    // sender at our own domain who is not on the founder list, because then
+    // the emails THEY send to sellers are being missed.
+    if (looksOurs(email, book) && !book.founders.has(email.fromEmail)) {
+      try {
+        await raiseAllowlistCard(email.fromEmail);
+      } catch (err) {
+        console.warn('[postmark/inbound] allowlist card failed', err);
+      }
+    }
+    return NextResponse.json({ success: true, ignored: true });
+  }
 
   // Anti-spam: silently 200 mail we have no reason to keep, so nobody can
   // probe the address. The SENDER never learns anything; a founder can see
@@ -373,8 +426,47 @@ export const POST = async (request: Request) => {
   }
 
   const direction = directionOf(email, book);
-  const isForward = direction === 'forward';
+  // The forward flow (read the PDF, acknowledge) is for a founder who WROTE
+  // TO the log. A mailbox copy is never one.
+  const isForward = match.explicit && direction === 'forward';
   const dealId = match.dealId;
+
+  // ── Claim the email first. Once the mailbox is copied to the log, an email
+  // that also has the log in CC arrives twice within seconds; whichever copy
+  // creates the row keeps going and the other stops here, before it uploads
+  // a second set of attachments. A failure is a 500 on purpose: Postmark
+  // retries, and a retried email is better than a lost one. ─────────────────
+  let emailId: string;
+  try {
+    const row = await database.dealEmail.create({
+      data: {
+        dealId,
+        messageId: email.messageId,
+        inReplyTo: email.inReplyTo,
+        references: email.references,
+        threadKey: match.threadKey,
+        direction,
+        fromEmail: email.fromEmail,
+        fromName: email.fromName,
+        toEmails: email.toEmails,
+        ccEmails: email.ccEmails,
+        subject: email.subject,
+        bodyText: email.bodyText,
+        replyText: email.replyText,
+        sentAt: email.sentAt,
+        matchedBy: match.matchedBy,
+        attachments: [],
+      },
+      select: { id: true },
+    });
+    emailId = row.id;
+  } catch (err) {
+    // Two copies of one email raced past the check above. The other won.
+    if (isUniqueViolation(err)) {
+      return NextResponse.json({ success: true, duplicate: true });
+    }
+    throw err;
+  }
 
   // ── Attachments: keep every real file; read PDFs on a forward ────────────
   const stored: StoredAttachment[] = [];
@@ -482,38 +574,15 @@ export const POST = async (request: Request) => {
     stored.push(record);
   }
 
-  // ── Store the email. A failure here is a 500 on purpose: Postmark retries,
-  // and a retried email is better than a lost one. ───────────────────────────
-  let emailId: string;
-  try {
-    const row = await database.dealEmail.create({
-      data: {
-        dealId,
-        messageId: email.messageId,
-        inReplyTo: email.inReplyTo,
-        references: email.references,
-        threadKey: match.threadKey,
-        direction,
-        fromEmail: email.fromEmail,
-        fromName: email.fromName,
-        toEmails: email.toEmails,
-        ccEmails: email.ccEmails,
-        subject: email.subject,
-        bodyText: email.bodyText,
-        replyText: email.replyText,
-        sentAt: email.sentAt,
-        matchedBy: match.matchedBy,
-        attachments: JSON.parse(JSON.stringify(stored)),
-      },
-      select: { id: true },
-    });
-    emailId = row.id;
-  } catch (err) {
-    // Two copies of one email raced past the check above. The other won.
-    if (isUniqueViolation(err)) {
-      return NextResponse.json({ success: true, duplicate: true });
+  if (stored.length > 0) {
+    try {
+      await database.dealEmail.update({
+        where: { id: emailId },
+        data: { attachments: JSON.parse(JSON.stringify(stored)) },
+      });
+    } catch (err) {
+      console.warn('[postmark/inbound] could not save attachment list', err);
     }
-    throw err;
   }
 
   const unfiledKey = `deal_email_unfiled:${match.threadKey}`;
