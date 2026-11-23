@@ -170,21 +170,24 @@ Run a task for one workspace with a filter, e.g.
 - **Safety rails (do not break these):** vendor emails are always held for
   founder review (`OutreachHold`); CEO escalation fires for offers <60% of AVM;
   SLA breaches are deduplicated so they don't spawn duplicate `FounderAction`s.
-- **The email log never guesses a deal.** A founder CCs the log address
-  and Postmark posts the email to `/webhooks/postmark/inbound`; it is stored
-  on a deal (`DealEmail`) only when that deal is the ONLY candidate
-  (`resolveDeal`: deal's own address → thread → seller/solicitor email →
-  full postcode). Otherwise it waits unfiled at `/deals/email-log`. Do not
-  widen the match (outward codes, "most recent deal"): a seller's email on
-  the wrong deal is a privacy problem. Mail from a non-founder is kept only
-  when it belongs to a thread or deal we already know. The model's read of
-  an email (`deal_email_digest`) is display-only; nothing is drafted or
-  sent from it. With `DEAL_LOG_AUTO_COPY=on` Google Workspace copies the
-  founders' whole mailbox to the log: a copy that was not addressed to the
-  log is kept ONLY when it is deal mail, and otherwise leaves no trace (no
-  row, no card, not listed as turned away). Never store, list or summarise
-  ignored mailbox mail, and never pick up a note between founders unasked.
-  Setup: `docs/setup/email-forward.md`.
+- **The email log reads Gmail, keeps only deal mail, and never guesses a
+  deal** (founder, 23 Nov 2026: no Postmark, no address to CC). The
+  google-sync cron runs `importDealMail` (`@repo/google`), which reads the
+  Kept mailbox through the Google connection and stores an email
+  (`DealEmail`) ONLY when it is deal mail: it continues a conversation
+  already in the log, it is to or from a deal's seller or solicitor, or we
+  wrote it to someone outside and a full postcode names one deal. Everything
+  else is ignored and leaves no trace: do not store, list or summarise it,
+  and never fetch its body (the importer decides on headers). A note between
+  colleagues is never picked up unasked; the override is the founder's
+  `Kept/Log` label in Gmail. An email is filed only when that deal is the
+  ONLY candidate (`resolveDeal`), else it waits unfiled at
+  `/deals/email-log`. Do not widen the match (outward codes, "most recent
+  deal", postcodes in inbound mail): a seller's email on the wrong deal is a
+  privacy problem. It only READS mail; the one change it makes in Gmail is
+  adding `Kept/Logged`. Attachments are listed by name, never copied out of
+  Gmail. The model's read (`deal_email_digest`) is display-only. See
+  `docs/GOOGLE-WORKSPACE.md` § Deal email log.
 - **Google is one connection, to the Kept Workspace account** (founder,
   22 Nov 2026), made from Settings → Google and stored encrypted in
   `Setting`. Personal Gmail accounts are refused at the callback. Gmail is

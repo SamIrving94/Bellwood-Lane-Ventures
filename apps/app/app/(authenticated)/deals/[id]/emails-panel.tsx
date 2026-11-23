@@ -1,8 +1,8 @@
-import type { EmailCardData } from '@/lib/deal-emails';
+import type { EmailCardData } from '@/lib/deal-email-view';
 import Link from 'next/link';
-import { CopyButton } from '../components/copy-button';
 import { EmailCard } from '../components/email-card';
 import { EmailButtons, type EmailRecipient } from './email-buttons';
+import { FindOlderEmails } from './find-older-emails';
 
 /** Emails shown before the rest fold away. */
 const SHOWN_FIRST = 5;
@@ -12,24 +12,24 @@ const SHOWN_FIRST = 5;
 const ONE_EMAIL = /^[^\s@,;]+@[^\s@,;]+\.[^\s@,;]+$/;
 
 /**
- * The deal's email log. Every email a founder copied the log address on,
- * and every reply to it, newest first. Written by the Postmark webhook in
- * apps/api; this panel only reads.
+ * The deal's email log: every email with this deal's seller or solicitor,
+ * and the conversations around them, newest first. Read from the Kept Gmail
+ * mailbox by the google-sync cron (`importDealMail`); this panel only reads
+ * the result.
  */
 export function EmailsPanel({
+  dealId,
   emails,
-  logAddress,
-  dealAddress,
+  google,
   sellerEmail,
   solicitorEmail,
   subject,
 }: {
+  dealId: string;
   /** Null when the log table is not there yet (run `pnpm migrate`). */
   emails: EmailCardData[] | null;
-  /** The address to CC. Null when DEAL_LOG_ADDRESS is not set. */
-  logAddress: string | null;
-  /** This deal's own tagged address. Null when there is no log address. */
-  dealAddress: string | null;
+  /** The Google connection the log reads through. */
+  google: { connected: boolean; broken: boolean; email: string | null };
   sellerEmail: string | null;
   solicitorEmail: string | null;
   /** Subject for an email started here: the property. */
@@ -39,6 +39,7 @@ export function EmailsPanel({
     { label: 'seller', email: sellerEmail?.trim() ?? '' },
     { label: 'solicitor', email: solicitorEmail?.trim() ?? '' },
   ].filter((r) => ONE_EMAIL.test(r.email));
+  const gmailAccount = google.connected ? google.email : null;
 
   const waiting = emails?.filter((e) => e.waitingOnUs).length ?? 0;
   const first = emails?.slice(0, SHOWN_FIRST) ?? [];
@@ -70,34 +71,35 @@ export function EmailsPanel({
           <code className="rounded bg-muted px-1">pnpm migrate</code> once to
           add its table.
         </p>
-      ) : logAddress && dealAddress ? (
+      ) : (
         <div className="mt-3 space-y-2 text-sm">
           <EmailButtons
-            cc={dealAddress}
+            gmailAccount={gmailAccount}
             recipients={recipients}
             subject={subject}
           />
-          <p>
-            <strong>CC</strong>{' '}
-            <code className="rounded bg-muted px-1">{logAddress}</code> on any
-            email about this home. It lands here, and so does every reply.
-          </p>
-          <div className="flex flex-wrap items-center gap-2 text-muted-foreground text-xs">
-            <span>
-              Not filing itself? Use this deal&rsquo;s own address:{' '}
-              <code className="break-all rounded bg-muted px-1">
-                {dealAddress}
-              </code>
-            </span>
-            <CopyButton value={dealAddress} />
-          </div>
+          {google.connected ? (
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+              <p className="min-w-0 flex-1">
+                Kept reads <strong>{google.email}</strong> every 30 minutes.
+                Emails with this deal&rsquo;s seller or solicitor land here on
+                their own. For anything else, put the <strong>Kept/Log</strong>{' '}
+                label on it in Gmail.
+              </p>
+              <FindOlderEmails dealId={dealId} />
+            </div>
+          ) : (
+            <p className="rounded-md border border-amber-300 bg-amber-50 p-3 dark:border-amber-800 dark:bg-amber-950">
+              {google.broken
+                ? 'Google needs reconnecting, so no new emails are being read. '
+                : 'Emails are read from Gmail, and Google is not connected yet. '}
+              <Link className="underline" href="/settings/google">
+                Open Settings → Google
+              </Link>
+              .
+            </p>
+          )}
         </div>
-      ) : (
-        <p className="mt-3 text-muted-foreground text-sm">
-          No log address is set. Add{' '}
-          <code className="rounded bg-muted px-1">DEAL_LOG_ADDRESS</code> to the
-          dashboard project in Vercel to show it here.
-        </p>
       )}
 
       {emails && emails.length === 0 && (
@@ -110,7 +112,7 @@ export function EmailsPanel({
         <ul className="mt-3 space-y-2">
           {first.map((e) => (
             <li key={e.id}>
-              <EmailCard email={e} />
+              <EmailCard email={e} gmailAccount={gmailAccount} />
             </li>
           ))}
         </ul>
@@ -124,7 +126,7 @@ export function EmailsPanel({
           <ul className="mt-2 space-y-2">
             {rest.map((e) => (
               <li key={e.id}>
-                <EmailCard email={e} />
+                <EmailCard email={e} gmailAccount={gmailAccount} />
               </li>
             ))}
           </ul>

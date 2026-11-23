@@ -1,4 +1,4 @@
-import { dealLogAddress, loadDealEmails, logAddress } from '@/lib/deal-emails';
+import { loadDealEmails } from '@/lib/deal-emails';
 import { auth } from '@repo/auth/server';
 import { getBookingLink } from '@repo/calendly';
 import { database } from '@repo/database';
@@ -114,7 +114,6 @@ const DealDetailPage = async ({
   if (!deal) notFound();
 
   const webUrl = process.env.NEXT_PUBLIC_WEB_URL || 'http://localhost:3001';
-  const emailLogAddress = logAddress();
 
   // Chaser draft from the legal-chaser cron, if one is waiting for review.
   const chaserMeta = chaserAction?.metadata as {
@@ -650,13 +649,11 @@ const DealDetailPage = async ({
           }
         />
 
-        {/* Emails — everything the log address was copied on, and replies */}
+        {/* Emails — this deal's mail, read from the Kept Gmail mailbox */}
         <EmailsPanel
-          dealAddress={
-            emailLogAddress ? dealLogAddress(emailLogAddress, deal.id) : null
-          }
+          dealId={deal.id}
           emails={emails}
-          logAddress={emailLogAddress}
+          google={google}
           sellerEmail={deal.sellerEmail}
           solicitorEmail={deal.solicitorEmail}
           subject={`${deal.address}, ${deal.postcode}`}

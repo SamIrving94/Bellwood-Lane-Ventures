@@ -59,7 +59,7 @@ export default async function DocumentsPage() {
           page. Optionally link to an active deal so it lives with the case.
         </p>
         <p className="text-sm text-slate-500">
-          Emails and their attachments are kept on each deal.{' '}
+          Emails with a deal&rsquo;s seller or solicitor are on each deal.{' '}
           <Link className="underline" href="/deals/email-log">
             Open the email log
           </Link>

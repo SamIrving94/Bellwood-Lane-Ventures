@@ -1,8 +1,4 @@
-import {
-  type PutCommandOptions,
-  del as blobDel,
-  put as blobPut,
-} from '@vercel/blob';
+import { type PutCommandOptions, put as blobPut } from '@vercel/blob';
 
 export * from '@vercel/blob';
 
@@ -28,16 +24,4 @@ export const put: typeof blobPut = (pathname, body, options) => {
     ...(storeId ? { storeId } : {}),
   };
   return blobPut(pathname, body, { ...defaults, ...options });
-};
-
-/**
- * Delete through the same store as `put`, for the same reason: an OIDC store
- * has no read-write token, so the SDK must be told which store it is.
- */
-export const del: typeof blobDel = (urlOrPathname, options) => {
-  const storeId = process.env.Deal_Blob_STORE_ID?.trim();
-  return blobDel(urlOrPathname, {
-    ...(storeId ? { storeId } : {}),
-    ...options,
-  });
 };

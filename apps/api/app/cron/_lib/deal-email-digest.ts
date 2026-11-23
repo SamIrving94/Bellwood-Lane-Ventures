@@ -11,8 +11,8 @@
  */
 
 import { CLAUDE_HAIKU, callClaudeForObject } from '@repo/ai/claude';
+import { database } from '@repo/database';
 import { z } from 'zod';
-import type { EmailDirection } from './deal-email';
 
 export const DEAL_EMAIL_DIGEST_FEATURE = 'deal_email_digest';
 
@@ -47,7 +47,7 @@ Return:
 - nextStep: the one next action, at most 15 words, or null when there is none. Never invent a deadline that is not in the email.`;
 
 export type DigestInput = {
-  direction: EmailDirection;
+  direction: 'inbound' | 'outbound';
   fromName: string | null;
   fromEmail: string;
   subject: string;
@@ -59,12 +59,10 @@ export type DigestInput = {
 
 /** The user turn. Exported so the shape is tested without a model call. */
 export function buildDigestPrompt(input: DigestInput): string {
-  const who = {
-    inbound: 'Sent TO Kept by someone outside the company.',
-    outbound: 'Sent BY a Kept founder to someone outside the company.',
-    forward:
-      'Forwarded to the log by a Kept founder. The words may be someone else\u2019s.',
-  }[input.direction];
+  const who =
+    input.direction === 'inbound'
+      ? 'Sent TO Kept by someone outside the company.'
+      : 'Sent BY Kept to someone outside the company.';
   return [
     who,
     input.dealAddress ? `Property: ${input.dealAddress}` : null,
@@ -104,9 +102,60 @@ export async function digestDealEmail(
   return {
     summary: result.summary.trim().slice(0, 500),
     party: result.party,
-    // We wrote it, so nobody is waiting on us for a reply to it. A forward
-    // is usually someone else's words, so the model's read stands.
+    // We wrote it, so nobody is waiting on us for a reply to it.
     needsReply: input.direction === 'outbound' ? false : result.needsReply,
     nextStep: result.nextStep?.trim().slice(0, 200) || null,
   };
+}
+
+/**
+ * Write the read for emails that do not have one yet, newest first. Every
+ * email is attempted ONCE (`digestedAt`), so a model outage does not turn
+ * into the same emails being retried on every cron run for ever.
+ */
+export async function digestPendingDealEmails(
+  limit: number
+): Promise<{ attempted: number; written: number }> {
+  const pending = await database.dealEmail.findMany({
+    where: { digestedAt: null, removedAt: null },
+    orderBy: { sentAt: 'desc' },
+    take: limit,
+    select: {
+      id: true,
+      direction: true,
+      fromName: true,
+      fromEmail: true,
+      subject: true,
+      bodyText: true,
+      replyText: true,
+      deal: { select: { address: true, postcode: true } },
+    },
+  });
+
+  let written = 0;
+  for (const email of pending) {
+    let digest: EmailDigest | null = null;
+    try {
+      digest = await digestDealEmail({
+        direction: email.direction === 'outbound' ? 'outbound' : 'inbound',
+        fromName: email.fromName,
+        fromEmail: email.fromEmail,
+        subject: email.subject,
+        body: email.replyText ?? email.bodyText,
+        dealAddress: email.deal
+          ? `${email.deal.address}, ${email.deal.postcode}`
+          : null,
+      });
+    } catch (err) {
+      console.warn('[deal-email-digest] read failed (non-fatal)', err);
+    }
+    await database.dealEmail.update({
+      where: { id: email.id },
+      data: { ...(digest ?? {}), digestedAt: new Date() },
+    });
+    if (digest) {
+      written += 1;
+    }
+  }
+  return { attempted: pending.length, written };
 }

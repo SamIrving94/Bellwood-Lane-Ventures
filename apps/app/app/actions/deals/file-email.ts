@@ -5,10 +5,9 @@ import { database } from '@repo/database';
 import { revalidatePath } from 'next/cache';
 
 /**
- * Put a logged email on a deal by hand: an unfiled one, or one the matcher
+ * Put a logged email on a deal by hand: an unfiled one, or one the importer
  * placed wrongly. The whole conversation moves with it, because a thread is
- * about one home. Documents read from those emails follow, and the "needs a
- * deal" card for the thread closes.
+ * about one home, and the "needs a deal" card for the thread closes.
  */
 export async function fileDealEmail(formData: FormData): Promise<void> {
   const { userId } = await requireFounder();
@@ -22,7 +21,7 @@ export async function fileDealEmail(formData: FormData): Promise<void> {
   const [email, deal] = await Promise.all([
     database.dealEmail.findUnique({
       where: { id: emailId },
-      select: { threadKey: true, dealId: true, subject: true },
+      select: { threadKey: true, subject: true },
     }),
     database.deal.findUnique({ where: { id: dealId }, select: { id: true } }),
   ]);
@@ -33,29 +32,16 @@ export async function fileDealEmail(formData: FormData): Promise<void> {
     throw new Error('Deal not found.');
   }
 
+  // Removed emails in the thread stay removed.
+  const inThread = { threadKey: email.threadKey, removedAt: null };
   const thread = await database.dealEmail.findMany({
-    where: { threadKey: email.threadKey },
-    select: { dealId: true, attachments: true },
+    where: inThread,
+    select: { dealId: true },
   });
-
   await database.dealEmail.updateMany({
-    where: { threadKey: email.threadKey },
+    where: inThread,
     data: { dealId, matchedBy: 'manual' },
   });
-
-  const extractIds = thread.flatMap((row) =>
-    Array.isArray(row.attachments)
-      ? row.attachments
-          .map((a) => (a as { extractId?: unknown } | null)?.extractId)
-          .filter((id): id is string => typeof id === 'string')
-      : []
-  );
-  if (extractIds.length > 0) {
-    await database.documentExtract.updateMany({
-      where: { id: { in: extractIds } },
-      data: { dealId },
-    });
-  }
 
   await database.founderAction.updateMany({
     where: {

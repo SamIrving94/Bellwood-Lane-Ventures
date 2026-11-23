@@ -1,11 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
   type EmailRow,
-  autoCopyStatus,
-  companyAccount,
-  dealLogAddress,
   gmailComposeUrl,
+  gmailThreadUrl,
   mailtoUrl,
+  syncHealth,
   toEmailCards,
 } from './deal-email-view';
 
@@ -13,7 +12,8 @@ function row(over: Partial<EmailRow> = {}): EmailRow {
   return {
     id: 'e1',
     dealId: 'deal-1',
-    threadKey: 'root@x',
+    gmailThreadId: 'T1',
+    threadKey: 'gmail:T1',
     direction: 'inbound',
     fromEmail: 'jane@example.com',
     fromName: 'Jane',
@@ -69,7 +69,7 @@ describe('toEmailCards — waiting on us', () => {
       row(),
       row({
         id: 'e2',
-        threadKey: 'other@x',
+        threadKey: 'gmail:T2',
         direction: 'outbound',
         sentAt: new Date('2026-11-21T09:00:00Z'),
       }),
@@ -117,99 +117,62 @@ describe('toEmailCards — shaping', () => {
   });
 });
 
-describe('dealLogAddress', () => {
-  it('adds the deal id as a plus tag', () => {
-    expect(dealLogAddress('log@in.wearekept.co.uk', 'abc123')).toBe(
-      'log+abc123@in.wearekept.co.uk'
+describe('links into Gmail', () => {
+  const KEPT = 'sam@wearekept.co.uk';
+
+  it('compose: recipient, subject, and the Kept account', () => {
+    const url = new URL(
+      gmailComposeUrl({
+        to: 'jane@example.com',
+        subject: '12 Acacia Avenue, M14 5AB',
+        account: KEPT,
+      })
     );
-  });
-
-  it('replaces a tag that is already there', () => {
-    expect(dealLogAddress('log+old@in.wearekept.co.uk', 'abc123')).toBe(
-      'log+abc123@in.wearekept.co.uk'
-    );
-  });
-});
-
-describe('starting an email from the deal page', () => {
-  const input = {
-    to: 'jane@example.com',
-    cc: 'log+cm3x9k2p40001abcd1234efgh@in.wearekept.co.uk',
-    subject: '12 Acacia Avenue, M14 5AB',
-  };
-
-  it('Gmail: fills To, CC and subject', () => {
-    const url = new URL(gmailComposeUrl(input));
     expect(url.origin + url.pathname).toBe('https://mail.google.com/mail/');
+    expect(url.searchParams.get('authuser')).toBe(KEPT);
     expect(url.searchParams.get('view')).toBe('cm');
-    expect(url.searchParams.get('to')).toBe(input.to);
-    expect(url.searchParams.get('cc')).toBe(input.cc);
-    expect(url.searchParams.get('su')).toBe(input.subject);
+    expect(url.searchParams.get('to')).toBe('jane@example.com');
+    expect(url.searchParams.get('su')).toBe('12 Acacia Avenue, M14 5AB');
+    // Nothing is copied in: the log reads the mailbox.
+    expect(url.searchParams.has('cc')).toBe(false);
+  });
+
+  it('compose: no account named when Google is not connected', () => {
+    const url = new URL(
+      gmailComposeUrl({ to: 'a@b.com', subject: 'Hi', account: null })
+    );
     expect(url.searchParams.has('authuser')).toBe(false);
   });
 
-  it('Gmail: the "+" in the deal address survives as %2B, not a space', () => {
-    const url = gmailComposeUrl(input);
-    expect(url).toContain(
-      'cc=log%2Bcm3x9k2p40001abcd1234efgh%40in.wearekept.co.uk'
+  it('open a conversation in the Kept account', () => {
+    expect(gmailThreadUrl('18c2f0a1b2c3d4e5', KEPT)).toBe(
+      'https://mail.google.com/mail/?authuser=sam%40wearekept.co.uk#all/18c2f0a1b2c3d4e5'
     );
-    expect(url).not.toContain('cc=log+');
-  });
-
-  it('Gmail: names the company account when we know it', () => {
-    const url = new URL(
-      gmailComposeUrl({ ...input, account: 'sam@wearekept.co.uk' })
-    );
-    expect(url.searchParams.get('authuser')).toBe('sam@wearekept.co.uk');
-  });
-
-  it('mailto: same three fields, "+" encoded', () => {
-    expect(mailtoUrl(input)).toBe(
-      'mailto:jane@example.com?cc=log%2Bcm3x9k2p40001abcd1234efgh%40in.wearekept.co.uk&subject=12%20Acacia%20Avenue%2C%20M14%205AB'
+    expect(gmailThreadUrl('18c2f0a1b2c3d4e5', null)).toBe(
+      'https://mail.google.com/mail/#all/18c2f0a1b2c3d4e5'
     );
   });
 
   it('mailto: an odd recipient cannot add its own headers', () => {
-    expect(mailtoUrl({ ...input, to: 'a@b.com?bcc=evil@x.com' })).toContain(
-      'mailto:a@b.com%3Fbcc%3Devil@x.com?cc='
-    );
+    expect(
+      mailtoUrl({ to: 'a@b.com?bcc=evil@x.com', subject: '12 Acacia Avenue' })
+    ).toBe('mailto:a@b.com%3Fbcc%3Devil@x.com?subject=12%20Acacia%20Avenue');
   });
 });
 
-describe('companyAccount', () => {
-  const log = 'log@in.wearekept.co.uk';
-
-  it('picks the address at the domain the log address hangs off', () => {
-    expect(companyAccount(['sam@gmail.com', 'Sam@WeAreKept.co.uk'], log)).toBe(
-      'sam@wearekept.co.uk'
-    );
-  });
-
-  it('does not guess when none is', () => {
-    expect(companyAccount(['sam@gmail.com'], log)).toBeNull();
-    expect(companyAccount([], log)).toBeNull();
-    expect(companyAccount(['x@co.uk'], log)).toBeNull();
-  });
-});
-
-describe('autoCopyStatus', () => {
+describe('syncHealth', () => {
   const now = new Date('2026-11-23T12:00:00Z');
 
-  it('reads the last-seen mark', () => {
-    expect(autoCopyStatus({ lastSeenAt: '2026-11-23T11:30:00Z' }, now)).toEqual(
-      { lastSeenAt: new Date('2026-11-23T11:30:00Z'), quiet: false }
-    );
+  it('never run', () => {
+    expect(syncHealth(null, now)).toBe('never');
+    expect(syncHealth('not a date', now)).toBe('never');
   });
 
-  it('flags a mailbox that has been silent for over a day', () => {
-    expect(
-      autoCopyStatus({ lastSeenAt: '2026-11-21T09:00:00Z' }, now)?.quiet
-    ).toBe(true);
+  it('ran within the last two hours', () => {
+    expect(syncHealth('2026-11-23T11:40:00Z', now)).toBe('ok');
   });
 
-  it('is null when there is no mark, or it is not a date', () => {
-    expect(autoCopyStatus(null, now)).toBeNull();
-    expect(autoCopyStatus({}, now)).toBeNull();
-    expect(autoCopyStatus({ lastSeenAt: 'soon' }, now)).toBeNull();
+  it('has stopped running', () => {
+    expect(syncHealth('2026-11-23T08:00:00Z', now)).toBe('stale');
   });
 });

@@ -1,4 +1,4 @@
-import type { EmailCardData } from '@/lib/deal-emails';
+import { type EmailCardData, gmailThreadUrl } from '@/lib/deal-email-view';
 
 const WHEN = new Intl.DateTimeFormat('en-GB', {
   day: 'numeric',
@@ -12,7 +12,6 @@ const WHEN = new Intl.DateTimeFormat('en-GB', {
 const DIRECTION_LABEL: Record<string, string> = {
   inbound: 'From them',
   outbound: 'From us',
-  forward: 'Forwarded in',
 };
 
 const PARTY_LABEL: Record<string, string> = {
@@ -38,12 +37,18 @@ function opening(text: string): string {
 /**
  * One logged email. Summary first, the full text one click away: the point
  * is to know where a conversation stands without reading all of it.
+ *
+ * Attachments are listed by name only. The files stay in Gmail, so the way
+ * to one is "Open in Gmail".
  */
 export function EmailCard({
   email,
+  gmailAccount,
   bare = false,
 }: {
   email: EmailCardData;
+  /** The connected Kept mailbox, so Gmail opens in the right account. */
+  gmailAccount: string | null;
   /** No border or padding: the caller already drew a card around it. */
   bare?: boolean;
 }) {
@@ -97,26 +102,27 @@ export function EmailCard({
       {email.attachments.length > 0 && (
         <ul className="mt-2 flex flex-wrap gap-2 text-xs">
           {email.attachments.map((a) => (
-            <li key={`${a.filename}-${a.sizeBytes}`}>
-              {a.url?.startsWith('https://') ? (
-                <a
-                  className="rounded border px-2 py-1 underline-offset-2 hover:underline"
-                  href={a.url}
-                  rel="noreferrer"
-                  target="_blank"
-                >
-                  {a.filename} ({formatSize(a.sizeBytes)})
-                </a>
-              ) : (
-                <span className="rounded border border-dashed px-2 py-1 text-muted-foreground">
-                  {a.filename} (not kept
-                  {a.skipped === 'too_large' ? ': too large' : ''})
-                </span>
-              )}
+            <li
+              className="rounded border px-2 py-1"
+              key={`${a.filename}-${a.sizeBytes}`}
+            >
+              {a.filename} ({formatSize(a.sizeBytes)})
             </li>
           ))}
         </ul>
       )}
+
+      <p className="mt-2 text-xs">
+        <a
+          className="text-muted-foreground underline underline-offset-2"
+          href={gmailThreadUrl(email.gmailThreadId, gmailAccount)}
+          rel="noreferrer"
+          target="_blank"
+        >
+          Open in Gmail
+          {email.attachments.length > 0 ? ' for the attachments' : ''}
+        </a>
+      </p>
 
       <details className="mt-2 text-sm">
         <summary className="cursor-pointer text-muted-foreground text-xs">

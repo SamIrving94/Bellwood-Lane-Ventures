@@ -1,17 +1,16 @@
 /**
- * Read side of the deal email log. The write side is the Postmark webhook
- * in apps/api (/webhooks/postmark/inbound); the rules for which deal an
- * email lands on live there (`resolveDeal`).
+ * Read side of the deal email log. The write side is `importDealMail` in
+ * @repo/google, run by the google-sync cron: it reads the Kept mailbox and
+ * keeps the deal mail. The rules for what is kept, and on which deal, live
+ * there (`resolveDeal`).
  */
 
-import { env } from '@/env';
 import { database } from '@repo/database';
 import { type EmailCardData, toEmailCards } from './deal-email-view';
 
 export {
   type EmailAttachment,
   type EmailCardData,
-  dealLogAddress,
   toEmailCards,
 } from './deal-email-view';
 
@@ -25,7 +24,8 @@ export async function loadDealEmails(
 ): Promise<EmailCardData[] | null> {
   try {
     const rows = await database.dealEmail.findMany({
-      where: { dealId },
+      // A removed email stays as a tombstone so it is not imported again.
+      where: { dealId, removedAt: null },
       orderBy: { sentAt: 'desc' },
       take: 60,
     });
@@ -34,10 +34,4 @@ export async function loadDealEmails(
     console.warn('[deal-emails] email log unavailable', err);
     return null;
   }
-}
-
-/** The address to CC, or null when DEAL_LOG_ADDRESS is not set. */
-export function logAddress(): string | null {
-  const first = (env.DEAL_LOG_ADDRESS ?? '').split(',')[0]?.trim();
-  return first?.includes('@') ? first.toLowerCase() : null;
 }

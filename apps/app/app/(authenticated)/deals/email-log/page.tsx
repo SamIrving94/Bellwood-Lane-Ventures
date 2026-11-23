@@ -1,15 +1,14 @@
 import { fileDealEmail } from '@/app/actions/deals/file-email';
 import { removeDealEmail } from '@/app/actions/deals/remove-email';
-import { autoCopyStatus } from '@/lib/deal-email-view';
-import { logAddress, toEmailCards } from '@/lib/deal-emails';
+import { syncHealth, toEmailCards } from '@/lib/deal-email-view';
 import { auth } from '@repo/auth/server';
 import { database } from '@repo/database';
 import { Button } from '@repo/design-system/components/ui/button';
+import { getDealMailStatus, getGoogleStatus } from '@repo/google';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { Header } from '../../components/header';
-import { CopyButton } from '../components/copy-button';
 import { EmailCard } from '../components/email-card';
 
 export const metadata: Metadata = {
@@ -18,15 +17,14 @@ export const metadata: Metadata = {
 
 export const dynamic = 'force-dynamic';
 
-// The email log across every deal. Two jobs:
-//   1. Place the emails the matcher would not guess a deal for.
-//   2. Show the latest emails, with a way to move one filed on the wrong deal.
-// Emails arrive through the Postmark webhook in apps/api; nothing here sends.
+// The email log across every deal. Three jobs:
+//   1. Say whether the Gmail sync is alive, because "nothing here" means
+//      nothing unless it is.
+//   2. Place the emails the importer would not guess a deal for.
+//   3. Show the latest emails, with a way to move or remove one.
+// Emails are read from Gmail by the google-sync cron; nothing here sends.
 
 const CLOSED = ['completed', 'rejected', 'withdrawn'];
-
-/** How far back the turned-away list looks. Rows are deleted after 30 days. */
-const TURNED_AWAY_DAYS = 14;
 
 const WHEN = new Intl.DateTimeFormat('en-GB', {
   day: 'numeric',
@@ -38,7 +36,6 @@ const WHEN = new Intl.DateTimeFormat('en-GB', {
 
 // Finishes the sentence "Here because …".
 const MATCHED_BY: Record<string, string> = {
-  deal_tag: 'it was sent to the deal’s own address',
   thread: 'it is a reply in a conversation on this deal',
   participant: 'the seller or solicitor is on this deal',
   postcode: 'of the postcode in the email',
@@ -88,7 +85,7 @@ function FileForm({
 
 /**
  * Take an email out of the log. Tucked inside a <details> so it takes two
- * deliberate clicks: it deletes our copy and cannot be undone.
+ * deliberate clicks: it wipes our copy and cannot be undone.
  */
 function RemoveForm({ emailId }: { emailId: string }) {
   return (
@@ -105,7 +102,7 @@ function RemoveForm({ emailId }: { emailId: string }) {
           Remove this email
         </Button>
         <span className="text-muted-foreground text-xs">
-          Deletes our copy and its attachments. It stays in your mailbox. This
+          Removes it from Kept and it is not read again. It stays in Gmail. This
           cannot be undone.
         </span>
       </form>
@@ -119,52 +116,36 @@ export default async function EmailLogPage() {
     redirect('/sign-in');
   }
 
-  const address = logAddress();
-
   // Null = the table is not there yet. The page explains instead of failing.
   const loaded = await Promise.all([
     database.dealEmail.findMany({
-      where: { dealId: null },
+      where: { dealId: null, removedAt: null },
       orderBy: { sentAt: 'desc' },
       take: 50,
     }),
     database.dealEmail.findMany({
-      where: { dealId: { not: null } },
+      where: { dealId: { not: null }, removedAt: null },
       orderBy: { sentAt: 'desc' },
       take: 40,
       include: { deal: { select: { address: true, postcode: true } } },
-    }),
-    // Mail the webhook refused. Sender and subject only; the email itself
-    // was never stored.
-    database.dealEmailDrop.findMany({
-      where: {
-        receivedAt: {
-          gte: new Date(Date.now() - TURNED_AWAY_DAYS * 24 * 60 * 60 * 1000),
-        },
-      },
-      orderBy: { receivedAt: 'desc' },
-      take: 50,
     }),
   ]).catch((err) => {
     console.warn('[email-log] email log unavailable', err);
     return null;
   });
 
-  // Set by the webhook each time Google Workspace delivers a mailbox copy.
-  // Absent when the automatic copy is off (or has never delivered).
-  const autoCopy = autoCopyStatus(
-    (
-      await database.setting
-        .findUnique({ where: { key: 'deal_email_auto_copy' } })
-        .catch(() => null)
-    )?.value
-  );
+  const [google, sync, deals] = await Promise.all([
+    getGoogleStatus(),
+    getDealMailStatus(),
+    database.deal.findMany({
+      orderBy: { updatedAt: 'desc' },
+      take: 200,
+      select: { id: true, address: true, postcode: true, status: true },
+    }),
+  ]);
+  const health = syncHealth(sync.lastRunAt);
+  const gmailAccount = google.connected ? google.email : null;
 
-  const deals = await database.deal.findMany({
-    orderBy: { updatedAt: 'desc' },
-    take: 200,
-    select: { id: true, address: true, postcode: true, status: true },
-  });
   // Live deals first: that is where a new email almost always belongs.
   const dealOptions: DealOption[] = [
     ...deals.filter((d) => !CLOSED.includes(d.status)),
@@ -174,12 +155,6 @@ export default async function EmailLogPage() {
   const unfiled = loaded ? toEmailCards(loaded[0]) : [];
   const filedRows = loaded ? loaded[1] : [];
   const filed = toEmailCards(filedRows);
-  const turnedAway = loaded ? loaded[2] : [];
-  // A sender at our own domain being refused means a founder's address is
-  // missing from the list, and every email they copy the log on is lost.
-  const oursRefused = Array.from(
-    new Set(turnedAway.filter((d) => d.looksOurs).map((d) => d.fromEmail))
-  );
   const dealLabel = new Map(
     filedRows.map((r) => [
       r.id,
@@ -195,47 +170,65 @@ export default async function EmailLogPage() {
           <h1 className="font-bold text-xl">Email log</h1>
           <ul className="mt-2 list-disc space-y-1 pl-5 text-sm">
             <li>
-              <strong>CC the log address</strong> on an email to a seller,
-              solicitor or agent.
+              <strong>Kept reads your Gmail</strong> every 30 minutes. You do
+              nothing.
             </li>
             <li>
-              The email is <strong>stored on the deal</strong>. So is every
-              reply-all after it.
+              Emails with a deal&rsquo;s <strong>seller or solicitor</strong>{' '}
+              are stored on that deal. So are the replies.
+            </li>
+            <li>
+              For anything else, put the <strong>Kept/Log</strong> label on it
+              in Gmail.
             </li>
             <li>
               If no single deal matches, it <strong>waits here</strong>. It is
               never guessed.
             </li>
           </ul>
-          {address ? (
-            <div className="mt-3 flex flex-wrap items-center gap-2 text-sm">
-              <code className="rounded bg-muted px-2 py-1">{address}</code>
-              <CopyButton value={address} />
-            </div>
-          ) : (
+
+          {google.connected && health === 'ok' && sync.lastRun && (
             <p className="mt-3 text-muted-foreground text-sm">
-              No log address is set. Add{' '}
-              <code className="rounded bg-muted px-1">DEAL_LOG_ADDRESS</code> to
-              the dashboard project in Vercel to show it here.
+              <strong>Reading {google.email}.</strong> Last checked{' '}
+              {WHEN.format(new Date(sync.lastRun.at))}: {sync.lastRun.scanned}{' '}
+              new, {sync.lastRun.kept + sync.lastRun.unfiled} kept.
+              {sync.lastRun.errors > 0 &&
+                ` ${sync.lastRun.errors} could not be read and will be tried again.`}
             </p>
           )}
-          {autoCopy && !autoCopy.quiet && (
-            <p className="mt-2 text-muted-foreground text-sm">
-              <strong>Automatic copy is on.</strong> Last email seen{' '}
-              {WHEN.format(autoCopy.lastSeenAt)}. Deal mail is kept without a
-              CC; everything else is ignored.
+          {google.connected && health === 'never' && (
+            <p className="mt-3 text-muted-foreground text-sm">
+              <strong>Connected to {google.email}.</strong> The first check runs
+              within 30 minutes.
             </p>
           )}
         </div>
 
-        {autoCopy?.quiet && (
+        {!google.connected && (
           <div className="max-w-3xl rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm dark:border-amber-800 dark:bg-amber-950">
-            <p className="font-medium">The automatic copy has gone quiet.</p>
+            <p className="font-medium">
+              {google.broken
+                ? 'Google needs reconnecting.'
+                : 'Google is not connected.'}
+            </p>
             <p className="mt-1">
-              No copied email since {WHEN.format(autoCopy.lastSeenAt)}. If you
-              have sent or received mail since then, check the Google Workspace
-              rule. Until it is back, only emails with the log address in CC are
-              stored.
+              Emails are read from Gmail, so nothing new is stored until it is.{' '}
+              <Link className="underline" href="/settings/google">
+                Open Settings → Google
+              </Link>
+              .
+            </p>
+          </div>
+        )}
+
+        {google.connected && health === 'stale' && sync.lastRunAt && (
+          <div className="max-w-3xl rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm dark:border-amber-800 dark:bg-amber-950">
+            <p className="font-medium">Gmail has not been checked lately.</p>
+            <p className="mt-1">
+              The last check was {WHEN.format(new Date(sync.lastRunAt))}. It
+              should run every 30 minutes, so the sync job has stopped. Emails
+              since then are not here yet; they will be picked up when it runs
+              again.
             </p>
           </div>
         )}
@@ -246,22 +239,6 @@ export default async function EmailLogPage() {
             <code className="rounded bg-muted px-1">pnpm migrate</code> once to
             add its table.
           </p>
-        )}
-
-        {oursRefused.length > 0 && (
-          <div className="max-w-3xl rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm dark:border-amber-800 dark:bg-amber-950">
-            <p className="font-medium">
-              Emails from {oursRefused.join(', ')} are being turned away.
-            </p>
-            <p className="mt-1">
-              If that is your address, it is missing from{' '}
-              <code className="rounded bg-muted px-1">
-                EMAIL_FORWARD_ALLOWLIST
-              </code>{' '}
-              on the bellwood-api project in Vercel. Add it and redeploy. Until
-              then nothing it copies the log on is stored.
-            </p>
-          </div>
         )}
 
         <section className="max-w-3xl">
@@ -279,7 +256,7 @@ export default async function EmailLogPage() {
             <ul className="mt-2 space-y-3">
               {unfiled.map((e) => (
                 <li className="rounded-lg border bg-card p-3" key={e.id}>
-                  <EmailCard bare email={e} />
+                  <EmailCard bare email={e} gmailAccount={gmailAccount} />
                   <FileForm
                     deals={dealOptions}
                     emailId={e.id}
@@ -298,12 +275,8 @@ export default async function EmailLogPage() {
           </h2>
           {filed.length === 0 ? (
             <p className="mt-2 text-muted-foreground text-sm">
-              No email has arrived yet. If you have CC&rsquo;d the address and
-              nothing shows here, the inbound setup is not finished: follow{' '}
-              <code className="rounded bg-muted px-1">
-                docs/setup/email-forward.md
-              </code>
-              .
+              No emails stored yet. They appear once Google is connected and a
+              deal has its seller&rsquo;s or solicitor&rsquo;s email on it.
             </p>
           ) : (
             <ul className="mt-2 space-y-3">
@@ -323,7 +296,7 @@ export default async function EmailLogPage() {
                       </span>
                     )}
                   </p>
-                  <EmailCard bare email={e} />
+                  <EmailCard bare email={e} gmailAccount={gmailAccount} />
                   <details className="mt-2">
                     <summary className="cursor-pointer text-muted-foreground text-xs">
                       Wrong deal?
@@ -338,60 +311,6 @@ export default async function EmailLogPage() {
                     />
                   </details>
                   <RemoveForm emailId={e.id} />
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
-
-        <section className="max-w-3xl">
-          <h2 className="font-medium text-muted-foreground text-sm uppercase tracking-wide">
-            Turned away
-            <span className="ml-2 normal-case tracking-normal">
-              {turnedAway.length} in the last {TURNED_AWAY_DAYS} days
-            </span>
-          </h2>
-          <ul className="mt-2 list-disc space-y-1 pl-5 text-muted-foreground text-sm">
-            <li>
-              Mail from someone who is not a founder, on no conversation or deal
-              we hold.
-            </li>
-            <li>
-              <strong>The email is not stored.</strong> Only the sender and
-              subject, for 30 days.
-            </li>
-            <li>
-              Should one have been kept? Save their email on the deal, then
-              forward the email from your mailbox to that deal&rsquo;s own
-              address.
-            </li>
-          </ul>
-          {turnedAway.length === 0 ? (
-            <p className="mt-2 text-muted-foreground text-sm">
-              Nothing turned away.
-            </p>
-          ) : (
-            <ul className="mt-3 divide-y rounded-lg border bg-card text-sm">
-              {turnedAway.map((d) => (
-                <li
-                  className="flex flex-wrap items-baseline gap-x-3 gap-y-1 p-3"
-                  key={d.id}
-                >
-                  <span className="text-muted-foreground text-xs">
-                    {WHEN.format(d.receivedAt)}
-                  </span>
-                  <span className="font-medium">
-                    {d.fromName ? `${d.fromName} ` : ''}
-                    &lt;{d.fromEmail}&gt;
-                  </span>
-                  {d.looksOurs && (
-                    <span className="rounded-full border border-amber-300 bg-amber-100 px-2 py-0.5 font-medium text-amber-900 text-xs dark:border-amber-800 dark:bg-amber-950 dark:text-amber-300">
-                      Looks like one of ours
-                    </span>
-                  )}
-                  <span className="w-full text-muted-foreground">
-                    {d.subject || '(no subject)'}
-                  </span>
                 </li>
               ))}
             </ul>

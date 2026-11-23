@@ -29,37 +29,37 @@ export const WHATS_NEW: WhatsNewEntry[] = [
     id: '2026-11-23-deal-email-log',
     date: '2026-11-23',
     emoji: '📬',
-    title: 'CC one address. The email lands on the deal.',
+    title: 'Your deal emails now file themselves',
     intro:
-      'Seller, solicitor or agent: copy the log address and the whole conversation files itself.',
+      'Kept reads your Gmail and puts each deal’s emails on its page. You do nothing.',
     bullets: [
       {
         emoji: '✉️',
-        text: '**CC the log address** on any email. It is stored on the right deal, attachments and all.',
-      },
-      {
-        emoji: '📨',
-        text: '**Email the seller** and **Email the solicitor** buttons on each deal open Gmail with the CC already in. Nothing to remember.',
-      },
-      {
-        emoji: '↩️',
-        text: '**Every reply-all follows.** No forwarding, no copy and paste.',
+        text: 'Emails with a deal’s **seller or solicitor** land on that deal on their own. So do the replies.',
       },
       {
         emoji: '🧾',
-        text: 'Each email gets a **two-line read**: who wrote, what they said, and whether they are **waiting on us**. It only reads. Nothing is sent or drafted.',
+        text: 'Each one gets a **two-line read**: who wrote, what they said, and whether they are **waiting on us**.',
+      },
+      {
+        emoji: '🏷️',
+        text: 'Want something else logged? Put the **Kept/Log** label on it in Gmail. Stored emails get **Kept/Logged**, so you can see it worked.',
       },
       {
         emoji: '🧭',
         text: '**No guessing.** If the deal is not clear, the email waits in the log for one click from you.',
       },
       {
-        emoji: '🚪',
-        text: 'Mail we **turn away** is listed, so nothing vanishes quietly. If it is your own address, you get a card.',
+        emoji: '📨',
+        text: '**Email the seller** and **Email the solicitor** buttons open a Gmail draft in the Kept account.',
+      },
+      {
+        emoji: '🔒',
+        text: 'It only reads. **Nothing is sent or drafted**, and the rest of your mailbox is left alone.',
       },
       {
         emoji: '🛠️',
-        text: 'It needs a **one-time switch-on**. The email log page says what is left to do.',
+        text: 'It needs **Google connected** in Settings. The email log page says if anything is missing.',
       },
     ],
     cta: { label: 'Open the email log', href: '/deals/email-log' },

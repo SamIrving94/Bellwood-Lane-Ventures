@@ -1,21 +1,20 @@
 /**
  * Display shaping for the deal email log. Pure: no database or env imports,
  * so it is unit-tested (deal-email-view.test.ts). The loaders that feed it
- * are in ./deal-emails.
+ * are in ./deal-emails; the importer that fills the table is
+ * `importDealMail` in @repo/google.
  */
 
 export type EmailAttachment = {
   filename: string;
   contentType: string;
   sizeBytes: number;
-  url?: string;
-  skipped?: string;
-  extractId?: string;
 };
 
 export type EmailCardData = {
   id: string;
   dealId: string | null;
+  gmailThreadId: string;
   threadKey: string;
   direction: string;
   fromEmail: string;
@@ -23,7 +22,7 @@ export type EmailCardData = {
   toEmails: string[];
   ccEmails: string[];
   subject: string;
-  /** The new part of the email when Postmark could isolate it. */
+  /** The new part of the email when the importer could isolate it. */
   replyText: string | null;
   bodyText: string;
   sentAt: string;
@@ -36,13 +35,14 @@ export type EmailCardData = {
   attachments: EmailAttachment[];
 };
 
-/** Longest body sent to the browser. The mailbox still has the rest. */
+/** Longest body sent to the browser. Gmail still has the rest. */
 const DISPLAY_BODY_CHARS = 20_000;
 
 /** The columns of a DealEmail row this file reads. */
 export type EmailRow = {
   id: string;
   dealId: string | null;
+  gmailThreadId: string;
   threadKey: string;
   direction: string;
   fromEmail: string;
@@ -63,7 +63,7 @@ export type EmailRow = {
 
 function trimBody(text: string): string {
   return text.length > DISPLAY_BODY_CHARS
-    ? `${text.slice(0, DISPLAY_BODY_CHARS)}\n\n[Long email trimmed here. The full text is in your mailbox.]`
+    ? `${text.slice(0, DISPLAY_BODY_CHARS)}\n\n[Long email trimmed here. Open it in Gmail for the rest.]`
     : text;
 }
 
@@ -99,6 +99,7 @@ export function toEmailCards(rows: EmailRow[]): EmailCardData[] {
   return rows.map((r) => ({
     id: r.id,
     dealId: r.dealId,
+    gmailThreadId: r.gmailThreadId,
     threadKey: r.threadKey,
     direction: r.direction,
     fromEmail: r.fromEmail,
@@ -121,114 +122,74 @@ export function toEmailCards(rows: EmailRow[]): EmailCardData[] {
   }));
 }
 
+// ───────────────────────────────────────────────────────────────────────────
+// Links into Gmail
+// ───────────────────────────────────────────────────────────────────────────
+
+// Every Gmail link names the account (`authuser`). With a personal Gmail
+// signed in beside the Kept mailbox, Gmail would otherwise open whichever is
+// first, and a seller would get an email from the wrong address. The account
+// is the one connected in Settings → Google, so there is nothing to guess.
+// Not yet checked in a real browser.
+const GMAIL = 'https://mail.google.com/mail/';
+
 /**
- * A deal's own address: `log+<dealId>@…`. Mail to it is filed on that deal
- * with no matching at all. For the email that names no postcode and goes to
- * someone who is not on the deal yet.
+ * A Gmail compose window with the recipient and subject filled in. A draft
+ * only: a person writes it and sends it. There is no address to copy in:
+ * the email log reads the mailbox, so the sent email is picked up from
+ * there.
  */
-export function dealLogAddress(base: string, dealId: string): string {
-  const at = base.lastIndexOf('@');
-  const local = base.slice(0, at).replace(/\+.*$/, '');
-  return `${local}+${dealId}${base.slice(at)}`;
-}
-
-// ───────────────────────────────────────────────────────────────────────────
-// Starting an email from the deal page
-// ───────────────────────────────────────────────────────────────────────────
-
-export type ComposeInput = {
+export function gmailComposeUrl(input: {
   to: string;
-  /** The deal's own log address, so the email files itself with no matching. */
-  cc: string;
   subject: string;
-};
-
-/**
- * A Gmail compose window with To, CC and subject filled in. The founders are
- * on Google Workspace, so this is the main button.
- *
- * `account` picks WHICH signed-in Google account composes (`authuser`). It
- * matters: with a personal Gmail signed in beside the company mailbox, Gmail
- * would otherwise open whichever is first, and a seller would get an email
- * from the wrong address. Leave it out when we cannot tell.
- */
-export function gmailComposeUrl(
-  input: ComposeInput & { account?: string | null }
-): string {
-  // URLSearchParams writes "+" as %2B, which the tagged CC address needs: a
-  // bare "+" in a query string means a space.
-  const params = new URLSearchParams({ view: 'cm', fs: '1' });
+  account: string | null;
+}): string {
+  const params = new URLSearchParams();
   if (input.account) {
     params.set('authuser', input.account);
   }
+  params.set('view', 'cm');
+  params.set('fs', '1');
   params.set('to', input.to);
-  params.set('cc', input.cc);
   params.set('su', input.subject);
-  return `https://mail.google.com/mail/?${params.toString()}`;
+  return `${GMAIL}?${params.toString()}`;
 }
 
 /** The same email as a `mailto:` link, for a phone or another mail app. */
-export function mailtoUrl(input: ComposeInput): string {
+export function mailtoUrl(input: { to: string; subject: string }): string {
   const to = encodeURIComponent(input.to).replace(/%40/g, '@');
-  return `mailto:${to}?cc=${encodeURIComponent(input.cc)}&subject=${encodeURIComponent(input.subject)}`;
+  return `mailto:${to}?subject=${encodeURIComponent(input.subject)}`;
 }
 
-/**
- * Which of a founder's own addresses is the company one: the address at the
- * domain the log address hangs off (`log@in.wearekept.co.uk` ←
- * `sam@wearekept.co.uk`). Null when none is, and then we do not guess.
- * The same direct-parent rule as `looksOurs` in the webhook.
- */
-export function companyAccount(
-  emails: string[],
-  logAddress: string
-): string | null {
-  const logDomain = logAddress.slice(logAddress.lastIndexOf('@') + 1);
-  for (const raw of emails) {
-    const email = raw.trim().toLowerCase();
-    const domain = email.slice(email.lastIndexOf('@') + 1);
-    if (!domain.includes('.')) {
-      continue;
-    }
-    const isParent =
-      logDomain.endsWith(`.${domain}`) &&
-      logDomain.split('.').length === domain.split('.').length + 1;
-    if (domain === logDomain || isParent) {
-      return email;
-    }
-  }
-  return null;
+/** Open a logged conversation in Gmail, where its attachments are. */
+export function gmailThreadUrl(
+  gmailThreadId: string,
+  account: string | null
+): string {
+  const query = account ? `?authuser=${encodeURIComponent(account)}` : '';
+  return `${GMAIL}${query}#all/${encodeURIComponent(gmailThreadId)}`;
 }
 
 // ───────────────────────────────────────────────────────────────────────────
-// The automatic copy (Google Workspace → log address)
+// Is the importer alive?
 // ───────────────────────────────────────────────────────────────────────────
 
-export type AutoCopyStatus = {
-  lastSeenAt: Date;
-  /** No copied email for over a day. A mailbox is rarely that quiet. */
-  quiet: boolean;
-};
+export type SyncHealth = 'never' | 'ok' | 'stale';
 
 /**
- * Read the webhook's "last mailbox copy seen" mark (Setting
- * `deal_email_auto_copy`). Null when the automatic copy has never delivered
- * anything, which is also what it looks like when it is not switched on.
+ * The google-sync cron runs every 30 minutes. Two hours without a run means
+ * it has stopped, and "0 emails kept" then says nothing about the mailbox.
  */
-export function autoCopyStatus(
-  value: unknown,
+export function syncHealth(
+  lastRunAt: string | null,
   now: Date = new Date()
-): AutoCopyStatus | null {
-  const raw = (value as { lastSeenAt?: unknown } | null)?.lastSeenAt;
-  if (typeof raw !== 'string') {
-    return null;
+): SyncHealth {
+  if (!lastRunAt) {
+    return 'never';
   }
-  const lastSeenAt = new Date(raw);
-  if (Number.isNaN(lastSeenAt.getTime())) {
-    return null;
+  const at = new Date(lastRunAt).getTime();
+  if (Number.isNaN(at)) {
+    return 'never';
   }
-  return {
-    lastSeenAt,
-    quiet: now.getTime() - lastSeenAt.getTime() > 24 * 60 * 60 * 1000,
-  };
+  return now.getTime() - at > 2 * 60 * 60 * 1000 ? 'stale' : 'ok';
 }
