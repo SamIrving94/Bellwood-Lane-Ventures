@@ -26,8 +26,8 @@ export type WhatsNewEntry = {
 /** Newest first. The popup shows index 0. */
 export const WHATS_NEW: WhatsNewEntry[] = [
   {
-    id: '2026-11-22-deal-email-log',
-    date: '2026-11-22',
+    id: '2026-11-23-deal-email-log',
+    date: '2026-11-23',
     emoji: '📬',
     title: 'CC one address. The email lands on the deal.',
     intro:
@@ -58,15 +58,42 @@ export const WHATS_NEW: WhatsNewEntry[] = [
         text: 'Mail we **turn away** is listed, so nothing vanishes quietly. If it is your own address, you get a card.',
       },
       {
-        emoji: '🤖',
-        text: '**Optional: the automatic copy.** Google can copy your mailbox to the log, so you never CC again. Only deal mail is kept. The rest leaves no trace.',
-      },
-      {
         emoji: '🛠️',
         text: 'It needs a **one-time switch-on**. The email log page says what is left to do.',
       },
     ],
     cta: { label: 'Open the email log', href: '/deals/email-log' },
+  },
+  {
+    id: '2026-11-23-google-workspace',
+    date: '2026-11-23',
+    emoji: '🔗',
+    title: 'Kept now talks to Google',
+    intro:
+      'Connect the Kept Google account once. Gmail, Calendar and Drive do the busywork.',
+    bullets: [
+      {
+        emoji: '✉️',
+        text: '**To Gmail drafts.** Reviewed emails land in your drafts. **You** press send.',
+      },
+      {
+        emoji: '📅',
+        text: '**Viewings in your calendar**, with an **Offer due** marker two working days later.',
+      },
+      {
+        emoji: '📁',
+        text: '**A Drive folder per deal**: Photos, Legal, Offer, Comps.',
+      },
+      {
+        emoji: '🏷️',
+        text: 'Mail from **sellers, solicitors and agents** gets labelled for you.',
+      },
+      {
+        emoji: '☀️',
+        text: 'A short **morning brief** in your inbox, and a **partner sheet** with no names or addresses.',
+      },
+    ],
+    cta: { label: 'Connect Google', href: '/settings/google' },
   },
   {
     id: '2026-11-22-guide-editor',

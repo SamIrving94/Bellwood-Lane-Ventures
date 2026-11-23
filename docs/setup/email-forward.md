@@ -47,6 +47,15 @@ The fix for both is **the automatic copy**, below.
 
 ## The automatic copy (optional)
 
+> **Read this first (23 Nov 2026).** The Google connection (Settings →
+> Google, `docs/GOOGLE-WORKSPACE.md`) was merged the same day this was
+> built. It can read the Kept mailbox directly. Capturing deal mail through
+> it would keep the rest of the mailbox inside Google: no whole mailbox
+> through Postmark, no paid Postmark plan, no Workspace admin rule. **That
+> importer is not built yet**, and the Google connection has not yet been
+> used against a live account. Choose between the two routes before
+> switching this one on.
+
 Google Workspace copies everything your mailbox sends and receives to the log
 address. Nobody has to remember the CC, and a plain Reply is caught too.
 

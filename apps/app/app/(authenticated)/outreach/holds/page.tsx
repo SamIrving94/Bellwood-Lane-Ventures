@@ -1,5 +1,6 @@
 import { auth } from '@repo/auth/server';
 import { database } from '@repo/database';
+import { getGoogleStatus } from '@repo/google';
 import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 import { Header } from '../../components/header';
@@ -14,16 +15,17 @@ const HoldsPage = async () => {
   const { userId } = await auth();
   if (!userId) redirect('/sign-in');
 
-  const [heldEmails, recentlySent] = await Promise.all([
+  const [heldEmails, recentlySent, google] = await Promise.all([
     database.outreachHold.findMany({
       where: { status: 'held' },
       orderBy: { createdAt: 'desc' },
     }),
     database.outreachHold.findMany({
-      where: { status: { in: ['sent', 'approved', 'rejected'] } },
+      where: { status: { in: ['sent', 'approved', 'rejected', 'drafted'] } },
       orderBy: { reviewedAt: 'desc' },
       take: 10,
     }),
+    getGoogleStatus(),
   ]);
 
   return (
@@ -53,7 +55,11 @@ const HoldsPage = async () => {
               Awaiting Review ({heldEmails.length})
             </h2>
             {heldEmails.map((hold) => (
-              <HoldCard key={hold.id} hold={hold} />
+              <HoldCard
+                key={hold.id}
+                hold={hold}
+                gmailConnected={google.connected}
+              />
             ))}
           </div>
         )}
@@ -82,7 +88,7 @@ const HoldsPage = async () => {
                         : 'bg-blue-100 text-blue-700'
                   }`}
                 >
-                  {hold.status}
+                  {hold.status === 'drafted' ? 'in Gmail drafts' : hold.status}
                 </span>
               </div>
             ))}
