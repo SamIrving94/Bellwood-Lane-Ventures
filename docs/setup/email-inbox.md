@@ -52,7 +52,13 @@ Two options. Start with A; move to B when you want a Kept address.
 
 - Resend → Webhooks → Add.
 - **URL:** `https://<bellwood-api production host>/webhooks/resend/inbound`
-- **Event:** `email.received` only.
+- **Events:** tick `email.received`, plus the delivery events:
+  `email.sent`, `email.delivered`, `email.delivery_delayed`, `email.bounced`,
+  `email.complained`, `email.failed`.
+- Leave `email.opened` and `email.clicked` unticked. We do not track opens
+  or clicks on seller mail, and the route ignores them anyway.
+- **One webhook does both jobs.** Resend's free plan allows one endpoint, so
+  replies and delivery status share this URL.
 - Copy the **signing secret**.
 
 ### 4. Set env vars on Vercel
@@ -83,6 +89,25 @@ then choose "forward a copy and keep Gmail's copy in the inbox".
 3. Within a minute: the reply is in Gmail, the conversation moves to
    "Conversations" in `/inbox` with a "new" badge, and a card appears in Today.
 4. Reply from `/inbox`. It arrives inside the same email thread.
+
+## Delivery status
+
+Resend tells us what happened to each email we sent. The status sits on the
+email in `/inbox`:
+
+| Status | Meaning | Card in Today? |
+|:---|:---|:---|
+| Sent / Delivered | It left, or it arrived | No |
+| Delayed | The receiving server is slow; Resend keeps trying | No |
+| **Bounced** | The address rejected it | **Yes** |
+| **Failed to send** | Resend could not send it | **Yes** |
+| **Marked as spam** | The recipient reported it | **Yes** |
+
+- A conversation with any of the last three shows **Not delivered** in the list.
+- Events arrive out of order. A late "delivered" never hides a bounce.
+- Only logged emails are tracked. Internal notifications are not logged, so
+  their status is ignored.
+- Needs no setup beyond ticking the events in step 3.
 
 ## Rules the code keeps
 

@@ -1,6 +1,7 @@
 import { auth } from '@repo/auth/server';
 import { database } from '@repo/database';
 import { bareAddress } from '@repo/email/addresses';
+import { deliveryLabel, isDeliveryProblem } from '@repo/email/delivery';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
@@ -110,6 +111,18 @@ const ThreadPage = async ({
                   {m.textBody ||
                     '(Sent as a designed template with no plain-text copy, so the wording is not shown here.)'}
                 </p>
+                {!inbound && m.deliveryStatus && (
+                  <p
+                    className={
+                      isDeliveryProblem(m.deliveryStatus)
+                        ? 'mt-2 font-medium text-destructive text-xs'
+                        : 'mt-2 text-muted-foreground text-xs'
+                    }
+                  >
+                    {deliveryLabel(m.deliveryStatus)}
+                    {m.deliveryDetail ? `. ${m.deliveryDetail}` : ''}
+                  </p>
+                )}
                 {m.attachmentCount > 0 && (
                   <p className="mt-2 text-muted-foreground text-xs">
                     {m.attachmentCount} attachment

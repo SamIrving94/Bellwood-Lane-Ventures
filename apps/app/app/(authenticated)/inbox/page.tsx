@@ -1,5 +1,6 @@
 import { auth } from '@repo/auth/server';
 import { database } from '@repo/database';
+import { isDeliveryProblem } from '@repo/email/delivery';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
@@ -35,6 +36,8 @@ type Thread = {
   total: number;
   unread: number;
   hasInbound: boolean;
+  /** An email to this person bounced, failed or was marked as spam. */
+  undelivered: boolean;
 };
 
 const ThreadRow = ({ thread: t }: { thread: Thread }) => (
@@ -65,6 +68,9 @@ const ThreadRow = ({ thread: t }: { thread: Thread }) => (
         {t.total} email{t.total === 1 ? '' : 's'}
       </p>
       {(t.latest.dealId || t.latest.quoteRequestId) && <p>Linked</p>}
+      {t.undelivered && (
+        <p className="font-medium text-destructive">Not delivered</p>
+      )}
     </div>
   </Link>
 );
@@ -84,6 +90,7 @@ const InboxPage = async () => {
       subject: true,
       textBody: true,
       readAt: true,
+      deliveryStatus: true,
       createdAt: true,
       dealId: true,
       quoteRequestId: true,
@@ -100,8 +107,12 @@ const InboxPage = async () => {
       total: 0,
       unread: 0,
       hasInbound: false,
+      undelivered: false,
     };
     t.total += 1;
+    if (m.deliveryStatus && isDeliveryProblem(m.deliveryStatus)) {
+      t.undelivered = true;
+    }
     if (m.direction === 'inbound') {
       t.hasInbound = true;
       if (!m.readAt) {

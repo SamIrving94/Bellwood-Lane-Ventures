@@ -10,6 +10,7 @@ const db = vi.hoisted(() => ({
   emailMessage: {
     findUnique: vi.fn(),
     count: vi.fn(),
+    update: vi.fn(),
   },
   founderAction: { create: vi.fn() },
 }));
@@ -144,7 +145,84 @@ describe('POST /webhooks/resend/inbound', () => {
   });
 
   it('ignores other event types', async () => {
-    const res = await POST(signed({ ...received(), type: 'email.delivered' }));
-    expect(await res.json()).toMatchObject({ ignored: 'email.delivered' });
+    const res = await POST(signed({ ...received(), type: 'email.clicked' }));
+    expect(await res.json()).toMatchObject({ ignored: 'email.clicked' });
+  });
+});
+
+describe('POST /webhooks/resend/inbound: delivery status', () => {
+  const status = (type: string, extra: Record<string, unknown> = {}) => ({
+    type,
+    created_at: '2026-11-23T09:00:00.000Z',
+    data: {
+      email_id: 'sent_1',
+      from: 'Kept <hello@wearekept.co.uk>',
+      to: ['seller@example.com'],
+      subject: 'Welcome to Kept',
+      ...extra,
+    },
+  });
+
+  const outboundRow = (deliveryStatus: string | null = null) => ({
+    id: 'row_out',
+    direction: 'outbound',
+    counterparty: 'seller@example.com',
+    subject: 'Welcome to Kept',
+    dealId: 'deal_1',
+    quoteRequestId: null,
+    deliveryStatus,
+  });
+
+  it('marks an email delivered, with no card', async () => {
+    db.emailMessage.findUnique.mockResolvedValue(outboundRow());
+    await POST(signed(status('email.delivered')));
+    expect(db.emailMessage.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 'row_out' },
+        data: expect.objectContaining({ deliveryStatus: 'delivered' }),
+      })
+    );
+    expect(db.founderAction.create).not.toHaveBeenCalled();
+  });
+
+  it('records a bounce with its reason and raises one card', async () => {
+    db.emailMessage.findUnique.mockResolvedValue(outboundRow('sent'));
+    await POST(
+      signed(
+        status('email.bounced', {
+          bounce: { type: 'Permanent', message: 'No such user' },
+        })
+      )
+    );
+    expect(db.emailMessage.update.mock.calls[0][0].data).toMatchObject({
+      deliveryStatus: 'bounced',
+      deliveryDetail: 'Permanent: No such user',
+    });
+    const { data } = db.founderAction.create.mock.calls[0][0];
+    expect(data.title).toBe('Bounced: email to seller@example.com');
+    expect(data.dedupKey).toBe('email-delivery:sent_1:bounced');
+    expect(data.dealId).toBe('deal_1');
+  });
+
+  it('does not let a late "delivered" hide a bounce', async () => {
+    db.emailMessage.findUnique.mockResolvedValue(outboundRow('bounced'));
+    await POST(signed(status('email.delivered')));
+    expect(db.emailMessage.update).not.toHaveBeenCalled();
+    expect(db.founderAction.create).not.toHaveBeenCalled();
+  });
+
+  it('ignores a status for an email that is not in the log', async () => {
+    db.emailMessage.findUnique.mockResolvedValue(null);
+    const res = await POST(signed(status('email.bounced')));
+    expect(await res.json()).toMatchObject({
+      delivery: { tracked: false, reason: 'not-logged' },
+    });
+    expect(db.emailMessage.update).not.toHaveBeenCalled();
+  });
+
+  it('ignores opens and clicks', async () => {
+    const res = await POST(signed(status('email.opened')));
+    expect(await res.json()).toMatchObject({ ignored: 'email.opened' });
+    expect(db.emailMessage.findUnique).not.toHaveBeenCalled();
   });
 });

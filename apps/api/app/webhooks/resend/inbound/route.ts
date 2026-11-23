@@ -1,16 +1,23 @@
 import { env } from '@/env';
 import { database } from '@repo/database';
 import { bareAddress, htmlToText } from '@repo/email/addresses';
+import { statusForEvent } from '@repo/email/delivery';
 import { findEmailLinks, recordEmail } from '@repo/email/log';
 import { NextResponse } from 'next/server';
 import { Webhook } from 'svix';
 import { z } from 'zod';
+import { recordDeliveryEvent } from '../_lib/delivery';
 
 /**
  * POST /webhooks/resend/inbound
  *
- * Resend's `email.received` webhook. This is how a seller's reply gets into
- * the dashboard /inbox.
+ * The one Resend webhook. Two jobs:
+ *   - `email.received`: a seller's reply, on its way into the dashboard /inbox.
+ *   - `email.delivered` / `bounced` / `complained` / `failed` / ...: what
+ *     happened to an email we sent (see ../_lib/delivery.ts).
+ *
+ * One endpoint for both, despite the path name: Resend's free plan allows a
+ * single webhook endpoint, so splitting them would cost a plan upgrade.
  *
  * The path a reply takes:
  *   1. Every email we send carries Reply-To: the one live mailbox
@@ -34,6 +41,7 @@ export const maxDuration = 60;
 
 const EventSchema = z.object({
   type: z.string(),
+  created_at: z.string().nullish(),
   data: z
     .object({
       email_id: z.string().min(1),
@@ -150,7 +158,20 @@ export const POST = async (request: Request): Promise<Response> => {
     );
   }
   if (parsed.data.type !== 'email.received') {
-    return NextResponse.json({ success: true, ignored: parsed.data.type });
+    const status = statusForEvent(parsed.data.type);
+    if (!status) {
+      return NextResponse.json({ success: true, ignored: parsed.data.type });
+    }
+    const at = parsed.data.created_at
+      ? new Date(parsed.data.created_at)
+      : new Date();
+    const outcome = await recordDeliveryEvent({
+      emailId: parsed.data.data.email_id,
+      status,
+      data: parsed.data.data,
+      at: Number.isNaN(at.getTime()) ? new Date() : at,
+    });
+    return NextResponse.json({ success: true, delivery: outcome });
   }
 
   const event = parsed.data.data;

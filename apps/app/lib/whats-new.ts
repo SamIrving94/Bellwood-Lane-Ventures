@@ -80,6 +80,10 @@ export const WHATS_NEW: WhatsNewEntry[] = [
         emoji: '🔔',
         text: '**A card in Today** when a seller we know writes back (once inbound mail is connected).',
       },
+      {
+        emoji: '🚧',
+        text: '**Bounced? You hear about it.** Each email shows Delivered or Bounced, and a bounce raises a card.',
+      },
     ],
     cta: { label: 'Open the Inbox', href: '/inbox' },
   },
