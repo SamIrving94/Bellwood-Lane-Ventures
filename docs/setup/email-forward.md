@@ -1,6 +1,6 @@
 # The deal email log — setup guide
 
-_Last verified against the code: 2026-11-22_
+_Last verified against the code: 2026-11-23_
 
 **CC one address on an email and it is stored on the deal.** So is every
 reply-all after it. Each deal page has an **Emails** panel; `/deals/email-log`
@@ -21,6 +21,30 @@ Nothing here sends or drafts anything. It keeps the record.
 | **Send a PDF to the address, nobody else on the email** | Stored, and the PDF is read into `/documents`. You get a short acknowledgement. |
 
 Use **CC, not BCC**. A reply to a BCC'd email does not come back to us.
+
+**The easy way: the Email buttons.** Each deal's Emails panel has **Email the
+seller** and **Email the solicitor** (one per address saved on the deal). They
+open a Gmail draft with the recipient, the deal's own address in CC and the
+property as the subject. An email started there files itself with no
+matching. They only open a draft; a person writes and sends it.
+
+- The button picks your company Google account when your dashboard sign-in
+  has an address at the log address's parent domain (`authuser`). If it does
+  not, Gmail opens whichever account is first. **Check the From line.**
+- On a phone or another mail app, use the small `mailto:` links under the
+  buttons.
+- Not tested in a real browser against Gmail yet.
+
+**Where the CC can still be lost**
+
+- You start an email somewhere else and forget the CC.
+- The other side presses Reply, not Reply-all. Their answer reaches you but
+  not the log.
+
+The fix for both is to have Google Workspace copy the mailbox's mail to the
+log address automatically. **Do not turn that on yet**: the webhook would
+store every non-deal email you send as "needs a deal". It needs a change
+first.
 
 ---
 
@@ -55,8 +79,23 @@ The address ends up in other people's inboxes the moment it is CC'd, so:
 - **Founders** (`EMAIL_FORWARD_ALLOWLIST`): always accepted.
 - **Anyone else**: only when the email continues a thread we hold, was sent to
   a real deal's own address, or the **sender** is a deal's seller or solicitor.
-- **Everything else is dropped silently**, as before. A postcode in the body
-  never gets a stranger in.
+- **Everything else is turned away.** The sender is told nothing. A postcode
+  in the body never gets a stranger in.
+
+### What happens to mail that is turned away
+
+- The email is **not stored**. Only the sender, the subject line and the
+  time (`DealEmailDrop`), **for 30 days**, at most 50 a day.
+- It is listed under **Turned away** on `/deals/email-log`, so a refusal is
+  visible instead of silent.
+- **If the sender is at our own domain** (the domain the log address hangs
+  off), it is almost always a founder address missing from
+  `EMAIL_FORWARD_ALLOWLIST`. That raises **one high-priority card a week**
+  and a banner on the log page, because until it is fixed every email that
+  address copies the log on is lost. The card closes itself when an email
+  from that address gets through.
+- Should one have been kept? Save their email on the deal, then forward the
+  email from your mailbox to that deal's own address.
 
 ---
 
@@ -183,8 +222,9 @@ If nothing arrives, look in Vercel logs for `[postmark/inbound]`.
 
 - **Basic Auth** between Postmark and our endpoint. Rotate the password if
   you suspect a leak.
-- **Silent drop** of mail we have no reason to keep. The sender does not
-  learn the address exists.
+- **Mail we have no reason to keep is turned away.** The sender does not
+  learn the address exists. We keep the sender and subject for 30 days so a
+  founder can see it happened; never the body or attachments.
 - **Email bodies ARE stored now** (`DealEmail.bodyText`, capped at 100,000
   characters). They are correspondence about a deal and are deleted with it
   (`onDelete: Cascade`). Before this change only the subject was kept.

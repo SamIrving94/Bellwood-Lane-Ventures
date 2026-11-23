@@ -2,9 +2,14 @@ import type { EmailCardData } from '@/lib/deal-emails';
 import Link from 'next/link';
 import { CopyButton } from '../components/copy-button';
 import { EmailCard } from '../components/email-card';
+import { EmailButtons, type EmailRecipient } from './email-buttons';
 
 /** Emails shown before the rest fold away. */
 const SHOWN_FIRST = 5;
+
+// Deal contact fields are free text. Only offer a button for something that
+// is plainly one email address.
+const ONE_EMAIL = /^[^\s@,;]+@[^\s@,;]+\.[^\s@,;]+$/;
 
 /**
  * The deal's email log. Every email a founder copied the log address on,
@@ -15,6 +20,9 @@ export function EmailsPanel({
   emails,
   logAddress,
   dealAddress,
+  sellerEmail,
+  solicitorEmail,
+  subject,
 }: {
   /** Null when the log table is not there yet (run `pnpm migrate`). */
   emails: EmailCardData[] | null;
@@ -22,7 +30,16 @@ export function EmailsPanel({
   logAddress: string | null;
   /** This deal's own tagged address. Null when there is no log address. */
   dealAddress: string | null;
+  sellerEmail: string | null;
+  solicitorEmail: string | null;
+  /** Subject for an email started here: the property. */
+  subject: string;
 }) {
+  const recipients: EmailRecipient[] = [
+    { label: 'seller', email: sellerEmail?.trim() ?? '' },
+    { label: 'solicitor', email: solicitorEmail?.trim() ?? '' },
+  ].filter((r) => ONE_EMAIL.test(r.email));
+
   const waiting = emails?.filter((e) => e.waitingOnUs).length ?? 0;
   const first = emails?.slice(0, SHOWN_FIRST) ?? [];
   const rest = emails?.slice(SHOWN_FIRST) ?? [];
@@ -55,6 +72,11 @@ export function EmailsPanel({
         </p>
       ) : logAddress && dealAddress ? (
         <div className="mt-3 space-y-2 text-sm">
+          <EmailButtons
+            cc={dealAddress}
+            recipients={recipients}
+            subject={subject}
+          />
           <p>
             <strong>CC</strong>{' '}
             <code className="rounded bg-muted px-1">{logAddress}</code> on any
@@ -63,7 +85,9 @@ export function EmailsPanel({
           <div className="flex flex-wrap items-center gap-2 text-muted-foreground text-xs">
             <span>
               Not filing itself? Use this deal&rsquo;s own address:{' '}
-              <code className="rounded bg-muted px-1">{dealAddress}</code>
+              <code className="break-all rounded bg-muted px-1">
+                {dealAddress}
+              </code>
             </span>
             <CopyButton value={dealAddress} />
           </div>

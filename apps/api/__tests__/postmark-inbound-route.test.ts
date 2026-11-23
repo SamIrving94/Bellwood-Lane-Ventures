@@ -17,6 +17,7 @@ const state = vi.hoisted(() => ({
   deals: [] as Row[],
   emails: [] as Row[],
   extracts: [] as Row[],
+  drops: [] as Row[],
   actions: [] as Row[],
   sent: [] as Row[],
   stored: [] as string[],
@@ -135,6 +136,14 @@ vi.mock('@repo/database', () => {
           return Promise.resolve(row);
         },
       },
+      dealEmailDrop: {
+        count: () => Promise.resolve(state.drops.length),
+        deleteMany: () => Promise.resolve({ count: 0 }),
+        create: ({ data }: { data: Row }) => {
+          state.drops.push({ ...data });
+          return Promise.resolve(data);
+        },
+      },
       documentExtract: {
         create: ({ data }: { data: Row }) => {
           const row = { id: nextId('extract'), ...data };
@@ -159,11 +168,16 @@ vi.mock('@repo/database', () => {
           where,
           data,
         }: {
-          where: { dedupKey: string; status: string };
+          where: { dedupKey: string | { startsWith: string }; status: string };
           data: Row;
         }) => {
+          const wanted = where.dedupKey;
           const hits = state.actions.filter(
-            (a) => a.dedupKey === where.dedupKey && a.status === where.status
+            (a) =>
+              a.status === where.status &&
+              (typeof wanted === 'string'
+                ? a.dedupKey === wanted
+                : String(a.dedupKey).startsWith(wanted.startsWith))
           );
           for (const hit of hits) {
             Object.assign(hit, data);
@@ -249,6 +263,7 @@ beforeEach(() => {
   ];
   state.emails = [];
   state.extracts = [];
+  state.drops = [];
   state.actions = [];
   state.sent = [];
   state.stored = [];
@@ -328,6 +343,56 @@ describe('POST /webhooks/postmark/inbound', () => {
     expect(state.emails).toHaveLength(0);
     expect(state.stored).toHaveLength(0);
     expect(state.sent).toHaveLength(0);
+    // The refusal is visible to a founder: who and what subject, no body.
+    expect(state.drops).toEqual([
+      {
+        fromEmail: 'mallory@example.net',
+        fromName: null,
+        subject: 'Your home',
+        looksOurs: false,
+      },
+    ]);
+    // A stranger is not worth a card.
+    expect(state.actions).toHaveLength(0);
+  });
+
+  test('a founder address missing from the list: turned away, with ONE card', async () => {
+    const fromAnt = {
+      from: 'ant@wearekept.co.uk',
+      messageId: 'ant-1@mail',
+    };
+    const first = await post(body(fromAnt));
+    expect(first.json).toEqual({ success: true, dropped: true });
+    expect(state.drops[0]).toMatchObject({
+      fromEmail: 'ant@wearekept.co.uk',
+      looksOurs: true,
+    });
+    expect(state.actions).toHaveLength(1);
+    expect(state.actions[0]).toMatchObject({
+      priority: 'high',
+      status: 'pending',
+      title: 'Emails from ant@wearekept.co.uk are not being logged',
+    });
+
+    // The next refused email the same week does not raise a second card.
+    await post(body({ ...fromAnt, messageId: 'ant-2@mail' }));
+    expect(state.drops).toHaveLength(2);
+    expect(state.actions).toHaveLength(1);
+  });
+
+  test('a founder email getting through closes that card', async () => {
+    state.actions.push({
+      dedupKey: `deal_email_allowlist:${FOUNDER}:2957`,
+      status: 'pending',
+    });
+    await post(body());
+    expect(state.actions[0]).toMatchObject({ status: 'completed' });
+  });
+
+  test('a flood of refused mail stops being recorded at the daily cap', async () => {
+    state.drops = Array.from({ length: 50 }, () => ({}));
+    await post(body({ from: 'mallory@example.net' }));
+    expect(state.drops).toHaveLength(50);
   });
 
   test('a retry of the same email stores one row', async () => {

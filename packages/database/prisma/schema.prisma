@@ -537,6 +537,25 @@ model DealEmail {
   @@index([sentAt])
 }
 
+// Mail the email log turned away: the sender was not a founder and the
+// email belonged to no thread or deal we know. The email itself is NOT
+// kept. Only who sent it and its subject line, for 30 days, so a founder
+// can see that something was refused (their own address missing from the
+// allowlist, a seller writing from a second address) instead of it
+// vanishing. Pruned on write by the webhook.
+model DealEmailDrop {
+  id         String   @id @default(cuid())
+  fromEmail  String
+  fromName   String?
+  subject    String
+  // The sender is at our own domain: almost always a founder address that
+  // is missing from EMAIL_FORWARD_ALLOWLIST.
+  looksOurs  Boolean  @default(false)
+  receivedAt DateTime @default(now())
+
+  @@index([receivedAt])
+}
+
 // ─── Field Partner Network ─────────────────────────────────
 // Builders / retired contractors who view properties on our behalf and take
 // refurb work orders. No accounts — each viewing gets a magic link (same

@@ -343,6 +343,40 @@ export function isOwnAddress(
   return received !== null && domainOf(a) === domainOf(received);
 }
 
+/**
+ * Is the sender at the domain our log address hangs off? Mail received at
+ * `log@in.wearekept.co.uk` from `someone@wearekept.co.uk` is almost always a
+ * founder whose address is missing from the allowlist, and that failure is
+ * total and silent: every email they copy the log on is refused. The webhook
+ * raises a card for it.
+ *
+ * Postmark's own `…@inbound.postmarkapp.com` address says nothing about OUR
+ * domain, so it is never used as evidence.
+ */
+export function looksOurs(
+  email: Pick<NormalisedEmail, 'fromEmail' | 'originalRecipient'>,
+  book: AddressBook
+): boolean {
+  const sender = domainOf(email.fromEmail);
+  if (!sender.includes('.')) {
+    return false;
+  }
+  const received = [
+    ...book.logAddresses,
+    ...(email.originalRecipient ? [email.originalRecipient] : []),
+  ]
+    .map(domainOf)
+    .filter((d) => !d.endsWith('postmarkapp.com'));
+  // The same domain, or its direct parent: `in.wearekept.co.uk` ←
+  // `wearekept.co.uk`. Not any suffix, or `co.uk` would count as ours.
+  const labels = sender.split('.').length;
+  return received.some(
+    (d) =>
+      d === sender ||
+      (d.endsWith(`.${sender}`) && d.split('.').length === labels + 1)
+  );
+}
+
 /** Everyone on the email who is not us, sender first. */
 export function otherParties(
   email: NormalisedEmail,

@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { type EmailRow, dealLogAddress, toEmailCards } from './deal-email-view';
+import {
+  type EmailRow,
+  companyAccount,
+  dealLogAddress,
+  gmailComposeUrl,
+  mailtoUrl,
+  toEmailCards,
+} from './deal-email-view';
 
 function row(over: Partial<EmailRow> = {}): EmailRow {
   return {
@@ -120,5 +127,66 @@ describe('dealLogAddress', () => {
     expect(dealLogAddress('log+old@in.wearekept.co.uk', 'abc123')).toBe(
       'log+abc123@in.wearekept.co.uk'
     );
+  });
+});
+
+describe('starting an email from the deal page', () => {
+  const input = {
+    to: 'jane@example.com',
+    cc: 'log+cm3x9k2p40001abcd1234efgh@in.wearekept.co.uk',
+    subject: '12 Acacia Avenue, M14 5AB',
+  };
+
+  it('Gmail: fills To, CC and subject', () => {
+    const url = new URL(gmailComposeUrl(input));
+    expect(url.origin + url.pathname).toBe('https://mail.google.com/mail/');
+    expect(url.searchParams.get('view')).toBe('cm');
+    expect(url.searchParams.get('to')).toBe(input.to);
+    expect(url.searchParams.get('cc')).toBe(input.cc);
+    expect(url.searchParams.get('su')).toBe(input.subject);
+    expect(url.searchParams.has('authuser')).toBe(false);
+  });
+
+  it('Gmail: the "+" in the deal address survives as %2B, not a space', () => {
+    const url = gmailComposeUrl(input);
+    expect(url).toContain(
+      'cc=log%2Bcm3x9k2p40001abcd1234efgh%40in.wearekept.co.uk'
+    );
+    expect(url).not.toContain('cc=log+');
+  });
+
+  it('Gmail: names the company account when we know it', () => {
+    const url = new URL(
+      gmailComposeUrl({ ...input, account: 'sam@wearekept.co.uk' })
+    );
+    expect(url.searchParams.get('authuser')).toBe('sam@wearekept.co.uk');
+  });
+
+  it('mailto: same three fields, "+" encoded', () => {
+    expect(mailtoUrl(input)).toBe(
+      'mailto:jane@example.com?cc=log%2Bcm3x9k2p40001abcd1234efgh%40in.wearekept.co.uk&subject=12%20Acacia%20Avenue%2C%20M14%205AB'
+    );
+  });
+
+  it('mailto: an odd recipient cannot add its own headers', () => {
+    expect(mailtoUrl({ ...input, to: 'a@b.com?bcc=evil@x.com' })).toContain(
+      'mailto:a@b.com%3Fbcc%3Devil@x.com?cc='
+    );
+  });
+});
+
+describe('companyAccount', () => {
+  const log = 'log@in.wearekept.co.uk';
+
+  it('picks the address at the domain the log address hangs off', () => {
+    expect(companyAccount(['sam@gmail.com', 'Sam@WeAreKept.co.uk'], log)).toBe(
+      'sam@wearekept.co.uk'
+    );
+  });
+
+  it('does not guess when none is', () => {
+    expect(companyAccount(['sam@gmail.com'], log)).toBeNull();
+    expect(companyAccount([], log)).toBeNull();
+    expect(companyAccount(['x@co.uk'], log)).toBeNull();
   });
 });

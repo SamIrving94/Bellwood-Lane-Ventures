@@ -13,6 +13,7 @@ import {
   type DealCandidate,
   type DealLookups,
   InboundSchema,
+  type NormalisedEmail,
   type StoredAttachment,
   attachmentBytes,
   compactPostcode,
@@ -20,6 +21,7 @@ import {
   formatPostcode,
   isInlineNoise,
   isPdf,
+  looksOurs,
   normaliseInbound,
   parseAllowlist,
   resolveDeal,
@@ -224,6 +226,84 @@ function isUniqueViolation(err: unknown): boolean {
 }
 
 // ────────────────────────────────────────────────────────────────────────────
+// Turned-away mail
+// ────────────────────────────────────────────────────────────────────────────
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+/** How long the sender + subject of refused mail stay visible. */
+const TURNED_AWAY_KEEP_DAYS = 30;
+/** Rows recorded per day. The address can be harvested; spam must not fill the table. */
+const TURNED_AWAY_DAILY_CAP = 50;
+const ALLOWLIST_CARD_KEY = 'deal_email_allowlist';
+
+/**
+ * Note that an email was refused, so the refusal is visible to a founder.
+ * The email is NOT kept: sender and subject only, pruned after 30 days.
+ *
+ * One refusal matters more than the rest: a sender at our own domain. That
+ * is a founder address missing from EMAIL_FORWARD_ALLOWLIST, which means
+ * every email they copy the log on is refused. It gets one card a week
+ * until it is fixed (LEARNINGS: a silent fallback raises exactly one
+ * deduped action).
+ */
+async function recordTurnedAway(
+  email: NormalisedEmail,
+  book: AddressBook
+): Promise<void> {
+  const now = Date.now();
+  const today = await database.dealEmailDrop.count({
+    where: { receivedAt: { gte: new Date(now - DAY_MS) } },
+  });
+  if (today >= TURNED_AWAY_DAILY_CAP) {
+    return;
+  }
+
+  const ours = looksOurs(email, book);
+  await database.dealEmailDrop.deleteMany({
+    where: {
+      receivedAt: { lt: new Date(now - TURNED_AWAY_KEEP_DAYS * DAY_MS) },
+    },
+  });
+  await database.dealEmailDrop.create({
+    data: {
+      fromEmail: email.fromEmail,
+      fromName: email.fromName,
+      subject: email.subject.slice(0, 160),
+      looksOurs: ours,
+    },
+  });
+
+  if (!ours) {
+    return;
+  }
+  try {
+    await database.founderAction.create({
+      data: {
+        type: 'general',
+        priority: 'high',
+        status: 'pending',
+        agent: 'system',
+        title: `Emails from ${email.fromEmail} are not being logged`,
+        description: [
+          'The email log turned this sender away because the address is not on the founder list.',
+          '',
+          'If it is one of yours: add it to EMAIL_FORWARD_ALLOWLIST on the bellwood-api project in Vercel, then redeploy. Until then every email it copies the log on is refused.',
+          '',
+          'If it is not one of yours, dismiss this card.',
+        ].join('\n'),
+        dedupKey: `${ALLOWLIST_CARD_KEY}:${email.fromEmail}:${Math.floor(now / (7 * DAY_MS))}`,
+        metadata: { link: '/deals/email-log', sourceType: 'deal_email' },
+      },
+    });
+  } catch (err) {
+    // P2002 = this week's card for this address already exists.
+    if (!isUniqueViolation(err)) {
+      console.warn('[postmark/inbound] FounderAction create failed', err);
+    }
+  }
+}
+
+// ────────────────────────────────────────────────────────────────────────────
 // Handler
 // ────────────────────────────────────────────────────────────────────────────
 
@@ -256,6 +336,9 @@ export const POST = async (request: Request) => {
   // Threading rests on the Message-ID header. If Postmark ever stops sending
   // it, say so in the logs rather than quietly filing every reply as new.
   if (/^(postmark|nomsgid):/.test(email.messageId)) {
+    console.warn(
+      '[postmark/inbound] no Message-ID header on this email — replies to it cannot be threaded'
+    );
   }
 
   const book: AddressBook = {
@@ -275,8 +358,17 @@ export const POST = async (request: Request) => {
   const match = await resolveDeal(email, book, lookups);
 
   // Anti-spam: silently 200 mail we have no reason to keep, so nobody can
-  // probe the address. We log it but never disclose that it exists.
+  // probe the address. The SENDER never learns anything; a founder can see
+  // what was turned away on /deals/email-log.
   if (!match.accepted) {
+    console.warn(
+      `[postmark/inbound] turned away email from unknown sender: ${email.fromEmail}`
+    );
+    try {
+      await recordTurnedAway(email, book);
+    } catch (err) {
+      console.warn('[postmark/inbound] could not record turned-away mail', err);
+    }
     return NextResponse.json({ success: true, dropped: true });
   }
 
@@ -320,8 +412,9 @@ export const POST = async (request: Request) => {
         { access: 'public', contentType: att.ContentType }
       );
       record.url = blob.url;
-    } catch (_err) {
+    } catch (err) {
       record.skipped = 'store_failed';
+      console.warn('[postmark/inbound] attachment store failed', err);
     }
 
     // The PDF reader is tuned for probate grants and costs a model call per
@@ -439,7 +532,9 @@ export const POST = async (request: Request) => {
           data: { status: 'completed', resolvedAt: new Date() },
         });
       }
-    } catch (_err) {}
+    } catch (err) {
+      console.warn('[postmark/inbound] thread back-fill failed', err);
+    }
   } else {
     // No deal: one card per conversation asking a person to place it.
     try {
@@ -470,6 +565,7 @@ export const POST = async (request: Request) => {
     } catch (err) {
       // P2002 = this conversation already has its card. Anything else: log.
       if (!isUniqueViolation(err)) {
+        console.warn('[postmark/inbound] FounderAction create failed', err);
       }
     }
   }
@@ -486,7 +582,9 @@ export const POST = async (request: Request) => {
           postcodesFound: email.postcodes,
         }),
       });
-    } catch (_err) {}
+    } catch (err) {
+      console.warn('[postmark/inbound] ack email failed (non-fatal)', err);
+    }
 
     // A document read onto a deal is worth a glance; an unfiled one already
     // has its card above.
@@ -525,13 +623,33 @@ export const POST = async (request: Request) => {
             },
           },
         });
-      } catch (_err) {}
+      } catch (err) {
+        console.warn('[postmark/inbound] FounderAction create failed', err);
+      }
     }
   }
 
   // The read happens after Postmark has its 200: a slow model must never
   // make Postmark retry an email we already hold.
   after(async () => {
+    // A founder's email got through, so any "your emails are not being
+    // logged" card for this address is answered.
+    if (book.founders.has(email.fromEmail)) {
+      try {
+        await database.founderAction.updateMany({
+          where: {
+            dedupKey: {
+              startsWith: `${ALLOWLIST_CARD_KEY}:${email.fromEmail}:`,
+            },
+            status: 'pending',
+          },
+          data: { status: 'completed', resolvedAt: new Date() },
+        });
+      } catch (err) {
+        console.warn('[postmark/inbound] allowlist card close failed', err);
+      }
+    }
+
     try {
       const deal = dealId
         ? await database.deal.findUnique({
@@ -553,7 +671,9 @@ export const POST = async (request: Request) => {
           data: digest,
         });
       }
-    } catch (_err) {}
+    } catch (err) {
+      console.warn('[postmark/inbound] digest failed (non-fatal)', err);
+    }
   });
 
   return NextResponse.json({

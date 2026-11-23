@@ -38,20 +38,24 @@ export const WHATS_NEW: WhatsNewEntry[] = [
         text: '**CC the log address** on any email. It is stored on the right deal, attachments and all.',
       },
       {
+        emoji: '📨',
+        text: '**Email the seller** and **Email the solicitor** buttons on each deal open Gmail with the CC already in. Nothing to remember.',
+      },
+      {
         emoji: '↩️',
         text: '**Every reply-all follows.** No forwarding, no copy and paste.',
       },
       {
         emoji: '🧾',
-        text: 'Each email gets a **two-line read**: who wrote, what they said, and whether they are **waiting on us**.',
+        text: 'Each email gets a **two-line read**: who wrote, what they said, and whether they are **waiting on us**. It only reads. Nothing is sent or drafted.',
       },
       {
         emoji: '🧭',
         text: '**No guessing.** If the deal is not clear, the email waits in the log for one click from you.',
       },
       {
-        emoji: '🔒',
-        text: 'Nothing is sent and nothing is drafted. It only **keeps the record**.',
+        emoji: '🚪',
+        text: 'Mail we **turn away** is listed, so nothing vanishes quietly. If it is your own address, you get a card.',
       },
       {
         emoji: '🛠️',
@@ -65,7 +69,8 @@ export const WHATS_NEW: WhatsNewEntry[] = [
     date: '2026-11-22',
     emoji: '✍️',
     title: 'Read, fix and approve guides in one place',
-    intro: 'The full guide, Counsel’s notes beside it, and the edit box right there.',
+    intro:
+      'The full guide, Counsel’s notes beside it, and the edit box right there.',
     bullets: [
       {
         emoji: '📖',

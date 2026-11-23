@@ -24,6 +24,7 @@ import {
   extractPostcodes,
   htmlToText,
   isInlineNoise,
+  looksOurs,
   normaliseInbound,
   otherParties,
   parseAllowlist,
@@ -245,6 +246,35 @@ describe('who is on the other side', () => {
       FromFull: { Email: 'jane@example.com', Name: 'Jane' },
     });
     expect(directionOf(e, book)).toBe('inbound');
+  });
+});
+
+describe('looksOurs', () => {
+  const from = (fromEmail: string, originalRecipient: string | null = LOG) => ({
+    fromEmail,
+    originalRecipient,
+  });
+
+  test('a sender at the domain our log address hangs off is ours', () => {
+    expect(looksOurs(from('ant@wearekept.co.uk'), book)).toBe(true);
+    expect(looksOurs(from('x@in.wearekept.co.uk'), book)).toBe(true);
+  });
+
+  test('anyone else is not', () => {
+    expect(looksOurs(from('jane@example.com'), book)).toBe(false);
+    expect(looksOurs(from('x@notwearekept.co.uk'), book)).toBe(false);
+    // A shared public suffix is not a shared domain.
+    expect(looksOurs(from('x@co.uk'), book)).toBe(false);
+  });
+
+  test('Postmark’s own address is never evidence of our domain', () => {
+    const noLog = { founders: book.founders, logAddresses: new Set<string>() };
+    expect(
+      looksOurs(
+        from('support@postmarkapp.com', 'abc123@inbound.postmarkapp.com'),
+        noLog
+      )
+    ).toBe(false);
   });
 });
 

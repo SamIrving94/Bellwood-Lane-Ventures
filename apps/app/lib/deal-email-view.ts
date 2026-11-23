@@ -131,3 +131,71 @@ export function dealLogAddress(base: string, dealId: string): string {
   const local = base.slice(0, at).replace(/\+.*$/, '');
   return `${local}+${dealId}${base.slice(at)}`;
 }
+
+// ───────────────────────────────────────────────────────────────────────────
+// Starting an email from the deal page
+// ───────────────────────────────────────────────────────────────────────────
+
+export type ComposeInput = {
+  to: string;
+  /** The deal's own log address, so the email files itself with no matching. */
+  cc: string;
+  subject: string;
+};
+
+/**
+ * A Gmail compose window with To, CC and subject filled in. The founders are
+ * on Google Workspace, so this is the main button.
+ *
+ * `account` picks WHICH signed-in Google account composes (`authuser`). It
+ * matters: with a personal Gmail signed in beside the company mailbox, Gmail
+ * would otherwise open whichever is first, and a seller would get an email
+ * from the wrong address. Leave it out when we cannot tell.
+ */
+export function gmailComposeUrl(
+  input: ComposeInput & { account?: string | null }
+): string {
+  // URLSearchParams writes "+" as %2B, which the tagged CC address needs: a
+  // bare "+" in a query string means a space.
+  const params = new URLSearchParams({ view: 'cm', fs: '1' });
+  if (input.account) {
+    params.set('authuser', input.account);
+  }
+  params.set('to', input.to);
+  params.set('cc', input.cc);
+  params.set('su', input.subject);
+  return `https://mail.google.com/mail/?${params.toString()}`;
+}
+
+/** The same email as a `mailto:` link, for a phone or another mail app. */
+export function mailtoUrl(input: ComposeInput): string {
+  const to = encodeURIComponent(input.to).replace(/%40/g, '@');
+  return `mailto:${to}?cc=${encodeURIComponent(input.cc)}&subject=${encodeURIComponent(input.subject)}`;
+}
+
+/**
+ * Which of a founder's own addresses is the company one: the address at the
+ * domain the log address hangs off (`log@in.wearekept.co.uk` ←
+ * `sam@wearekept.co.uk`). Null when none is, and then we do not guess.
+ * The same direct-parent rule as `looksOurs` in the webhook.
+ */
+export function companyAccount(
+  emails: string[],
+  logAddress: string
+): string | null {
+  const logDomain = logAddress.slice(logAddress.lastIndexOf('@') + 1);
+  for (const raw of emails) {
+    const email = raw.trim().toLowerCase();
+    const domain = email.slice(email.lastIndexOf('@') + 1);
+    if (!domain.includes('.')) {
+      continue;
+    }
+    const isParent =
+      logDomain.endsWith(`.${domain}`) &&
+      logDomain.split('.').length === domain.split('.').length + 1;
+    if (domain === logDomain || isParent) {
+      return email;
+    }
+  }
+  return null;
+}

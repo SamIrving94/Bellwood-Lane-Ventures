@@ -23,6 +23,17 @@ export const dynamic = 'force-dynamic';
 
 const CLOSED = ['completed', 'rejected', 'withdrawn'];
 
+/** How far back the turned-away list looks. Rows are deleted after 30 days. */
+const TURNED_AWAY_DAYS = 14;
+
+const WHEN = new Intl.DateTimeFormat('en-GB', {
+  day: 'numeric',
+  month: 'short',
+  hour: '2-digit',
+  minute: '2-digit',
+  timeZone: 'Europe/London',
+});
+
 // Finishes the sentence "Here because …".
 const MATCHED_BY: Record<string, string> = {
   deal_tag: 'it was sent to the deal’s own address',
@@ -94,7 +105,19 @@ export default async function EmailLogPage() {
       take: 40,
       include: { deal: { select: { address: true, postcode: true } } },
     }),
-  ]).catch((_err) => {
+    // Mail the webhook refused. Sender and subject only; the email itself
+    // was never stored.
+    database.dealEmailDrop.findMany({
+      where: {
+        receivedAt: {
+          gte: new Date(Date.now() - TURNED_AWAY_DAYS * 24 * 60 * 60 * 1000),
+        },
+      },
+      orderBy: { receivedAt: 'desc' },
+      take: 50,
+    }),
+  ]).catch((err) => {
+    console.warn('[email-log] email log unavailable', err);
     return null;
   });
 
@@ -112,6 +135,12 @@ export default async function EmailLogPage() {
   const unfiled = loaded ? toEmailCards(loaded[0]) : [];
   const filedRows = loaded ? loaded[1] : [];
   const filed = toEmailCards(filedRows);
+  const turnedAway = loaded ? loaded[2] : [];
+  // A sender at our own domain being refused means a founder's address is
+  // missing from the list, and every email they copy the log on is lost.
+  const oursRefused = Array.from(
+    new Set(turnedAway.filter((d) => d.looksOurs).map((d) => d.fromEmail))
+  );
   const dealLabel = new Map(
     filedRows.map((r) => [
       r.id,
@@ -159,6 +188,22 @@ export default async function EmailLogPage() {
             <code className="rounded bg-muted px-1">pnpm migrate</code> once to
             add its table.
           </p>
+        )}
+
+        {oursRefused.length > 0 && (
+          <div className="max-w-3xl rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm dark:border-amber-800 dark:bg-amber-950">
+            <p className="font-medium">
+              Emails from {oursRefused.join(', ')} are being turned away.
+            </p>
+            <p className="mt-1">
+              If that is your address, it is missing from{' '}
+              <code className="rounded bg-muted px-1">
+                EMAIL_FORWARD_ALLOWLIST
+              </code>{' '}
+              on the bellwood-api project in Vercel. Add it and redeploy. Until
+              then nothing it copies the log on is stored.
+            </p>
+          </div>
         )}
 
         <section className="max-w-3xl">
@@ -233,6 +278,60 @@ export default async function EmailLogPage() {
                       label="Move to this deal"
                     />
                   </details>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+
+        <section className="max-w-3xl">
+          <h2 className="font-medium text-muted-foreground text-sm uppercase tracking-wide">
+            Turned away
+            <span className="ml-2 normal-case tracking-normal">
+              {turnedAway.length} in the last {TURNED_AWAY_DAYS} days
+            </span>
+          </h2>
+          <ul className="mt-2 list-disc space-y-1 pl-5 text-muted-foreground text-sm">
+            <li>
+              Mail from someone who is not a founder, on no conversation or deal
+              we hold.
+            </li>
+            <li>
+              <strong>The email is not stored.</strong> Only the sender and
+              subject, for 30 days.
+            </li>
+            <li>
+              Should one have been kept? Save their email on the deal, then
+              forward the email from your mailbox to that deal&rsquo;s own
+              address.
+            </li>
+          </ul>
+          {turnedAway.length === 0 ? (
+            <p className="mt-2 text-muted-foreground text-sm">
+              Nothing turned away.
+            </p>
+          ) : (
+            <ul className="mt-3 divide-y rounded-lg border bg-card text-sm">
+              {turnedAway.map((d) => (
+                <li
+                  className="flex flex-wrap items-baseline gap-x-3 gap-y-1 p-3"
+                  key={d.id}
+                >
+                  <span className="text-muted-foreground text-xs">
+                    {WHEN.format(d.receivedAt)}
+                  </span>
+                  <span className="font-medium">
+                    {d.fromName ? `${d.fromName} ` : ''}
+                    &lt;{d.fromEmail}&gt;
+                  </span>
+                  {d.looksOurs && (
+                    <span className="rounded-full border border-amber-300 bg-amber-100 px-2 py-0.5 font-medium text-amber-900 text-xs dark:border-amber-800 dark:bg-amber-950 dark:text-amber-300">
+                      Looks like one of ours
+                    </span>
+                  )}
+                  <span className="w-full text-muted-foreground">
+                    {d.subject || '(no subject)'}
+                  </span>
                 </li>
               ))}
             </ul>

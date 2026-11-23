@@ -646,6 +646,9 @@ const DealDetailPage = async ({
           }
           emails={emails}
           logAddress={emailLogAddress}
+          sellerEmail={deal.sellerEmail}
+          solicitorEmail={deal.solicitorEmail}
+          subject={`${deal.address}, ${deal.postcode}`}
         />
 
         {/* Viewings — the field-partner network's eyes on the property */}

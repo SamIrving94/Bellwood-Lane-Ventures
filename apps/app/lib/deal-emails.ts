@@ -30,7 +30,8 @@ export async function loadDealEmails(
       take: 60,
     });
     return toEmailCards(rows);
-  } catch (_err) {
+  } catch (err) {
+    console.warn('[deal-emails] email log unavailable', err);
     return null;
   }
 }
