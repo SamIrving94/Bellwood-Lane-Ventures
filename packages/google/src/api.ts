@@ -1,6 +1,7 @@
 import 'server-only';
 
 import type { GoogleSession } from './connection';
+import type { GmailMessage } from './gmail-message';
 import { type RawMessageInput, buildRawMessage } from './mime';
 
 export class GoogleApiError extends Error {
@@ -120,6 +121,61 @@ export const addGmailLabels = async (
   await call(session, `${GMAIL}/messages/${messageId}/modify`, {
     json: { addLabelIds: labelIds },
   });
+};
+
+/**
+ * Message ids for a search or a label, newest first, following Gmail's
+ * pages up to `max`. Ids and thread ids only: nothing is read yet. Spam and
+ * the bin are left out by Gmail unless asked for.
+ */
+export const listGmailMessageIds = async (
+  session: GoogleSession,
+  query: { q?: string; labelId?: string; max: number }
+): Promise<{ id: string; threadId: string }[]> => {
+  const out: { id: string; threadId: string }[] = [];
+  let pageToken: string | undefined;
+  do {
+    const params = new URLSearchParams({
+      maxResults: String(Math.min(100, query.max - out.length)),
+    });
+    if (query.q) {
+      params.set('q', query.q);
+    }
+    if (query.labelId) {
+      params.set('labelIds', query.labelId);
+    }
+    if (pageToken) {
+      params.set('pageToken', pageToken);
+    }
+    const page = await call<{
+      messages?: { id: string; threadId: string }[];
+      nextPageToken?: string;
+    }>(session, `${GMAIL}/messages?${params}`);
+    out.push(...(page.messages ?? []));
+    pageToken = page.nextPageToken;
+  } while (pageToken && out.length < query.max);
+  return out.slice(0, query.max);
+};
+
+/** The headers the deal email log decides on. Never the body. */
+const META_HEADERS = ['From', 'To', 'Cc', 'Subject', 'Date', 'Message-ID'];
+
+/**
+ * One message. `metadata` returns headers, labels and Gmail's short preview;
+ * `full` returns the whole MIME tree.
+ */
+export const getGmailMessage = async (
+  session: GoogleSession,
+  id: string,
+  format: 'metadata' | 'full'
+): Promise<GmailMessage> => {
+  const params = new URLSearchParams({ format });
+  if (format === 'metadata') {
+    for (const header of META_HEADERS) {
+      params.append('metadataHeaders', header);
+    }
+  }
+  return await call<GmailMessage>(session, `${GMAIL}/messages/${id}?${params}`);
 };
 
 // ── Calendar ────────────────────────────────────────────────────────────

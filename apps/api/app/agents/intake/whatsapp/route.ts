@@ -6,7 +6,9 @@ import { z } from 'zod';
 import { unauthorizedResponse, validateAgentAuth } from '../../_lib/auth';
 
 const bodySchema = z.object({
-  source: z.enum(['bridge', 'paste', 'share_sheet', 'email']),
+  // 'bridge' is gone with services/whatsapp-bridge (removed 23 Nov 2026):
+  // a copy of it still running somewhere must not be able to feed this.
+  source: z.enum(['paste', 'share_sheet', 'email']),
   rawText: z.string().min(1),
   groupName: z.string().optional(),
   senderName: z.string().optional(),

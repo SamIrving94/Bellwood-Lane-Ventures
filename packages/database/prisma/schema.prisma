@@ -265,6 +265,7 @@ model Deal {
   investorPack      InvestorPack?
   viewings          Viewing[]
   worksProject      WorksProject?
+  emails            DealEmail[]
 
   @@index([status])
   @@index([postcode])
@@ -482,6 +483,68 @@ model LegalDocument {
   createdAt DateTime @default(now())
 
   @@index([dealId])
+}
+
+// ─── Deal email log ────────────────────────────────────────
+// One email on a deal, read from the Kept Gmail mailbox through the Google
+// connection (@repo/google `importDealMail`, run by the google-sync cron).
+// Nobody CCs anything: the importer keeps an email only when it is deal mail.
+// See docs/GOOGLE-WORKSPACE.md § Deal email log.
+//
+// `dealId` is null while an email is UNFILED: it is deal mail, but no single
+// deal matched and the importer will not guess (a seller's email on the
+// wrong deal is a privacy problem, not a tidy-up). A founder files it from
+// /deals/email-log and the whole conversation follows.
+model DealEmail {
+  id     String  @id @default(cuid())
+  dealId String?
+  deal   Deal?   @relation(fields: [dealId], references: [id], onDelete: Cascade)
+
+  // Gmail's own ids. `gmailId` is unique so a message is imported once, and
+  // it is what "Open in Gmail" links to.
+  gmailId       String  @unique
+  gmailThreadId String
+  // RFC 5322 Message-ID, angle brackets stripped. Kept for reference only;
+  // threading uses Gmail's thread id.
+  messageId     String?
+  // `gmail:<thread id>`. Every email in a conversation shares it.
+  threadKey     String
+
+  direction String // 'inbound' (from them) | 'outbound' (from us)
+  fromEmail String
+  fromName  String?
+  toEmails  String[] @default([])
+  ccEmails  String[] @default([])
+  subject   String
+  bodyText  String   @db.Text // plain text, capped
+  replyText String?  @db.Text // the new part only, quoted history cut off (best effort)
+  sentAt    DateTime
+
+  // How the deal was chosen: thread | participant | postcode | label | manual.
+  matchedBy String?
+
+  // LLM digest (feature `deal_email_digest`), written by the cron after the
+  // import. All null when no provider is configured or the call failed.
+  // `digestedAt` records the attempt so a failure is not retried forever.
+  summary    String?   @db.Text
+  party      String? // vendor | solicitor | agent | investor | other
+  needsReply Boolean?
+  nextStep   String?
+  digestedAt DateTime?
+
+  // [{ filename, contentType, sizeBytes }]. Names only: the files stay in
+  // Gmail and are opened there. Nothing is copied into our storage.
+  attachments Json?
+
+  // A founder took this email out of the log. The row stays as a tombstone
+  // (content blanked) so the next import does not bring it straight back.
+  removedAt DateTime?
+
+  createdAt DateTime @default(now())
+
+  @@index([dealId, sentAt])
+  @@index([threadKey])
+  @@index([sentAt])
 }
 
 // ─── Field Partner Network ─────────────────────────────────

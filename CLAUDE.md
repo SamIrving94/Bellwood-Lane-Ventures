@@ -80,8 +80,13 @@ are consumed in-source — no build step between workspace packages.
 
 ## Services (`services/*`)
 
-- `services/whatsapp-bridge` — standalone Node service using `whatsapp-web.js`
-  to relay WhatsApp messages into the intake pipeline.
+None. `services/whatsapp-bridge` (a `whatsapp-web.js` relay from WhatsApp
+groups into intake) was removed on 23 Nov 2026 (founder decision): it drove
+an unofficial WhatsApp client, which WhatsApp does not allow and which risks
+the number being banned. WhatsApp intake is paste-only now
+(`/intake`, `source: 'paste'`). Do not add another unofficial client; the
+official route is the WhatsApp Business Platform, and that needs a founder
+decision first.
 
 ## The automation backbone (`apps/api`)
 
@@ -120,7 +125,7 @@ Marketer, Liaison) and their onboarding prompts are documented in
 - ~40 models including `Deal`, `ScoutLead`, `AvmResult`, `OutreachCampaign`,
   `OutreachHold`, `FounderAction`, `FounderFeedback`, `AgentEvent`, `EvalConfig`,
   `AuctionLot`, `Campaign`, `Contact`, `QuoteRequest`/`QuoteOffer`,
-  `LegalStep`/`LegalDocument`, `WhatsAppIntake`, `LlmCallLog`.
+  `LegalStep`/`LegalDocument`, `DealEmail`, `WhatsAppIntake`, `LlmCallLog`.
 - **Apply schema changes** (dev): from repo root run `pnpm migrate`
   (= `prisma format && prisma generate && prisma db push` inside
   `packages/database`).
@@ -170,6 +175,24 @@ Run a task for one workspace with a filter, e.g.
 - **Safety rails (do not break these):** vendor emails are always held for
   founder review (`OutreachHold`); CEO escalation fires for offers <60% of AVM;
   SLA breaches are deduplicated so they don't spawn duplicate `FounderAction`s.
+- **The email log reads Gmail, keeps only deal mail, and never guesses a
+  deal** (founder, 23 Nov 2026: no Postmark, no address to CC). The
+  google-sync cron runs `importDealMail` (`@repo/google`), which reads the
+  Kept mailbox through the Google connection and stores an email
+  (`DealEmail`) ONLY when it is deal mail: it continues a conversation
+  already in the log, it is to or from a deal's seller or solicitor, or we
+  wrote it to someone outside and a full postcode names one deal. Everything
+  else is ignored and leaves no trace: do not store, list or summarise it,
+  and never fetch its body (the importer decides on headers). A note between
+  colleagues is never picked up unasked; the override is the founder's
+  `Kept/Log` label in Gmail. An email is filed only when that deal is the
+  ONLY candidate (`resolveDeal`), else it waits unfiled at
+  `/deals/email-log`. Do not widen the match (outward codes, "most recent
+  deal", postcodes in inbound mail): a seller's email on the wrong deal is a
+  privacy problem. It only READS mail; the one change it makes in Gmail is
+  adding `Kept/Logged`. Attachments are listed by name, never copied out of
+  Gmail. The model's read (`deal_email_digest`) is display-only. See
+  `docs/GOOGLE-WORKSPACE.md` § Deal email log.
 - **Google is one connection, to the Kept Workspace account** (founder,
   22 Nov 2026), made from Settings → Google and stored encrypted in
   `Setting`. Personal Gmail accounts are refused at the callback. Gmail is
