@@ -53,6 +53,55 @@ export const WHATS_NEW: WhatsNewEntry[] = [
     cta: { label: 'Open the Inbox', href: '/inbox' },
   },
   {
+    id: '2026-11-22-guide-editor',
+    date: '2026-11-22',
+    emoji: '✍️',
+    title: 'Read, fix and approve guides in one place',
+    intro: 'The full guide, Counsel’s notes beside it, and the edit box right there.',
+    bullets: [
+      {
+        emoji: '📖',
+        text: '**Read full post** shows the **whole guide** as formatted text.',
+      },
+      {
+        emoji: '🔎',
+        text: '**Find in text** jumps straight to the line **Counsel** flagged.',
+      },
+      {
+        emoji: '✏️',
+        text: '**Edit** the title, Google description, body and closing line, then **Save**.',
+      },
+      {
+        emoji: '✅',
+        text: '**Save & approve** or **Save & publish**. Nothing goes live until you click Publish.',
+      },
+    ],
+    cta: { label: 'Open guides', href: '/marketing/guides' },
+  },
+  {
+    id: '2026-11-22-clear-all-keep-blogs',
+    date: '2026-11-22',
+    emoji: '🧹',
+    title: 'Clear the decks in one click',
+    intro:
+      'Today piling up? Sweep it clean and keep only what needs a real read.',
+    bullets: [
+      {
+        emoji: '🧹',
+        text: '**Clear all (keep blogs)** sits next to "Needs your decision" on **Today**.',
+      },
+      {
+        emoji: '📝',
+        text: '**Blog reviews stay.** Everything else is dismissed.',
+      },
+      {
+        emoji: '↩️',
+        text: 'Nothing is **deleted**. It asks before it clears.',
+      },
+    ],
+    cta: { label: 'Go to Today', href: '/' },
+  },
+  {
     id: '2026-11-15-evidence-second-check',
     date: '2026-11-15',
     emoji: '🔎',
