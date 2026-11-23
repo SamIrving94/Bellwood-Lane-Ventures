@@ -91,6 +91,14 @@
     {
       "path": "/cron/guide-research",
       "schedule": "0 6 * * 6"
+    },
+    {
+      "path": "/cron/google-sync",
+      "schedule": "10,40 * * * *"
+    },
+    {
+      "path": "/cron/google-daily",
+      "schedule": "40 6 * * *"
     }
   ]
 }

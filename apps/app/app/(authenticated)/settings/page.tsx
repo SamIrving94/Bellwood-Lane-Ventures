@@ -81,6 +81,22 @@ const SettingsPage = async () => {
           <ul className="divide-y rounded-xl border">
             <li>
               <Link
+                href="/settings/google"
+                className="flex items-center justify-between p-5 transition hover:bg-accent"
+              >
+                <div>
+                  <p className="font-medium">Google · Gmail, Calendar, Drive</p>
+                  <p className="text-sm text-muted-foreground">
+                    Connect the Kept Google account. Emails go to your Gmail
+                    drafts, viewings go in your calendar, each deal gets a
+                    Drive folder.
+                  </p>
+                </div>
+                <span aria-hidden className="text-muted-foreground">→</span>
+              </Link>
+            </li>
+            <li>
+              <Link
                 href="/settings/scouting"
                 className="flex items-center justify-between p-5 transition hover:bg-accent"
               >

@@ -4,9 +4,27 @@ import { randomBytes } from 'node:crypto';
 import { requireFounder } from '@repo/auth/server';
 import { database } from '@repo/database';
 import { sendEmail } from '@repo/email';
+import { syncViewingToCalendar } from '@repo/google';
+import { log } from '@repo/observability/log';
 import { revalidatePath } from 'next/cache';
 
 const webUrl = () => process.env.NEXT_PUBLIC_WEB_URL || 'http://localhost:3001';
+const appUrl = () => process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+
+// Mirror the viewing into the Kept Google calendar (plus the "offer due"
+// marker two working days later). Best effort: a Google outage must never
+// stop a viewing being booked or cancelled. The google-sync cron re-runs
+// this for recently changed viewings, so a miss here heals itself.
+const mirrorToCalendar = async (viewingId: string) => {
+  try {
+    await syncViewingToCalendar(viewingId, appUrl());
+  } catch (err) {
+    log.warn('viewing calendar sync failed', {
+      viewingId,
+      error: err instanceof Error ? err.message : String(err),
+    });
+  }
+};
 
 /**
  * Assign a viewing to a field partner. Creates the magic-link report form and
@@ -82,6 +100,8 @@ export async function assignViewing(
     });
   }
 
+  await mirrorToCalendar(viewing.id);
+
   revalidatePath(`/deals/${dealId}`);
   return { viewingId: viewing.id, link };
 }
@@ -98,6 +118,8 @@ export async function cancelViewing(viewingId: string) {
   await database.dealActivity.create({
     data: { dealId: viewing.dealId, action: 'viewing_cancelled', userId },
   });
+
+  await mirrorToCalendar(viewingId);
 
   revalidatePath(`/deals/${viewing.dealId}`);
 }

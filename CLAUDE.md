@@ -64,6 +64,7 @@ Business-logic packages (the custom part of this codebase):
 | `@repo/auctions` | Auction House UK / Savills / Clive Emson scrapers |
 | `@repo/email` | Resend wrapper with graceful fallback |
 | `@repo/calendly` | Booking-link generator + webhook verification |
+| `@repo/google` | The Kept Google Workspace connection (Gmail drafts, Calendar, Drive). Graceful skip when not connected. See `docs/GOOGLE-WORKSPACE.md` |
 | `@repo/whatsapp-parser` | Parse inbound WhatsApp intake messages |
 | `@repo/instant-offer`, `@repo/quote-ops`, `@repo/deal-updates`, `@repo/document-pipeline`, `@repo/knowledge-base`, `@repo/notifications` | Deal/offer/document/notification workflows |
 | `@repo/kept-tools` | Logic behind the ChatGPT plugin tools (sale routes, inherited-home plan, renovation bands, CGT, property facts). Pure; every stated fact sourced in `src/sources.ts` |
@@ -101,7 +102,8 @@ This is the most important custom surface. Two families of route handlers:
 `event-poller`, `deep-appraisal`, `agent-prospecting`, `quote-ops`, `keep-alive`,
 `weekly-patterns`, `avm-backtest` (monthly, 28th), `guide-research` (Saturdays;
 drafts one evergreen guide a week into `GuidePost`, published by hand from
-/marketing/guides). **Exception:** `scouting` has NO schedule (founder decision,
+/marketing/guides), `google-sync` (half-hourly) and `google-daily` (no-ops
+until Google is connected). **Exception:** `scouting` has NO schedule (founder decision,
 27 Aug 2026) — it is founder-triggered from Settings → Scouting ("Run scout
 now") to control PropertyData spend; same route, same CRON_SECRET auth.
 - **Auth:** `Authorization: Bearer <CRON_SECRET>` (checked inline in each route).
@@ -168,6 +170,13 @@ Run a task for one workspace with a filter, e.g.
 - **Safety rails (do not break these):** vendor emails are always held for
   founder review (`OutreachHold`); CEO escalation fires for offers <60% of AVM;
   SLA breaches are deduplicated so they don't spawn duplicate `FounderAction`s.
+- **Google is one connection, to the Kept Workspace account** (founder,
+  22 Nov 2026), made from Settings → Google and stored encrypted in
+  `Setting`. Personal Gmail accounts are refused at the callback. Gmail is
+  **drafts only** for anything vendor-facing: `draftInGmail` never sends,
+  and the only send (`sendGmailToSelf`) goes to the Kept mailbox itself.
+  Every `@repo/google` feature returns `{ skipped: true }` when not
+  connected, and call sites must treat a Google failure as log-and-carry-on.
 - **The AVM never values without a sale.** `runAVM` tries PropertyData
   radius comps → Land Registry postcode → Land Registry postcode **sector**
   (free SPARQL, low confidence) and, if all three are empty, throws
