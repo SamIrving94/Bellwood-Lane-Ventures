@@ -24,7 +24,9 @@ export type CronName =
   | 'ch-stream'
   | 'avm-backtest'
   | 'guide-research'
-  | 'provider-health';
+  | 'provider-health'
+  | 'google-sync'
+  | 'google-daily';
 
 // Max age (hours) between successful runs before the watchdog alerts. Tuned to
 // the documented daily schedules with head-room for timezone/retry jitter.
@@ -54,6 +56,11 @@ export const CRON_MAX_STALENESS_HOURS: Partial<Record<CronName, number>> = {
   'guide-research': 9 * 24,
   // Daily. If the key check itself goes silent, a dead key goes unseen again.
   'provider-health': 28,
+  // google-sync and google-daily are deliberately absent: they record
+  // heartbeats but are not watchdogged. A cron with no heartbeat yet reads
+  // as stale, so listing them would put a false alarm on the founder desk
+  // between deploy and first run. A dead Google connection surfaces on
+  // Settings → Google instead.
 };
 
 export type CronHeartbeat = {

@@ -13,6 +13,8 @@ import { InvestorPanel } from './investor-panel';
 import { LegalPanel } from './legal-panel';
 import { ReleaseControl } from './release-control';
 import { SourcingFeePanel } from './sourcing-fee-panel';
+import { getDealFolderUrl, getGoogleStatus } from '@repo/google';
+import { DriveFolderButton } from './drive-folder-button';
 import { DealStatusControl } from './status-control';
 import { ViewingsPanel } from './viewings-panel';
 import { WorksPanel } from './works-panel';
@@ -47,6 +49,8 @@ const DealDetailPage = async ({
     fieldPartners,
     chaserAction,
     investorRecipientCount,
+    google,
+    driveFolderUrl,
   ] = await Promise.all([
     database.deal.findUnique({
       where: { id },
@@ -98,6 +102,8 @@ const DealDetailPage = async ({
     database.investorAccessToken.count({
       where: { revoked: false, email: { not: null } },
     }),
+    getGoogleStatus(),
+    getDealFolderUrl(id),
   ]);
 
   if (!deal) notFound();
@@ -242,6 +248,11 @@ const DealDetailPage = async ({
             )}
           </div>
           <div className="flex items-center gap-2">
+            <DriveFolderButton
+              dealId={deal.id}
+              folderUrl={driveFolderUrl}
+              connected={google.connected}
+            />
             <DealStatusControl dealId={deal.id} status={deal.status} />
             <span className="rounded-full bg-muted px-3 py-1 text-xs capitalize">
               {deal.sellerType.replace('_', ' ')}
