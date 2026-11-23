@@ -1,3 +1,4 @@
+import { SCOUT_RUN_WHERE } from '@/lib/scout-runs';
 import { auth } from '@repo/auth/server';
 import { database } from '@repo/database';
 import type { Metadata } from 'next';
@@ -50,7 +51,7 @@ const LeadsPage = async ({
     }),
     database.scoutLead.count(),
     database.agentEvent.findFirst({
-      where: { eventType: 'leads_created' },
+      where: SCOUT_RUN_WHERE,
       orderBy: { createdAt: 'desc' },
       select: { createdAt: true, summary: true },
     }),
