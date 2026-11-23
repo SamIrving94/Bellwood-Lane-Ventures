@@ -80,8 +80,13 @@ are consumed in-source — no build step between workspace packages.
 
 ## Services (`services/*`)
 
-- `services/whatsapp-bridge` — standalone Node service using `whatsapp-web.js`
-  to relay WhatsApp messages into the intake pipeline.
+None. `services/whatsapp-bridge` (a `whatsapp-web.js` relay from WhatsApp
+groups into intake) was removed on 23 Nov 2026 (founder decision): it drove
+an unofficial WhatsApp client, which WhatsApp does not allow and which risks
+the number being banned. WhatsApp intake is paste-only now
+(`/intake`, `source: 'paste'`). Do not add another unofficial client; the
+official route is the WhatsApp Business Platform, and that needs a founder
+decision first.
 
 ## The automation backbone (`apps/api`)
 

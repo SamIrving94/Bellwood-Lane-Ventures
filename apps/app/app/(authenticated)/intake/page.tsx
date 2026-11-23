@@ -60,50 +60,17 @@ const IntakePage = async () => {
     take: 20,
   });
 
-  // Bridge status: placeholder — when we build a heartbeat, read here.
-  const bridgeConnected = false;
-
   return (
     <>
       <Header pages={[]} page="WhatsApp Intake" />
       <div className="flex flex-1 flex-col gap-6 p-6">
-        {/* Bridge status */}
-        <div
-          className={`rounded-lg border p-4 ${
-            bridgeConnected
-              ? 'border-emerald-300 bg-emerald-50 dark:border-emerald-900 dark:bg-emerald-950'
-              : 'border-red-300 bg-red-50 dark:border-red-900 dark:bg-red-950'
-          }`}
-        >
-          <div className="flex items-center gap-3">
-            <span
-              className={`inline-block h-2.5 w-2.5 rounded-full ${
-                bridgeConnected
-                  ? 'bg-emerald-500'
-                  : 'bg-red-500'
-              }`}
-            />
-            <div>
-              <p className="font-medium text-sm">
-                {bridgeConnected
-                  ? 'WhatsApp bridge connected'
-                  : 'Bridge not connected'}
-              </p>
-              <p className="text-xs text-muted-foreground">
-                {bridgeConnected
-                  ? 'Messages from allowed groups auto-ingest.'
-                  : 'Not connected yet — run the bridge service to enable auto-ingest. See services/whatsapp-bridge/README.md.'}
-              </p>
-            </div>
-          </div>
-        </div>
-
         {/* Paste form */}
         <div className="rounded-lg border bg-card p-4">
           <h2 className="mb-1 font-semibold text-lg">Paste a message</h2>
           <p className="mb-4 text-muted-foreground text-sm">
-            Paste a WhatsApp message here to parse it into a ScoutLead. Useful
-            before the bridge is running, or for one-off leads.
+            Paste a WhatsApp message here to parse it into a ScoutLead. Nothing
+            reads WhatsApp on its own: the bridge that did was removed (it
+            used an unofficial client, which risks the number being banned).
           </p>
           <PasteForm />
         </div>
@@ -119,7 +86,7 @@ const IntakePage = async () => {
 
           {intakes.length === 0 ? (
             <div className="p-8 text-center text-muted-foreground text-sm">
-              No intake yet. Paste a message above or start the bridge.
+              No intake yet. Paste a message above.
             </div>
           ) : (
             <ul className="divide-y">
