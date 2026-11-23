@@ -1,4 +1,5 @@
 import { noseconeMiddleware, noseconeOptions } from '@repo/security/middleware';
+import type { NextRequest } from 'next/server';
 
 /**
  * Security headers for the public site.
@@ -12,10 +13,57 @@ import { noseconeMiddleware, noseconeOptions } from '@repo/security/middleware';
  * Fonts and inline styles; turning it on needs its own pass with the report-only
  * header first, so it is not bundled into a launch-hardening change.
  */
-export const middleware = noseconeMiddleware({
+const siteHeaders = noseconeMiddleware({
   ...noseconeOptions,
   xFrameOptions: true,
 });
+
+/**
+ * One exception: /guides/preview/* is framed by the founder dashboard
+ * (apps/app /marketing/guides/[id]) so a draft guide can be read as the
+ * real page before it is approved. Only the dashboard's own origin may
+ * frame it (CSP frame-ancestors; X-Frame-Options can't name an origin, so
+ * it is dropped here). The dashboard sends Cross-Origin-Embedder-Policy:
+ * require-corp, so the page must also say it may be loaded cross-origin.
+ * The page holds no seller data and has nothing to click that changes
+ * anything, so there is nothing to clickjack.
+ */
+const previewHeaders = noseconeMiddleware({
+  ...noseconeOptions,
+  xFrameOptions: false,
+  crossOriginResourcePolicy: { policy: 'cross-origin' },
+});
+
+/**
+ * Origins allowed to frame the preview: the production dashboard, plus
+ * whatever NEXT_PUBLIC_APP_URL says (local dev, or a future custom domain).
+ * The production origin is named outright so the preview does not hang on
+ * that env var being right on the web project (22 Nov 2026: the first
+ * release showed "refused to connect" in the dashboard).
+ */
+const PRODUCTION_DASHBOARD = 'https://bellwood-app.vercel.app';
+
+const frameAncestors = (() => {
+  const origins = new Set(["'self'", PRODUCTION_DASHBOARD]);
+  try {
+    origins.add(new URL(process.env.NEXT_PUBLIC_APP_URL ?? '').origin);
+  } catch {
+    // Unset or not a URL: the production origin above still applies.
+  }
+  return [...origins].join(' ');
+})();
+
+export async function middleware(request: NextRequest) {
+  if (!request.nextUrl.pathname.startsWith('/guides/preview/')) {
+    return siteHeaders();
+  }
+  const response = await previewHeaders();
+  response.headers.set(
+    'Content-Security-Policy',
+    `frame-ancestors ${frameAncestors}`
+  );
+  return response;
+}
 
 export const config = {
   // Skip Next internals and static files; headers matter on documents and API

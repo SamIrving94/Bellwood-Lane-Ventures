@@ -1,29 +1,13 @@
-import { Button, Eyebrow } from '@/components/brand';
 import { SiteFooter } from '@/components/site-footer';
 import { SiteHeader } from '@/components/site-header';
-import { isHiddenPath } from '@/lib/public-sections';
 import { brand } from '@repo/brand';
 import { database } from '@repo/database';
 import { type Article, JsonLd, type WithContext } from '@repo/seo/json-ld';
 import type { Metadata } from 'next';
-import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import ReactMarkdown from 'react-markdown';
+import { GuideArticle } from '../guide-article';
 
 export const revalidate = 300;
-
-type Source = {
-  title: string;
-  url: string;
-  source: string;
-  publishedAt?: string;
-};
-
-const dateFmt = new Intl.DateTimeFormat('en-GB', {
-  day: 'numeric',
-  month: 'long',
-  year: 'numeric',
-});
 
 async function loadGuide(slug: string) {
   return database.guidePost
@@ -72,10 +56,8 @@ export async function generateMetadata({
 }
 
 /**
- * /guides/[slug] — one published guide. Markdown from the drafter, rendered
- * with a deliberately narrow element set: headings, paragraphs, lists,
- * links, emphasis. No raw HTML passes through (react-markdown's default),
- * so a model cannot inject markup even if it tried.
+ * /guides/[slug] — one published guide. The article itself lives in
+ * ../guide-article.tsx, shared with the founder preview.
  */
 export default async function GuidePage({
   params,
@@ -85,10 +67,6 @@ export default async function GuidePage({
   const { slug } = await params;
   const guide = await loadGuide(slug);
   if (!guide) notFound();
-
-  const sources = (
-    Array.isArray(guide.sources) ? guide.sources : []
-  ) as Source[];
 
   const jsonLd: WithContext<Article> = {
     '@context': 'https://schema.org',
@@ -107,138 +85,10 @@ export default async function GuidePage({
       <JsonLd code={jsonLd} />
       <SiteHeader />
       <main className="mx-auto max-w-[1100px] px-5 pb-24 md:px-10">
-        <article className="max-w-3xl pt-9 md:pt-[52px]">
-          <p className="font-mono text-[11px] text-stone-500 uppercase tracking-[0.14em]">
-            <Link href="/guides" className="hover:text-brand-deep">
-              Guides
-            </Link>
-            {guide.publishedAt ? ` · ${dateFmt.format(guide.publishedAt)}` : ''}
-          </p>
-          <h1
-            className="mt-4 text-balance font-bold font-serif text-forest leading-[1.06] tracking-[-0.03em]"
-            style={{ fontSize: 'clamp(30px, 4vw, 48px)' }}
-          >
-            {guide.h1}
-          </h1>
-          {guide.hook && (
-            <p className="mt-5 font-serif text-[19px] text-stone-700 leading-relaxed">
-              {guide.hook}
-            </p>
-          )}
-
-          <div className="prose-kept mt-8">
-            <ReactMarkdown
-              allowedElements={[
-                'p',
-                'h2',
-                'h3',
-                'ul',
-                'ol',
-                'li',
-                'a',
-                'strong',
-                'em',
-                'blockquote',
-              ]}
-              unwrapDisallowed
-              components={{
-                h2: ({ children }) => (
-                  <h2 className="mt-10 font-serif text-[26px] text-forest leading-snug">
-                    {children}
-                  </h2>
-                ),
-                h3: ({ children }) => (
-                  <h3 className="mt-7 font-semibold text-[18px] text-forest">
-                    {children}
-                  </h3>
-                ),
-                p: ({ children }) => (
-                  <p className="mt-4 text-[16.5px] text-stone-700 leading-[1.7]">
-                    {children}
-                  </p>
-                ),
-                ul: ({ children }) => (
-                  <ul className="mt-4 list-disc space-y-2 pl-6 text-[16.5px] text-stone-700 leading-[1.7]">
-                    {children}
-                  </ul>
-                ),
-                ol: ({ children }) => (
-                  <ol className="mt-4 list-decimal space-y-2 pl-6 text-[16.5px] text-stone-700 leading-[1.7]">
-                    {children}
-                  </ol>
-                ),
-                a: ({ href, children }) => {
-                  const external = !!href && /^https?:\/\//i.test(href);
-                  return (
-                    <a
-                      href={href}
-                      className="text-leaf underline underline-offset-2 hover:text-leaf-dark"
-                      {...(external
-                        ? { rel: 'noreferrer', target: '_blank' }
-                        : {})}
-                    >
-                      {children}
-                    </a>
-                  );
-                },
-                blockquote: ({ children }) => (
-                  <blockquote className="mt-6 border-leaf border-l-2 pl-5 text-stone-600 italic">
-                    {children}
-                  </blockquote>
-                ),
-              }}
-            >
-              {guide.bodyMarkdown}
-            </ReactMarkdown>
-          </div>
-
-          {/* A guide written before a section was hidden may still point
-              into it; drop the box rather than CTA to a 404. */}
-          {!isHiddenPath(guide.ctaHref) && (
-            <section className="mt-12 rounded-sm border border-hair bg-secondary/60 p-6">
-              <Eyebrow>next step</Eyebrow>
-              <p className="mt-3 font-serif text-[19px] text-forest leading-snug">
-                {guide.ctaLine}
-              </p>
-              <Button href={guide.ctaHref} className="mt-4 px-5 py-2 text-sm">
-                Read more
-              </Button>
-            </section>
-          )}
-
-          {sources.length > 0 && (
-            <section className="mt-10">
-              <p className="font-mono text-[11px] text-stone-500 uppercase tracking-[0.14em]">
-                Sources
-              </p>
-              <ul className="mt-3 space-y-1.5 text-[14px] text-stone-600">
-                {sources.map((s) => (
-                  <li key={s.url}>
-                    <a
-                      href={s.url}
-                      rel="noreferrer"
-                      target="_blank"
-                      className="underline underline-offset-2 hover:text-brand-deep"
-                    >
-                      {s.title}
-                    </a>
-                    <span className="text-stone-400">
-                      {' '}
-                      · {s.source}
-                      {s.publishedAt ? `, ${s.publishedAt.slice(0, 10)}` : ''}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            </section>
-          )}
-
-          <p className="mt-10 text-[13px] text-stone-500">
-            This guide is an honest steer, not advice. Kept is not FCA
-            authorised. For money worries, StepChange and Citizens Advice are
-            free and independent.
-          </p>
-        </article>
+        <GuideArticle
+          guide={guide}
+          date={guide.publishedAt ?? guide.updatedAt}
+        />
       </main>
       <SiteFooter />
     </>

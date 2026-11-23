@@ -14,6 +14,7 @@ import { revalidatePath } from 'next/cache';
 const revalidate = () => {
   revalidatePath('/marketing/queue');
   revalidatePath('/marketing/guides');
+  revalidatePath('/marketing/guides/[id]', 'page');
   revalidatePath('/actions');
   revalidatePath('/');
 };

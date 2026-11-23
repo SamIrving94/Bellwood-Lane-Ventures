@@ -26,8 +26,8 @@ export type WhatsNewEntry = {
 /** Newest first. The popup shows index 0. */
 export const WHATS_NEW: WhatsNewEntry[] = [
   {
-    id: '2026-11-22-google-workspace',
-    date: '2026-11-22',
+    id: '2026-11-23-google-workspace',
+    date: '2026-11-23',
     emoji: '🔗',
     title: 'Kept now talks to Google',
     intro:
@@ -55,6 +55,32 @@ export const WHATS_NEW: WhatsNewEntry[] = [
       },
     ],
     cta: { label: 'Connect Google', href: '/settings/google' },
+  },
+  {
+    id: '2026-11-22-guide-editor',
+    date: '2026-11-22',
+    emoji: '✍️',
+    title: 'Read, fix and approve guides in one place',
+    intro: 'The full guide, Counsel’s notes beside it, and the edit box right there.',
+    bullets: [
+      {
+        emoji: '📖',
+        text: '**Read full post** shows the **whole guide** as formatted text.',
+      },
+      {
+        emoji: '🔎',
+        text: '**Find in text** jumps straight to the line **Counsel** flagged.',
+      },
+      {
+        emoji: '✏️',
+        text: '**Edit** the title, Google description, body and closing line, then **Save**.',
+      },
+      {
+        emoji: '✅',
+        text: '**Save & approve** or **Save & publish**. Nothing goes live until you click Publish.',
+      },
+    ],
+    cta: { label: 'Open guides', href: '/marketing/guides' },
   },
   {
     id: '2026-11-22-clear-all-keep-blogs',
