@@ -1,6 +1,7 @@
 import type { EmailCardData } from '@/lib/deal-email-view';
 import Link from 'next/link';
 import { EmailCard } from '../components/email-card';
+import { SwitchOnEmailLog } from '../components/switch-on-email-log';
 import { EmailButtons, type EmailRecipient } from './email-buttons';
 import { FindOlderEmails } from './find-older-emails';
 
@@ -26,7 +27,7 @@ export function EmailsPanel({
   subject,
 }: {
   dealId: string;
-  /** Null when the log table is not there yet (run `pnpm migrate`). */
+  /** Null when the log table is not there yet: the panel offers to add it. */
   emails: EmailCardData[] | null;
   /** The Google connection the log reads through. */
   google: { connected: boolean; broken: boolean; email: string | null };
@@ -66,11 +67,9 @@ export function EmailsPanel({
       </div>
 
       {emails === null ? (
-        <p className="mt-3 text-muted-foreground text-sm">
-          The email log is not switched on yet. Run{' '}
-          <code className="rounded bg-muted px-1">pnpm migrate</code> once to
-          add its table.
-        </p>
+        <div className="mt-3">
+          <SwitchOnEmailLog />
+        </div>
       ) : (
         <div className="mt-3 space-y-2 text-sm">
           <EmailButtons
