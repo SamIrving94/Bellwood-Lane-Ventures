@@ -58,6 +58,13 @@ export default async function DocumentsPage() {
           Claude extracts the structured facts with citations back to the source
           page. Optionally link to an active deal so it lives with the case.
         </p>
+        <p className="text-sm text-slate-500">
+          Emails with a deal&rsquo;s seller or solicitor are on each deal.{' '}
+          <Link className="underline" href="/deals/email-log">
+            Open the email log
+          </Link>
+          .
+        </p>
       </header>
 
       <section className="rounded-lg border border-slate-200 p-6">

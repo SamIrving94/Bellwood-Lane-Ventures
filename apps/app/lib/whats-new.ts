@@ -26,6 +26,45 @@ export type WhatsNewEntry = {
 /** Newest first. The popup shows index 0. */
 export const WHATS_NEW: WhatsNewEntry[] = [
   {
+    id: '2026-11-23-deal-email-log',
+    date: '2026-11-23',
+    emoji: '📬',
+    title: 'Your deal emails now file themselves',
+    intro:
+      'Kept reads your Gmail and puts each deal’s emails on its page. You do nothing.',
+    bullets: [
+      {
+        emoji: '✉️',
+        text: 'Emails with a deal’s **seller or solicitor** land on that deal on their own. So do the replies.',
+      },
+      {
+        emoji: '🧾',
+        text: 'Each one gets a **two-line read**: who wrote, what they said, and whether they are **waiting on us**.',
+      },
+      {
+        emoji: '🏷️',
+        text: 'Want something else logged? Put the **Kept/Log** label on it in Gmail. Stored emails get **Kept/Logged**, so you can see it worked.',
+      },
+      {
+        emoji: '🧭',
+        text: '**No guessing.** If the deal is not clear, the email waits in the log for one click from you.',
+      },
+      {
+        emoji: '📨',
+        text: '**Email the seller** and **Email the solicitor** buttons open a Gmail draft in the Kept account.',
+      },
+      {
+        emoji: '🔒',
+        text: 'It only reads. **Nothing is sent or drafted**, and the rest of your mailbox is left alone.',
+      },
+      {
+        emoji: '🛠️',
+        text: 'It needs **Google connected** in Settings. The email log page says if anything is missing.',
+      },
+    ],
+    cta: { label: 'Open the email log', href: '/deals/email-log' },
+  },
+  {
     id: '2026-11-23-google-workspace',
     date: '2026-11-23',
     emoji: '🔗',
@@ -92,7 +131,8 @@ export const WHATS_NEW: WhatsNewEntry[] = [
     date: '2026-11-22',
     emoji: '✍️',
     title: 'Read, fix and approve guides in one place',
-    intro: 'The full guide, Counsel’s notes beside it, and the edit box right there.',
+    intro:
+      'The full guide, Counsel’s notes beside it, and the edit box right there.',
     bullets: [
       {
         emoji: '📖',

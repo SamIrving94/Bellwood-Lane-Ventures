@@ -1,19 +1,31 @@
 import { env } from '@/env';
 import { database } from '@repo/database';
-import { labelInbox, syncViewingToCalendar } from '@repo/google';
+import {
+  importDealMail,
+  labelInbox,
+  syncViewingToCalendar,
+} from '@repo/google';
 import { log } from '@repo/observability/log';
 import { NextResponse } from 'next/server';
+import { digestPendingDealEmails } from '../_lib/deal-email-digest';
 import { recordCronHeartbeat } from '../_lib/heartbeat';
 
-// Google sync (every 30 minutes). Two small jobs against the Kept Google
-// account, both no-ops until it is connected in Settings → Google:
+// Google sync (every 30 minutes). Three small jobs against the Kept Google
+// account, all no-ops until it is connected in Settings → Google:
 //
 // 1. Label inbox mail from sellers, solicitors and agents on our deals.
 //    Labels only: it never replies, archives or marks anything read.
 // 2. Re-mirror viewings changed in the last few hours into the calendar.
 //    The dashboard does this at booking time; this pass catches the ones
 //    it missed (Google down, or a change made from the partner's form).
+// 3. The deal email log: read mail since the last run and keep the deal
+//    mail on its deal (`importDealMail`). Read-only, apart from adding the
+//    `Kept/Logged` label to what it stored. Then write the two-line read
+//    for new emails (`deal_email_digest`); that part needs no Google.
 export const maxDuration = 300;
+
+/** Two-line reads written per run. A burst catches up over a few runs. */
+const DIGESTS_PER_RUN = 15;
 
 const VIEWING_LOOKBACK_MS = 3 * 60 * 60 * 1000;
 
@@ -58,8 +70,26 @@ export const POST = async (request: Request) => {
     }
   }
 
+  let dealMail: Awaited<ReturnType<typeof importDealMail>> | { error: string };
+  try {
+    dealMail = await importDealMail();
+  } catch (err) {
+    dealMail = { error: describe(err) };
+    log.warn('google-sync: deal email import failed', dealMail);
+  }
+
+  let digests:
+    | Awaited<ReturnType<typeof digestPendingDealEmails>>
+    | { error: string };
+  try {
+    digests = await digestPendingDealEmails(DIGESTS_PER_RUN);
+  } catch (err) {
+    digests = { error: describe(err) };
+    log.warn('google-sync: deal email reads failed', digests);
+  }
+
   await recordCronHeartbeat('google-sync', {
-    note: `inbox ${JSON.stringify(inbox)}, ${viewingsSynced} viewings, ${viewingErrors} errors`,
+    note: `inbox ${JSON.stringify(inbox)}, ${viewingsSynced} viewings, ${viewingErrors} errors, deal mail ${JSON.stringify(dealMail)}, reads ${JSON.stringify(digests)}`,
   });
 
   return NextResponse.json({
@@ -67,6 +97,8 @@ export const POST = async (request: Request) => {
     inbox,
     viewingsSynced,
     viewingErrors,
+    dealMail,
+    digests,
   });
 };
 

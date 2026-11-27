@@ -1,3 +1,4 @@
+import { loadDealEmails } from '@/lib/deal-emails';
 import { auth } from '@repo/auth/server';
 import { getBookingLink } from '@repo/calendly';
 import { database } from '@repo/database';
@@ -7,6 +8,7 @@ import { notFound, redirect } from 'next/navigation';
 import { FeedbackPanel } from '../../components/feedback-panel';
 import { Header } from '../../components/header';
 import { DealEconomicsPanel } from './deal-economics-panel';
+import { EmailsPanel } from './emails-panel';
 import { GenerateOfferButton } from './generate-offer-button';
 import { InvestorPackPanel } from './investor-pack-panel';
 import { InvestorPanel } from './investor-panel';
@@ -49,6 +51,7 @@ const DealDetailPage = async ({
     fieldPartners,
     chaserAction,
     investorRecipientCount,
+    emails,
     google,
     driveFolderUrl,
   ] = await Promise.all([
@@ -102,6 +105,8 @@ const DealDetailPage = async ({
     database.investorAccessToken.count({
       where: { revoked: false, email: { not: null } },
     }),
+    // The email log. Never throws: null until `pnpm migrate` adds its table.
+    loadDealEmails(id),
     getGoogleStatus(),
     getDealFolderUrl(id),
   ]);
@@ -642,6 +647,16 @@ const DealDetailPage = async ({
                 }
               : null
           }
+        />
+
+        {/* Emails — this deal's mail, read from the Kept Gmail mailbox */}
+        <EmailsPanel
+          dealId={deal.id}
+          emails={emails}
+          google={google}
+          sellerEmail={deal.sellerEmail}
+          solicitorEmail={deal.solicitorEmail}
+          subject={`${deal.address}, ${deal.postcode}`}
         />
 
         {/* Viewings — the field-partner network's eyes on the property */}

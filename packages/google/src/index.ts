@@ -6,6 +6,14 @@ export {
   saveGoogleConnection,
 } from './connection';
 export {
+  type DealMailStatus,
+  LOGGED_LABEL,
+  LOG_LABEL,
+  getDealMailStatus,
+  importDealHistory,
+  importDealMail,
+} from './deal-mail';
+export {
   draftInGmail,
   ensureDealFolder,
   getDealFolderUrl,
