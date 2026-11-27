@@ -26,6 +26,37 @@ export type WhatsNewEntry = {
 /** Newest first. The popup shows index 0. */
 export const WHATS_NEW: WhatsNewEntry[] = [
   {
+    id: '2026-11-27-meta-leads',
+    date: '2026-11-27',
+    emoji: '📥',
+    title: 'Facebook and Instagram leads land in Quotes',
+    intro:
+      'Someone fills in a form on one of our ads. They now show up here on their own. No more copying from Meta.',
+    bullets: [
+      {
+        emoji: '⚡',
+        text: 'A lead from a Meta **instant form** appears in **Quotes** within seconds.',
+      },
+      {
+        emoji: '🔔',
+        text: 'You get a **New Meta lead** card with their phone, email and answers. It is due in **24 hours**.',
+      },
+      {
+        emoji: '🧹',
+        text: 'Every **30 minutes** Kept checks Meta for anything it missed. If Meta stops answering, **you get told**.',
+      },
+      {
+        emoji: '🤝',
+        text: '**Nothing is sent to the seller.** First contact is still yours.',
+      },
+      {
+        emoji: '🔧',
+        text: 'It needs a **one-off setup** in Meta before it switches on. Steps are in docs/META-LEADS.md.',
+      },
+    ],
+    cta: { label: 'Open Quotes', href: '/quotes' },
+  },
+  {
     id: '2026-11-23-deal-email-log',
     date: '2026-11-23',
     emoji: '📬',

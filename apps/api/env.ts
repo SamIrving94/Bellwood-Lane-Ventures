@@ -68,6 +68,24 @@ export const env = createEnv({
     REDDIT_CLIENT_ID: z.string().min(1).optional(),
     REDDIT_CLIENT_SECRET: z.string().min(1).optional(),
     REDDIT_USER_AGENT: z.string().min(1).optional(),
+    /**
+     * Meta (Facebook / Instagram) instant-form leads. See
+     * docs/META-LEADS.md. All unset = the webhook answers 503 and the
+     * sync cron no-ops.
+     *   META_APP_SECRET            signs every webhook post
+     *   META_WEBHOOK_VERIFY_TOKEN  any long random string; typed into Meta once
+     *   META_PAGE_ACCESS_TOKEN     reads the lead's answers (leads_retrieval)
+     *   META_PAGE_ID               the Kept Facebook Page, for the sync cron
+     *   META_GRAPH_VERSION         optional override, e.g. "v23.0"
+     */
+    META_APP_SECRET: z.string().min(1).optional(),
+    META_WEBHOOK_VERIFY_TOKEN: z.string().min(1).optional(),
+    META_PAGE_ACCESS_TOKEN: z.string().min(1).optional(),
+    META_PAGE_ID: z.string().regex(/^\d+$/).optional(),
+    META_GRAPH_VERSION: z
+      .string()
+      .regex(/^v\d+\.\d+$/)
+      .optional(),
   },
   client: {},
   runtimeEnv: {
@@ -83,5 +101,12 @@ export const env = createEnv({
     REDDIT_CLIENT_ID: process.env.REDDIT_CLIENT_ID,
     REDDIT_CLIENT_SECRET: process.env.REDDIT_CLIENT_SECRET,
     REDDIT_USER_AGENT: process.env.REDDIT_USER_AGENT,
+    META_APP_SECRET: cleanSecret(process.env.META_APP_SECRET),
+    META_WEBHOOK_VERIFY_TOKEN: cleanSecret(
+      process.env.META_WEBHOOK_VERIFY_TOKEN
+    ),
+    META_PAGE_ACCESS_TOKEN: cleanSecret(process.env.META_PAGE_ACCESS_TOKEN),
+    META_PAGE_ID: cleanSecret(process.env.META_PAGE_ID),
+    META_GRAPH_VERSION: cleanSecret(process.env.META_GRAPH_VERSION),
   },
 });

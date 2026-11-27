@@ -107,7 +107,9 @@ This is the most important custom surface. Two families of route handlers:
 `event-poller`, `deep-appraisal`, `agent-prospecting`, `quote-ops`, `keep-alive`,
 `weekly-patterns`, `avm-backtest` (monthly, 28th), `guide-research` (Saturdays;
 drafts one evergreen guide a week into `GuidePost`, published by hand from
-/marketing/guides), `google-sync` (half-hourly) and `google-daily` (no-ops
+/marketing/guides), `meta-leads-sync` (half-hourly; the safety net behind
+`/webhooks/meta-leads`, which saves Meta instant-form leads to Quotes as
+drafts, see `docs/META-LEADS.md`), `google-sync` (half-hourly) and `google-daily` (no-ops
 until Google is connected). **Exception:** `scouting` has NO schedule (founder decision,
 27 Aug 2026) — it is founder-triggered from Settings → Scouting ("Run scout
 now") to control PropertyData spend; same route, same CRON_SECRET auth.
