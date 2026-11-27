@@ -1,7 +1,9 @@
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import type { Metadata } from 'next';
+import { leadChannelLabel } from '@repo/analytics/lead-source';
 import { database } from '@repo/database';
+import { loadSource } from '@/lib/lead-source-queries';
 import { Header } from '../../components/header';
 import { QuoteActions } from './quote-actions';
 import { ApproveAndSendButton } from './approve-and-send-button';
@@ -104,6 +106,15 @@ export default async function QuoteDetailPage({
   const trackUrl = quote.trackToken
     ? `${process.env.NEXT_PUBLIC_WEB_URL || 'http://localhost:3001'}/track/${quote.trackToken.token}`
     : null;
+
+  // Which advert, search or site brought them. Null when none was saved,
+  // or while the table is not there yet (see lib/lead-source-queries).
+  const visit = await loadSource(id);
+  const cameFrom = leadChannelLabel(visit?.channel);
+  // Google's campaign number arrives untagged; a name needs UTM tags.
+  const campaign =
+    visit?.utmCampaign ??
+    (visit?.adCampaignId ? `Campaign ${visit.adCampaignId}` : null);
 
   const reasoning = Array.isArray(quote.offer?.reasoning)
     ? (quote.offer.reasoning as unknown[]).filter(
@@ -357,12 +368,51 @@ export default async function QuoteDetailPage({
               </div>
             )}
 
+            {/* Which advert, search or site brought them: saved with the
+                enquiry by the public site (packages/analytics/lead-source.ts). */}
+            <div className="rounded-2xl border border-slate-200 bg-white p-6 text-sm">
+              <p className="text-muted-foreground text-xs uppercase tracking-widest">
+                Came from
+              </p>
+              {cameFrom ? (
+                <>
+                  <p className="mt-2 font-serif text-xl">{cameFrom}</p>
+                  <dl className="mt-3 space-y-1.5">
+                    {campaign && <Row label="Campaign" value={campaign} />}
+                    {visit?.utmContent && (
+                      <Row label="Advert" value={visit.utmContent} />
+                    )}
+                    {visit?.utmTerm && (
+                      <Row label="Keyword / ad set" value={visit.utmTerm} />
+                    )}
+                    {visit?.landingPath && (
+                      <Row label="Landed on" value={visit.landingPath} />
+                    )}
+                    {visit?.referrerHost && (
+                      <Row label="Sent by" value={visit.referrerHost} />
+                    )}
+                  </dl>
+                  {visit?.channel === 'meta' && (
+                    <p className="mt-3 text-muted-foreground text-xs">
+                      An advert or a post. They look the same until the
+                      ad&rsquo;s link is tagged.
+                    </p>
+                  )}
+                </>
+              ) : (
+                <p className="mt-2 text-muted-foreground">
+                  Not recorded. This enquiry arrived before sources were
+                  saved, or not through the website.
+                </p>
+              )}
+            </div>
+
             <div className="rounded-2xl border border-slate-200 bg-white p-6 text-sm">
               <p className="text-muted-foreground text-xs uppercase tracking-widest">
                 Metadata
               </p>
               <dl className="mt-3 space-y-1.5">
-                <Row label="Source" value={quote.source.replace(/_/g, ' ')} />
+                <Row label="Form" value={quote.source.replace(/_/g, ' ')} />
                 <Row
                   label="Submitted"
                   value={quote.createdAt.toLocaleString('en-GB')}

@@ -1,5 +1,6 @@
 'use client';
 
+import { leadSource } from '@/lib/lead-source';
 import type { SituationValue } from '@/lib/situations';
 import { useState } from 'react';
 
@@ -132,6 +133,7 @@ export function AgentQuickForm({
           contactEmail: contactEmail.trim(),
           contactPhone: contactPhone.trim() || undefined,
           submissionSource: 'agent_quick_form',
+          leadSource: leadSource(),
         }),
       });
       const data = await res.json().catch(() => ({}));

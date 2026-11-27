@@ -913,7 +913,7 @@ enum QuoteRole {
 }
 
 model QuoteRequest {
-  id               String       @id @default(cuid())
+  id               String              @id @default(cuid())
   source           String // "public_web", "agent_portal", "api"
   referralCode     String?
   contactName      String
@@ -929,19 +929,53 @@ model QuoteRequest {
   askingPricePence Int?
   sellerSituation  String? // probate / chain_break / etc
   urgencyDays      Int?
-  notes            String?      @db.Text
+  notes            String?             @db.Text
   chatTranscript   Json?
-  status           QuoteStatus  @default(draft)
-  offerId          String?      @unique
-  offer            QuoteOffer?  @relation(fields: [offerId], references: [id])
+  status           QuoteStatus         @default(draft)
+  offerId          String?             @unique
+  offer            QuoteOffer?         @relation(fields: [offerId], references: [id])
   dealUpdates      DealUpdate[]
   trackToken       TrackToken?
-  createdAt        DateTime     @default(now())
-  updatedAt        DateTime     @updatedAt
+  // Which advert, search or site brought them. A relation only: it adds no
+  // column to this table (see QuoteRequestSource for why that matters).
+  visitSource      QuoteRequestSource?
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
 
   @@index([status])
   @@index([postcode])
   @@index([referralCode])
+}
+
+/// Which advert, search or site brought the person who sent a QuoteRequest,
+/// read off the first page of their visit (packages/analytics/lead-source.ts).
+/// QuoteRequest.source says which FORM it came through; this says what
+/// brought them to it. Rows exist from Nov 2026, and only for enquiries sent
+/// from the public site.
+///
+/// Its own table, not columns on QuoteRequest, on purpose. Schema changes
+/// reach production by a manual `pnpm migrate`. New columns on QuoteRequest
+/// would make every existing query on it fail until that ran, and the public
+/// forms would lose enquiries. A missing table costs only this one optional
+/// write, which the quote route catches, so this is safe to deploy first.
+model QuoteRequestSource {
+  id             String       @id @default(cuid())
+  quoteRequestId String       @unique
+  quoteRequest   QuoteRequest @relation(fields: [quoteRequestId], references: [id], onDelete: Cascade)
+  channel        String // one word the dashboard groups by: google_ads, meta, organic_search, direct ... (LEAD_CHANNELS)
+  utmSource      String?
+  utmMedium      String?
+  utmCampaign    String?
+  utmContent     String?
+  utmTerm        String?
+  clickIdKind    String? // gclid | fbclid | ... which marker was there, never its value
+  adCampaignId   String? // Google's gad_campaignid (a campaign number)
+  landingPath    String?
+  referrerHost   String?
+  createdAt      DateTime     @default(now())
+
+  @@index([channel])
+  @@index([createdAt])
 }
 
 model QuoteOffer {

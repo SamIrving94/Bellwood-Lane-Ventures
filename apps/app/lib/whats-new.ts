@@ -26,6 +26,41 @@ export type WhatsNewEntry = {
 /** Newest first. The popup shows index 0. */
 export const WHATS_NEW: WhatsNewEntry[] = [
   {
+    id: '2026-11-27-where-enquiries-came-from',
+    date: '2026-11-27',
+    emoji: '🧭',
+    title: 'See which advert brought each enquiry',
+    intro:
+      'Every enquiry from the website now says where the person came from.',
+    bullets: [
+      {
+        emoji: '📍',
+        text: 'Open any quote. A new **Came from** card names the source: **Google Ads**, **Facebook / Instagram**, a search, or another site.',
+      },
+      {
+        emoji: '📊',
+        text: 'The Quotes page has a new table: **enquiries, accepted offers and deals** for each source.',
+      },
+      {
+        emoji: '🍪',
+        text: 'It counts **everyone**, including people who say no to cookies. Google and Meta only count the ones who say yes.',
+      },
+      {
+        emoji: '🏷️',
+        text: 'Want the **advert’s name** too? Tag the ad’s link once. The advert itself does not change.',
+      },
+      {
+        emoji: '🕰️',
+        text: 'Older enquiries show **Not recorded**. It starts now.',
+      },
+      {
+        emoji: '📝',
+        text: '**Meta Instant Forms** are not in here. Those leads stay in Meta.',
+      },
+    ],
+    cta: { label: 'Open Quotes', href: '/quotes' },
+  },
+  {
     id: '2026-11-23-deal-email-log',
     date: '2026-11-23',
     emoji: '📬',
