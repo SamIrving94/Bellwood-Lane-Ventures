@@ -231,17 +231,36 @@ export function buildNotes(lead: MetaLead, parsed: ParsedMetaLead): string {
 
 // ── Graph API ───────────────────────────────────────────────────────────────
 
-async function graphGet<T>(
+function graphGet<T>(
   path: string,
   params: Record<string, string>,
   config: MetaLeadConfig
 ): Promise<T> {
-  const version = config.graphVersion || DEFAULT_GRAPH_VERSION;
+  return graphRequest<T>(
+    'GET',
+    path,
+    params,
+    config.pageAccessToken,
+    config.graphVersion
+  );
+}
+
+async function graphRequest<T>(
+  method: 'GET' | 'POST',
+  path: string,
+  params: Record<string, string>,
+  token: string,
+  graphVersion?: string
+): Promise<T> {
+  const version = graphVersion || DEFAULT_GRAPH_VERSION;
   const url = new URL(`${GRAPH_HOST}/${version}/${path}`);
-  for (const [k, v] of Object.entries(params)) url.searchParams.set(k, v);
+  for (const [k, v] of Object.entries(params)) {
+    url.searchParams.set(k, v);
+  }
   // Token in the header, never the query string: URLs end up in logs.
   const res = await fetch(url, {
-    headers: { Authorization: `Bearer ${config.pageAccessToken}` },
+    method,
+    headers: { Authorization: `Bearer ${token}` },
     cache: 'no-store',
   });
   if (!res.ok) {
@@ -304,6 +323,164 @@ export async function listRecentMetaLeads(
     }
   }
   return leads;
+}
+
+// ── Self-setup ──────────────────────────────────────────────────────────────
+
+const pageTokenCache = new Map<string, string>();
+
+/**
+ * Accept either token Meta hands out and return a PAGE token.
+ *
+ * Setup gives the founder a system-user token. Swapping it for the Page's
+ * own token was a Graph Explorer step in the old guide; this does it here
+ * instead (GET /{page}?fields=access_token). If the swap returns nothing
+ * (it is already a Page token, or lacks the right) the given token is used
+ * as-is, and any real problem shows up on the next Graph call.
+ */
+export async function resolvePageToken(
+  token: string,
+  pageId: string,
+  graphVersion?: string
+): Promise<string> {
+  const key = `${pageId}:${token}`;
+  const cached = pageTokenCache.get(key);
+  if (cached) {
+    return cached;
+  }
+  let pageToken = token;
+  try {
+    const res = await graphRequest<{ access_token?: string }>(
+      'GET',
+      pageId,
+      { fields: 'access_token' },
+      token,
+      graphVersion
+    );
+    if (res.access_token) {
+      pageToken = res.access_token;
+    }
+  } catch {
+    // Fall back to the given token.
+  }
+  pageTokenCache.set(key, pageToken);
+  return pageToken;
+}
+
+/**
+ * The Kept Facebook Page ("Kept. Properties"). Not a secret: it is in the
+ * Page's public transparency panel. Read from the Meta Ads connection on
+ * 27 Nov 2026. META_PAGE_ID overrides it.
+ */
+export const KEPT_PAGE_ID = '1435461352980315';
+
+/**
+ * The webhook verify token, derived from the app secret so nobody has to
+ * invent one and paste it in two places. Meta only uses it for the GET
+ * handshake; the real protection on every lead is the signature check.
+ * META_WEBHOOK_VERIFY_TOKEN overrides it.
+ */
+export function deriveVerifyToken(appSecret: string): string {
+  return createHmac('sha256', appSecret)
+    .update('kept-meta-leads-webhook-verify')
+    .digest('hex');
+}
+
+export type MetaSetupConfig = {
+  appId: string;
+  appSecret: string;
+  pageId: string;
+  pageAccessToken: string;
+  callbackUrl: string;
+  verifyToken: string;
+  graphVersion?: string;
+};
+
+export type MetaSetupResult = {
+  /** The app's webhook points at us and listens for `leadgen`. */
+  appWebhook: 'already' | 'set';
+  /** The Page sends its lead events to the app. */
+  pageSubscription: 'already' | 'set';
+};
+
+/**
+ * Do the two webhook steps a person would otherwise click through:
+ *   1. point the app's Page webhook at /webhooks/meta-leads, field leadgen;
+ *   2. subscribe the Kept Page to the app for leadgen.
+ * Both are checked first and only written when missing, so the sync cron
+ * can call this every run and repair them if Meta ever drops one.
+ *
+ * Production only (the caller checks): a preview deploy must never point
+ * Meta's webhook at itself.
+ */
+export async function ensureMetaSubscriptions(
+  config: MetaSetupConfig
+): Promise<MetaSetupResult> {
+  const appToken = `${config.appId}|${config.appSecret}`;
+
+  type AppSub = {
+    object?: string;
+    callback_url?: string;
+    active?: boolean;
+    fields?: { name?: string }[];
+  };
+  const appSubs = await graphRequest<{ data?: AppSub[] }>(
+    'GET',
+    `${config.appId}/subscriptions`,
+    {},
+    appToken,
+    config.graphVersion
+  );
+  const appReady = (appSubs.data ?? []).some(
+    (s) =>
+      s.object === 'page' &&
+      s.active !== false &&
+      s.callback_url === config.callbackUrl &&
+      (s.fields ?? []).some((f) => f.name === 'leadgen')
+  );
+  if (!appReady) {
+    // Meta calls our GET handshake before accepting this.
+    await graphRequest(
+      'POST',
+      `${config.appId}/subscriptions`,
+      {
+        object: 'page',
+        callback_url: config.callbackUrl,
+        fields: 'leadgen',
+        verify_token: config.verifyToken,
+      },
+      appToken,
+      config.graphVersion
+    );
+  }
+
+  const pageSubs = await graphRequest<{
+    data?: { id?: string; subscribed_fields?: string[] }[];
+  }>(
+    'GET',
+    `${config.pageId}/subscribed_apps`,
+    {},
+    config.pageAccessToken,
+    config.graphVersion
+  );
+  const pageReady = (pageSubs.data ?? []).some(
+    (a) =>
+      a.id === config.appId && (a.subscribed_fields ?? []).includes('leadgen')
+  );
+  if (!pageReady) {
+    await graphRequest(
+      'POST',
+      `${config.pageId}/subscribed_apps`,
+      { subscribed_fields: 'leadgen' },
+      config.pageAccessToken,
+      config.graphVersion
+    );
+  }
+
+  return {
+    appWebhook: appReady ? 'already' : 'set',
+    pageSubscription: pageReady ? 'already' : 'set',
+  };
 }
 
 // ── Saving ──────────────────────────────────────────────────────────────────

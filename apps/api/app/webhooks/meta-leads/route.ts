@@ -2,9 +2,12 @@ import { env } from '@/env';
 import { log } from '@repo/observability/log';
 import { NextResponse, after } from 'next/server';
 import {
+  KEPT_PAGE_ID,
+  deriveVerifyToken,
   extractLeadgenIds,
   fetchMetaLead,
   ingestMetaLead,
+  resolvePageToken,
   verifyMetaSignature,
 } from '../../cron/_lib/meta-leads';
 
@@ -15,8 +18,10 @@ import {
  * Instagram. The post carries only a lead id, so we then read the answers
  * from the Graph API and save the lead to Quotes (see _lib/meta-leads.ts).
  *
- * Setup lives in docs/META-LEADS.md. Until the three env vars are set this
- * route answers 503 and does nothing.
+ * Setup lives in docs/META-LEADS.md. Until META_APP_SECRET and
+ * META_PAGE_ACCESS_TOKEN are set this route answers 503 and does nothing.
+ * The sync cron points Meta's webhook here by itself
+ * (ensureMetaSubscriptions), so nobody has to type this URL into Meta.
  */
 
 export const maxDuration = 60;
@@ -24,7 +29,9 @@ export const maxDuration = 60;
 /** One-off handshake: Meta calls this when the webhook is first added. */
 export const GET = (request: Request): Response => {
   const params = new URL(request.url).searchParams;
-  const verifyToken = env.META_WEBHOOK_VERIFY_TOKEN;
+  const verifyToken =
+    env.META_WEBHOOK_VERIFY_TOKEN ??
+    (env.META_APP_SECRET ? deriveVerifyToken(env.META_APP_SECRET) : undefined);
   if (
     verifyToken &&
     params.get('hub.mode') === 'subscribe' &&
@@ -37,8 +44,8 @@ export const GET = (request: Request): Response => {
 
 export const POST = async (request: Request): Promise<Response> => {
   const appSecret = env.META_APP_SECRET;
-  const pageAccessToken = env.META_PAGE_ACCESS_TOKEN;
-  if (!appSecret || !pageAccessToken) {
+  const givenToken = env.META_PAGE_ACCESS_TOKEN;
+  if (!appSecret || !givenToken) {
     // Fail closed: an unsigned lead is never accepted, in any environment.
     log.error('Meta leads webhook: not configured, refusing payload');
     return new Response('Meta leads not configured', { status: 503 });
@@ -69,6 +76,14 @@ export const POST = async (request: Request): Promise<Response> => {
   // switches a slow webhook off. A lead that fails here is not lost: the
   // half-hourly /cron/meta-leads-sync sweep picks it up.
   after(async () => {
+    if (leadIds.length === 0) {
+      return;
+    }
+    const pageAccessToken = await resolvePageToken(
+      givenToken,
+      env.META_PAGE_ID ?? KEPT_PAGE_ID,
+      env.META_GRAPH_VERSION
+    );
     for (const leadId of leadIds) {
       try {
         const lead = await fetchMetaLead(leadId, {

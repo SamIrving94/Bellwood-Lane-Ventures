@@ -8,16 +8,19 @@
  */
 
 import { createHmac } from 'node:crypto';
-import { describe, expect, test, vi } from 'vitest';
+import { afterEach, describe, expect, test, vi } from 'vitest';
 
 vi.mock('@repo/database', () => ({ database: {} }));
 
 import {
   NO_ADDRESS,
   buildNotes,
+  deriveVerifyToken,
+  ensureMetaSubscriptions,
   extractLeadgenIds,
   mapPropertyType,
   parseMetaLead,
+  resolvePageToken,
   verifyMetaSignature,
 } from '../app/cron/_lib/meta-leads';
 
@@ -175,5 +178,160 @@ describe('parseMetaLead', () => {
     expect(notes).toContain('did not ask for an address');
     expect(notes).toContain('Meta lead id: 999');
     expect(notes).not.toContain('inbox');
+  });
+});
+
+describe('deriveVerifyToken', () => {
+  test('is stable for a secret and differs between secrets', () => {
+    expect(deriveVerifyToken('a')).toBe(deriveVerifyToken('a'));
+    expect(deriveVerifyToken('a')).not.toBe(deriveVerifyToken('b'));
+    expect(deriveVerifyToken('a')).toMatch(/^[0-9a-f]{64}$/);
+  });
+});
+
+describe('ensureMetaSubscriptions', () => {
+  const config = {
+    appId: '42',
+    appSecret: 'shh',
+    pageId: '7',
+    pageAccessToken: 'page-token',
+    callbackUrl: 'https://api.example.com/webhooks/meta-leads',
+    verifyToken: 'vt',
+  };
+
+  type Call = { method: string; url: URL; auth: string | null };
+
+  /** Fake Graph: answers GETs from `state`, records every call. */
+  function fakeGraph(state: { app: unknown[]; page: unknown[] }) {
+    const calls: Call[] = [];
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: URL, init?: RequestInit) => {
+        const url = new URL(input);
+        const method = init?.method ?? 'GET';
+        const auth = new Headers(init?.headers).get('authorization');
+        calls.push({ method, url, auth });
+        let data: unknown[] = [];
+        if (method === 'GET' && url.pathname.endsWith('/42/subscriptions')) {
+          data = state.app;
+        }
+        if (method === 'GET' && url.pathname.endsWith('/7/subscribed_apps')) {
+          data = state.page;
+        }
+        const body = method === 'GET' ? { data } : { success: true };
+        return new Response(JSON.stringify(body), { status: 200 });
+      })
+    );
+    return calls;
+  }
+
+  afterEach(() => vi.unstubAllGlobals());
+
+  test('sets up both when nothing is there', async () => {
+    const calls = fakeGraph({ app: [], page: [] });
+    const result = await ensureMetaSubscriptions(config);
+    expect(result).toEqual({ appWebhook: 'set', pageSubscription: 'set' });
+
+    const posts = calls.filter((c) => c.method === 'POST');
+    expect(posts).toHaveLength(2);
+    const app = posts.find((c) => c.url.pathname.endsWith('/42/subscriptions'));
+    expect(app?.url.searchParams.get('object')).toBe('page');
+    expect(app?.url.searchParams.get('fields')).toBe('leadgen');
+    expect(app?.url.searchParams.get('callback_url')).toBe(config.callbackUrl);
+    expect(app?.url.searchParams.get('verify_token')).toBe('vt');
+    expect(app?.auth).toBe('Bearer 42|shh');
+    const page = posts.find((c) =>
+      c.url.pathname.endsWith('/7/subscribed_apps')
+    );
+    expect(page?.url.searchParams.get('subscribed_fields')).toBe('leadgen');
+    expect(page?.auth).toBe('Bearer page-token');
+  });
+
+  test('changes nothing when both are already right', async () => {
+    const calls = fakeGraph({
+      app: [
+        {
+          object: 'page',
+          active: true,
+          callback_url: config.callbackUrl,
+          fields: [{ name: 'leadgen' }],
+        },
+      ],
+      page: [{ id: '42', subscribed_fields: ['leadgen'] }],
+    });
+    const result = await ensureMetaSubscriptions(config);
+    expect(result).toEqual({
+      appWebhook: 'already',
+      pageSubscription: 'already',
+    });
+    expect(calls.filter((c) => c.method === 'POST')).toHaveLength(0);
+  });
+
+  test('repoints a webhook aimed at the wrong URL', async () => {
+    const calls = fakeGraph({
+      app: [
+        {
+          object: 'page',
+          active: true,
+          callback_url: 'https://old.example.com/hook',
+          fields: [{ name: 'leadgen' }],
+        },
+      ],
+      page: [{ id: '42', subscribed_fields: ['leadgen'] }],
+    });
+    const result = await ensureMetaSubscriptions(config);
+    expect(result.appWebhook).toBe('set');
+    expect(calls.filter((c) => c.method === 'POST')).toHaveLength(1);
+  });
+
+  test('never puts a token in the URL', async () => {
+    const calls = fakeGraph({ app: [], page: [] });
+    await ensureMetaSubscriptions(config);
+    for (const c of calls) {
+      expect(c.url.searchParams.has('access_token')).toBe(false);
+      expect(c.url.toString()).not.toContain('shh');
+      expect(c.url.toString()).not.toContain('page-token');
+    }
+  });
+
+  test('a Graph error stops it with the reason', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(
+        async () =>
+          new Response(
+            JSON.stringify({ error: { message: 'Invalid OAuth', code: 190 } }),
+            { status: 400 }
+          )
+      )
+    );
+    await expect(ensureMetaSubscriptions(config)).rejects.toThrow(
+      'Invalid OAuth'
+    );
+  });
+});
+
+describe('resolvePageToken', () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  test('swaps a system-user token for the Page token', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(
+        async () =>
+          new Response(JSON.stringify({ access_token: 'page-tok' }), {
+            status: 200,
+          })
+      )
+    );
+    expect(await resolvePageToken('system-tok-1', '7')).toBe('page-tok');
+  });
+
+  test('keeps the given token when the swap fails', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => new Response('{}', { status: 400 }))
+    );
+    expect(await resolvePageToken('given-tok-2', '7')).toBe('given-tok-2');
   });
 });

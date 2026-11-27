@@ -2,10 +2,16 @@ import { env } from '@/env';
 import { database } from '@repo/database';
 import { NextResponse } from 'next/server';
 import {
+  KEPT_PAGE_ID,
   type MetaLead,
+  type MetaSetupResult,
+  deriveVerifyToken,
+  ensureMetaSubscriptions,
   ingestMetaLead,
   listRecentMetaLeads,
+  resolvePageToken,
 } from '../_lib/meta-leads';
+import { selfOrigin } from '../_lib/self-origin';
 
 /**
  * /cron/meta-leads-sync — every 30 minutes.
@@ -20,7 +26,13 @@ import {
  * expired token, a subscription Meta switched off). This sweep turns that
  * into a founder action instead of a lead nobody calls.
  *
- * No-ops until META_PAGE_ACCESS_TOKEN and META_PAGE_ID are set.
+ * It also does the webhook setup itself (production only): it points the
+ * Meta app's webhook at /webhooks/meta-leads and subscribes the Kept Page,
+ * and repairs either if Meta drops it. That needs META_APP_ID and
+ * META_APP_SECRET; without them the sweep still runs, just not instantly.
+ *
+ * No-ops until META_PAGE_ACCESS_TOKEN is set. The Page id defaults to the
+ * Kept Page (KEPT_PAGE_ID).
  */
 
 export const maxDuration = 300;
@@ -33,10 +45,42 @@ async function handle(request: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const pageAccessToken = env.META_PAGE_ACCESS_TOKEN;
-  const pageId = env.META_PAGE_ID;
-  if (!pageAccessToken || !pageId) {
+  const pageId = env.META_PAGE_ID ?? KEPT_PAGE_ID;
+  if (!env.META_PAGE_ACCESS_TOKEN) {
     return NextResponse.json({ skipped: true, reason: 'not configured' });
+  }
+  const pageAccessToken = await resolvePageToken(
+    env.META_PAGE_ACCESS_TOKEN,
+    pageId,
+    env.META_GRAPH_VERSION
+  );
+
+  // Self-setup. Never fatal: if it fails, the sweep below still saves the
+  // leads, a little later. Production only, so a preview deploy cannot
+  // point Meta's webhook at itself.
+  let setup: MetaSetupResult | { error: string } | 'skipped' = 'skipped';
+  if (
+    env.META_APP_ID &&
+    env.META_APP_SECRET &&
+    process.env.VERCEL_ENV === 'production'
+  ) {
+    try {
+      setup = await ensureMetaSubscriptions({
+        appId: env.META_APP_ID,
+        appSecret: env.META_APP_SECRET,
+        pageId,
+        pageAccessToken,
+        callbackUrl: `${selfOrigin()}/webhooks/meta-leads`,
+        verifyToken:
+          env.META_WEBHOOK_VERIFY_TOKEN ??
+          deriveVerifyToken(env.META_APP_SECRET),
+        graphVersion: env.META_GRAPH_VERSION,
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      console.warn('[cron/meta-leads-sync] webhook setup failed', message);
+      setup = { error: message };
+    }
   }
 
   const since = new Date(Date.now() - LOOKBACK_DAYS * 24 * 3600_000);
@@ -90,6 +134,7 @@ async function handle(request: Request) {
 
   return NextResponse.json({
     ok: true,
+    setup,
     found: leads.length,
     created,
     duplicate,
