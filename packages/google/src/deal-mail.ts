@@ -1,6 +1,7 @@
 import 'server-only';
 
 import { database } from '@repo/database';
+import { log } from '@repo/observability/log';
 import {
   addGmailLabels,
   ensureGmailLabels,
@@ -9,8 +10,8 @@ import {
 } from './api';
 import {
   type GoogleSession,
-  getGoogleSession,
   getLink,
+  getMailboxSessions,
   setLink,
 } from './connection';
 import {
@@ -26,10 +27,15 @@ import type { DealCandidate } from './deal-mail-match';
 import { compactPostcode, formatPostcode } from './gmail-message';
 
 /**
- * The deal email log, read from the Kept mailbox. No address to CC and no
- * mail provider in the middle: the Google connection already has the
- * mailbox, so we read it and keep only the deal mail. The rules for what
- * counts are in `deal-mail-match.ts`; this file is the wiring.
+ * The deal email log, read from the Kept mailboxes: the main account and
+ * any other Kept mailbox added in Settings → Google. No address to CC and
+ * no mail provider in the middle: the Google connection already has the
+ * mailboxes, so we read them and keep only the deal mail. The rules for
+ * what counts are in `deal-mail-match.ts`; this file is the wiring.
+ *
+ * Mailboxes are read one after another, main account first. An email that
+ * reached two of them is stored once: the second copy has a different
+ * Gmail id but the same Message-ID, and is skipped.
  *
  * Like every other Google feature it returns `{ skipped: true }` when
  * Google is not connected, and it only ever READS mail. The single change
@@ -43,7 +49,10 @@ export const LOG_LABEL = 'Kept/Log';
 /** We put this on every email we stored, so it shows in Gmail. */
 export const LOGGED_LABEL = 'Kept/Logged';
 
+/** The last run across every mailbox, for the email log page. */
 const STATE_KEY = 'deal-mail';
+/** Each mailbox keeps its own place: `deal-mail:<address>`. */
+const cursorKey = (mailbox: string) => `deal-mail:${mailbox.toLowerCase()}`;
 const DAY_MS = 24 * 60 * 60 * 1000;
 /** How far back the very first run looks. Older mail: the history button. */
 const FIRST_RUN_DAYS = 3;
@@ -58,11 +67,36 @@ const HISTORY_DAYS = 180;
 const HISTORY_MAX = 200;
 const CLOSED = ['completed', 'rejected', 'withdrawn'];
 
-type DealMailState = {
-  /** Start of the last run that finished with no errors. */
-  lastSyncAt?: string;
-  lastRun?: ImportResult & { at: string };
+type MailboxCursor = {
+  /** Start of the last run on this mailbox that finished with no errors. */
+  lastSyncAt?: string | null;
 };
+
+type LastRun = ImportResult & {
+  at: string;
+  /** The mailboxes that run read. */
+  mailboxes?: string[];
+};
+
+type DealMailState = { lastRun?: LastRun };
+
+const EMPTY: ImportResult = {
+  scanned: 0,
+  kept: 0,
+  unfiled: 0,
+  ignored: 0,
+  errors: 0,
+  capped: false,
+};
+
+const addUp = (a: ImportResult, b: ImportResult): ImportResult => ({
+  scanned: a.scanned + b.scanned,
+  kept: a.kept + b.kept,
+  unfiled: a.unfiled + b.unfiled,
+  ignored: a.ignored + b.ignored,
+  errors: a.errors + b.errors,
+  capped: a.capped || b.capped,
+});
 
 const gmailPort = (session: GoogleSession): GmailPort => ({
   listIds: (query) => listGmailMessageIds(session, query),
@@ -94,6 +128,18 @@ const store: StorePort = {
       select: { gmailId: true },
     });
     return new Set(rows.map((r) => r.gmailId));
+  },
+
+  async knownMessageIds(ids) {
+    // Removed emails keep their Message-ID, so a copy in another mailbox
+    // does not bring one back.
+    const rows = await database.dealEmail.findMany({
+      where: { messageId: { in: ids } },
+      select: { messageId: true },
+    });
+    return new Set(
+      rows.map((r) => r.messageId).filter((id): id is string => id !== null)
+    );
   },
 
   lookups: {
@@ -149,6 +195,7 @@ const store: StorePort = {
           dealId: mail.dealId,
           gmailId: mail.gmailId,
           gmailThreadId: mail.gmailThreadId,
+          mailbox: mail.mailbox,
           messageId: mail.messageId,
           threadKey: mail.threadKey,
           direction: mail.direction,
@@ -223,58 +270,87 @@ const labelIdsFor = async (session: GoogleSession) => {
 };
 
 /**
- * The regular pass (google-sync cron): everything since the last clean run.
- * A run with errors does not move the cursor, so those emails are tried
- * again; the three-day floor stops one bad email holding it back forever.
+ * The regular pass (google-sync cron): for each mailbox, everything since
+ * its last clean run. A run with errors does not move that mailbox's
+ * cursor, so those emails are tried again; the three-day floor stops one
+ * bad email holding it back forever. One mailbox failing (a revoked
+ * token, a Gmail error) does not stop the others.
  */
 export const importDealMail = async (
   now: Date = new Date()
-): Promise<Skipped | ({ skipped: false } & ImportResult)> => {
-  const session = await getGoogleSession();
-  if (!session) {
+): Promise<
+  Skipped | ({ skipped: false; mailboxes: string[] } & ImportResult)
+> => {
+  const sessions = await getMailboxSessions();
+  if (sessions.length === 0) {
     return SKIPPED;
   }
-  const state = (await getLink<DealMailState>(STATE_KEY)) ?? {};
+
+  let total = EMPTY;
+  for (const session of sessions) {
+    total = addUp(total, await importOneMailbox(session, now));
+  }
+
+  const mailboxes = sessions.map((s) => s.email);
+  await setLink(STATE_KEY, {
+    lastRun: { ...total, at: now.toISOString(), mailboxes },
+  });
+  return { skipped: false, mailboxes, ...total };
+};
+
+const importOneMailbox = async (
+  session: GoogleSession,
+  now: Date
+): Promise<ImportResult> => {
+  const key = cursorKey(session.email);
+  const cursor = (await getLink<MailboxCursor>(key)) ?? {};
   const floor = now.getTime() - FIRST_RUN_DAYS * DAY_MS;
   const since = new Date(
     Math.max(
       floor,
-      state.lastSyncAt
-        ? new Date(state.lastSyncAt).getTime() - OVERLAP_MS
+      cursor.lastSyncAt
+        ? new Date(cursor.lastSyncAt).getTime() - OVERLAP_MS
         : floor
     )
   );
 
-  const result = await runDealMailImport({
-    gmail: gmailPort(session),
-    store,
-    mailbox: session.email,
-    labelIds: await labelIdsFor(session),
-    query: sinceQuery(since),
-    max: RUN_MAX,
-    now,
-  });
-
-  await setLink(STATE_KEY, {
-    lastSyncAt:
-      result.errors === 0 ? now.toISOString() : (state.lastSyncAt ?? null),
-    lastRun: { ...result, at: now.toISOString() },
-  });
-  return { skipped: false, ...result };
+  try {
+    const result = await runDealMailImport({
+      gmail: gmailPort(session),
+      store,
+      mailbox: session.email,
+      labelIds: await labelIdsFor(session),
+      query: sinceQuery(since),
+      max: RUN_MAX,
+      now,
+    });
+    await setLink(key, {
+      lastSyncAt:
+        result.errors === 0 ? now.toISOString() : (cursor.lastSyncAt ?? null),
+    });
+    return result;
+  } catch (err) {
+    log.warn('deal-mail: a mailbox could not be read', {
+      mailbox: session.email,
+      error: err instanceof Error ? err.message : String(err),
+    });
+    return { ...EMPTY, errors: 1 };
+  }
 };
 
 /**
- * "Find older emails" on a deal: search Gmail for mail to, from or copying
- * the deal's seller and solicitor over the last six months, and keep what
- * belongs to THIS deal. Mail that could belong to another deal is left.
+ * "Find older emails" on a deal: search every Kept mailbox for mail to,
+ * from or copying the deal's seller and solicitor over the last six months,
+ * and keep what belongs to THIS deal. Mail that could belong to another
+ * deal is left.
  */
 export const importDealHistory = async (
   dealId: string
 ): Promise<
   Skipped | ({ skipped: false; noAddresses: boolean } & ImportResult)
 > => {
-  const session = await getGoogleSession();
-  if (!session) {
+  const sessions = await getMailboxSessions();
+  if (sessions.length === 0) {
     return SKIPPED;
   }
   const deal = await database.deal.findUnique({
@@ -287,33 +363,40 @@ export const importDealHistory = async (
     ),
     HISTORY_DAYS
   );
-  const empty: ImportResult = {
-    scanned: 0,
-    kept: 0,
-    unfiled: 0,
-    ignored: 0,
-    errors: 0,
-    capped: false,
-  };
   if (!query) {
-    return { skipped: false, noAddresses: true, ...empty };
+    return { skipped: false, noAddresses: true, ...EMPTY };
   }
-  const result = await runDealMailImport({
-    gmail: gmailPort(session),
-    store,
-    mailbox: session.email,
-    labelIds: await labelIdsFor(session),
-    query,
-    max: HISTORY_MAX,
-    onlyDealId: dealId,
-  });
-  return { skipped: false, noAddresses: false, ...result };
+  let total = EMPTY;
+  for (const session of sessions) {
+    try {
+      total = addUp(
+        total,
+        await runDealMailImport({
+          gmail: gmailPort(session),
+          store,
+          mailbox: session.email,
+          labelIds: await labelIdsFor(session),
+          query,
+          max: HISTORY_MAX,
+          onlyDealId: dealId,
+        })
+      );
+    } catch (err) {
+      // One mailbox failing must not hide what the others found.
+      log.warn('deal-mail: history search failed for a mailbox', {
+        mailbox: session.email,
+        error: err instanceof Error ? err.message : String(err),
+      });
+      total = addUp(total, { ...EMPTY, errors: 1 });
+    }
+  }
+  return { skipped: false, noAddresses: false, ...total };
 };
 
 export type DealMailStatus = {
-  /** When the cron last looked at the mailbox. Null before the first run. */
+  /** When the cron last looked at the mailboxes. Null before the first run. */
   lastRunAt: string | null;
-  lastRun: (ImportResult & { at: string }) | null;
+  lastRun: LastRun | null;
 };
 
 /** What the email log page shows about the last run. Reads `Setting` only. */

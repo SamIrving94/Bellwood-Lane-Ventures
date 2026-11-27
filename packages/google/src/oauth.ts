@@ -1,26 +1,36 @@
 import { keys } from '../keys';
-import { GOOGLE_SCOPES } from './connection';
+import { GOOGLE_SCOPES, MAILBOX_SCOPES } from './connection';
 
 export const googleRedirectUri = (appUrl: string): string =>
   `${appUrl.replace(/\/+$/, '')}/api/google/callback`;
 
+/**
+ * `main`: the Kept account behind drafts, Calendar, Drive and the rest.
+ * `mailbox`: another Kept mailbox, read by the email log and nothing else.
+ */
+export type GoogleConnectPurpose = 'main' | 'mailbox';
+
 export const buildGoogleAuthUrl = (input: {
   appUrl: string;
   state: string;
+  purpose?: GoogleConnectPurpose;
 }): string | null => {
   const clientId = keys().GOOGLE_CLIENT_ID;
   if (!clientId) {
     return null;
   }
+  const mailbox = input.purpose === 'mailbox';
   const params = new URLSearchParams({
     client_id: clientId,
     redirect_uri: googleRedirectUri(input.appUrl),
     response_type: 'code',
-    scope: GOOGLE_SCOPES.join(' '),
+    scope: (mailbox ? MAILBOX_SCOPES : GOOGLE_SCOPES).join(' '),
     // offline + consent: Google only returns a refresh token when both are
-    // set, and without one the connection would die after an hour.
+    // set, and without one the connection would die after an hour. Adding
+    // a mailbox also asks Google to show the account chooser: the founder
+    // is usually signed in as the main account, and wants a different one.
     access_type: 'offline',
-    prompt: 'consent',
+    prompt: mailbox ? 'select_account consent' : 'consent',
     state: input.state,
   });
   return `https://accounts.google.com/o/oauth2/v2/auth?${params}`;

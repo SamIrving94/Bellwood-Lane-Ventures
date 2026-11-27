@@ -1,7 +1,10 @@
 import { getFounderSession } from '@repo/auth/server';
 import {
   exchangeGoogleCode,
+  getGoogleStatus,
   isPersonalGoogleAccount,
+  mailboxRefusal,
+  saveExtraMailbox,
   saveGoogleConnection,
 } from '@repo/google';
 import { cookies } from 'next/headers';
@@ -40,6 +43,23 @@ export const GET = async (request: Request) => {
   if (!result.ok) {
     return back(`error=${result.reason}`);
   }
+
+  // "Add a mailbox": another Kept account for the email log, on the main
+  // account's own domain only. It never replaces the main connection.
+  if (state.startsWith('mailbox.')) {
+    const main = await getGoogleStatus();
+    const refusal = mailboxRefusal(result.email, main.email);
+    if (refusal) {
+      return back(`error=${refusal}`);
+    }
+    await saveExtraMailbox({
+      email: result.email,
+      refreshToken: result.refreshToken,
+      userId: session.userId,
+    });
+    return back('added=1');
+  }
+
   // The connection is for the Kept Workspace account. A personal Gmail
   // here would put vendor drafts and deal folders in a private account.
   if (isPersonalGoogleAccount(result.email)) {

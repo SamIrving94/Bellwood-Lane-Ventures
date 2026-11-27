@@ -1,20 +1,17 @@
 'use server';
 
-import {
-  EMAIL_LOG_TABLE_EXISTS_SQL,
-  switchOnEmailLog,
-} from '@/lib/email-log-setup';
+import { emailLogDb } from '@/lib/email-log-db';
+import { switchOnEmailLog } from '@/lib/email-log-setup';
 import { requireFounder } from '@repo/auth/server';
-import { database } from '@repo/database';
 import { revalidatePath } from 'next/cache';
 
 export type SwitchOnResult = { ok: boolean; message: string };
 
 /**
  * "Switch on the email log": create the `DealEmail` table from the
- * dashboard, for when `pnpm migrate` has not been run. Founders only. The
- * SQL is a fixed list (`EMAIL_LOG_DDL`): nothing from the request reaches
- * the database.
+ * dashboard, or bring an older one up to date, for when `pnpm migrate` has
+ * not been run. Founders only. The SQL is a fixed list (`EMAIL_LOG_DDL`,
+ * `EMAIL_LOG_UPGRADES`): nothing from the request reaches the database.
  *
  * A database failure comes back as a sentence rather than a throw: Next
  * hides thrown messages in production, and "it did not work, and nothing
@@ -24,37 +21,21 @@ export async function switchOnDealEmailLog(): Promise<SwitchOnResult> {
   const { userId } = await requireFounder();
 
   try {
-    const outcome = await switchOnEmailLog({
-      tableExists: async () => {
-        const rows = await database.$queryRawUnsafe<{ exists: boolean }[]>(
-          EMAIL_LOG_TABLE_EXISTS_SQL
-        );
-        return rows[0]?.exists === true;
-      },
-      runTogether: (statements) =>
-        database.$transaction(async (tx) => {
-          for (const sql of statements) {
-            // In order, one at a time: the indexes need the table first.
-            await tx.$executeRawUnsafe(sql);
-          }
-        }),
-    });
+    const outcome = await switchOnEmailLog(emailLogDb);
 
     console.info(`[email-log] switched on by ${userId}: ${outcome}`);
     revalidatePath('/deals/email-log');
     revalidatePath('/deals/[id]', 'page');
 
-    return outcome === 'created'
-      ? {
-          ok: true,
-          message:
-            'The email log is on. Gmail is checked every 30 minutes, so the first emails can take up to half an hour.',
-        }
-      : {
-          ok: true,
-          message:
-            'The email log was already on. Reload this page. If it still says it is off, something else is wrong.',
-        };
+    const MESSAGES: Record<typeof outcome, string> = {
+      created:
+        'The email log is on. Gmail is checked every 30 minutes, so the first emails can take up to half an hour.',
+      upgraded:
+        'The email log is up to date. Emails show again, and new ones arrive within 30 minutes.',
+      already_on:
+        'The email log was already on. Reload this page. If it still says it is off, something else is wrong.',
+    };
+    return { ok: true, message: MESSAGES[outcome] };
   } catch (err) {
     console.error('[email-log] switch-on failed', err);
     const reason =

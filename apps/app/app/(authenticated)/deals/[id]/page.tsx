@@ -1,4 +1,5 @@
 import { loadDealEmails } from '@/lib/deal-emails';
+import { getEmailLogState } from '@/lib/email-log-db';
 import { auth } from '@repo/auth/server';
 import { getBookingLink } from '@repo/calendly';
 import { database } from '@repo/database';
@@ -105,13 +106,16 @@ const DealDetailPage = async ({
     database.investorAccessToken.count({
       where: { revoked: false, email: { not: null } },
     }),
-    // The email log. Never throws: null until `pnpm migrate` adds its table.
+    // The email log. Never throws: null until its table exists and is current.
     loadDealEmails(id),
     getGoogleStatus(),
     getDealFolderUrl(id),
   ]);
 
   if (!deal) notFound();
+
+  // Only asked when the log could not be read: missing, or older than the code.
+  const emailLogState = emails === null ? await getEmailLogState() : 'current';
 
   const webUrl = process.env.NEXT_PUBLIC_WEB_URL || 'http://localhost:3001';
 
@@ -654,6 +658,7 @@ const DealDetailPage = async ({
           dealId={deal.id}
           emails={emails}
           google={google}
+          logState={emailLogState}
           sellerEmail={deal.sellerEmail}
           solicitorEmail={deal.solicitorEmail}
           subject={`${deal.address}, ${deal.postcode}`}

@@ -3,6 +3,10 @@ export {
   getGoogleStatus,
   type GoogleStatus,
   isGoogleConfigured,
+  listExtraMailboxes,
+  type MailboxStatus,
+  removeExtraMailbox,
+  saveExtraMailbox,
   saveGoogleConnection,
 } from './connection';
 export {
@@ -13,6 +17,7 @@ export {
   importDealHistory,
   importDealMail,
 } from './deal-mail';
+export { type MailboxRefusal, mailboxRefusal } from './deal-mail-match';
 export {
   draftInGmail,
   ensureDealFolder,
