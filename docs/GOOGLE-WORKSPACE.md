@@ -81,9 +81,12 @@ Gmail. A later email from the same person is still kept.
 checked and how many emails that run kept. It warns when Google is
 disconnected, and when no check has run for two hours.
 
-**Setup.** `pnpm migrate` (adds the `DealEmail` table), then connect Google
-below. Put the seller's and solicitor's emails on each deal: that is what the
-log matches on.
+**Setup.** Add the `DealEmail` table, then connect Google below. Two ways to
+add the table, same result: `pnpm migrate` from a terminal, or the **Switch
+on the email log** button, which shows at `/deals/email-log` and on each deal
+while the table is missing (founders only; it creates that one table and
+changes nothing else — `apps/app/lib/email-log-setup.ts`). Put the seller's
+and solicitor's emails on each deal: that is what the log matches on.
 
 **Limits**
 

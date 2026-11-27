@@ -16,8 +16,9 @@ export {
 
 /**
  * A deal's emails, newest first. Null when the log is not available yet:
- * the table arrives with `pnpm migrate`, and the deal page must not depend
- * on that having been run.
+ * the table arrives with `pnpm migrate` or the "Switch on the email log"
+ * button (`email-log-setup.ts`), and the deal page must not depend on
+ * either having happened.
  */
 export async function loadDealEmails(
   dealId: string
