@@ -24,7 +24,7 @@
 
 ## 🏗️ Tech Stack
 
-- **Monorepo:** Next.js 15.5.15 + Turborepo + pnpm 10.5.2 (next-forge template)
+- **Monorepo:** Next.js 15.5.29 + Turborepo + pnpm 10.5.2 (next-forge template)
 - **3 apps:** `apps/app` (dashboard, 3000), `apps/api` (crons + agent endpoints, 3002), `apps/web` (public, 3001)
 - **Auth:** Clerk
 - **Database:** Neon Postgres via Prisma + `@prisma/adapter-neon` (WebSocket)

@@ -1,6 +1,7 @@
 # Phase 2 — Score and rank plugin tool ideas
 
 _Written: 2026-10-01 · v2, rebuilt after a full scan of every tool in `apps/web`, `apps/app` and `packages/*`._
+_Last verified against the live site: 2026-11-28 (fall-through figure and hidden pages only; see `08-review-2026-11.md`)._
 
 ## What changed from v1
 
@@ -143,9 +144,9 @@ Theme: **"Selling an inherited or hard-to-sell home: your plan, your costs, your
   - any offers they hold
   - whether they need certainty or speed
 - **Reuses:**
-  - Kept's published, sourced facts: agent fee "1–1.5% plus VAT"; "~1 in 3 agreed sales collapse" (TwentyCi 2025)
+  - Kept's published, sourced facts: agent fee "1–1.5% plus VAT"; "~1 in 4 agreed sales collapse" (TwentyCi 2025; the site said "1 in 3" until 18 Oct 2026)
   - the honest routes on `/why-we-wont-buy-any-home`
-  - the methodology page
+  - ~~the methodology page~~ hidden from the public site since 11 Oct 2026 (`apps/web/lib/public-sections.ts`); the plugin never linked to it
 - **Never:** a Kept figure. The cash-buyer row uses an offer **the user enters**, or stays blank.
 - **Why #1:** it is Kept's brand promise in tool form: "we'll tell you when we're wrong for you". It is also the **net-proceeds comparator** already planned for Keyhole V1.1 (user figures only, buyer-agnostic), so it works as evidence for an executor's decision file.
 - **New code:** a pure comparator function plus sourced constants.
@@ -228,6 +229,8 @@ The scan found these. **Not fixing them in this project**, just flagging:
 2. **The investor feed shows the AVM market value** and a discount computed from it (`apps/web/app/investors/[token]/page.tsx:53`). That value contains PropertyData comps.
 3. **The methodology page says "Get an indicative offer"**, but the FCA page says "We do not issue indicative offers".
 4. **The FCA page and `/agents` still say "72 hours"**, but the promise is now one week.
+
+**Status on 28 Nov:** 1 and 3 are hidden (those pages 404 since 11 Oct). 4 is fixed on the FCA page. **Still live:** 2 (the feed still shows "% below EMV"), and the FCA page's back link still reads "Back to indicative offer" (`apps/web/app/legal/fca-disclosure/page.tsx:201`).
 
 ---
 

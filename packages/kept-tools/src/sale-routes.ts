@@ -16,7 +16,7 @@
 
 import { type CgtInput, estimateInheritedHomeCgt } from './cgt';
 import { formatPounds } from './money';
-import { SOURCES, type Source, VAT_RATE } from './sources';
+import { FALL_THROUGH_SHARE, SOURCES, type Source, VAT_RATE } from './sources';
 
 export type SaleRoute = 'estate_agent' | 'auction' | 'cash_buyer';
 
@@ -74,10 +74,17 @@ export interface CompareSaleRoutesResult {
 
 const DEFAULT_AGENT_FEE_PERCENT = 1.25;
 const DEFAULT_AUCTION_COMMISSION_PERCENT = 2.5;
-const DEFAULT_MONTHS: Record<SaleRoute, number> = {
+/** Typical months from deciding to sell to completion, per route (assumptions, shown as such). */
+export const DEFAULT_MONTHS: Record<SaleRoute, number> = {
   estate_agent: 5,
   auction: 2,
   cash_buyer: 1,
+};
+
+export const ROUTE_LABELS: Record<SaleRoute, string> = {
+  estate_agent: 'Estate agent (open market)',
+  auction: 'Auction',
+  cash_buyer: 'Cash buyer',
 };
 
 function pctWithVat(pricePence: number, percent: number): number {
@@ -158,7 +165,7 @@ export function compareSaleRoutes(
   }
   if (input.auctionCommissionPercent === undefined) {
     auctionAssumptions.push(
-      `Commission assumed at ${DEFAULT_AUCTION_COMMISSION_PERCENT}% plus VAT. Use the auction house's terms.`
+      `Commission assumed at ${DEFAULT_AUCTION_COMMISSION_PERCENT}% plus VAT (typical range 2–4%). Use the auction house's terms.`
     );
   }
   if (input.auctionEntryFeePence === undefined) {
@@ -176,7 +183,7 @@ export function compareSaleRoutes(
     buildRoute(
       {
         route: 'estate_agent',
-        label: 'Estate agent (open market)',
+        label: ROUTE_LABELS.estate_agent,
         pricePence: input.expectedPricePence,
         feeLines: [
           {
@@ -186,8 +193,7 @@ export function compareSaleRoutes(
         ],
         monthsToComplete: months.estate_agent,
         timing: 'Typically 4–6 months from listing to completion.',
-        certainty:
-          'Around 1 in 3 agreed sales collapse before completion. Nothing is binding until exchange.',
+        certainty: `Around ${FALL_THROUGH_SHARE} agreed sales collapse before completion. Nothing is binding until exchange.`,
         suitsWhen:
           'You can wait months for the right buyer, and the home is in good condition in an area where homes sell well.',
         wrongFor:
@@ -199,7 +205,7 @@ export function compareSaleRoutes(
     buildRoute(
       {
         route: 'auction',
-        label: 'Auction',
+        label: ROUTE_LABELS.auction,
         pricePence: auctionPrice,
         feeLines: [
           {
@@ -231,7 +237,7 @@ export function compareSaleRoutes(
     buildRoute(
       {
         route: 'cash_buyer',
-        label: 'Cash buyer',
+        label: ROUTE_LABELS.cash_buyer,
         pricePence: input.cashOfferPence ?? null,
         feeLines: [],
         monthsToComplete: months.cash_buyer,

@@ -109,7 +109,7 @@ export function registerProPlugin(server: McpServer): void {
     'refer_sale_to_kept',
     {
       title: 'Refer a sale to Kept',
-      description: `For ${brand.name} partner estate agents. Use when an agent wants ${brand.name} to look at a sale, usually one that has fallen through. Examples: "my buyer's mortgage fell through on 12 Oak Road, can Kept look at it?", "send this fall-through to Kept: 3 bed semi, M20, chain collapsed today", "refer a probate sale to Kept before I re-list". Creates a referral that a person at ${brand.name} reviews the same working day; ${brand.name} then arranges a viewing and sends a written offer within two working days of it. Only call after the agent confirms the vendor is happy for the details to be shared. Never include the vendor's name, phone or email.`,
+      description: `For ${brand.name} partner estate agents. Use when an agent wants ${brand.name} to look at a sale, usually one that has fallen through. Examples: "my buyer's mortgage fell through on 12 Oak Road, can Kept look at it?", "send this fall-through to Kept: 3 bed semi, M20, chain collapsed today", "refer a probate sale to Kept before I re-list". Creates a referral that a person at ${brand.name} picks up within 24 hours, Monday to Friday; ${brand.name} then arranges a viewing and sends a written offer within two working days of it. Only call after the agent confirms the vendor is happy for the details to be shared. Never include the vendor's name, phone or email.`,
       inputSchema: z.object({
         addressLine: z
           .string()
@@ -222,7 +222,7 @@ export function registerProPlugin(server: McpServer): void {
         structuredContent: { referralId: quote.id, duplicate: false },
         content: [
           text(
-            `Referral sent (reference ${quote.id}). A person at ${brand.name} will be in touch the same working day to arrange a viewing; the written offer follows within two working days of it. Check progress with my_kept_referrals.`
+            `Referral sent (reference ${quote.id}). A person at ${brand.name} will be in touch within 24 hours, Monday to Friday, to arrange a viewing; the written offer follows within two working days of it. Check progress with my_kept_referrals.`
           ),
         ],
       };

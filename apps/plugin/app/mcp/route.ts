@@ -4,19 +4,23 @@
  */
 
 import { registerPublicPlugin } from '@/lib/public-tools';
-import { SERVER_INSTRUCTIONS } from '@/lib/server-info';
+import { MCP_SERVER_LIMITS, withBodyLimit } from '@/lib/request-limits';
+import { PUBLIC_SERVER_INFO, SERVER_INSTRUCTIONS } from '@/lib/server-info';
 import { createMcpHandler } from 'mcp-handler';
 
 export const maxDuration = 60;
 
-const handler = createMcpHandler(
-  (server) => {
-    registerPublicPlugin(server);
-  },
-  {
-    serverInfo: { name: 'kept', version: '1.0.0' },
-    instructions: SERVER_INSTRUCTIONS,
-  }
+const handler = withBodyLimit(
+  createMcpHandler(
+    (server) => {
+      registerPublicPlugin(server);
+    },
+    {
+      serverInfo: PUBLIC_SERVER_INFO,
+      instructions: SERVER_INSTRUCTIONS,
+      ...MCP_SERVER_LIMITS,
+    }
+  )
 );
 
 export { handler as GET, handler as POST, handler as DELETE };

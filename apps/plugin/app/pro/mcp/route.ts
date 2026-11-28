@@ -11,7 +11,8 @@ import {
 } from '@/lib/oauth/config';
 import { verifyAccessToken } from '@/lib/oauth/flow';
 import { registerProPlugin } from '@/lib/pro-tools';
-import { SERVER_INSTRUCTIONS } from '@/lib/server-info';
+import { MCP_SERVER_LIMITS, withBodyLimit } from '@/lib/request-limits';
+import { PRO_SERVER_INFO, SERVER_INSTRUCTIONS } from '@/lib/server-info';
 import { createMcpHandler, withMcpAuth } from 'mcp-handler';
 
 export const maxDuration = 60;
@@ -21,32 +22,35 @@ const handler = createMcpHandler(
     registerProPlugin(server);
   },
   {
-    serverInfo: { name: 'kept-pro', version: '1.0.0' },
+    serverInfo: PRO_SERVER_INFO,
     instructions: `${SERVER_INSTRUCTIONS} These tools are for Kept partner estate agents and syndicate investors only.`,
+    ...MCP_SERVER_LIMITS,
   }
 );
 
-const authed = withMcpAuth(
-  handler,
-  (req, bearer) => {
-    const claims = verifyAccessToken(bearer, resourceUrl(req));
-    if (!claims) return undefined;
-    return {
-      token: bearer as string,
-      clientId: claims.client_id,
-      scopes: claims.scope,
-      expiresAt: claims.exp,
-      resource: new URL(claims.aud),
-      extra: { email: claims.sub },
-    };
-  },
-  {
-    required: true,
-    resourceMetadataPath: PROTECTED_RESOURCE_METADATA_PATH,
-    // Pin the public origin in production so the 401's metadata pointer
-    // never depends on request headers (matches lib/oauth/config issuer).
-    resourceUrl: process.env.PLUGIN_PUBLIC_URL?.trim() || undefined,
-  }
+const authed = withBodyLimit(
+  withMcpAuth(
+    handler,
+    (req, bearer) => {
+      const claims = verifyAccessToken(bearer, resourceUrl(req));
+      if (!claims) return undefined;
+      return {
+        token: bearer as string,
+        clientId: claims.client_id,
+        scopes: claims.scope,
+        expiresAt: claims.exp,
+        resource: new URL(claims.aud),
+        extra: { email: claims.sub },
+      };
+    },
+    {
+      required: true,
+      resourceMetadataPath: PROTECTED_RESOURCE_METADATA_PATH,
+      // Pin the public origin in production so the 401's metadata pointer
+      // never depends on request headers (matches lib/oauth/config issuer).
+      resourceUrl: process.env.PLUGIN_PUBLIC_URL?.trim() || undefined,
+    }
+  )
 );
 
 export { authed as GET, authed as POST, authed as DELETE };

@@ -2,7 +2,8 @@
  * One log line per tool call, so we can learn from live use. Read them in
  * Vercel runtime logs (search "kept_plugin_tool").
  *
- * Logs the tool name, the outcome and the time taken. NEVER the arguments
+ * Logs the tool name, the assistant it came from (its product name, e.g.
+ * chatgpt or claude), the outcome and the time taken. NEVER the arguments
  * or the result: those can hold an address, a date of death or a price,
  * and the probate firewall says a user's case data is theirs, not ours
  * (docs/proposals/keyhole-probate-shelf-tree.md; docs/mcp/04-prd.md).
@@ -11,6 +12,7 @@
  */
 
 import type { McpServer } from '@modelcontextprotocol/server';
+import { callSource } from './links';
 
 export type Surface = 'public' | 'pro';
 
@@ -18,6 +20,8 @@ export interface UsageLine {
   event: 'kept_plugin_tool';
   surface: Surface;
   tool: string;
+  /** Which assistant called (its product name only), to measure each channel. */
+  source: string;
   outcome: 'ok' | 'tool_error' | 'exception';
   ms: number;
 }
@@ -37,15 +41,23 @@ function isToolError(result: unknown): boolean {
   );
 }
 
-function wrap(surface: Surface, tool: string, cb: AnyCallback): AnyCallback {
+function wrap(
+  surface: Surface,
+  tool: string,
+  cb: AnyCallback,
+  clientName: () => string | undefined
+): AnyCallback {
   return async (...args: unknown[]) => {
     const started = Date.now();
+    // The SDK passes (args, ctx); ctx carries the original HTTP request.
+    const source = callSource(clientName(), args[1]);
     try {
       const result = await cb(...args);
       logUsage({
         event: 'kept_plugin_tool',
         surface,
         tool,
+        source,
         outcome: isToolError(result) ? 'tool_error' : 'ok',
         ms: Date.now() - started,
       });
@@ -55,6 +67,7 @@ function wrap(surface: Surface, tool: string, cb: AnyCallback): AnyCallback {
         event: 'kept_plugin_tool',
         surface,
         tool,
+        source,
         outcome: 'exception',
         ms: Date.now() - started,
       });
@@ -73,7 +86,8 @@ export function withUsageLogging(
 ): McpServer {
   const target = server as unknown as { registerTool: RegisterTool };
   const register = target.registerTool.bind(server) as RegisterTool;
+  const clientName = () => server.server.getClientVersion()?.name;
   target.registerTool = (name, config, cb) =>
-    register(name, config, wrap(surface, name, cb));
+    register(name, config, wrap(surface, name, cb, clientName));
   return server;
 }

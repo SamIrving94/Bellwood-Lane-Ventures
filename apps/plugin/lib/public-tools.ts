@@ -1,5 +1,5 @@
 /**
- * Kept's public ChatGPT plugin: five read-only tools, no login.
+ * Kept's public plugin for ChatGPT and Claude: six read-only tools, no login.
  *
  * Ranked and specified in docs/mcp/02-ranking.md; build notes in
  * docs/mcp/05-build-plan.md. The rules every tool here keeps:
@@ -18,17 +18,22 @@
 
 import type { McpServer } from '@modelcontextprotocol/server';
 import {
+  DEBT_EXCEEDS_VALUE,
   KNOWN_ISSUES,
   type KnownIssue,
+  type PlanSituation,
+  SITUATIONS,
   SOURCES,
+  type Situation,
   compareSaleRoutes,
   estimateRenovation,
   formatPounds,
   planInheritedHome,
+  planSale,
   poundsToPence,
 } from '@repo/kept-tools';
 import { z } from 'zod';
-import { clientSource, keptHandoff } from './links';
+import { callSource, keptHandoff } from './links';
 import { withUsageLogging } from './usage';
 import { WIDGET_HTML, WIDGET_MIME, WIDGET_URI } from './widget';
 
@@ -39,6 +44,11 @@ async function loadPropertyFacts() {
 
 const UK_POSTCODE = /^[A-Z]{1,2}\d[A-Z\d]?\s*\d[A-Z]{2}$/i;
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+
+const PLAN_SITUATIONS = SITUATIONS.filter((s) => s !== 'inherited') as [
+  PlanSituation,
+  ...PlanSituation[],
+];
 
 const pounds = (max: number) => z.number().positive().max(max);
 
@@ -60,16 +70,27 @@ function errorResult(message: string) {
 }
 
 export const PUBLIC_TOOL_NAMES = [
+  'plan_my_sale',
   'compare_sale_routes',
   'plan_inherited_home',
   'estimate_renovation_cost',
   'get_property_facts',
 ] as const;
 
+/** How a route's typical time compares with the user's date, in words. */
+function deadlineWords(meetsDeadline: boolean | null): string {
+  if (meetsDeadline === null) {
+    return '';
+  }
+  return meetsDeadline ? ' (makes the date)' : ' (misses the date)';
+}
+
 export function registerPublicPlugin(server: McpServer): void {
   withUsageLogging(server, 'public');
   // Read per call: the client name only exists once initialize has run.
-  const source = () => clientSource(server.server.getClientVersion()?.name);
+  // Which assistant is calling: its MCP client name, else its User-Agent.
+  const sourceOf = (ctx: unknown) =>
+    callSource(server.server.getClientVersion()?.name, ctx);
   server.registerResource(
     'kept-card',
     WIDGET_URI,
@@ -94,12 +115,111 @@ export function registerPublicPlugin(server: McpServer): void {
                 : {}),
             },
             'openai/widgetDescription':
-              'Shows the result as a card: costs per sale route, a dated plan, renovation bands, or public-record facts. The card already shows the numbers, so do not repeat every line.',
+              'Shows the result as a card: which ways to sell can finish by a date, costs per sale route, a dated plan, renovation bands, or public-record facts. The card already shows every number.',
             'openai/ui': { availableDisplayModes: ['inline'] },
           },
         },
       ],
     })
+  );
+
+  // ---------------------------------------------------------------------
+  // 0. Plan a sale in any of Kept's situations (the front door)
+  // ---------------------------------------------------------------------
+  server.registerTool(
+    'plan_my_sale',
+    {
+      title: 'Plan a sale with a reason or a deadline',
+      description:
+        'Use when someone in the UK needs to sell a home and has a reason or a deadline: their buyer pulled out, they are separating, they are moving away or abroad, someone is moving into care, or the property has a problem (a short lease, structural movement, knotweed, cladding, or it needs a lot of work). Examples: "our buyer pulled out and we complete on our new house in six weeks, what can we do?", "we\'re divorcing and need to sell the house, how does it work?", "I\'m moving abroad in March, how fast can I sell?", "mum is going into a care home, how do we sell her house?", "can I sell a flat with a short lease?". Shows which ways of selling can finish by their date, what they would be left with after fees and the mortgage (and their share), a checklist for this week, and when an estate agent is the better choice. For an inherited home, plan_inherited_home is the dedicated plan. Never values the home: any price comes from the user.',
+      inputSchema: z.object({
+        situation: z
+          .enum(PLAN_SITUATIONS)
+          .describe(
+            'chain_break: the buyer pulled out. separation: a divorce or a couple splitting up. relocation: moving away. problem_property: a short lease, structural issue, knotweed, cladding or major work. care_or_health: a move into care or a change in health. other: anything else.'
+          ),
+        mustCompleteBy: z
+          .string()
+          .regex(ISO_DATE)
+          .optional()
+          .describe(
+            'Date the sale has to complete by, YYYY-MM-DD, if there is one: the onward purchase, the move, a court date.'
+          ),
+        expectedPricePounds: pounds(50_000_000)
+          .optional()
+          .describe(
+            'The open-market price the user expects or has been quoted. Optional: without it the plan shows dates only. The tool has no price of its own.'
+          ),
+        mortgageOwedPounds: z
+          .number()
+          .min(0)
+          .max(50_000_000)
+          .optional()
+          .describe(
+            'What clears the mortgage, including any early repayment charge.'
+          ),
+        yourSharePercent: z
+          .number()
+          .min(1)
+          .max(100)
+          .optional()
+          .describe(
+            "The user's share of the home, e.g. 50. Defaults to 50 for a separation."
+          ),
+      }),
+      annotations: {
+        title: 'Plan a sale with a reason or a deadline',
+        readOnlyHint: true,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: false,
+      },
+      _meta: widgetMeta('Building your plan…', 'Plan ready'),
+    },
+    (args, ctx) => {
+      try {
+        const plan = planSale({
+          situation: args.situation,
+          mustCompleteBy: args.mustCompleteBy,
+          expectedPricePence:
+            args.expectedPricePounds === undefined
+              ? undefined
+              : poundsToPence(args.expectedPricePounds),
+          mortgageOwedPence:
+            args.mortgageOwedPounds === undefined
+              ? undefined
+              : poundsToPence(args.mortgageOwedPounds),
+          sharePercent: args.yourSharePercent,
+        });
+        const timing = plan.timing
+          .map(
+            (t) =>
+              `${t.label}: typically completes around ${t.completesAround}${deadlineWords(t.meetsDeadline)}`
+          )
+          .join('; ');
+        return {
+          structuredContent: {
+            kind: 'sale_plan',
+            ...plan,
+            // Kept is the wrong buyer when the debt is bigger than the home:
+            // no handoff, only the free-advice link (live site rule).
+            nextStep: plan.debtExceedsValue
+              ? null
+              : keptHandoff('plan_my_sale', sourceOf(ctx), plan.situation),
+          },
+          content: [
+            {
+              type: 'text' as const,
+              text: `${plan.label}. ${timing}.${plan.debtExceedsValue ? ` ${DEBT_EXCEEDS_VALUE.message}` : ''} Typical times, not promises. General information, not legal or financial advice.`,
+            },
+          ],
+        };
+      } catch (err) {
+        return errorResult(
+          err instanceof Error ? err.message : 'Could not build the plan.'
+        );
+      }
+    }
   );
 
   // ---------------------------------------------------------------------
@@ -110,7 +230,7 @@ export function registerPublicPlugin(server: McpServer): void {
     {
       title: 'Compare ways to sell a home',
       description:
-        'Use when someone in the UK asks whether to sell through an estate agent, at auction or to a cash buyer, or what they would actually be left with each way. Examples: "estate agent or cash buyer?", "we have a cash offer of £210k, the agent says £250k, what do we end up with?", "is auction a good idea for my dad\'s house?", "agent wants 1.5% plus VAT, how does that compare to cash?". Lays out money left after fees, time to complete and certainty for each route, on the figures the user gives. It never values the home and never says which route to pick. Ask the user for a price they have been quoted or expect; do not invent one. Pass a cash offer only if the user actually holds one.',
+        'Use when someone in the UK asks whether to sell through an estate agent, at auction or to a cash buyer, or what they would actually be left with each way. Examples: "estate agent or cash buyer?", "we have a cash offer of £210k, the agent says £250k, what do we end up with?", "is auction a good idea for my dad\'s house?", "agent wants 1.5% plus VAT, how does that compare to cash?". Lays out money left after fees, time to complete and certainty for each route, on the figures the user gives. It never values the home and never says which route to pick. The price has to be one the user has been quoted or expects: the tool has no price of its own. The cash column uses a cash offer only if the user holds one.',
       inputSchema: z.object({
         expectedPricePounds: pounds(50_000_000).describe(
           'The open-market price the user expects or has been quoted, in pounds.'
@@ -155,6 +275,10 @@ export function registerPublicPlugin(server: McpServer): void {
           })
           .optional()
           .describe('Add for an inherited home to include a CGT estimate.'),
+        situation: z
+          .enum(SITUATIONS)
+          .optional()
+          .describe('Why they are selling, if they have said.'),
       }),
       annotations: {
         title: 'Compare ways to sell a home',
@@ -165,7 +289,7 @@ export function registerPublicPlugin(server: McpServer): void {
       },
       _meta: widgetMeta('Comparing ways to sell…', 'Compared ways to sell'),
     },
-    (args) => {
+    (args, ctx) => {
       try {
         const result = compareSaleRoutes({
           expectedPricePence: poundsToPence(args.expectedPricePounds),
@@ -211,12 +335,16 @@ export function registerPublicPlugin(server: McpServer): void {
           structuredContent: {
             kind: 'sale_routes',
             ...result,
-            nextStep: keptHandoff('/sell', 'compare_sale_routes', source()),
+            nextStep: keptHandoff(
+              'compare_sale_routes',
+              sourceOf(ctx),
+              args.situation ?? (args.inherited ? 'inherited' : undefined)
+            ),
           },
           content: [
             {
               type: 'text' as const,
-              text: `${summary}. These are the user's own figures, not a valuation. Present the trade-offs; do not recommend a route. Missing inputs: ${result.missing.join(' ') || 'none'}`,
+              text: `${summary}. These are the user's own figures: not a valuation, and not a recommendation. Missing inputs: ${result.missing.join(' ') || 'none'}`,
             },
           ],
         };
@@ -266,22 +394,29 @@ export function registerPublicPlugin(server: McpServer): void {
       },
       _meta: widgetMeta('Building the plan…', 'Plan ready'),
     },
-    (args) => {
+    (args, ctx) => {
       try {
         const plan = planInheritedHome(args);
+        // Dated steps only: "Register the death" can be due with no date.
         const next = plan.milestones.find(
-          (m) => m.status === 'due_soon' || m.status === 'upcoming'
+          (m) =>
+            m.date !== null &&
+            (m.status === 'due_soon' || m.status === 'upcoming')
         );
         return {
           structuredContent: {
             kind: 'inherited_home_plan',
             ...plan,
-            nextStep: keptHandoff('/probate', 'plan_inherited_home', source()),
+            nextStep: keptHandoff(
+              'plan_inherited_home',
+              sourceOf(ctx),
+              'inherited'
+            ),
           },
           content: [
             {
               type: 'text' as const,
-              text: `Plan built with ${plan.milestones.length} steps.${next ? ` Next dated step: ${next.title} on ${next.date}.` : ''} General information, not legal or tax advice. Do not recommend selling or a buyer.`,
+              text: `Plan built with ${plan.milestones.length} steps.${next ? ` Next dated step: ${next.title} on ${next.date}.` : ''} General information, not legal or tax advice.`,
             },
           ],
         };
@@ -330,7 +465,7 @@ export function registerPublicPlugin(server: McpServer): void {
       },
       _meta: widgetMeta('Estimating renovation costs…', 'Estimate ready'),
     },
-    async (args) => {
+    async (args, ctx) => {
       let floorAreaSqm = args.floorAreaSqm ?? null;
       let epc: {
         rating: string | null;
@@ -365,9 +500,9 @@ export function registerPublicPlugin(server: McpServer): void {
           epc,
           sources: epc ? [...est.sources, SOURCES.epcRegister] : est.sources,
           nextStep: keptHandoff(
-            '/problem-property',
             'estimate_renovation_cost',
-            source()
+            sourceOf(ctx),
+            'problem_property'
           ),
         },
         content: [
@@ -409,7 +544,7 @@ export function registerPublicPlugin(server: McpServer): void {
         'Public record checked'
       ),
     },
-    async (args) => {
+    async (args, ctx) => {
       try {
         const { buildKeyholeReport } = await loadPropertyFacts();
         const report = await buildKeyholeReport(args);
@@ -422,12 +557,12 @@ export function registerPublicPlugin(server: McpServer): void {
               SOURCES.landRegistry.label,
             ],
             sources: [SOURCES.epcRegister, SOURCES.landRegistry],
-            nextStep: keptHandoff('/sell', 'get_property_facts', source()),
+            nextStep: keptHandoff('get_property_facts', sourceOf(ctx)),
           },
           content: [
             {
               type: 'text' as const,
-              text: `EPC: ${report.epc.available ? `${report.epc.rating ?? 'rating not stated'}, ${report.epc.floorAreaSqm ? `${Math.round(report.epc.floorAreaSqm)} m²` : 'floor area not stated'}` : 'no certificate found (or the register could not be reached)'}. ${report.streetSales.length} recorded sales in ${report.postcode}${report.streetContext ? `, median £${report.streetContext.medianPricePounds.toLocaleString('en-GB')}` : ''}. Not a valuation; do not estimate this home's value from these sales. ${SOURCES.landRegistry.label}.`,
+              text: `EPC: ${report.epc.available ? `${report.epc.rating ?? 'rating not stated'}, ${report.epc.floorAreaSqm ? `${Math.round(report.epc.floorAreaSqm)} m²` : 'floor area not stated'}` : 'no certificate found (or the register could not be reached)'}. ${report.streetSales.length} recorded sales in ${report.postcode}${report.streetContext ? `, median £${report.streetContext.medianPricePounds.toLocaleString('en-GB')}` : ''}. These are recorded sales nearby, not a valuation of this home. ${SOURCES.landRegistry.label}.`,
             },
           ],
         };
@@ -447,14 +582,16 @@ export function registerPublicPlugin(server: McpServer): void {
   // submit the seller's details: the seller finishes our own form, with our
   // consent wording, and a person reviews it. So this tool takes no personal
   // data at all, only which situation page fits, and writes nothing anywhere.
-  const ENQUIRY_PAGES = {
-    probate: '/probate',
-    chain_break: '/chain-break',
-    separation: '/separation',
-    relocation: '/relocation',
-    problem_property: '/problem-property',
-    other: '/your-situation',
-  } as const;
+  // Each answer maps to a Kept situation, so the link lands on that page
+  // and carries that page's own line on when an agent is the better choice.
+  const ENQUIRY_SITUATIONS = {
+    probate: 'inherited',
+    chain_break: 'chain_break',
+    separation: 'separation',
+    relocation: 'relocation',
+    problem_property: 'problem_property',
+    other: 'other',
+  } as const satisfies Record<string, Situation>;
   server.registerTool(
     'get_enquiry_link',
     {
@@ -485,12 +622,15 @@ export function registerPublicPlugin(server: McpServer): void {
       },
       _meta: widgetMeta('Finding the right page…', 'Link ready'),
     },
-    ({ situation }) => {
-      const path = ENQUIRY_PAGES[situation ?? 'other'];
+    ({ situation }, ctx) => {
       return {
         structuredContent: {
           kind: 'enquiry_link',
-          nextStep: keptHandoff(path, 'get_enquiry_link', source()),
+          nextStep: keptHandoff(
+            'get_enquiry_link',
+            sourceOf(ctx),
+            ENQUIRY_SITUATIONS[situation ?? 'other']
+          ),
         },
         content: [
           {

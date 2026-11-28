@@ -24,7 +24,7 @@ they are always held for founder review.
 ## Tech stack
 
 - **Monorepo:** Turborepo + **pnpm 10.5.2** (workspaces: `apps/*`, `packages/*`, `services/*`)
-- **Framework:** Next.js 15.5.15 (App Router, Turbopack in dev), React 19, TypeScript 5.8
+- **Framework:** Next.js 15.5.29 (App Router, Turbopack in dev), React 19, TypeScript 5.8. Keep `next` and the root `pnpm.overrides` pin in step when patching.
 - **Auth:** Clerk
 - **Database:** Neon Postgres via **Prisma** + `@prisma/adapter-neon` (WebSocket driver adapter)
 - **Email:** Resend (`@repo/email`, graceful fallback when no token)
@@ -44,7 +44,7 @@ they are always held for founder review.
 | `apps/email` | `email` | 3003 | React Email preview/dev |
 | `apps/docs` | `docs` | 3004 | Mintlify documentation site |
 | `apps/studio` | `studio` | 3005 | Prisma Studio (DB browser) |
-| `apps/plugin` | `plugin` | 3006 | **ChatGPT plugins** (MCP): public `/mcp` + agent/investor `/pro/mcp` with OAuth. MCP SDK v2 + zod 4, isolated. See `docs/mcp/` |
+| `apps/plugin` | `plugin` | 3006 | **Kept in ChatGPT and Claude** (MCP): public `/mcp` (six read-only tools for every Kept situation; `get_enquiry_link` hands a seller a link to our own form and never takes their details: founder, link only, 28 Nov 2026) + agent/investor `/pro/mcp` with OAuth. MCP SDK v2 + zod 4, isolated. Pro is parked while the agent side is hidden (`docs/mcp/08-review-2026-11.md`). Funnel and listing: `docs/mcp/10-funnel.md` |
 | `apps/storybook` | `storybook` | 6006 | Design-system component explorer |
 
 `apps/app` route groups: `app/(authenticated)/*` (dashboard pages),
@@ -67,7 +67,7 @@ Business-logic packages (the custom part of this codebase):
 | `@repo/google` | The Kept Google Workspace connection (Gmail drafts, Calendar, Drive), plus extra Kept mailboxes for the email log. Graceful skip when not connected. See `docs/GOOGLE-WORKSPACE.md` |
 | `@repo/whatsapp-parser` | Parse inbound WhatsApp intake messages |
 | `@repo/instant-offer`, `@repo/quote-ops`, `@repo/deal-updates`, `@repo/document-pipeline`, `@repo/knowledge-base`, `@repo/notifications` | Deal/offer/document/notification workflows |
-| `@repo/kept-tools` | Logic behind the ChatGPT plugin tools (sale routes, inherited-home plan, renovation bands, CGT, property facts). Pure; every stated fact sourced in `src/sources.ts` |
+| `@repo/kept-tools` | Logic behind the ChatGPT and Claude plugin tools (sale plan for every Kept situation, sale routes, inherited-home plan, renovation bands, CGT, property facts). Pure; every stated fact sourced in `src/sources.ts` |
 | `@repo/mcp-server` | MCP server exposing repo capabilities (see `.mcp.json`). Broken (crashes on start) and exposes lead PII; superseded by `apps/plugin` (docs/mcp/01-audit.md) |
 
 Platform/infra packages (mostly inherited from next-forge):
@@ -286,8 +286,9 @@ Run a task for one workspace with a filter, e.g.
   Landing-page FAQ JSON-LD reads straight from `situation-content.ts`, so it
   cannot drift. AI crawlers are named on purpose in `apps/web/app/robots.ts`
   (founder, 28 Nov 2026: be the source assistants quote). The plugin tags
-  `utm_source` with the calling assistant's name (`clientSource`), falling
-  back to `agent`.
+  `utm_source` with the calling assistant's name (`clientSource`, else the
+  User-Agent via `callSource` in `apps/plugin/lib/links.ts`), falling back
+  to `agent`.
 - **Tone of voice — the Beth Sims bar** (founder direction, 22 Aug 2026).
   The signed-off homepage copy is the standard all new copy must meet: people
   first, cut what adds nothing, neutral precision over drama, verify claims
@@ -318,6 +319,7 @@ brand artefact in `apps/web`, update the derived docs in the same commit:**
 | `docs/brand/KEPT.md` | Voice, copy-truth rules, signature artefacts |
 | `docs/marketing/PLAN.md` | Segment framing, landing routes, channel copy |
 | `docs/templates/binding-offer-letter.md` | Offer wording |
+| `packages/kept-tools/src/sources.ts`, `packages/kept-tools/src/situations.ts`, `apps/plugin/lib/*` | Figures and promise wording the ChatGPT and Claude plugin repeats (fall-through rate, response time, offer timing), and each situation page's "when an agent is better" line (`situations.ts`, from `apps/web/lib/situation-content.ts`). Missed once: the site moved to "1 in 4" and the plugin kept "1 in 3" |
 
 Rules:
 

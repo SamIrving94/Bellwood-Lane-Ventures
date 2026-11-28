@@ -16,7 +16,18 @@ export interface Source {
   checked: string;
 }
 
-const CHECKED = '2026-10-01';
+// Re-checked 28 Nov 2026, after the Autumn Budget (28 Oct 2026), from search
+// results of the cited pages: gov.uk can't be fetched from the build sandbox.
+// Notes and what changed: docs/mcp/08-review-2026-11.md.
+const CHECKED = '2026-11-28';
+
+/**
+ * The fall-through rate exactly as the live /sell page states it
+ * (apps/web/app/sell/page.tsx, footnote 1: TwentyCi, 2025). The site moved
+ * from "1 in 3" to "1 in 4" on 18 Oct 2026 (#143) and the plugin kept the old
+ * figure, so it lives here once. The live site wins: change it with the page.
+ */
+export const FALL_THROUGH_SHARE = '1 in 4';
 
 export const SOURCES = {
   agentFee: {
@@ -30,15 +41,20 @@ export const SOURCES = {
     checked: CHECKED,
   },
   fallThrough: {
-    label:
-      'Around 1 in 3 agreed sales collapse before completion (TwentyCi, 2025)',
+    label: `Around ${FALL_THROUGH_SHARE} agreed sales collapse before completion (TwentyCi, 2025)`,
     url: 'https://wearekept.co.uk/sell',
+    checked: CHECKED,
+  },
+  keptCompletion: {
+    label:
+      'Kept is a cash buyer and can complete in as little as two weeks, once it has viewed the home and confirmed an offer in writing',
+    url: 'https://wearekept.co.uk/chain-break',
     checked: CHECKED,
   },
   auctionFees: {
     label:
-      'Auction seller commission is usually around 2.5% plus VAT, plus an entry fee',
-    url: 'https://www.cliveemson.co.uk/news/how-much-does-it-cost-to-sell-a-house-at-auction/',
+      'Auction seller commission is usually 2% to 4% of the sale price plus VAT, plus an entry fee',
+    url: 'https://www.cliveemson.co.uk/selling-a-property-at-auction/',
     checked: CHECKED,
   },
   vat: {
@@ -61,7 +77,7 @@ export const SOURCES = {
   cgtBaseCost: {
     label:
       'For an inherited home, the base cost for CGT is its value at the date of death (the probate value)',
-    url: 'https://www.gov.uk/tax-sell-property',
+    url: 'https://www.gov.uk/tax-sell-property/work-out-your-gain',
     checked: CHECKED,
   },
   cgt60Days: {
@@ -77,7 +93,8 @@ export const SOURCES = {
     checked: CHECKED,
   },
   registerDeath: {
-    label: 'In England and Wales, register a death within 5 days',
+    label:
+      "In England and Wales, register a death within 5 days of the medical examiner's office confirming you can, unless a coroner is involved. Weekends and bank holidays count",
     url: 'https://www.gov.uk/register-a-death',
     checked: CHECKED,
   },
@@ -112,7 +129,7 @@ export const SOURCES = {
     checked: CHECKED,
   },
   epcRegister: {
-    label: 'Energy Performance Certificate register (open data)',
+    label: 'Energy Performance Certificate register (GOV.UK)',
     url: 'https://www.gov.uk/find-energy-certificate',
     checked: CHECKED,
   },

@@ -65,9 +65,17 @@ export const metadata: Metadata = {
  * (memory only, so no consent is asked), and the ad click id's value is
  * dropped (only which kind was there is kept). Change either and this page
  * changes first.
+ *
+ * v1.7 (Nov 2026): Kept in ChatGPT and Claude (apps/plugin). Its tools
+ * store nothing a user types and take no personal details: a seller who
+ * wants an offer gets a link to our own form (founder, link only, 28 Nov
+ * 2026). The link names the assistant in utm_source, saved with the form
+ * like any other source. Its logs hold the tool, the assistant, the outcome
+ * and the time, never the inputs (apps/plugin/lib/usage.ts). Widen any of
+ * that and this page changes first.
  */
-const LAST_UPDATED = '27 November 2026';
-const VERSION = '1.6';
+const LAST_UPDATED = '28 November 2026';
+const VERSION = '1.7';
 
 /** Verified against the Companies House register, 2026-07-31. */
 const REGISTERED_OFFICE = '20 Wenlock Road, London N1 7GU';
@@ -110,8 +118,8 @@ const SECTIONS: Array<{
     body: (
       <>
         <p>
-          When you request an indicative offer &mdash; through a form on this
-          site, by email, or by WhatsApp &mdash; we ask for and store:
+          When you ask us for an offer, through a form on this site, by email or
+          by WhatsApp, we ask for and store:
         </p>
         <ul>
           <li>
@@ -131,11 +139,21 @@ const SECTIONS: Array<{
           <li>
             <strong>How you found us.</strong> When you send a form on this
             site, we keep a note of what brought you here: one of our adverts, a
-            search, or a link on another site, and the first page you opened.
-            It is read from that page&rsquo;s address, not from a cookie, and
-            we do not keep the code an advertiser attaches to your click.
+            search, or a link on another site, and the first page you opened. It
+            is read from that page&rsquo;s address, not from a cookie, and we do
+            not keep the code an advertiser attaches to your click. If a link
+            from ChatGPT or Claude brought you here, we note which.
           </li>
         </ul>
+        <p>
+          <strong>If you use {brand.name} in ChatGPT or Claude</strong>, its
+          tools work out an answer from what you type and store none of it. They
+          never ask for your name or contact details: to ask us for an offer,
+          you use the form on this site. Our logs record which tool ran and
+          which assistant it came from, never what you typed. The conversation
+          itself is held by OpenAI or Anthropic under their own privacy terms,
+          not by us.
+        </p>
         <p>
           Before you submit anything, the address-lookup box passes what you
           type to Ordnance Survey to find matching addresses. We do not record
@@ -200,10 +218,10 @@ const SECTIONS: Array<{
           </li>
           <li>
             <strong>Our legitimate interests</strong> &mdash; running and
-            securing the service, preventing abuse of our forms, keeping
-            records of what we offered and why, and knowing which of our
-            adverts lead to enquiries. We do not think any of this overrides
-            your rights; if you disagree, you can object (see below).
+            securing the service, preventing abuse of our forms, keeping records
+            of what we offered and why, and knowing which of our adverts lead to
+            enquiries. We do not think any of this overrides your rights; if you
+            disagree, you can object (see below).
           </li>
           <li>
             <strong>Your consent</strong> &mdash; for analytics and advertising

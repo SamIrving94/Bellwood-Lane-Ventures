@@ -62,6 +62,8 @@ export const WIDGET_HTML = `<!doctype html>
   table { width: 100%; border-collapse: collapse; font-size: 13px; }
   td, th { text-align: left; padding: 4px 6px; border-bottom: 1px solid var(--hair); }
   tr.self td { font-weight: 600; }
+  td.ok { color: var(--leaf); font-weight: 600; }
+  td.miss { color: var(--body); }
   .next { margin-top: 14px; background: var(--soft); border: 1px solid var(--hair); border-radius: 4px; padding: 12px; }
   button { background: var(--leaf); color: #fff; border: 0; border-radius: 3px; padding: 9px 14px;
     font: 600 14px Arial, sans-serif; cursor: pointer; margin-top: 8px; }
@@ -144,7 +146,7 @@ export const WIDGET_HTML = `<!doctype html>
     d.routes.forEach(function (r) {
       var c = el('div', 'card');
       c.appendChild(el('h2', null, r.label));
-      c.appendChild(el('p', 'big', r.netPence === null ? 'Enter an offer' : gbp(r.netPence)));
+      c.appendChild(el('p', 'big', r.netPence === null ? 'No offer yet' : gbp(r.netPence)));
       c.appendChild(el('p', 'muted', r.netPence === null ? 'No figure until you have one' : 'left after the costs below'));
       if (r.pricePence !== null) c.appendChild(lineEl('Price (your figure)', gbp(r.pricePence)));
       r.costs.forEach(function (x) { c.appendChild(lineEl(x.label, '−' + gbp(x.pence))); });
@@ -261,6 +263,81 @@ export const WIDGET_HTML = `<!doctype html>
     root.appendChild(sales);
   }
 
+  function weeks(days) {
+    var w = Math.round(Math.abs(days) / 7);
+    return w + (w === 1 ? ' week' : ' weeks');
+  }
+  function renderSalePlan(d) {
+    root.appendChild(el('p', 'eyebrow', 'Selling · ' + d.label));
+    root.appendChild(el('h1', null, d.mustCompleteBy
+      ? 'Which ways can finish by ' + d.mustCompleteBy + '?'
+      : 'How long each way usually takes'));
+    var tc = el('div', 'card');
+    var t = el('table');
+    var hr = el('tr');
+    var heads = ['Way to sell', 'Usually done by'];
+    if (d.mustCompleteBy) heads.push('Your date');
+    heads.forEach(function (h) { hr.appendChild(el('th', null, h)); });
+    t.appendChild(hr);
+    d.timing.forEach(function (r) {
+      var tr = el('tr');
+      tr.appendChild(el('td', null, r.label));
+      tr.appendChild(el('td', null, r.completesAround));
+      if (d.mustCompleteBy) {
+        tr.appendChild(el('td', r.meetsDeadline ? 'ok' : 'miss', r.meetsDeadline
+          ? 'Makes it (' + weeks(r.daysToSpare) + ' spare)'
+          : 'Misses it by ' + weeks(r.daysToSpare)));
+      }
+      t.appendChild(tr);
+    });
+    tc.appendChild(t);
+    tc.appendChild(el('p', 'muted', 'Typical times, not promises.'));
+    root.appendChild(tc);
+
+    if (d.money) {
+      var mc = el('div', 'card');
+      mc.style.marginTop = '10px';
+      mc.appendChild(el('h2', null, 'What you would be left with'));
+      var mt = el('table');
+      var mh = el('tr');
+      var mHeads = ['Way to sell', 'After fees', 'After the mortgage'];
+      var showShare = d.sharePercent < 100;
+      if (showShare) mHeads.push('Your share (' + d.sharePercent + '%)');
+      mHeads.forEach(function (h) { mh.appendChild(el('th', null, h)); });
+      mt.appendChild(mh);
+      d.money.forEach(function (m) {
+        var tr = el('tr');
+        tr.appendChild(el('td', null, m.label));
+        tr.appendChild(el('td', null, m.netPence === null ? 'No offer yet' : gbp(m.netPence)));
+        tr.appendChild(el('td', null, m.afterMortgagePence === null ? '—' : gbp(m.afterMortgagePence)));
+        if (showShare) tr.appendChild(el('td', null, m.yourSharePence === null ? '—' : gbp(m.yourSharePence)));
+        mt.appendChild(tr);
+      });
+      mc.appendChild(mt);
+      root.appendChild(mc);
+    }
+
+    var cc = el('div', 'card');
+    cc.style.marginTop = '10px';
+    cc.appendChild(el('h2', null, 'This week'));
+    var ul = el('ul');
+    d.checklist.forEach(function (c) { ul.appendChild(el('li', null, c)); });
+    cc.appendChild(ul);
+    root.appendChild(cc);
+    // The situation's honest line rides in the next-step box (keptHandoff),
+    // so it is not repeated here.
+  }
+  function freeHelp(data) {
+    if (!data.freeHelp) return null;
+    var box = el('div', 'next');
+    box.appendChild(el('p', 'muted', 'A fast sale may not be the answer here. Free, independent advice comes first.'));
+    var b = el('button', null, data.freeHelp.label);
+    b.type = 'button';
+    b.addEventListener('click', function () { openLink(data.freeHelp.url); });
+    box.appendChild(b);
+    return box;
+  }
+
   function render(data) {
     if (!data || !data.kind) return;
     rendered = true;
@@ -269,7 +346,12 @@ export const WIDGET_HTML = `<!doctype html>
     else if (data.kind === 'inherited_home_plan') renderPlan(data);
     else if (data.kind === 'renovation') renderRenovation(data);
     else if (data.kind === 'property_facts') renderFacts(data);
+    else if (data.kind === 'sale_plan') renderSalePlan(data);
+    // The link card is just the next-step box below (get_enquiry_link).
+    else if (data.kind === 'enquiry_link') root.appendChild(el('p', 'eyebrow', 'Next step'));
     else { root.appendChild(el('p', 'muted', 'Nothing to show.')); }
+    var help = freeHelp(data);
+    if (help) root.appendChild(help);
     var n = nextStep(data);
     if (n) root.appendChild(n);
     root.appendChild(footer(data));

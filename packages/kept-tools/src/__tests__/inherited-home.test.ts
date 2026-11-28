@@ -6,6 +6,8 @@ import {
   planInheritedHome,
 } from '../inherited-home';
 
+const MEDICAL_EXAMINER = /5 days of the medical examiner's office confirming/;
+
 const d = (s: string) => new Date(`${s}T00:00:00Z`);
 const iso = (x: Date) => x.toISOString().slice(0, 10);
 
@@ -49,7 +51,28 @@ describe('planInheritedHome', () => {
     expect(titles).toContain('You can now sell');
   });
 
-  it('sorts dated milestones before event-based ones', () => {
+  it('never dates registration from the death: the 5 days start at the medical examiner confirmation', () => {
+    const recent = planInheritedHome({
+      dateOfDeath: '2026-11-20',
+      homeIsEmpty: false,
+      today: '2026-11-28',
+    });
+    const reg = recent.milestones[0];
+    expect(reg?.title).toBe('Register the death');
+    expect(reg?.date).toBeNull();
+    expect(reg?.status).toBe('due_soon');
+    expect(reg?.detail).toMatch(MEDICAL_EXAMINER);
+    expect(recent.milestones.map((m) => m.date)).not.toContain('2026-11-25');
+
+    const older = planInheritedHome({
+      dateOfDeath: '2026-06-10',
+      homeIsEmpty: false,
+      today: '2026-10-01',
+    });
+    expect(older.milestones[0]?.status).toBe('done_or_past');
+  });
+
+  it('puts registration first, then dated steps in order, then sale steps', () => {
     const plan = planInheritedHome({
       dateOfDeath: '2026-06-10',
       homeIsEmpty: true,
