@@ -22,6 +22,7 @@ const SPACES = /\s+/;
 const COLUMN_NAMES = /^\s+"(\w+)" /gm;
 const INDEX_FIELDS = /\[(.*)\]/;
 const INDEX_NAME = /INDEX "(\w+)"/;
+const WINDOWS_LINE_ENDINGS = /\r\n/g;
 
 /**
  * A database that is two flags (is there a table, is it current), and
@@ -182,13 +183,16 @@ describe('EMAIL_LOG_DDL', () => {
   // describes. If someone adds a field or an index to `DealEmail`, this
   // fails until the statements here are regenerated to match.
   describe('matches the DealEmail model in schema.prisma', () => {
+    // Git on Windows checks the schema out with CRLF line endings. Read as
+    // is, the model is never found and this fails on Windows only, which
+    // blocks every push from a Windows machine at the pre-push build.
     const schema = readFileSync(
       resolve(
         dirname(fileURLToPath(import.meta.url)),
         '../../../packages/database/prisma/schema.prisma'
       ),
       'utf-8'
-    );
+    ).replace(WINDOWS_LINE_ENDINGS, '\n');
     const model = schema.match(MODEL_BLOCK)?.[1];
     const lines = (model ?? '')
       .split('\n')
