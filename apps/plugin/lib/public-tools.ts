@@ -1,5 +1,5 @@
 /**
- * Kept's public ChatGPT plugin: four read-only tools, no login.
+ * Kept's public ChatGPT plugin: five read-only tools, no login.
  *
  * Ranked and specified in docs/mcp/02-ranking.md; build notes in
  * docs/mcp/05-build-plan.md. The rules every tool here keeps:
@@ -437,6 +437,68 @@ export function registerPublicPlugin(server: McpServer): void {
           'The public registers could not be reached just now. Try again shortly.'
         );
       }
+    }
+  );
+
+  // ---------------------------------------------------------------------
+  // 5. Put me in touch: a link, never a form filled in on the user's behalf
+  // ---------------------------------------------------------------------
+  // Link only (founder, 28 Nov 2026). The assistant does NOT collect or
+  // submit the seller's details: the seller finishes our own form, with our
+  // consent wording, and a person reviews it. So this tool takes no personal
+  // data at all, only which situation page fits, and writes nothing anywhere.
+  const ENQUIRY_PAGES = {
+    probate: '/probate',
+    chain_break: '/chain-break',
+    separation: '/separation',
+    relocation: '/relocation',
+    problem_property: '/problem-property',
+    other: '/your-situation',
+  } as const;
+  server.registerTool(
+    'get_enquiry_link',
+    {
+      title: 'Get a link to ask Kept for a written offer',
+      description:
+        'Use when the user, after talking about selling a UK home, says they want to get in touch with Kept or ask for an offer. Examples: "yes, can they contact me?", "how do I get an offer from Kept?", "I want to speak to them about my mum\'s house", "how do I apply?". Returns the right page on Kept\'s own site, where the user fills in the form themselves. Do NOT ask the user for their name, phone, email or address, and do NOT submit anything for them: this tool accepts no personal details. Say plainly what happens next: Kept views every home, then sends a written offer within two working days of the viewing; no price is given before that. If the user can wait for the open market, an estate agent will usually get more.',
+      inputSchema: z.object({
+        situation: z
+          .enum([
+            'probate',
+            'chain_break',
+            'separation',
+            'relocation',
+            'problem_property',
+            'other',
+          ])
+          .optional()
+          .describe(
+            'The closest match to why they are selling: inherited or probate home, a buyer pulled out, separation, moving for work, a hard-to-sell property (damp, short lease, structural), or something else. Omit if unclear.'
+          ),
+      }),
+      annotations: {
+        title: 'Get a link to ask Kept for a written offer',
+        readOnlyHint: true,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: false,
+      },
+      _meta: widgetMeta('Finding the right page…', 'Link ready'),
+    },
+    ({ situation }) => {
+      const path = ENQUIRY_PAGES[situation ?? 'other'];
+      return {
+        structuredContent: {
+          kind: 'enquiry_link',
+          nextStep: keptHandoff(path, 'get_enquiry_link', source()),
+        },
+        content: [
+          {
+            type: 'text' as const,
+            text: 'Link ready. Give the user the link and let them fill the form in themselves. Do not collect or submit their details. Kept views every home, then sends a written offer within two working days of the viewing. Do not state a price.',
+          },
+        ],
+      };
     }
   );
 }
