@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { compareSaleRoutes } from '../sale-routes';
 
+// The live /sell page says "~1 in 4" (TwentyCi, 2025). The plugin said
+// "1 in 3" for six weeks after the site changed; these pin the current figure.
+const CERTAINTY_1_IN_4 = /^Around 1 in 4 agreed sales collapse/;
+const SOURCE_1_IN_4 =
+  /Around 1 in 4 agreed sales collapse before completion \(TwentyCi, 2025\)/;
+const OLD_1_IN_3 = /1 in 3/;
+
 const route = (r: ReturnType<typeof compareSaleRoutes>, key: string) => {
   const found = r.routes.find((x) => x.route === key);
   if (!found) throw new Error(`no route ${key}`);
@@ -80,6 +87,13 @@ describe('compareSaleRoutes', () => {
     // gain = 300k - 250k - 3.6k fee = 46,400; - 3,000 allowance = 43,400; × 24%
     expect(cgt?.pence).toBe(10_416_00);
     expect(r.sources.some((s) => s.label.includes('24%'))).toBe(true);
+  });
+
+  it('states the fall-through rate the live /sell page states (1 in 4)', () => {
+    const r = compareSaleRoutes({ expectedPricePence: 200_000_00 });
+    expect(route(r, 'estate_agent').certainty).toMatch(CERTAINTY_1_IN_4);
+    expect(r.sources.map((s) => s.label).join(' ')).toMatch(SOURCE_1_IN_4);
+    expect(JSON.stringify(r)).not.toMatch(OLD_1_IN_3);
   });
 
   it('rejects a missing or negative price', () => {

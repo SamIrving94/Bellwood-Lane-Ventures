@@ -267,8 +267,11 @@ export function registerPublicPlugin(server: McpServer): void {
     (args) => {
       try {
         const plan = planInheritedHome(args);
+        // Dated steps only: "Register the death" can be due with no date.
         const next = plan.milestones.find(
-          (m) => m.status === 'due_soon' || m.status === 'upcoming'
+          (m) =>
+            m.date !== null &&
+            (m.status === 'due_soon' || m.status === 'upcoming')
         );
         return {
           structuredContent: {

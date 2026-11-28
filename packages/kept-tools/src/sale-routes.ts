@@ -16,7 +16,7 @@
 
 import { type CgtInput, estimateInheritedHomeCgt } from './cgt';
 import { formatPounds } from './money';
-import { SOURCES, type Source, VAT_RATE } from './sources';
+import { FALL_THROUGH_SHARE, SOURCES, type Source, VAT_RATE } from './sources';
 
 export type SaleRoute = 'estate_agent' | 'auction' | 'cash_buyer';
 
@@ -158,7 +158,7 @@ export function compareSaleRoutes(
   }
   if (input.auctionCommissionPercent === undefined) {
     auctionAssumptions.push(
-      `Commission assumed at ${DEFAULT_AUCTION_COMMISSION_PERCENT}% plus VAT. Use the auction house's terms.`
+      `Commission assumed at ${DEFAULT_AUCTION_COMMISSION_PERCENT}% plus VAT (typical range 2–4%). Use the auction house's terms.`
     );
   }
   if (input.auctionEntryFeePence === undefined) {
@@ -186,8 +186,7 @@ export function compareSaleRoutes(
         ],
         monthsToComplete: months.estate_agent,
         timing: 'Typically 4–6 months from listing to completion.',
-        certainty:
-          'Around 1 in 3 agreed sales collapse before completion. Nothing is binding until exchange.',
+        certainty: `Around ${FALL_THROUGH_SHARE} agreed sales collapse before completion. Nothing is binding until exchange.`,
         suitsWhen:
           'You can wait months for the right buyer, and the home is in good condition in an area where homes sell well.',
         wrongFor:

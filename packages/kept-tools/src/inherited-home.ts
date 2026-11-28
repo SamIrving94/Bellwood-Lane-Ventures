@@ -52,6 +52,12 @@ export interface InheritedHomePlan {
 
 const DAY_MS = 86_400_000;
 const DUE_SOON_DAYS = 30;
+/**
+ * How long after the death "Register the death" still shows as due: the
+ * medical examiner's review comes first, then the 5 days. A display choice,
+ * not a legal date (the detail text states the rule).
+ */
+const REGISTRATION_PENDING_DAYS = 21;
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
 function parseIsoDate(value: string, field: string): Date {
@@ -129,17 +135,25 @@ export function planInheritedHome(
 
   const dated: Array<Omit<Milestone, 'status'> & { at: Date }> = [];
 
-  if (nation === 'england' || nation === 'wales') {
-    const at = addDays(death, 5);
-    dated.push({
-      at,
-      date: iso(at),
-      title: 'Register the death',
-      detail:
-        'Within 5 days in England and Wales, unless the coroner is involved.',
-      source: SOURCES.registerDeath,
-    });
-  }
+  // Registration has no date we can know. Since the medical examiner reforms
+  // the 5 days run from the medical examiner's office confirming the family
+  // can register, not from the death. v1 showed death + 5 days, which could
+  // tell a family they had missed a legal deadline when they hadn't.
+  const registration: Milestone | null =
+    nation === 'england' || nation === 'wales'
+      ? {
+          date: null,
+          title: 'Register the death',
+          detail:
+            "Within 5 days of the medical examiner's office confirming you can, unless a coroner is involved. Weekends and bank holidays count. Your register office can say when the 5 days start.",
+          status:
+            today.getTime() - death.getTime() <=
+            REGISTRATION_PENDING_DAYS * DAY_MS
+              ? 'due_soon'
+              : 'done_or_past',
+          source: SOURCES.registerDeath,
+        }
+      : null;
 
   if (input.homeIsEmpty) {
     const at = addDays(death, 30);
@@ -197,6 +211,9 @@ export function planInheritedHome(
   const milestones: Milestone[] = dated
     .sort((a, b) => a.at.getTime() - b.at.getTime())
     .map(({ at, ...m }) => ({ ...m, status: statusFor(at, today) }));
+  if (registration) {
+    milestones.unshift(registration);
+  }
 
   milestones.push(
     {

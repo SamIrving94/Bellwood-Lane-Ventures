@@ -20,6 +20,9 @@ import { type Json, rpc } from './mcp-client';
 const call = (name: string, args: Record<string, unknown>) =>
   rpc(POST, 'tools/call', { name, arguments: args });
 
+const NULL_WORD = /\bnull\b/;
+const NEXT_DATED_STEP = /Next dated step: .+ on \d{4}-\d{2}-\d{2}\./;
+
 describe('public plugin', () => {
   it('lists exactly the four tools, all read-only with explicit hints', async () => {
     const { body } = await rpc(POST, 'tools/list');
@@ -67,6 +70,22 @@ describe('public plugin', () => {
     });
     expect(body.result.structuredContent.kind).toBe('inherited_home_plan');
     expect(body.result.structuredContent.nextStep.url).toContain('/probate');
+  });
+
+  it('summarises the next dated step, never the undated registration step', async () => {
+    const threeDaysAgo = new Date(Date.now() - 3 * 86_400_000)
+      .toISOString()
+      .slice(0, 10);
+    const { body } = await call('plan_inherited_home', {
+      dateOfDeath: threeDaysAgo,
+      homeIsEmpty: true,
+    });
+    const first = body.result.structuredContent.milestones[0];
+    expect(first.title).toBe('Register the death');
+    expect(first.date).toBeNull();
+    const summary = body.result.content[0].text as string;
+    expect(summary).not.toMatch(NULL_WORD);
+    expect(summary).toMatch(NEXT_DATED_STEP);
   });
 
   it('returns a clear error for an impossible date instead of throwing', async () => {
