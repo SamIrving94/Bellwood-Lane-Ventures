@@ -4,6 +4,8 @@ _Updated: 2026-11-28. ✅ = done by Claude. 👤 = needs you._
 _Last verified against the live site: 2026-11-28._
 
 > **Checked 28 Nov: not live yet.** There is no `kept-plugin` project on Vercel, so nothing answers at the plugin address. **Step 1 below is still to do.** Full review: `08-review-2026-11.md`.
+>
+> **New (28 Nov):** two more tools, for every Kept situation: `plan_my_sale`, and `ask_kept_to_call` (a seller asks Kept to get in touch, inside the chat). The second needs `DATABASE_URL` (step 1). Listing in Claude's and ChatGPT's directories: section 6 and `10-funnel.md`.
 
 **Founder decision (1 Oct):** high risk tolerance. Go live without OpenAI's directory review, then test and learn.
 
@@ -22,11 +24,13 @@ _Last verified against the live site: 2026-11-28._
 
 | Step | Who | Status |
 |:--|:--|:--|
-| Merge PR #122 (seller-email fix + plugin code) | ✅ Claude | See PR |
-| Public plugin builds with **no secrets** | ✅ Claude | Done |
+| Merge PR #174 (security updates + the funnel tools) | 👤 You | Open, CI green |
+| Public plugin builds with **no secrets** | ✅ Claude | Done. Two keys add features (step 1) |
 | Usage logging (privacy-safe) | ✅ Claude | Done |
 | **Create the Vercel project** | 👤 You | **Not done yet** (checked 28 Nov). 2 minutes, below |
 | Connect it in ChatGPT | 👤 You | 2 minutes |
+| List it in Claude's directory | 👤 You | Section 6. Paid Claude plan |
+| Submit it to ChatGPT's directory | 👤 You | Section 6. About a month of review |
 | Turn on Pro (agents and investors) | ⏸ Parked | Don't do it for now. See section 4 |
 | Your own web address | 👤 You | Optional, later |
 
@@ -43,12 +47,19 @@ _Last verified against the live site: 2026-11-28._
 3. **Project Name:** `kept-plugin`
    - It must say **kept**: the project name becomes the web address people paste into ChatGPT (`kept-plugin.vercel.app`). "Bellwoods" is the old brand.
 4. **Root Directory:** click **Edit** and pick **`apps/plugin`**. ⚠️ This is the only setting that matters.
-5. Open **Environment Variables** and add **one** before deploying:
+5. Open **Environment Variables** and add **two** before deploying:
+
+   **a) `EPC_API_TOKEN`**
    - **Key:** `EPC_API_TOKEN`
    - **Value:** copy it from **bellwood-api** (or **bellwood-web**) → Settings → Environment Variables.
    - **No copy to be found?** Get a free one: **get-energy-performance-data.communities.gov.uk** → sign in with **GOV.UK One Login** → **My account** → copy the token. Add it to **bellwood-web** as well (Keyhole needs it).
    - **Why:** energy certificates come from a government register that needs this free key. Without it, property facts can't read the EPC and renovation can't read the floor area. Land Registry sales work without any key.
-   - Leave everything else as it is.
+
+   **b) `DATABASE_URL`**
+   - **Value:** copy it from **bellwood-api** → Settings → Environment Variables.
+   - **Why:** when a seller asks Kept to get in touch from the chat, their details are saved as a **draft enquiry** with an **Action Centre** card. Without this key, the tool sends them to the website form instead.
+
+   Leave everything else as it is.
 6. Click **Deploy**. It takes about 3–5 minutes.
 
 **Then check one setting:**
@@ -74,7 +85,7 @@ _Last verified against the live site: 2026-11-28._
    - **Name:** Kept
    - **URL:** `https://<your domain from step 8>/mcp`
    - **Auth:** none
-4. Save. You should see **4 tools**.
+4. Save. You should see **6 tools**.
 
 ## 3. Try it (5 min) 👤
 
@@ -85,7 +96,11 @@ New chat → **+ →** pick **Kept**. Or start your message with "Use Kept to". 
 | My mum died on 10 June 2026 and left me her house. It's empty. Probate was granted on 20 September. What do we need to do? | A dated plan |
 | Agent says £250k, we have a cash offer of £210k, legal fees £1,200. What would we actually end up with? | 3 columns of money left |
 | How much to renovate an 85 square metre house with damp? | 3 budget bands |
+| Our buyer pulled out and we complete on our new house in six weeks. Agent says £285k, mortgage £140k. | Which ways can finish in time, and the money left |
+| We're separating. If we sell for £300,000 with £180,000 left on the mortgage, what's my share? | After fees, after the mortgage, your 50% |
+| We owe £200,000 and the house would sell for £150,000. | A stop, pointing to free debt advice. **No Kept link.** That's correct. |
 | How much is my house worth? | **No value.** That's correct. |
+| Yes, ask Kept to call me. (Use your own details.) | A reference number, and an **Action Centre** card: "Seller asked via ChatGPT to be contacted". Then **dismiss it**. |
 
 ---
 
@@ -97,11 +112,10 @@ New chat → **+ →** pick **Kept**. Or start your message with "Use Kept to". 
 >
 > The steps below are kept for when Pro comes back. See `08-review-2026-11.md`.
 
-**a) Add 4 environment variables** (`EPC_API_TOKEN` is already in from step 1): kept-plugin → **Settings → Environment Variables**.
+**a) Add 3 environment variables** (`EPC_API_TOKEN` and `DATABASE_URL` are already in from step 1): kept-plugin → **Settings → Environment Variables**.
 
 | Name | Value |
 |:--|:--|
-| `DATABASE_URL` | Copy from **bellwood-api** |
 | `RESEND_TOKEN` | Copy from **bellwood-api** |
 | `RESEND_FROM` | `Kept <sam@wearekept.co.uk>`, the one live mailbox since #134 |
 | `PLUGIN_AUTH_SECRET` | New random text, 48+ characters. In a terminal: `openssl rand -base64 48` |
@@ -140,13 +154,33 @@ Your domain's DNS is at **GoDaddy**, so Claude can't add records.
 
 ---
 
+## 6. List it in the directories 👤
+
+Unlisted, almost nobody can find it. Listing is how sellers find it. Full listing pack (descriptions, prompts, screenshots, test cases): **`10-funnel.md`**.
+
+**Claude (do first, it's fast):**
+1. Test it in Claude as a **custom connector** (in Settings, under Connectors; the button names may differ). URL `https://<your domain>/mcp`, no sign-in.
+2. On a **paid** Claude plan, go to **claude.ai/directory/manage** and submit with the listing pack.
+
+**ChatGPT (start the same week, it takes about a month):**
+1. Verify the organisation (**Bellwoods Lane Ventures Ltd**) on the OpenAI platform.
+2. Start the plugin submission. It gives you a **domain token**.
+3. kept-plugin → **Settings → Environment Variables** → add **`OPENAI_APPS_CHALLENGE`** = the token. **Redeploy.**
+4. Finish the submission. When it's approved, **press Publish**.
+
+**Before either:** the privacy page needs its **ICO number**, and its AI line fixed (see `10-funnel.md`).
+
+---
+
 ## Test and learn: what to watch
 
 | What | Where |
 |:--|:--|
-| Which tools get used, and errors | Vercel → kept-plugin → **Logs**, search `kept_plugin_tool`. Each line has tool, outcome and time. **No user inputs are ever logged.** |
-| Leads from the plugin | Website analytics: visits with `utm_source=chatgpt`. Then the form submissions that follow. |
-| Agent referrals and investor interest | **Action Centre**: cards titled "via ChatGPT" |
+| Which tools get used, and errors | Vercel → kept-plugin → **Logs**, search `kept_plugin_tool`. Each line has the tool, `host` (chatgpt or claude), the outcome and the time. **No user inputs are ever logged.** |
+| Sellers asking from the chat | **Action Centre**: "Seller asked via ChatGPT (or Claude) to be contacted: postcode". The draft enquiry is in **Quotes**. |
+| Where enquiries came from | Dashboard card: the **AI assistant** row |
+| Visits from the plugin | Website analytics: visits with `utm_source=chatgpt` or `claude`, then the forms they send |
+| Agent referrals and investor interest (Pro, parked) | **Action Centre**: cards titled "via ChatGPT" |
 | Something wrong? | Ask Claude to read the logs. |
 
 **Kill switch:** kept-plugin → **Settings → General → Pause**. ChatGPT gets an error; nothing else is affected.
@@ -169,5 +203,5 @@ Your domain's DNS is at **GoDaddy**, so Claude can't add records.
 - **UK availability not confirmed** from OpenAI's own pages. Very likely fine (Rightmove and Zoopla have ChatGPT apps). Your first test settles it.
 - **Privacy page is still marked DRAFT** and has no ICO number. Fix before any wider sharing.
 - **No compliance opinion yet.** The tools make no legal claims and give general information only.
-- **The public endpoint is open to anyone with the URL.** It reads free public registers only and stores nothing.
+- **The public endpoint is open to anyone with the URL.** Five tools read free public registers and store nothing. One saves the details a seller agrees to send, as a draft enquiry. Junk is capped: one per email and postcode a day, 10 an hour, 30 a day. Nothing is emailed to anyone.
 - **Pro's sign-in server is custom-built.** It's tested end to end, but there's been no outside security review.

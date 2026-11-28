@@ -3,6 +3,8 @@
 _Written: 2026-11-28, prompted by the "Claude brought us 24,000+ users in 5 weeks" post (SlickTrip, r/mcp)._
 _Last verified against the live site: 2026-11-28._
 
+> **Update, later on 28 Nov:** changes 2 (docs page, icon, 1200 px screenshots), 4, 5 and 6 are built, for **every** Kept situation, not just probate. The two lines that told Claude how to behave are gone. ChatGPT review, the full funnel and the listing pack: **`10-funnel.md`**.
+
 ## The short answer
 
 - **As built today: no.** The plugin is not live, not listed anywhere, and sends people out of the chat to convert.
@@ -47,7 +49,7 @@ From Claude's own docs (sources at the end):
    - a finished privacy page (it still needs the **ICO number**) that covers the plugin;
    - a documentation page, a support email and an icon;
    - at least 3 working example prompts (we have 30);
-   - 3 to 5 screenshots, at least 1000 px wide (ours are 760 px, so regenerate them);
+   - 3 to 5 screenshots, at least 1000 px wide (done: 5 at 1200 px, `screenshots/listing/`);
    - a test in Claude as a custom connector.
 3. **Submit to ChatGPT now.** Approval takes about a month, and nothing is public until you press Publish.
 4. **Let a seller ask for a call inside the chat.** Today the only next step is a link out to the website form, and every step out loses people. A new tool would take name, phone or email, postcode and situation, with the seller's say-so. It would save a draft quote and an Action Centre card. It sends nothing to the seller and shows no figure.
