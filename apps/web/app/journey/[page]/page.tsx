@@ -1,7 +1,7 @@
 import {
   JOURNEY_STAND_INS,
   type JourneyStandIn,
-} from '@/components/cookie-consent';
+} from '@/lib/journey-stand-ins';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 
@@ -22,11 +22,24 @@ const TITLES: Record<JourneyStandIn, string> = {
   'save-the-sale': 'Save the sale',
 };
 
-const isStandIn = (page: string): page is JourneyStandIn =>
-  (Object.values(JOURNEY_STAND_INS) as string[]).includes(page);
+const STAND_INS: string[] = Object.values(JOURNEY_STAND_INS);
 
-export const generateStaticParams = () =>
-  Object.values(JOURNEY_STAND_INS).map((page) => ({ page }));
+const isStandIn = (page: string): page is JourneyStandIn =>
+  STAND_INS.includes(page);
+
+/**
+ * These names are the only pages this route has (dynamicParams is false),
+ * so an empty list means every stand-in 404s. That happened, unnoticed, for
+ * a month (see lib/journey-stand-ins.ts): stop the build instead.
+ */
+export const generateStaticParams = () => {
+  if (STAND_INS.length === 0) {
+    throw new Error(
+      'journey: no stand-in names. JOURNEY_STAND_INS must come from a plain module, not a "use client" file.'
+    );
+  }
+  return STAND_INS.map((page) => ({ page }));
+};
 
 export const dynamicParams = false;
 

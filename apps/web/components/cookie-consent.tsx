@@ -1,5 +1,6 @@
 'use client';
 
+import { journeyStandIn } from '@/lib/journey-stand-ins';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
@@ -43,7 +44,8 @@ import { useEffect, useState } from 'react';
  * audiences (founder decision, 24 Oct 2026: the ads need "reached the offer
  * letter" and the like, to build audiences and exclusions). They do it
  * through a stand-in: a hidden same-origin frame at /journey/<name> (see
- * JOURNEY_STAND_INS), which loads the tags the visitor allowed. The tags
+ * JOURNEY_STAND_INS in lib/journey-stand-ins.ts, kept out of this client
+ * file on purpose), which loads the tags the visitor allowed. The tags
  * then report /journey/offer-letter, never the link, and the frame's
  * referrer is cut to our origin so the link can't leak that way either.
  * Admin and partner surfaces (/investors, /portal) and Keyhole get no
@@ -109,33 +111,9 @@ const PRIVATE_PATHS = [
 export const isPrivatePath = (path: string) =>
   PRIVATE_PATHS.some((p) => path === p || path.startsWith(`${p}/`));
 
-/**
- * Private journey pages and the stand-in address their tags report instead.
- * The names are what the ad manager types into audience rules ("URL
- * contains /journey/offer-letter"), so don't rename one without telling them.
- */
-export const JOURNEY_STAND_INS = {
-  '/instant-offer/offer': 'offer-letter',
-  '/track': 'deal-timeline',
-  '/viewing': 'viewing-booking',
-  '/save-the-sale': 'save-the-sale',
-} as const;
-
-export type JourneyStandIn =
-  (typeof JOURNEY_STAND_INS)[keyof typeof JOURNEY_STAND_INS];
-
 /** Paths that send PostHog no page view: private ones, and the stand-ins. */
 export const noPostHogPageView = (path: string) =>
   isPrivatePath(path) || path.startsWith('/journey/');
-
-export const journeyStandIn = (path: string): JourneyStandIn | null => {
-  for (const [p, name] of Object.entries(JOURNEY_STAND_INS)) {
-    if (path === p || path.startsWith(`${p}/`)) {
-      return name;
-    }
-  }
-  return null;
-};
 
 type TagWindow = Window & {
   dataLayer?: unknown[];
