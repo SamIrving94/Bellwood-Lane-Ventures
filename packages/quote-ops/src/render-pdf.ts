@@ -139,6 +139,11 @@ function BindingOfferDocument(
     quoteId,
   } = props;
   const issuedAt = new Date();
+  // 14 days, by founder decision (Nov 2026). The public promise is "binding
+  // upon Kept for a week" and @repo/instant-offer locks for 7 days; this
+  // signed letter deliberately holds for longer than the site promises,
+  // never shorter. The letter states the 14 days in words (terms + footer),
+  // so change all three together.
   const lockedUntil = new Date(issuedAt.getTime() + 14 * 24 * 3600_000);
 
   // Supplied by the caller. Never fall back to ARV: this document is binding,
@@ -273,27 +278,56 @@ function BindingOfferDocument(
       React.createElement(
         Text,
         { style: styles.paragraph },
-        `This offer is binding on ${brand.legalName} subject only to the carve-outs below. There is no chain. There is no mortgage finance condition. Funds are confirmed prior to instruction.`
+        `This offer is binding upon ${brand.legalName} for 14 days from the date issued, subject only to the three exceptions below. There is no chain. There is no mortgage finance condition. Funds are confirmed prior to instruction.`
       ),
+      // The three exceptions are the ones the live site promises (/sell FAQ,
+      // /legal/fca-disclosure). Keep the wording and the count in step with
+      // them: a fourth exception here would be a promise broken in writing.
       React.createElement(
         Text,
         { style: { ...styles.paragraph, ...styles.label } },
-        'RICS-defect carve-out'
+        '1. A material defect found on survey'
       ),
       React.createElement(
         Text,
         { style: styles.paragraph },
-        `This offer is conditional on no major undisclosed defect being identified by an independent RICS Level 2 or Level 3 survey instructed by ${brand.shortName} within 7 days of acceptance. A major undisclosed defect means any defect not previously disclosed AND with estimated remediation cost of 5% or more of the offer value.`
+        `An independent RICS Level 2 or Level 3 survey, instructed by ${brand.shortName} within 7 days of acceptance, identifies a material defect that was not visible or disclosed at viewing. A material defect means one with an estimated remediation cost of 5% or more of the offer value.`
       ),
       React.createElement(
         Text,
         { style: { ...styles.paragraph, ...styles.label } },
-        'Title and legal carve-outs'
+        '2. A title issue'
       ),
       React.createElement(
         Text,
         { style: styles.paragraph },
-        'Conditional on marketable title, no undisclosed leasehold issues, and no outstanding consent or planning enforcement that materially affects value.'
+        'A title issue emerges during conveyancing that materially affects value: title that is not marketable, an undisclosed leasehold issue, or an outstanding consent or planning enforcement matter.'
+      ),
+      React.createElement(
+        Text,
+        { style: { ...styles.paragraph, ...styles.label } },
+        '3. Incorrect information'
+      ),
+      React.createElement(
+        Text,
+        { style: styles.paragraph },
+        'Information provided about the property proves materially incorrect.'
+      ),
+      React.createElement(
+        Text,
+        { style: styles.paragraph },
+        'If one of these applies we will explain it in writing. The seller may accept a revised price or walk away at no cost.'
+      ),
+
+      React.createElement(
+        Text,
+        { style: styles.sectionTitle },
+        'The seller’s position'
+      ),
+      React.createElement(
+        Text,
+        { style: styles.paragraph },
+        `This offer is not binding upon the seller until exchange of contracts. The seller may withdraw at any point before exchange at no cost. ${brand.shortName} charges the seller no fee at any point. The seller instructs their own solicitor and pays their costs; we pay ours. We encourage the seller to take independent legal advice before accepting.`
       ),
 
       React.createElement(Text, { style: styles.sectionTitle }, 'Methodology'),
@@ -332,7 +366,7 @@ function BindingOfferDocument(
       React.createElement(
         Text,
         { style: styles.footer },
-        `${brand.legalName} (trading as ${brand.name}). Registered in England & Wales, Company No. ${brand.companyNumber}. This is a binding offer issued pursuant to the Consumer Protection from Unfair Trading Regulations 2008 and is subject to the carve-outs above.`
+        `${brand.legalName} (trading as ${brand.name}). Registered in England & Wales, Company No. ${brand.companyNumber}. This offer is binding upon ${brand.legalName} for 14 days from the date issued, subject to the three exceptions above. ${brand.shortName} is a cash property buyer, not an FCA-authorised firm, and this letter is not financial or legal advice.`
       )
     )
   );
