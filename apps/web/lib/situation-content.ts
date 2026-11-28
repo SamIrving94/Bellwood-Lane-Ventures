@@ -117,7 +117,16 @@ export const SITUATION_CONTENT: Record<SituationKey, SituationContent> = {
       {
         n: '01',
         t: 'Register the death',
-        d: 'Within 5 days in England and Wales. The register office gives you certified copies of the death certificate. Order several, because banks, insurers and the probate registry all want their own.',
+        // Corrected 28 Nov 2026 (ChatGPT plugin review). The handoff said
+        // "Within 5 days in England and Wales", but since the medical
+        // examiner reforms (9 Sep 2024) the 5 days run from the medical
+        // examiner's office confirming the family can register, not from the
+        // death, and do not apply when a coroner is involved. Councils word
+        // the start slightly differently, so the copy sends people to their
+        // register office for the exact date. The plugin's inherited-home
+        // plan has this step too (packages/kept-tools/src/inherited-home.ts):
+        // change the two together.
+        d: 'Within 5 days of the medical examiner’s office confirming you can register, unless a coroner is involved. Your register office can tell you exactly when the 5 days start. The register office gives you certified copies of the death certificate. Order several, because banks, insurers and the probate registry all want their own.',
       },
       {
         n: '02',
