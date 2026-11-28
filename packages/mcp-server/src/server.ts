@@ -6,7 +6,7 @@
  *   - In-product agent flows (via the HTTP transport — see TODO at bottom)
  *
  * Each tool wraps an existing internal API:
- *   - HMLR / EPC / OS Places / HPI / Companies House → @repo/property-data
+ *   - HMLR / EPC / HPI / Companies House → @repo/property-data
  *   - Scout DB / pipeline / founder actions → @repo/database (Prisma)
  *
  * No auth at this layer. The stdio transport is local-only (parent-process

@@ -145,8 +145,6 @@ export const LIMITS = {
     limit: 5,
     windowMs: 60 * 60 * 1000,
   },
-  /** Metered Ordnance Survey quota. */
-  osPlacesByIp: { bucket: 'os-places:ip', limit: 60, windowMs: 60 * 1000 },
   /** Public AVM run: LLM + property data, no persistence. */
   scoreByIp: { bucket: 'score:ip', limit: 10, windowMs: 60 * 60 * 1000 },
   proofOfFundsByIp: {

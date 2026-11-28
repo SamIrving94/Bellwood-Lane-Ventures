@@ -60,7 +60,7 @@ Business-logic packages (the custom part of this codebase):
 | `@repo/database` | Prisma client + Neon adapter; **schema is the data contract** |
 | `@repo/scouting` | Probate / distressed-seller discovery + lead scoring |
 | `@repo/valuation` | AVM orchestrator (base + risk + trend → offer) |
-| `@repo/property-data` | HMLR, EPC, OS Places, PropertyData adapters |
+| `@repo/property-data` | HMLR, EPC, PropertyData, postcodes.io adapters (UPRNs via PropertyData `/uprns`; OS Places retired Oct 2026) |
 | `@repo/auctions` | Auction House UK / Savills / Clive Emson scrapers |
 | `@repo/email` | Resend wrapper with graceful fallback |
 | `@repo/calendly` | Booking-link generator + webhook verification |

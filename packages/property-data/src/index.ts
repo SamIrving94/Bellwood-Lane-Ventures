@@ -5,7 +5,7 @@
  *
  * Single entry point for Scout lead enrichment via free UK government APIs:
  *
- *   - OS Places API       → canonical address + UPRN resolution
+ *   - postcodes.io        → postcode coordinates (free, keyless)
  *   - HMLR Price Paid     → historical sold prices (last 10 transactions)
  *   - HMLR HPI            → regional annual/monthly price change trend
  *   - EPC Register        → energy rating, floor area, construction era
@@ -33,7 +33,7 @@ import { getPricePaid, PricePaidSchema, realTransactions } from './hmlr';
 import { getHousepriceIndex, HpiSchema } from './hmlr-hpi';
 import { getEpcData, EpcSchema } from './epc';
 import { enrichEstateCompany, EstateOwnershipSchema } from './companies-house';
-import { resolveAddress, OsPlaceSchema } from './os-places';
+import { geocodePostcode } from './postcodes-io';
 
 export * from './arbitrage';
 export * from './hmlr';
@@ -41,7 +41,6 @@ export * from './hmlr-sector';
 export * from './hmlr-hpi';
 export * from './epc';
 export * from './companies-house';
-export * from './os-places';
 export * from './propertydata';
 export * from './market-signals';
 export * from './postcodes-io';
@@ -227,7 +226,11 @@ export interface LookupPropertyInput {
   address?: string;
   /** UK postcode (Royal Mail format). */
   postcode?: string;
-  /** Pre-resolved UPRN — skips the OS Places call when supplied. */
+  /**
+   * The lead's stored UPRN (resolved upstream by `matchUprn`). Passed through
+   * as-is: this function no longer resolves addresses itself. It used OS
+   * Places, whose trial lapsed in Oct 2026 and was not renewed.
+   */
   uprn?: string;
   /** Solicitor firm name — for Companies House lookup. */
   solicitorFirm?: string;
@@ -249,23 +252,11 @@ export async function lookupProperty(
   const { address, postcode, uprn, solicitorFirm, contactName } = input;
   const startMs = Date.now();
 
-  // Resolve canonical address + UPRN first (sequential — other APIs may need it)
-  let resolvedAddress: Awaited<ReturnType<typeof resolveAddress>> | null = null;
-  let resolvedUprn: string | null = uprn ?? null;
+  const resolvedUprn: string | null = uprn ?? null;
+  const effectivePostcode = postcode ?? '';
 
-  if (!uprn && (address || postcode)) {
-    resolvedAddress = await safe(
-      resolveAddress(address ?? '', postcode),
-      'os-places',
-      null as unknown as Awaited<ReturnType<typeof resolveAddress>>
-    );
-    resolvedUprn = resolvedAddress?.uprn ?? null;
-  }
-
-  const effectivePostcode = postcode ?? resolvedAddress?.postcode ?? '';
-
-  // Parallel calls to HMLR, EPC, and Companies House
-  const [pricePaid, hpi, epc, ownership] = await Promise.all([
+  // Parallel calls to HMLR, EPC, Companies House and postcodes.io
+  const [pricePaid, hpi, epc, ownership, coords] = await Promise.all([
     safe(
       getPricePaid(effectivePostcode),
       'hmlr-ppd',
@@ -286,6 +277,9 @@ export async function lookupProperty(
       'companies-house',
       null as unknown as Awaited<ReturnType<typeof enrichEstateCompany>>
     ),
+    effectivePostcode
+      ? safe(geocodePostcode(effectivePostcode), 'postcodes-io', null)
+      : Promise.resolve(null),
   ]);
 
   const elapsedMs = Date.now() - startMs;
@@ -294,13 +288,10 @@ export async function lookupProperty(
 
   return {
     // ── Address ─────────────────────────────────────────────────────────────
-    address: resolvedAddress?.address ?? address ?? null,
-    postcode: resolvedAddress?.postcode ?? postcode ?? null,
+    address: address ?? null,
+    postcode: postcode ?? null,
     uprn: resolvedUprn,
-    coordinates:
-      resolvedAddress?.latitude != null && resolvedAddress?.longitude != null
-        ? { lat: resolvedAddress.latitude, lng: resolvedAddress.longitude }
-        : null,
+    coordinates: coords ? { lat: coords.latitude, lng: coords.longitude } : null,
 
     // ── Price history ────────────────────────────────────────────────────────
     pricePaid: pricePaid
@@ -380,7 +371,7 @@ export async function lookupProperty(
     meta: {
       lookupMs: elapsedMs,
       sources: {
-        address: resolvedAddress?.source ?? (uprn ? 'uprn_provided' : 'none'),
+        address: uprn ? 'uprn_provided' : 'none',
         pricePaid: pricePaid?.source ?? 'none',
         hpi: hpi?.source ?? 'none',
         epc: epc?.source ?? 'none',

@@ -3,7 +3,6 @@
 import { getCronSecret } from '@/lib/cron-secret';
 import { getFounderSession } from '@repo/auth/server';
 import { database } from '@repo/database';
-import { findPlaces } from '@repo/property-data/src/os-places';
 import {
   SOURCED_LIST_TYPES,
   getSourcedPropertiesRaw,
@@ -285,14 +284,14 @@ async function migrateLegacyIfNeeded(userId: string): Promise<Area[]> {
 // ───────────────────────────────────────────────────────────────────────
 
 // ───────────────────────────────────────────────────────────────────────
-// Typeahead — search via OS Places, dedupe by district
+// Typeahead — built-in table, then postcodes.io, dedupe by district
 // ───────────────────────────────────────────────────────────────────────
 
 export type Suggestion = {
   label: string;
   seedPostcode: string;
   district: string;
-  source: 'os-places' | 'builtin';
+  source: 'postcodes-io' | 'builtin';
 };
 
 export async function searchAreaSuggestions(
@@ -334,26 +333,22 @@ export async function searchAreaSuggestions(
     }
   }
 
-  // 2. OS Places live search for anything else (towns we don't have,
-  //    specific street names, full postcodes)
+  // 2. Anything the tables did not cover (a full postcode, an unlisted
+  //    district) goes through the same resolver "Add" uses: verified against
+  //    postcodes.io, free and keyless. OS Places used to answer free-text
+  //    town and street searches here; its trial lapsed in Oct 2026 and was
+  //    not renewed, so an unlisted town now gets no live suggestion and the
+  //    founder types its district or a postcode instead.
   if (out.length < 8) {
     try {
-      const places = await findPlaces(trimmed, 8);
-      for (const p of places) {
-        if (out.length >= 8) break;
-        if (!p.postcode) continue;
-        const district = outwardCode(p.postcode);
-        if (!district || seen.has(district)) continue;
-        seen.add(district);
-        // Use the OS address as the label, fall back to postcode + town
-        const label = p.address
-          ? p.address.split(',').slice(-3, -1).join(',').trim() || p.postcode
-          : p.postcode;
+      const resolved = await resolveArea(trimmed);
+      if (resolved.ok && !seen.has(resolved.district)) {
+        seen.add(resolved.district);
         out.push({
-          label: label.length > 60 ? label.slice(0, 60) + '…' : label,
-          seedPostcode: p.postcode,
-          district,
-          source: 'os-places',
+          label: resolved.label,
+          seedPostcode: resolved.seedPostcode,
+          district: resolved.district,
+          source: 'postcodes-io',
         });
       }
     } catch {

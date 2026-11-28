@@ -55,7 +55,6 @@
 ### Working
 - `DATABASE_URL` — Neon Postgres
 - `CLERK_SECRET_KEY` + `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` — auth
-- `OS_PLACES_API_KEY` — set in Vercel, bellwood-api (UK addresses + UPRN)
 - `EPC_API_TOKEN` — bearer token from https://get-energy-performance-data.communities.gov.uk/ "My account" page (GOV.UK One Login). Replaces the old `EPC_API_EMAIL`/`EPC_API_KEY` pair — that EPC Register API was retired 30 May 2026.
 
 ### Free/built-in
@@ -64,7 +63,7 @@
 
 ### Skipped
 - Companies House — not needed for individual-vendor model
-- TwentyEA / AddressMaster — OS Places covers it for now
+- TwentyEA / AddressMaster — not needed; UPRNs come from PropertyData `/uprns`
 
 ### LLM (set on BOTH Vercel projects — see `docs/LLM-ROUTING.md`)
 - `REDDIT_CLIENT_ID` / `REDDIT_CLIENT_SECRET` (+ optional `REDDIT_USER_AGENT`) — bellwood-api only. Reddit "script" app for `/cron/guide-research`; without them the Reddit source is skipped and the weekly card says so.
@@ -129,7 +128,7 @@ source of truth; this handover is a quick index.
 | `@repo/calendly` | Booking link generator + webhook verification |
 | `@repo/scouting` | Probate + distressed-seller discovery |
 | `@repo/valuation` | AVM orchestrator (base + risk + trend + offer) |
-| `@repo/property-data` | HMLR, EPC, OS Places adapters |
+| `@repo/property-data` | HMLR, EPC, PropertyData, postcodes.io adapters |
 | `@repo/auctions` | Auction House UK + Savills + Clive Emson scrapers |
 
 ---
@@ -138,7 +137,7 @@ source of truth; this handover is a quick index.
 
 ### Core Platform
 - Lead scoring with tunable eval configs
-- AVM pipeline with real property data (HMLR + EPC + OS Places)
+- AVM pipeline with real property data (HMLR + EPC + PropertyData)
 - Deal pipeline (sourced → appraised → offered → completed)
 - Action Centre — founder inbox for anything needing attention
 - Founder feedback panel on every entity (rate, override, notes) — trains eval models
@@ -148,7 +147,7 @@ source of truth; this handover is a quick index.
 ### Integrations Wired
 - **Resend** — email sending in outreach cron + hold approvals (awaits token)
 - **Calendly** — booking link on lead pages, webhook for booking/cancel events
-- **OS Places** — real address resolution + UPRN
+- **OS Places** — retired Oct 2026 (trial lapsed, not renewed). UPRNs now come from PropertyData `/uprns`
 - **EPC Register** — real energy certs + floor area
 
 ### Safety Rails
@@ -175,7 +174,7 @@ source of truth; this handover is a quick index.
 - **Meta ads** — skipped (sellers aren't on Instagram)
 - **LinkedIn automation** — skipped (accounts get banned; Paperclip drafts, user sends)
 - **PoppyAI / social automation** — skipped until proven ROI
-- **TwentyEA** — skipped (OS Places covers it)
+- **TwentyEA** — skipped (PropertyData `/uprns` covers UPRNs)
 - **EIG paid auction feed** — skipped (scraping free sources instead)
 
 ---
