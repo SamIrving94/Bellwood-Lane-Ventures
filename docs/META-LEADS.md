@@ -1,6 +1,6 @@
 # Meta lead forms → Quotes
 
-_Written: 2026-11-27_
+_Written: 2026-11-27 · Meta's app screens checked: 2026-11-28_
 
 When someone fills in an **instant form** on a Facebook or Instagram ad,
 the lead is saved to **Quotes** in the dashboard and a card appears in
@@ -17,11 +17,13 @@ You copy **3 values** from Meta into Vercel. The code does the rest.
 ### 1. Make the app (5 min) → gives you values 1 and 2
 
 1. Open **developers.facebook.com/apps** and click **Create app**.
-2. Name it **Kept Leads**. Pick **Other**, then **Business**.
-3. Connect it to the **Kept business portfolio** when asked.
-4. In the app, open **App settings → Basic**.
-5. Copy the **App ID**. That is **value 1**.
-6. Click **Show** next to **App secret** and copy it. That is **value 2**.
+2. Name it **Kept Leads**.
+3. Use case: tick only **Capture & manage ad leads with Marketing API**
+   (the funnel icon). Do not pick **Other**: Meta is removing it.
+4. Connect it to the **Kept business portfolio** when asked.
+5. In the app, open **App settings → Basic**.
+6. Copy the **App ID**. That is **value 1**.
+7. Click **Show** next to **App secret** and copy it. That is **value 2**.
 
 ### 2. Make the token (7 min) → gives you value 3
 
