@@ -194,11 +194,14 @@ export default function FCADisclosurePage() {
       <SiteHeader />
       <main className="min-h-screen bg-cream px-6 py-20 md:px-12 md:py-28">
         <div className="mx-auto max-w-3xl">
+          {/* Straight to /sell: /instant-offer only redirects there now. Named
+              after that page's heading, never "indicative offer": we do not
+              issue them (see "The offer itself" below). */}
           <Link
-            href="/instant-offer"
+            href="/sell"
             className="inline-flex items-center gap-2 font-serif text-[13px] text-stone-500 transition hover:text-leaf"
           >
-            <span aria-hidden>←</span> Back to indicative offer
+            <span aria-hidden>←</span> Back to selling your property
           </Link>
 
           <p className="mt-12 font-serif text-[13px] text-leaf">
