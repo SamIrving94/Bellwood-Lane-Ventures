@@ -4,6 +4,12 @@ import { notFound } from 'next/navigation';
 
 export const revalidate = 300;
 
+// Body links are written site-relative ("/probate"); a plain-text reader has
+// no site to resolve them against, so make them absolute.
+const RELATIVE_LINK = /\]\(\//g;
+// Feed-sourced URLs can carry HTML entities ("&#038;").
+const AMP_ENTITY = /&(?:#0*38|amp);/g;
+
 /**
  * /guides/[slug]/md: the same published guide as plain markdown, for
  * assistants that would rather read text than HTML. Only published guides:
@@ -45,7 +51,7 @@ export async function GET(
     '',
     `_${brand.name}. Last updated ${guide.updatedAt.toISOString().slice(0, 10)}. Canonical page: ${brand.url}/guides/${guide.slug}_`,
     '',
-    guide.bodyMarkdown.trim(),
+    guide.bodyMarkdown.trim().replace(RELATIVE_LINK, `](${brand.url}/`),
     '',
     ...(sources.length
       ? [
@@ -53,7 +59,10 @@ export async function GET(
           '',
           ...sources
             .filter((s) => s.url)
-            .map((s) => `- [${s.title ?? s.url}](${s.url})`),
+            .map(
+              (s) =>
+                `- [${s.title ?? s.url}](${(s.url ?? '').replace(AMP_ENTITY, '&')})`
+            ),
           '',
         ]
       : []),

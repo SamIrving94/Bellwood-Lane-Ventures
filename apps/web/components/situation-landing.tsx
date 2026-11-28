@@ -46,7 +46,6 @@ export function SituationLanding({
     name: brand.name,
     legalName: brand.legalName,
     url: brand.url,
-    email: brand.email,
   };
   return (
     <>
