@@ -24,7 +24,7 @@ they are always held for founder review.
 ## Tech stack
 
 - **Monorepo:** Turborepo + **pnpm 10.5.2** (workspaces: `apps/*`, `packages/*`, `services/*`)
-- **Framework:** Next.js 15.5.15 (App Router, Turbopack in dev), React 19, TypeScript 5.8
+- **Framework:** Next.js 15.5.29 (App Router, Turbopack in dev), React 19, TypeScript 5.8. Keep `next` and the root `pnpm.overrides` pin in step when patching.
 - **Auth:** Clerk
 - **Database:** Neon Postgres via **Prisma** + `@prisma/adapter-neon` (WebSocket driver adapter)
 - **Email:** Resend (`@repo/email`, graceful fallback when no token)
