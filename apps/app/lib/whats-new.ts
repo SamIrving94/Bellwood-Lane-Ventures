@@ -26,6 +26,33 @@ export type WhatsNewEntry = {
 /** Newest first. The popup shows index 0. */
 export const WHATS_NEW: WhatsNewEntry[] = [
   {
+    id: '2026-11-27-more-mailboxes',
+    date: '2026-11-28',
+    emoji: '📮',
+    title: 'Every Kept mailbox can feed the email log',
+    intro:
+      'Add a colleague’s or a shared Kept mailbox, and its deal emails land on the deal too.',
+    bullets: [
+      {
+        emoji: '➕',
+        text: 'Go to **Settings → Google → Other Kept mailboxes** and press **Add a mailbox**.',
+      },
+      {
+        emoji: '👯',
+        text: 'Same email in two mailboxes? It is stored **once**.',
+      },
+      {
+        emoji: '🔒',
+        text: 'Extra mailboxes are for the **email log only**. Drafts, calendar and Drive stay on the main account.',
+      },
+      {
+        emoji: '🧭',
+        text: '**Email log** now has its own spot in the menu, under Pipeline.',
+      },
+    ],
+    cta: { label: 'Add a mailbox', href: '/settings/google' },
+  },
+  {
     id: '2026-11-27-where-enquiries-came-from',
     date: '2026-11-27',
     emoji: '🧭',

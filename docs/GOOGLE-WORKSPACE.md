@@ -1,7 +1,10 @@
 # Google Workspace connection
 
-One connection from the platform to the **Kept Google Workspace account**.
-Code lives in `packages/google`. Connect it at **Settings → Google**.
+_Last verified against the code: 2026-11-27_
+
+One main connection from the platform to the **Kept Google Workspace
+account**, plus any **other Kept mailboxes** you want in the email log.
+Code lives in `packages/google`. Connect them at **Settings → Google**.
 
 ## What it does
 
@@ -11,7 +14,7 @@ Code lives in `packages/google`. Connect it at **Settings → Google**.
 | **Calendar** | Viewing booked, changed or cancelled | Viewing event, plus an all-day **Offer due** marker two working days later. |
 | **Drive folders** | Deal reaches `valuation` (or the button on the deal page) | `Kept deals / <address>` with Photos, Legal, Offer, Comps. Never shared automatically. |
 | **Gmail labels** | `google-sync` cron, every 30 min | Inbox mail from a deal's seller, solicitor or a known agent gets `Kept/Seller`, `Kept/Solicitor`, `Kept/Agent`. Exact address match only. Solicitor mail is starred. |
-| **Deal email log** | `google-sync` cron, every 30 min | Deal mail is copied onto its deal's page, with a two-line summary. Stored emails get the `Kept/Logged` label. See below. |
+| **Deal email log** | `google-sync` cron, every 30 min | Deal mail from every connected Kept mailbox is copied onto its deal's page, with a two-line summary. Stored emails get the `Kept/Logged` label. See below. |
 | **Morning brief** | `google-daily` cron, 06:40 UTC | One email from the Kept mailbox to itself. |
 | **Partner sheet** | `google-daily` cron, or the button in Settings | Anonymised pipeline Sheet. Private until the founder shares it. |
 
@@ -21,6 +24,12 @@ Code lives in `packages/google`. Connect it at **Settings → Google**.
   to the Kept mailbox itself.
 - **Kept account only.** `gmail.com` / `googlemail.com` accounts are refused
   at the callback.
+- **Extra mailboxes are for the email log only.** Added from Settings →
+  Google → Other Kept mailboxes, each signs in with Gmail access only
+  (`MAILBOX_SCOPES`), must be on the main account's own domain
+  (`mailboxRefusal`), and is never used for drafts, Calendar, Drive, labels
+  or the brief. Stored as `google:mailbox:<address>` in `Setting`. Removing
+  one revokes it; emails already in the log stay.
 - **Nothing breaks without Google.** Every feature returns `{ skipped: true }`
   when not connected. Call sites log a Google failure and carry on.
 - **The partner sheet cannot leak.** Its query selects only stage, postcode,
@@ -32,9 +41,18 @@ Code lives in `packages/google`. Connect it at **Settings → Google**.
 
 _Added 2026-11-23. Not yet used against a live Google account._
 
-Kept reads the Kept mailbox and puts each deal's emails on its page
-(**Emails** panel, and `/deals/email-log` for everything). There is no
-address to CC and no mail provider in between.
+Kept reads the Kept mailboxes and puts each deal's emails on its page
+(**Emails** panel, and **Email log** in the menu for everything). There is
+no address to CC and no mail provider in between.
+
+**More than one mailbox** (added 2026-11-27). The main account is read
+first, then each extra Kept mailbox, each from its own place
+(`google:deal-mail:<address>`). The same email in two mailboxes has a
+different Gmail id in each but the same Message-ID, so it is **stored
+once**, from the first mailbox that had it. A removed email keeps its
+Message-ID, so it does not come back from another mailbox. "Open in Gmail"
+opens the mailbox the email came from (`DealEmail.mailbox`). One mailbox
+failing does not stop the others.
 
 **What is kept**
 
@@ -68,30 +86,37 @@ stored.
   the cron after the import, one attempt per email. Tick **PII-safe pinning**
   for it in Settings → AI models once the row appears.
 
-**Getting history.** The sync only looks forward (three days on its first
-run). On a deal, **Find older emails** searches Gmail for that deal's seller
-and solicitor over the last six months and adds what belongs to it. Use it
+**Getting history.** The sync only looks forward (three days on each
+mailbox's first run). On a deal, **Find older emails** searches every
+connected mailbox for that deal's seller and solicitor over the last six
+months and adds what belongs to it. Use it
 after adding a contact to a deal too.
 
 **Taking one back.** On `/deals/email-log`, **Not deal mail? → Remove this
 email** wipes our copy and stops that email being read again. It stays in
 Gmail. A later email from the same person is still kept.
 
-**Is it working?** `/deals/email-log` shows the mailbox, when it was last
-checked and how many emails that run kept. It warns when Google is
+**Is it working?** `/deals/email-log` shows the mailboxes read, when they
+were last checked and how many emails that run kept. It warns when Google is
 disconnected, and when no check has run for two hours.
 
 **Setup.** Add the `DealEmail` table, then connect Google below. Two ways to
 add the table, same result: `pnpm migrate` from a terminal, or the **Switch
 on the email log** button, which shows at `/deals/email-log` and on each deal
 while the table is missing (founders only; it creates that one table and
-changes nothing else — `apps/app/lib/email-log-setup.ts`). Put the seller's
+changes nothing else — `apps/app/lib/email-log-setup.ts`). When the model
+gains a field, the same button shows as **Update the email log** and adds
+it (`EMAIL_LOG_UPGRADES`: add-only, safe to run twice). Put the seller's
 and solicitor's emails on each deal: that is what the log matches on.
 
 **Limits**
 
-- **One mailbox**: the connected Kept account. Mail that only reaches
-  another address is not seen.
+- **Connected mailboxes only.** Mail that only reaches an address nobody
+  has added is not seen.
+- **Threads are followed within one mailbox.** A reply that lands only in a
+  colleague's mailbox, to a thread logged from yours, is still kept when it
+  is to or from the seller or solicitor; otherwise label it `Kept/Log`.
+- **Kept/Logged goes on the copy that was stored**, not on every copy.
 - **Up to 30 minutes behind.**
 - **Only deals.** An enquiry that is not a deal yet has nothing to file on.
 - **A solicitor who is on a deal and writes about something else** will have

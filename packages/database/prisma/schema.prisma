@@ -504,11 +504,17 @@ model DealEmail {
   // it is what "Open in Gmail" links to.
   gmailId       String  @unique
   gmailThreadId String
-  // RFC 5322 Message-ID, angle brackets stripped. Kept for reference only;
-  // threading uses Gmail's thread id.
+  // RFC 5322 Message-ID, angle brackets stripped. The same email sits in
+  // every mailbox it reached under a different Gmail id, so this is how a
+  // copy already in the log (or removed from it) is recognised. Threading
+  // still uses Gmail's thread id.
   messageId     String?
   // `gmail:<thread id>`. Every email in a conversation shares it.
   threadKey     String
+  // The Kept mailbox it was read from (Gmail ids belong to one mailbox, so
+  // "Open in Gmail" needs it). Null for rows from before mailboxes were
+  // recorded: those came from the main account.
+  mailbox       String?
 
   direction String // 'inbound' (from them) | 'outbound' (from us)
   fromEmail String
@@ -545,6 +551,7 @@ model DealEmail {
   @@index([dealId, sentAt])
   @@index([threadKey])
   @@index([sentAt])
+  @@index([messageId])
 }
 
 // ─── Field Partner Network ─────────────────────────────────

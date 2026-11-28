@@ -29,6 +29,7 @@ import {
   KeyRoundIcon,
   LineChartIcon,
   MailIcon,
+  MailOpenIcon,
   MapIcon,
   MegaphoneIcon,
   RocketIcon,
@@ -75,6 +76,8 @@ const data = {
     { title: 'Deep appraisals', url: '/appraisals', icon: GavelIcon },
     { title: 'Batch', url: '/batch', icon: SheetIcon },
     { title: 'Pipeline', url: '/pipeline', icon: KanbanIcon },
+    // Every deal's emails, read from Gmail, and the ones waiting for a deal.
+    { title: 'Email log', url: '/deals/email-log', icon: MailOpenIcon },
     { title: 'Field network', url: '/network', icon: UsersIcon },
   ],
   money: [

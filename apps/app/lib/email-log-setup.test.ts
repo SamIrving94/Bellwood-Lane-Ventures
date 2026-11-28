@@ -4,11 +4,17 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import {
   EMAIL_LOG_DDL,
+  EMAIL_LOG_TABLE_CURRENT_SQL,
+  EMAIL_LOG_UPGRADES,
   type EmailLogDb,
+  emailLogState,
   switchOnEmailLog,
 } from './email-log-setup';
 
 const ONLY_CREATES = /^CREATE (TABLE|INDEX|UNIQUE INDEX) "DealEmail/;
+const ONLY_ADDS =
+  /^(ALTER TABLE "DealEmail" ADD COLUMN IF NOT EXISTS "(\w+)" |CREATE INDEX IF NOT EXISTS "(\w+)" ON "DealEmail")/;
+const REMOVES = /\b(DROP|DELETE|TRUNCATE|UPDATE|RENAME)\b/i;
 const CHANGES_OR_REMOVES = /\b(DROP|ALTER|DELETE|TRUNCATE|UPDATE)\b/i;
 const MODEL_BLOCK = /^model DealEmail \{\n([\s\S]*?)\n\}/m;
 const LINE_COMMENT = /\/\/.*$/;
@@ -17,17 +23,30 @@ const COLUMN_NAMES = /^\s+"(\w+)" /gm;
 const INDEX_FIELDS = /\[(.*)\]/;
 const INDEX_NAME = /INDEX "(\w+)"/;
 
-/** A database that is just a flag, and remembers what it was asked to run. */
-const fakeDb = (opts: { exists: boolean; failWith?: Error }) => {
-  const state = { exists: opts.exists, runs: [] as (readonly string[])[] };
+/**
+ * A database that is two flags (is there a table, is it current), and
+ * remembers what it was asked to run. Running anything leaves both true.
+ */
+const fakeDb = (opts: {
+  exists: boolean;
+  current?: boolean;
+  failWith?: Error;
+}) => {
+  const state = {
+    exists: opts.exists,
+    current: opts.current ?? opts.exists,
+    runs: [] as (readonly string[])[],
+  };
   const db: EmailLogDb = {
     tableExists: () => Promise.resolve(state.exists),
+    tableCurrent: () => Promise.resolve(state.exists && state.current),
     runTogether: (statements) => {
       state.runs.push(statements);
       if (opts.failWith) {
         return Promise.reject(opts.failWith);
       }
       state.exists = true;
+      state.current = true;
       return Promise.resolve();
     },
   };
@@ -41,10 +60,44 @@ describe('switchOnEmailLog', () => {
     expect(state.runs).toEqual([EMAIL_LOG_DDL]);
   });
 
-  it('touches nothing when the table is already there', async () => {
+  it('touches nothing when the table is already there and current', async () => {
     const { db, state } = fakeDb({ exists: true });
     expect(await switchOnEmailLog(db)).toBe('already_on');
     expect(state.runs).toEqual([]);
+  });
+
+  it('brings an older table up to date, in one go', async () => {
+    const { db, state } = fakeDb({ exists: true, current: false });
+    expect(await switchOnEmailLog(db)).toBe('upgraded');
+    expect(state.runs).toEqual([EMAIL_LOG_UPGRADES]);
+    expect(await switchOnEmailLog(db)).toBe('already_on');
+    expect(state.runs).toHaveLength(1);
+  });
+
+  it('a failed update is passed on, not reported as on', async () => {
+    const { db } = fakeDb({
+      exists: true,
+      current: false,
+      failWith: new Error('lock timeout'),
+    });
+    await expect(switchOnEmailLog(db)).rejects.toThrow('lock timeout');
+  });
+
+  it('does not say "up to date" unless it can be seen afterwards', async () => {
+    const db: EmailLogDb = {
+      tableExists: () => Promise.resolve(true),
+      tableCurrent: () => Promise.resolve(false),
+      runTogether: () => Promise.resolve(),
+    };
+    await expect(switchOnEmailLog(db)).rejects.toThrow('cannot be seen');
+  });
+
+  it('tells the pages which wording to show', async () => {
+    expect(await emailLogState(fakeDb({ exists: false }).db)).toBe('missing');
+    expect(
+      await emailLogState(fakeDb({ exists: true, current: false }).db)
+    ).toBe('outdated');
+    expect(await emailLogState(fakeDb({ exists: true }).db)).toBe('current');
   });
 
   it('pressed twice: the second press does nothing', async () => {
@@ -58,6 +111,7 @@ describe('switchOnEmailLog', () => {
     const state = { exists: false };
     const db: EmailLogDb = {
       tableExists: () => Promise.resolve(state.exists),
+      tableCurrent: () => Promise.resolve(state.exists),
       runTogether: () => {
         // Someone else's transaction committed first; ours fails on the name.
         state.exists = true;
@@ -78,9 +132,39 @@ describe('switchOnEmailLog', () => {
   it('does not say "on" unless the table can be seen afterwards', async () => {
     const db: EmailLogDb = {
       tableExists: () => Promise.resolve(false),
+      tableCurrent: () => Promise.resolve(false),
       runTogether: () => Promise.resolve(),
     };
     await expect(switchOnEmailLog(db)).rejects.toThrow('cannot be seen');
+  });
+});
+
+describe('EMAIL_LOG_UPGRADES', () => {
+  it('only ever adds, and is safe to run twice', () => {
+    for (const sql of EMAIL_LOG_UPGRADES) {
+      expect(sql).toMatch(ONLY_ADDS);
+      expect(sql).not.toMatch(REMOVES);
+      expect(sql).not.toContain(';');
+    }
+  });
+
+  // A fresh table must not need an upgrade, and the "is it current" check
+  // must look for exactly what the upgrades add.
+  it('everything it adds is already in the CREATE, and is what the check looks for', () => {
+    const create = EMAIL_LOG_DDL.join('\n');
+    for (const sql of EMAIL_LOG_UPGRADES) {
+      const m = sql.match(ONLY_ADDS);
+      const column = m?.[2];
+      const index = m?.[3];
+      if (column) {
+        expect(create).toContain(`"${column}" `);
+        expect(EMAIL_LOG_TABLE_CURRENT_SQL).toContain(`'${column}'`);
+      }
+      if (index) {
+        expect(create).toContain(`INDEX "${index}"`);
+        expect(EMAIL_LOG_TABLE_CURRENT_SQL).toContain(`"${index}"`);
+      }
+    }
   });
 });
 

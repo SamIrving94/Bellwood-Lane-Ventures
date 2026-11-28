@@ -1,6 +1,7 @@
 import { fileDealEmail } from '@/app/actions/deals/file-email';
 import { removeDealEmail } from '@/app/actions/deals/remove-email';
 import { syncHealth, toEmailCards } from '@/lib/deal-email-view';
+import { getEmailLogState } from '@/lib/email-log-db';
 import { auth } from '@repo/auth/server';
 import { database } from '@repo/database';
 import { Button } from '@repo/design-system/components/ui/button';
@@ -148,6 +149,7 @@ export default async function EmailLogPage() {
   // While the table is missing nothing is read or stored, so the page says
   // only that: no "last checked", no "nothing waiting".
   const on = loaded !== null;
+  const logState = on ? 'current' : await getEmailLogState();
   const gmailAccount = google.connected ? google.email : null;
 
   // Live deals first: that is where a new email almost always belongs.
@@ -193,9 +195,10 @@ export default async function EmailLogPage() {
 
           {on && google.connected && health === 'ok' && sync.lastRun && (
             <p className="mt-3 text-muted-foreground text-sm">
-              <strong>Reading {google.email}.</strong> Last checked{' '}
-              {WHEN.format(new Date(sync.lastRun.at))}: {sync.lastRun.scanned}{' '}
-              new, {sync.lastRun.kept + sync.lastRun.unfiled} kept.
+              <strong>Reading {google.mailboxes.join(', ')}.</strong> Last
+              checked {WHEN.format(new Date(sync.lastRun.at))}:{' '}
+              {sync.lastRun.scanned} new,{' '}
+              {sync.lastRun.kept + sync.lastRun.unfiled} kept.
               {sync.lastRun.errors > 0 &&
                 ` ${sync.lastRun.errors} could not be read and will be tried again.`}
             </p>
@@ -239,7 +242,13 @@ export default async function EmailLogPage() {
 
         {!on && (
           <div className="max-w-3xl rounded-lg border border-amber-300 bg-amber-50 p-4 dark:border-amber-800 dark:bg-amber-950">
-            <SwitchOnEmailLog />
+            {logState === 'current' ? (
+              <p className="text-sm">
+                The email log could not be read just now. Try again shortly.
+              </p>
+            ) : (
+              <SwitchOnEmailLog state={logState} />
+            )}
           </div>
         )}
 
