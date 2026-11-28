@@ -1,6 +1,6 @@
 # 10. The funnel: from a question in ChatGPT or Claude to a Kept enquiry
 
-_Written: 2026-11-28. Follows `09-claude-directory.md`._
+_Written: 2026-11-28. Follows `09-claude-directory.md`. Updated the same day: **link only** (founder decision, #177)._
 _Last verified against the live site: 2026-11-28._ (Read from the site's source in `apps/web` on master. The live pages could not be fetched from Claude's sandbox that day.)
 
 ## The short answer
@@ -8,8 +8,8 @@ _Last verified against the live site: 2026-11-28._ (Read from the site's source 
 - **Built for every Kept situation**, not just probate: inherited home, sale fell through, separation, moving away, care or health, problem property.
 - **Value first.** A free answer on the seller's own figures: which ways to sell can finish by their date, what they keep after fees and the mortgage, and a checklist for this week. No sign-up.
 - **Honest exits.** Each answer says when an estate agent will get more, in that situation page's own words. If the debt is bigger than the home, it stops and points to free debt advice.
-- **The ask happens in the chat.** A seller can ask Kept to get in touch without leaving ChatGPT or Claude. It becomes a draft enquiry and an Action Centre card. Nothing is sent to the seller automatically.
-- **Counted.** Every use and every enquiry is tagged **ChatGPT** or **Claude**.
+- **The ask is a link** (founder decision, 28 Nov, #177). When a seller wants Kept, the assistant gives them the right Kept page, and they fill in the form themselves. The plugin never takes their details.
+- **Counted.** Every use, and every visit from a link, is tagged with the assistant (**ChatGPT** or **Claude**).
 - **Still not live.** None of this reaches anyone until the Vercel project exists and the listings are in.
 
 ---
@@ -22,7 +22,7 @@ _Last verified against the live site: 2026-11-28._ (Read from the site's source 
 |:--|:--|:--|
 | **Adding a plugin** | The Developer mode switch is gone. Settings → Plugins → **+** → Add custom MCP server. | Go-live steps updated. |
 | **Who can add an unlisted plugin** | Full read-and-write MCP: Business, Enterprise, Edu. Pro may be read-only. Plus: unclear. Personal accounts have no share button. | Unlisted, almost no sellers can use it. **The directory is the only real route to sellers.** |
-| **Write tools** | ChatGPT asks the user to confirm before a write tool runs. Some plans may only get read-only tools. | The "ask Kept to get in touch" tool may not show for everyone. So every answer also links to the right Kept page. Nobody is stuck. |
+| **Write tools** | ChatGPT asks the user to confirm before a write tool runs. Some plans may only get read-only tools. | No issue: every Kept tool is read-only, the link tool included. |
 | **Being found** | Only directory plugins can be searched for or **recommended in conversation** (since 9 Jul; better ranking since DevDay, 29 Sep). Ranking is by usefulness and satisfaction. | Submit now. A useful answer is the ranking strategy. |
 | **Review time** | About a month. After approval **you** press Publish. | Start this week, so it lands in January. |
 | **What submission needs** | A verified organisation, a domain token at `/.well-known/openai-apps-challenge`, a privacy policy, screenshots, test prompts, tool annotations. | Domain-token route built. Screenshots, prompts and annotations ready (below). Org verification is yours. |
@@ -36,7 +36,7 @@ _Last verified against the live site: 2026-11-28._ (Read from the site's source 
 | **How sellers find it** | Every directory connector can be **suggested in chat** when it fits | Directory search, and in-conversation recommendations after approval |
 | **Size** | Smaller | Far bigger |
 | **Login needed** | None | None |
-| **The ask tool** | Allowed, marked as a write tool | Needs the user's confirmation; may be missing on some plans |
+| **Every tool read-only** | Yes | Yes, so plans limited to read-only tools still get everything |
 | **Do what** | **List first, this week** | **Submit the same week**, then wait |
 
 **Verdict: do both.** Claude gives us the first reading within weeks. ChatGPT is the bigger prize, and slower.
@@ -48,9 +48,9 @@ _Last verified against the live site: 2026-11-28._ (Read from the site's source 
 1. **Found.** A seller asks a question in their own words. The assistant suggests Kept, because it is listed and fits.
 2. **Value.** A free answer on their own figures: a plan, the money, the dates, a checklist.
 3. **Honest exit.** When an agent will get more, it says so. When the debt is bigger than the home, it stops (StepChange, Citizens Advice).
-4. **Ask.** "Ask Kept for a written offer": the in-chat request, or a link to the right situation page.
-5. **A person.** A draft enquiry and an Action Centre card. A person replies within 24 hours, Monday to Friday, views the home first, and sends a written offer within two working days of the viewing.
-6. **Counted.** Every step is tagged ChatGPT or Claude.
+4. **Ask.** "Ask Kept for a written offer": a link to the right situation page, on every answer, and from `get_enquiry_link` when the seller says they want Kept.
+5. **A person.** The seller fills in Kept's own form, with Kept's consent wording. A person replies within 24 hours, Monday to Friday, views the home first, and sends a written offer within two working days of the viewing.
+6. **Counted.** The link names the assistant, and the form saves it as the enquiry's source.
 
 ## Every Kept situation
 
@@ -65,14 +65,16 @@ _Last verified against the live site: 2026-11-28._ (Read from the site's source 
 | **Debt bigger than the home** | "We owe more than it's worth." | `plan_my_sale` (mortgage above price) | A stop: free debt advice first | Always | StepChange. **No Kept link is shown.** |
 | **Any** | "Agent, auction or cash buyer?" | `compare_sale_routes` | Money and time for each route, on their figures | Per situation | The situation page |
 | **Any** | "What did homes nearby sell for?" | `get_property_facts` | Public records. Not a valuation | | `/sell` |
+| **Any** | "How do I get an offer from Kept?" | `get_enquiry_link` | A link to their situation page. No details taken | Per situation | The situation page |
 
 ## Why it gives value, not just a lead form
 
 - **Their figures, never ours.** It never values the home and never shows an offer (founder rule).
 - **Sourced.** Every fact links to its source (`packages/kept-tools/src/sources.ts`).
 - **Says who we're wrong for, unprompted.** The Beth Sims bar (`docs/brand/KEPT.md`).
-- **One ask, only when asked.** Five read-only tools, and one tool the user calls to ask Kept to get in touch, with their agreement.
-- **Fits both directories' rules.** No promotion in tool text. No instructions to the model. Only the data the ask needs. A person reviews every offer.
+- **The ask is a link.** Six read-only tools. When a seller wants Kept, they get a link and fill in Kept's own form themselves.
+- **Fits both directories' rules.** No promotion in tool text. No personal data taken at all. A person reviews every offer.
+- **One watch item for Claude's review:** the link tool's text tells the assistant not to collect details or state a price (the founder's guard, from #177). Claude's criteria prefer plain statements. If review flags it, reword as facts: "This tool takes no personal details; the user fills in Kept's form themselves. No price is given before a viewing." The guard stays either way.
 
 ---
 
@@ -84,21 +86,15 @@ _Last verified against the live site: 2026-11-28._ (Read from the site's source 
 
 **`apps/plugin`**
 - **`plan_my_sale`** (new, read-only, shows a card).
-- **`ask_kept_to_call`** (new, the one write tool):
-  - Needs the user's agreement (`consent: true`).
-  - Saves a **draft** quote (`source: plugin_public`) and its source (`ai_assistant`, ChatGPT or Claude).
-  - Adds an Action Centre card: "Seller asked via Claude to be contacted: M20 2AB".
-  - Same email and postcode within a day: recorded once.
-  - Ceilings: 10 an hour, 30 a day. Past them, the seller gets the site's form.
-  - No database: the seller gets the site's form.
-  - Never emails the seller. Never logs what was typed.
+- **`get_enquiry_link`** (from #177, now merged into this PR): a link to the right situation page. It takes no personal details and writes nothing. This PR sends it to the situation's own page, with that page's honest line.
 - **`compare_sale_routes`** takes a situation. Every next step goes to the right situation page, with that page's honest line.
-- **Tagged by assistant:** links carry `utm_source=chatgpt` or `claude`; usage logs carry `host`.
+- **Tagged by assistant:** links carry the assistant's name in `utm_source` (`chatgpt`, `claude`, another client's name, or `agent` if unknown). Read from the MCP client's name (#176), else the User-Agent. Usage logs carry the same `source`.
 - **Tool text** rewritten as plain statements. "Do not recommend selling or a buyer" is gone.
-- **Directory basics:** server title, website and icon; a documentation page at the plugin's home address; the OpenAI domain-token route.
-- **Tests:** 45 plugin, 35 kept-tools.
+- **Directory basics:** server title, website and icon; a documentation page at the plugin's home address; the OpenAI domain-token route. The link card no longer says "Nothing to show".
+- **Removed:** `ask_kept_to_call`, an in-chat enquiry tool this PR first added. It broke the founder's link-only decision.
+- **Tests:** 52 plugin, 35 kept-tools.
 
-**Website:** privacy notice **v1.7** covers Kept in ChatGPT and Claude.
+**Website:** privacy notice **v1.7**: the plugin's tools store nothing a user types and never ask for contact details.
 
 ---
 
@@ -120,7 +116,7 @@ _Last verified against the live site: 2026-11-28._ (Read from the site's source 
 >
 > It never values your home or shows an offer: any price comes from you. It says when an estate agent is likely to get you more. General information, not legal, tax or financial advice.
 >
-> Kept is a cash buyer. If you want Kept to look at your home, you can ask it to get in touch from the chat.
+> Kept is a cash buyer. If you want Kept to look at your home, you get a link to Kept's own form.
 
 **Example prompts:**
 1. Our buyer pulled out and we complete on our new house in six weeks. What can we do?
@@ -153,7 +149,7 @@ _Last verified against the live site: 2026-11-28._ (Read from the site's source 
 | `plan_inherited_home` | Yes | No | No |
 | `estimate_renovation_cost` | Yes | No | Yes (EPC register) |
 | `get_property_facts` | Yes | No | Yes (EPC, Land Registry) |
-| `ask_kept_to_call` | **No** | No | Yes (sends Kept the details) |
+| `get_enquiry_link` | Yes | No | No |
 
 **Test cases for reviewers** (OpenAI asks for these):
 
@@ -163,14 +159,14 @@ _Last verified against the live site: 2026-11-28._ (Read from the site's source 
 | Prompt 3 above | After fees, after the mortgage, a 50% share |
 | "How much is my house worth?" | No value given. That is correct |
 | "We owe £200,000 and the house would sell for £150,000." | A stop, pointing to StepChange. No Kept link |
-| "Yes, ask Kept to call me." (with test details) | A reference number. Tell reviewers to use the name "Test Reviewer"; dismiss those cards |
+| "How do I get an offer from Kept? My mum left me her house." | A link to Kept's probate page. It asks for no details |
 
 ---
 
 ## What you need to do, in order
 
 1. **Merge PR #174.**
-2. **Create the Vercel project** `kept-plugin` (`06-go-live.md`, step 1). Add `EPC_API_TOKEN`, and now also **`DATABASE_URL`** (copy from bellwood-api). Without it, "ask Kept to get in touch" sends sellers to the website form instead.
+2. **Create the Vercel project** `kept-plugin` (`06-go-live.md`, step 1). Add `EPC_API_TOKEN`. No other key is needed.
 3. **Finish the privacy page:**
    - add the **ICO number** (it is still marked DRAFT);
    - fix the AI line: it names **Anthropic**, but the code has used **OpenRouter** since 3 Oct. Confirm which models handle enquiry summaries, then reword.
@@ -186,12 +182,11 @@ _Last verified against the live site: 2026-11-28._ (Read from the site's source 
 ## How we'll know it works
 
 **Where to look:**
-- **Vercel → kept-plugin → Logs**, search `kept_plugin_tool`. Each line has the tool, `host` (chatgpt or claude), the outcome and the time.
-- **Action Centre:** cards titled "Seller asked via ChatGPT…" or "…via Claude…".
+- **Vercel → kept-plugin → Logs**, search `kept_plugin_tool`. Each line has the tool, `source` (chatgpt or claude), the outcome and the time.
 - **Dashboard → "Where enquiries came from":** the AI assistant row.
 - **PostHog:** visits with `utm_source=chatgpt` or `claude`, and the forms they send.
 
-**One check after your first test:** the assistant is read from the request's User-Agent header. We haven't seen real ChatGPT or Claude traffic yet. If the logs say `host: "other"` after a test from ChatGPT or Claude, tell Claude: it's a one-line fix in `apps/plugin/lib/host.ts`.
+**One check after your first test:** the assistant is read from its MCP client name, else the User-Agent header. We haven't seen real ChatGPT or Claude traffic yet. If the logs say `source: "agent"` after a test from ChatGPT or Claude, tell Claude: it's a one-line fix in `apps/plugin/lib/links.ts`.
 
 **The baseline:** AI assistants send us **nothing** today. The whole site gets **0 to 3 enquiries a week**. So **one enquiry a month** from AI is a real gain.
 
@@ -205,10 +200,8 @@ _Last verified against the live site: 2026-11-28._ (Read from the site's source 
   - **Test it cheaply:** after listing, ask each assistant 10 natural questions from a fresh account.
 - **Who hates it:**
   - **A stressed seller who feels sold to.** Answer: value first, honest exits, and the ask only when they ask.
-  - **Directory reviewers, if it reads like lead generation.** Answer: five useful read-only tools, one user-asked write tool, factual descriptions.
-- **New risks this adds:**
-  - **Junk enquiries.** Agreement required, one per email and postcode a day, 10 an hour, 30 a day. No email goes to anyone.
-  - **Personal data through the plugin.** Covered by privacy notice v1.7. Logs never store what was typed.
+  - **Directory reviewers, if it reads like lead generation.** Answer: six useful read-only tools, factual descriptions, and the ask is only a link.
+- **The cost of link only:** every step out of the chat loses some sellers. That's the founder's trade: no seller data in the chat, and consent on our own form. Measure it: tool uses, then visits from plugin links, then forms sent.
 
 ---
 

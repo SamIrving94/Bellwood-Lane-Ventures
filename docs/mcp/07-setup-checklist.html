@@ -245,7 +245,7 @@
 <div class="progress" aria-live="polite">
   <div class="progress-inner">
     <div class="progress-row">
-      <span class="progress-label" id="progressLabel">0 of 31 steps done</span>
+      <span class="progress-label" id="progressLabel">0 of 30 steps done</span>
       <span class="label" id="progressPart">Start with Part A</span>
     </div>
     <div class="bar" aria-hidden="true"><span id="barFill"></span></div>
@@ -256,13 +256,13 @@
   <header class="top">
     <p class="mark">kept.</p>
     <h1>Put Kept live in ChatGPT and Claude</h1>
-    <p class="lede">31 small steps. Parts A to C take about 25 minutes. Part D lists it, once the privacy page is finished. Do them in order. Tick each box when it's done. Your ticks are saved on this device.</p>
+    <p class="lede">30 small steps. Parts A to C take about 25 minutes. Part D lists it, once the privacy page is finished. Do them in order. Tick each box when it's done. Your ticks are saved on this device.</p>
     <p class="note">Checked 28 Nov: the plugin isn't live yet. Nothing has been set up on Vercel. First merge <a href="https://github.com/SamIrving94/Bellwood-Lane-Ventures/pull/174" target="_blank" rel="noopener">PR #174</a> (security updates, and new tools for every Kept situation), then start at step 1.</p>
     <div class="already">
       <strong>Already done for you</strong>
       <ul>
         <li>The plugin's code is written and tested. It's in PR #174.</li>
-        <li>New: a sale plan for every Kept situation, and "ask Kept to get in touch" inside the chat.</li>
+        <li>New: a sale plan for every Kept situation, and a link to the right Kept page when a seller wants an offer. The plugin never takes their details.</li>
         <li>The listing pack is ready: descriptions, prompts and screenshots, in <span class="val">docs/mcp/10-funnel.md</span>.</li>
       </ul>
     </div>
@@ -342,11 +342,8 @@
     <article class="step" data-step="7">
       <div class="num">7</div>
       <div class="body">
-        <h3>Add the database key</h3>
-        <p>Still in <span class="path">Environment Variables</span>. In the name box, paste:</p>
-        <div class="copyline"><span class="val">DATABASE_URL</span><button class="copy" type="button" data-copy="DATABASE_URL">Copy</button></div>
-        <p>In the value box, paste the <span class="path">DATABASE_URL</span> from your <span class="path">bellwood-api</span> project, the same way as step 6. Click <span class="path">Add</span>.</p>
-        <p class="see">Why: when a seller asks Kept to get in touch from the chat, this saves it as a draft enquiry with an Action Centre card. Without it, they are sent to the website form instead.</p>
+        <h3>Deploy</h3>
+        <p>Click <span class="path">Deploy</span>. Wait 3 to 5 minutes, until you see the celebration screen.</p>
         <label class="tick"><input type="checkbox" id="s7"> Done</label>
       </div>
     </article>
@@ -354,24 +351,15 @@
     <article class="step" data-step="8">
       <div class="num">8</div>
       <div class="body">
-        <h3>Deploy</h3>
-        <p>Click <span class="path">Deploy</span>. Wait 3 to 5 minutes, until you see the celebration screen.</p>
+        <h3>Let the assistants in</h3>
+        <p>Go to <span class="path">Settings → Deployment Protection</span>. Under <span class="path">Vercel Authentication</span>, choose <span class="path">Standard Protection</span>. Click <span class="path">Save</span>.</p>
+        <p class="see">If this stays on the stricter setting, ChatGPT and Claude get blocked.</p>
         <label class="tick"><input type="checkbox" id="s8"> Done</label>
       </div>
     </article>
 
     <article class="step" data-step="9">
       <div class="num">9</div>
-      <div class="body">
-        <h3>Let the assistants in</h3>
-        <p>Go to <span class="path">Settings → Deployment Protection</span>. Under <span class="path">Vercel Authentication</span>, choose <span class="path">Standard Protection</span>. Click <span class="path">Save</span>.</p>
-        <p class="see">If this stays on the stricter setting, ChatGPT and Claude get blocked.</p>
-        <label class="tick"><input type="checkbox" id="s9"> Done</label>
-      </div>
-    </article>
-
-    <article class="step" data-step="10">
-      <div class="num">10</div>
       <div class="body">
         <h3>Copy your address</h3>
         <p>Go to <span class="path">Overview</span>. Copy the domain. It looks like <span class="val">kept-plugin.vercel.app</span>. Paste it here:</p>
@@ -382,17 +370,17 @@
           <div class="copyline"><span class="val" data-url="mcp">https://kept-plugin.vercel.app/mcp</span><button class="copy" type="button" data-copy-url="mcp">Copy</button></div>
           <p class="example-tag" data-example-tag>Example shown until you paste your own address.</p>
         </div>
-        <label class="tick"><input type="checkbox" id="s10"> Done</label>
+        <label class="tick"><input type="checkbox" id="s9"> Done</label>
       </div>
     </article>
 
-    <article class="step" data-step="11">
-      <div class="num">11</div>
+    <article class="step" data-step="10">
+      <div class="num">10</div>
       <div class="body">
         <h3>Tell Claude</h3>
         <p>Send Claude this message. Claude will check the plugin is working before you go on.</p>
         <div class="copyline"><span class="val">done</span><button class="copy" type="button" data-copy="done">Copy</button></div>
-        <label class="tick"><input type="checkbox" id="s11"> Done</label>
+        <label class="tick"><input type="checkbox" id="s10"> Done</label>
       </div>
     </article>
   </section>
@@ -404,11 +392,21 @@
       <p>About 3 minutes. Use a computer, not your phone.</p>
     </div>
 
-    <article class="step" data-step="12">
-      <div class="num">12</div>
+    <article class="step" data-step="11">
+      <div class="num">11</div>
       <div class="body">
         <h3>Open ChatGPT</h3>
         <p>Go to <a href="https://chatgpt.com" target="_blank" rel="noopener">chatgpt.com</a> and log in.</p>
+        <label class="tick"><input type="checkbox" id="s11"> Done</label>
+      </div>
+    </article>
+
+    <article class="step" data-step="12">
+      <div class="num">12</div>
+      <div class="body">
+        <h3>Open Plugins</h3>
+        <p>Go to <span class="path">Settings → Plugins</span>.</p>
+        <p class="see">There used to be a Developer mode switch first. OpenAI removed it in October, so skip it.</p>
         <label class="tick"><input type="checkbox" id="s12"> Done</label>
       </div>
     </article>
@@ -416,9 +414,10 @@
     <article class="step" data-step="13">
       <div class="num">13</div>
       <div class="body">
-        <h3>Open Plugins</h3>
-        <p>Go to <span class="path">Settings → Plugins</span>.</p>
-        <p class="see">There used to be a Developer mode switch first. OpenAI removed it in October, so skip it.</p>
+        <h3>Add a custom server</h3>
+        <p>Click <span class="path">+</span>, then <span class="path">Add custom MCP server</span>.</p>
+        <p class="see">Can't see it? Search Settings for "MCP".</p>
+        <p class="note">Still not there? Your ChatGPT plan may not allow custom plugins. Tell Claude which plan you're on.</p>
         <label class="tick"><input type="checkbox" id="s13"> Done</label>
       </div>
     </article>
@@ -426,10 +425,12 @@
     <article class="step" data-step="14">
       <div class="num">14</div>
       <div class="body">
-        <h3>Add a custom server</h3>
-        <p>Click <span class="path">+</span>, then <span class="path">Add custom MCP server</span>.</p>
-        <p class="see">Can't see it? Search Settings for "MCP".</p>
-        <p class="note">Still not there? Your ChatGPT plan may not allow custom plugins. Tell Claude which plan you're on.</p>
+        <h3>Fill in 3 boxes</h3>
+        <p><span class="label">Name:</span></p>
+        <div class="copyline"><span class="val">Kept</span><button class="copy" type="button" data-copy="Kept">Copy</button></div>
+        <p><span class="label">URL:</span></p>
+        <div class="copyline"><span class="val" data-url="mcp">https://kept-plugin.vercel.app/mcp</span><button class="copy" type="button" data-copy-url="mcp">Copy</button></div>
+        <p><span class="label">Auth:</span> choose <span class="path">None</span>. Then click <span class="path">Create</span>.</p>
         <label class="tick"><input type="checkbox" id="s14"> Done</label>
       </div>
     </article>
@@ -437,22 +438,9 @@
     <article class="step" data-step="15">
       <div class="num">15</div>
       <div class="body">
-        <h3>Fill in 3 boxes</h3>
-        <p><span class="label">Name:</span></p>
-        <div class="copyline"><span class="val">Kept</span><button class="copy" type="button" data-copy="Kept">Copy</button></div>
-        <p><span class="label">URL:</span></p>
-        <div class="copyline"><span class="val" data-url="mcp">https://kept-plugin.vercel.app/mcp</span><button class="copy" type="button" data-copy-url="mcp">Copy</button></div>
-        <p><span class="label">Auth:</span> choose <span class="path">None</span>. Then click <span class="path">Create</span>.</p>
-        <label class="tick"><input type="checkbox" id="s15"> Done</label>
-      </div>
-    </article>
-
-    <article class="step" data-step="16">
-      <div class="num">16</div>
-      <div class="body">
         <h3>Check it</h3>
         <p class="see">You should see <strong>6 tools</strong>.</p>
-        <label class="tick"><input type="checkbox" id="s16"> Done</label>
+        <label class="tick"><input type="checkbox" id="s15"> Done</label>
       </div>
     </article>
   </section>
@@ -464,12 +452,23 @@
       <p>About 10 minutes. Copy each message into ChatGPT and check the result.</p>
     </div>
 
-    <article class="step" data-step="17">
-      <div class="num">17</div>
+    <article class="step" data-step="16">
+      <div class="num">16</div>
       <div class="body">
         <h3>Start a test chat</h3>
         <p>Click <span class="path">New chat</span>. Click <span class="path">+</span>, then pick <span class="path">Kept</span>.</p>
         <p class="see">Can't see it there? Start each message with "Use Kept to".</p>
+        <label class="tick"><input type="checkbox" id="s16"> Done</label>
+      </div>
+    </article>
+
+    <article class="step" data-step="17">
+      <div class="num">17</div>
+      <div class="body">
+        <h3>Test 1: a sale that fell through</h3>
+        <p class="prompt" id="p1">Our buyer pulled out and we complete on our new house in six weeks. The agent says £285,000 and we owe £140,000 on the mortgage. What can we do?</p>
+        <div class="copyline"><button class="copy" type="button" data-copy-from="p1">Copy message</button></div>
+        <p class="see">You should see <strong>"Which ways can finish by"</strong> a date. The cash buyer <strong>makes it</strong>; the estate agent and auction <strong>miss it</strong>. Then the money: estate agent <strong>£280,725</strong> after fees, <strong>£140,725</strong> after the mortgage.</p>
         <label class="tick"><input type="checkbox" id="s17"> Done</label>
       </div>
     </article>
@@ -477,10 +476,10 @@
     <article class="step" data-step="18">
       <div class="num">18</div>
       <div class="body">
-        <h3>Test 1: a sale that fell through</h3>
-        <p class="prompt" id="p1">Our buyer pulled out and we complete on our new house in six weeks. The agent says £285,000 and we owe £140,000 on the mortgage. What can we do?</p>
-        <div class="copyline"><button class="copy" type="button" data-copy-from="p1">Copy message</button></div>
-        <p class="see">You should see <strong>"Which ways can finish by"</strong> a date. The cash buyer <strong>makes it</strong>; the estate agent and auction <strong>miss it</strong>. Then the money: estate agent <strong>£280,725</strong> after fees, <strong>£140,725</strong> after the mortgage.</p>
+        <h3>Test 2: the inherited home plan</h3>
+        <p class="prompt" id="p2">My mum died on 10 June 2026 and left me her house. It's empty. Probate was granted on 20 September 2026. What do we need to do?</p>
+        <div class="copyline"><button class="copy" type="button" data-copy-from="p2">Copy message</button></div>
+        <p class="see">You should see a <strong>card with dates</strong>. One line says <strong>2026-12-31 · Inheritance Tax due</strong>.</p>
         <label class="tick"><input type="checkbox" id="s18"> Done</label>
       </div>
     </article>
@@ -488,10 +487,10 @@
     <article class="step" data-step="19">
       <div class="num">19</div>
       <div class="body">
-        <h3>Test 2: the inherited home plan</h3>
-        <p class="prompt" id="p2">My mum died on 10 June 2026 and left me her house. It's empty. Probate was granted on 20 September 2026. What do we need to do?</p>
-        <div class="copyline"><button class="copy" type="button" data-copy-from="p2">Copy message</button></div>
-        <p class="see">You should see a <strong>card with dates</strong>. One line says <strong>2026-12-31 · Inheritance Tax due</strong>.</p>
+        <h3>Test 3: ways to sell</h3>
+        <p class="prompt" id="p3">An agent says £250,000. We have a cash offer of £210,000. Legal fees are £1,200. What would we end up with?</p>
+        <div class="copyline"><button class="copy" type="button" data-copy-from="p3">Copy message</button></div>
+        <p class="see">You should see <strong>3 columns</strong>: agent <strong>£245,050</strong>, auction <strong>£241,300</strong>, cash buyer <strong>£208,800</strong>.</p>
         <label class="tick"><input type="checkbox" id="s19"> Done</label>
       </div>
     </article>
@@ -499,10 +498,10 @@
     <article class="step" data-step="20">
       <div class="num">20</div>
       <div class="body">
-        <h3>Test 3: ways to sell</h3>
-        <p class="prompt" id="p3">An agent says £250,000. We have a cash offer of £210,000. Legal fees are £1,200. What would we end up with?</p>
-        <div class="copyline"><button class="copy" type="button" data-copy-from="p3">Copy message</button></div>
-        <p class="see">You should see <strong>3 columns</strong>: agent <strong>£245,050</strong>, auction <strong>£241,300</strong>, cash buyer <strong>£208,800</strong>.</p>
+        <h3>Test 4: renovation costs</h3>
+        <p class="prompt" id="p4">How much would it cost to renovate an 85 square metre house with damp?</p>
+        <div class="copyline"><button class="copy" type="button" data-copy-from="p4">Copy message</button></div>
+        <p class="see">You should see <strong>3 cards</strong>: Light, Full and Heavy, each with a £ amount.</p>
         <label class="tick"><input type="checkbox" id="s20"> Done</label>
       </div>
     </article>
@@ -510,10 +509,11 @@
     <article class="step" data-step="21">
       <div class="num">21</div>
       <div class="body">
-        <h3>Test 4: renovation costs</h3>
-        <p class="prompt" id="p4">How much would it cost to renovate an 85 square metre house with damp?</p>
-        <div class="copyline"><button class="copy" type="button" data-copy-from="p4">Copy message</button></div>
-        <p class="see">You should see <strong>3 cards</strong>: Light, Full and Heavy, each with a £ amount.</p>
+        <h3>Test 5: public record</h3>
+        <p>Type this, with your own address and postcode:</p>
+        <p class="prompt" id="p5">What's on public record about [your address], [your postcode]?</p>
+        <div class="copyline"><button class="copy" type="button" data-copy-from="p5">Copy message</button></div>
+        <p class="see">You should see <strong>"Public record · not a valuation"</strong> with the energy rating and floor area.</p>
         <label class="tick"><input type="checkbox" id="s21"> Done</label>
       </div>
     </article>
@@ -521,11 +521,10 @@
     <article class="step" data-step="22">
       <div class="num">22</div>
       <div class="body">
-        <h3>Test 5: public record</h3>
-        <p>Type this, with your own address and postcode:</p>
-        <p class="prompt" id="p5">What's on public record about [your address], [your postcode]?</p>
-        <div class="copyline"><button class="copy" type="button" data-copy-from="p5">Copy message</button></div>
-        <p class="see">You should see <strong>"Public record · not a valuation"</strong> with the energy rating and floor area.</p>
+        <h3>Test 6: no valuations</h3>
+        <p class="prompt" id="p6">How much is my house worth?</p>
+        <div class="copyline"><button class="copy" type="button" data-copy-from="p6">Copy message</button></div>
+        <p class="see">It should <strong>not</strong> give a value or an offer. That is correct.</p>
         <label class="tick"><input type="checkbox" id="s22"> Done</label>
       </div>
     </article>
@@ -533,10 +532,10 @@
     <article class="step" data-step="23">
       <div class="num">23</div>
       <div class="body">
-        <h3>Test 6: no valuations</h3>
-        <p class="prompt" id="p6">How much is my house worth?</p>
-        <div class="copyline"><button class="copy" type="button" data-copy-from="p6">Copy message</button></div>
-        <p class="see">It should <strong>not</strong> give a value or an offer. That is correct.</p>
+        <h3>Test 7: get the link</h3>
+        <p class="prompt" id="p7">How do I get an offer from Kept? My mum died and left me her house.</p>
+        <div class="copyline"><button class="copy" type="button" data-copy-from="p7">Copy message</button></div>
+        <p class="see">You should see a button to <strong>Kept's probate page</strong>. It should <strong>not</strong> ask for your name, email or phone. That is correct: you fill in Kept's own form yourself.</p>
         <label class="tick"><input type="checkbox" id="s23"> Done</label>
       </div>
     </article>
@@ -544,23 +543,10 @@
     <article class="step" data-step="24">
       <div class="num">24</div>
       <div class="body">
-        <h3>Test 7: ask Kept to call you</h3>
-        <p>Type this, with your own name, email and postcode:</p>
-        <p class="prompt" id="p7">Can Kept come and look at the house? I'm [your name], [your email], 1 Test Street, [your postcode]. Our buyer pulled out.</p>
-        <div class="copyline"><button class="copy" type="button" data-copy-from="p7">Copy message</button></div>
-        <p class="see">It should <strong>ask you to agree</strong> first. Say yes. You get a <strong>reference number</strong>.</p>
-        <p class="see">Then open your dashboard's <span class="path">Action Centre</span>. You should see <strong>"Seller asked via ChatGPT to be contacted"</strong>. Dismiss it.</p>
-        <label class="tick"><input type="checkbox" id="s24"> Done</label>
-      </div>
-    </article>
-
-    <article class="step" data-step="25">
-      <div class="num">25</div>
-      <div class="body">
         <h3>Test 8: the button, then tell Claude</h3>
         <p>On any card, click <span class="path">Ask Kept for a written offer</span>. It should open <strong>wearekept.co.uk</strong>.</p>
         <p>Then tell Claude how it went. Claude will read the plugin's logs to confirm each test.</p>
-        <label class="tick"><input type="checkbox" id="s25"> Done</label>
+        <label class="tick"><input type="checkbox" id="s24"> Done</label>
       </div>
     </article>
   </section>
@@ -572,8 +558,8 @@
       <p>Unlisted, almost nobody finds it. Do Claude first: it's fast. ChatGPT takes about a month, so start it the same week.</p>
     </div>
 
-    <article class="step" data-step="26">
-      <div class="num">26</div>
+    <article class="step" data-step="25">
+      <div class="num">25</div>
       <div class="body">
         <h3>Finish the privacy page</h3>
         <p>Both directories check it. Two things are missing:</p>
@@ -582,6 +568,17 @@
           <li>the AI line names <strong>Anthropic</strong>, but the code has used <strong>OpenRouter</strong> since 3 Oct.</li>
         </ul>
         <p class="see">Send Claude the ICO number. Claude will make both changes.</p>
+        <label class="tick"><input type="checkbox" id="s25"> Done</label>
+      </div>
+    </article>
+
+    <article class="step" data-step="26">
+      <div class="num">26</div>
+      <div class="body">
+        <h3>Test it in Claude</h3>
+        <p>In Claude, add a <strong>custom connector</strong> (in Settings, under Connectors). Paste your plugin link. No sign-in.</p>
+        <div class="copyline"><span class="val" data-url="mcp">https://kept-plugin.vercel.app/mcp</span><button class="copy" type="button" data-copy-url="mcp">Copy</button></div>
+        <p class="see">Then try Test 1 again in Claude.</p>
         <label class="tick"><input type="checkbox" id="s26"> Done</label>
       </div>
     </article>
@@ -589,10 +586,10 @@
     <article class="step" data-step="27">
       <div class="num">27</div>
       <div class="body">
-        <h3>Test it in Claude</h3>
-        <p>In Claude, add a <strong>custom connector</strong> (in Settings, under Connectors). Paste your plugin link. No sign-in.</p>
-        <div class="copyline"><span class="val" data-url="mcp">https://kept-plugin.vercel.app/mcp</span><button class="copy" type="button" data-copy-url="mcp">Copy</button></div>
-        <p class="see">Then try Test 1 again in Claude.</p>
+        <h3>List it in Claude's directory</h3>
+        <p>On a <strong>paid</strong> Claude plan, go to <a href="https://claude.ai/directory/manage" target="_blank" rel="noopener">claude.ai/directory/manage</a>.</p>
+        <p>Fill it in from the listing pack in <span class="val">docs/mcp/10-funnel.md</span>: name, descriptions, 5 prompts, 5 screenshots.</p>
+        <p class="see">An automated check runs, then it's listed.</p>
         <label class="tick"><input type="checkbox" id="s27"> Done</label>
       </div>
     </article>
@@ -600,10 +597,9 @@
     <article class="step" data-step="28">
       <div class="num">28</div>
       <div class="body">
-        <h3>List it in Claude's directory</h3>
-        <p>On a <strong>paid</strong> Claude plan, go to <a href="https://claude.ai/directory/manage" target="_blank" rel="noopener">claude.ai/directory/manage</a>.</p>
-        <p>Fill it in from the listing pack in <span class="val">docs/mcp/10-funnel.md</span>: name, descriptions, 5 prompts, 5 screenshots.</p>
-        <p class="see">An automated check runs, then it's listed.</p>
+        <h3>Verify your OpenAI organisation</h3>
+        <p>On <a href="https://platform.openai.com" target="_blank" rel="noopener">platform.openai.com</a>, verify the organisation as <strong>Bellwoods Lane Ventures Ltd</strong>.</p>
+        <p class="see">Use the registered company name. Kept is a trading name.</p>
         <label class="tick"><input type="checkbox" id="s28"> Done</label>
       </div>
     </article>
@@ -611,9 +607,11 @@
     <article class="step" data-step="29">
       <div class="num">29</div>
       <div class="body">
-        <h3>Verify your OpenAI organisation</h3>
-        <p>On <a href="https://platform.openai.com" target="_blank" rel="noopener">platform.openai.com</a>, verify the organisation as <strong>Bellwoods Lane Ventures Ltd</strong>.</p>
-        <p class="see">Use the registered company name. Kept is a trading name.</p>
+        <h3>Start the ChatGPT submission</h3>
+        <p>Start a plugin submission. It gives you a <strong>domain token</strong>.</p>
+        <p>In Vercel, open <span class="path">kept-plugin → Settings → Environment Variables</span>. Add a variable with this name, and the token as its value:</p>
+        <div class="copyline"><span class="val">OPENAI_APPS_CHALLENGE</span><button class="copy" type="button" data-copy="OPENAI_APPS_CHALLENGE">Copy</button></div>
+        <p>Then go to <span class="path">Deployments → ⋯ → Redeploy</span>.</p>
         <label class="tick"><input type="checkbox" id="s29"> Done</label>
       </div>
     </article>
@@ -621,22 +619,10 @@
     <article class="step" data-step="30">
       <div class="num">30</div>
       <div class="body">
-        <h3>Start the ChatGPT submission</h3>
-        <p>Start a plugin submission. It gives you a <strong>domain token</strong>.</p>
-        <p>In Vercel, open <span class="path">kept-plugin → Settings → Environment Variables</span>. Add a variable with this name, and the token as its value:</p>
-        <div class="copyline"><span class="val">OPENAI_APPS_CHALLENGE</span><button class="copy" type="button" data-copy="OPENAI_APPS_CHALLENGE">Copy</button></div>
-        <p>Then go to <span class="path">Deployments → ⋯ → Redeploy</span>.</p>
-        <label class="tick"><input type="checkbox" id="s30"> Done</label>
-      </div>
-    </article>
-
-    <article class="step" data-step="31">
-      <div class="num">31</div>
-      <div class="body">
         <h3>Finish it, then publish</h3>
         <p>Finish the submission with the same listing pack. Add the test cases from <span class="val">docs/mcp/10-funnel.md</span>.</p>
         <p class="see">Review takes about a month. When it's approved, <strong>press Publish</strong>. Nothing is public until you do.</p>
-        <label class="tick"><input type="checkbox" id="s31"> Done</label>
+        <label class="tick"><input type="checkbox" id="s30"> Done</label>
       </div>
     </article>
   </section>
@@ -649,7 +635,7 @@
     <div class="help">
       <div class="help-row">
         <strong>ChatGPT or Claude says it can't connect</strong>
-        <span>Check the URL ends in <span class="val">/mcp</span>. Check step 9. Then tell Claude.</span>
+        <span>Check the URL ends in <span class="val">/mcp</span>. Check step 8. Then tell Claude.</span>
       </div>
       <div class="help-row">
         <strong>Kept isn't used in the chat</strong>
@@ -660,8 +646,8 @@
         <span>The energy key from step 6 is missing or wrong. Add it, then go to <span class="path">Deployments → ⋯ → Redeploy</span>.</span>
       </div>
       <div class="help-row">
-        <strong>Test 7 sends you to the website form</strong>
-        <span>The database key from step 7 is missing. Add it, then Redeploy. If ChatGPT never offers to send your details, your plan may only allow read-only tools. The website link still works.</span>
+        <strong>Test 7 asks for your name or phone</strong>
+        <span>It shouldn't: the tool takes no details. Send Claude a screenshot.</span>
       </div>
       <div class="help-row">
         <strong>Anything else</strong>
@@ -702,10 +688,10 @@
 
 <script>
 (function () {
-  var TOTAL = 31;
-  // v2: steps were renumbered on 28 Nov (a database step, new tests, Part D),
+  var TOTAL = 30;
+  // v3: steps were renumbered again on 28 Nov (link only: no database step),
   // so ticks saved against the old numbers are not carried over.
-  var KEY_TICKS = 'kept-setup-ticks-v2';
+  var KEY_TICKS = 'kept-setup-ticks-v3';
   var KEY_DOMAIN = 'kept-setup-domain-v1';
   var EXAMPLE_DOMAIN = 'kept-plugin.vercel.app';
 
@@ -803,9 +789,9 @@
   var fill = document.getElementById('barFill');
 
   function partFor(stepNumber) {
-    if (stepNumber <= 11) return 'Part A. Make the plugin’s home';
-    if (stepNumber <= 16) return 'Part B. Connect ChatGPT';
-    if (stepNumber <= 25) return 'Part C. Test it';
+    if (stepNumber <= 10) return 'Part A. Make the plugin’s home';
+    if (stepNumber <= 15) return 'Part B. Connect ChatGPT';
+    if (stepNumber <= 24) return 'Part C. Test it';
     return 'Part D. List it';
   }
 

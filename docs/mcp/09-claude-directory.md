@@ -3,7 +3,7 @@
 _Written: 2026-11-28, prompted by the "Claude brought us 24,000+ users in 5 weeks" post (SlickTrip, r/mcp)._
 _Last verified against the live site: 2026-11-28._
 
-> **Update, later on 28 Nov:** changes 2 (docs page, icon, 1200 px screenshots), 4, 5 and 6 are built, for **every** Kept situation, not just probate. The two lines that told Claude how to behave are gone. ChatGPT review, the full funnel and the listing pack: **`10-funnel.md`**.
+> **Update, later on 28 Nov:** changes 2 (docs page, icon, 1200 px screenshots), 5 and 6 are built, for **every** Kept situation, not just probate. **Change 4 is a link, not an in-chat form:** the founder chose link only (#177, `get_enquiry_link`), so the plugin never takes a seller's details. Our two lines that told Claude how to behave are gone; the link tool has its own guard lines (see `10-funnel.md`). ChatGPT review, the full funnel and the listing pack: **`10-funnel.md`**.
 
 ## The short answer
 
