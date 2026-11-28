@@ -47,7 +47,10 @@ export function EmailCard({
   bare = false,
 }: {
   email: EmailCardData;
-  /** The connected Kept mailbox, so Gmail opens in the right account. */
+  /**
+   * The main Kept mailbox. "Open in Gmail" uses the email's own mailbox
+   * when it has one, so Gmail opens in the account that holds it.
+   */
   gmailAccount: string | null;
   /** No border or padding: the caller already drew a card around it. */
   bare?: boolean;
@@ -115,7 +118,10 @@ export function EmailCard({
       <p className="mt-2 text-xs">
         <a
           className="text-muted-foreground underline underline-offset-2"
-          href={gmailThreadUrl(email.gmailThreadId, gmailAccount)}
+          href={gmailThreadUrl(
+            email.gmailThreadId,
+            email.mailbox ?? gmailAccount
+          )}
           rel="noreferrer"
           target="_blank"
         >

@@ -1,6 +1,7 @@
 'use client';
 
 import { sendLead, sendTagEvent } from '@/components/cookie-consent';
+import { leadSource } from '@/lib/lead-source';
 import { useFunnelTrack } from '@/lib/use-funnel-track';
 import { useSearchParams } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
@@ -401,6 +402,7 @@ export function ChatFlow({ defaultRole }: ChatFlowProps = {}) {
           contactEmail: email,
           contactPhone: phone,
           referralCode,
+          leadSource: leadSource(),
         }),
       });
       const data = await res.json();

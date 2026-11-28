@@ -7,6 +7,7 @@ import {
   draftInGmail,
   ensureDealFolder,
   refreshPartnerSheet,
+  removeExtraMailbox,
 } from '@repo/google';
 import { revalidatePath } from 'next/cache';
 
@@ -14,6 +15,20 @@ export async function disconnectGoogleAccount() {
   await requireFounder();
   await disconnectGoogle();
   revalidatePath('/settings/google');
+}
+
+/**
+ * Stop the email log reading one extra Kept mailbox. Emails already stored
+ * from it stay where they are.
+ */
+export async function removeGoogleMailbox(formData: FormData) {
+  await requireFounder();
+  const email = String(formData.get('email') ?? '');
+  if (email) {
+    await removeExtraMailbox(email);
+  }
+  revalidatePath('/settings/google');
+  revalidatePath('/deals/email-log');
 }
 
 // Server-action errors reach the browser with their message stripped in

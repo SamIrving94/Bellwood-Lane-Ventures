@@ -13,6 +13,7 @@ function row(over: Partial<EmailRow> = {}): EmailRow {
     id: 'e1',
     dealId: 'deal-1',
     gmailThreadId: 'T1',
+    mailbox: 'sam@wearekept.co.uk',
     threadKey: 'gmail:T1',
     direction: 'inbound',
     fromEmail: 'jane@example.com',
@@ -32,6 +33,18 @@ function row(over: Partial<EmailRow> = {}): EmailRow {
     ...over,
   };
 }
+
+describe('toEmailCards — the mailbox', () => {
+  it('carries the mailbox an email came from, for "Open in Gmail"', () => {
+    const [jo, old] = toEmailCards([
+      row({ mailbox: 'jo@wearekept.co.uk' }),
+      row({ id: 'e2', mailbox: null }),
+    ]);
+    expect(jo?.mailbox).toBe('jo@wearekept.co.uk');
+    // Older rows have none: the card falls back to the main account.
+    expect(old?.mailbox).toBeNull();
+  });
+});
 
 describe('toEmailCards — waiting on us', () => {
   it('flags a question nobody has answered', () => {

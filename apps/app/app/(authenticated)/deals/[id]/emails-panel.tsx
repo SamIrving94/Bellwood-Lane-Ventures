@@ -1,6 +1,8 @@
 import type { EmailCardData } from '@/lib/deal-email-view';
+import type { EmailLogState } from '@/lib/email-log-setup';
 import Link from 'next/link';
 import { EmailCard } from '../components/email-card';
+import { SwitchOnEmailLog } from '../components/switch-on-email-log';
 import { EmailButtons, type EmailRecipient } from './email-buttons';
 import { FindOlderEmails } from './find-older-emails';
 
@@ -21,15 +23,24 @@ export function EmailsPanel({
   dealId,
   emails,
   google,
+  logState,
   sellerEmail,
   solicitorEmail,
   subject,
 }: {
   dealId: string;
-  /** Null when the log table is not there yet (run `pnpm migrate`). */
+  /** Null when the log table is not there yet: the panel offers to add it. */
   emails: EmailCardData[] | null;
   /** The Google connection the log reads through. */
-  google: { connected: boolean; broken: boolean; email: string | null };
+  google: {
+    connected: boolean;
+    broken: boolean;
+    email: string | null;
+    /** Every mailbox the log reads, main account first. */
+    mailboxes: string[];
+  };
+  /** Why `emails` is null: the table is missing, older than the code, or fine. */
+  logState: EmailLogState;
   sellerEmail: string | null;
   solicitorEmail: string | null;
   /** Subject for an email started here: the property. */
@@ -66,11 +77,15 @@ export function EmailsPanel({
       </div>
 
       {emails === null ? (
-        <p className="mt-3 text-muted-foreground text-sm">
-          The email log is not switched on yet. Run{' '}
-          <code className="rounded bg-muted px-1">pnpm migrate</code> once to
-          add its table.
-        </p>
+        <div className="mt-3">
+          {logState === 'current' ? (
+            <p className="text-muted-foreground text-sm">
+              The email log could not be read just now. Try again shortly.
+            </p>
+          ) : (
+            <SwitchOnEmailLog state={logState} />
+          )}
+        </div>
       ) : (
         <div className="mt-3 space-y-2 text-sm">
           <EmailButtons
@@ -81,10 +96,10 @@ export function EmailsPanel({
           {google.connected ? (
             <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
               <p className="min-w-0 flex-1">
-                Kept reads <strong>{google.email}</strong> every 30 minutes.
-                Emails with this deal&rsquo;s seller or solicitor land here on
-                their own. For anything else, put the <strong>Kept/Log</strong>{' '}
-                label on it in Gmail.
+                Kept reads <strong>{google.mailboxes.join(', ')}</strong> every
+                30 minutes. Emails with this deal&rsquo;s seller or solicitor
+                land here on their own. For anything else, put the{' '}
+                <strong>Kept/Log</strong> label on it in Gmail.
               </p>
               <FindOlderEmails dealId={dealId} />
             </div>

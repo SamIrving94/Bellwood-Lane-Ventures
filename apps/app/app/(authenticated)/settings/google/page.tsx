@@ -4,11 +4,15 @@ import {
   getGoogleStatus,
   getPartnerSheetUrl,
   googleRedirectUri,
+  listExtraMailboxes,
 } from '@repo/google';
 import type { Metadata } from 'next';
 import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
-import { disconnectGoogleAccount } from '../../../actions/google';
+import {
+  disconnectGoogleAccount,
+  removeGoogleMailbox,
+} from '../../../actions/google';
 import { Header } from '../../components/header';
 import { PartnerSheetButton } from './partner-sheet-button';
 
@@ -31,6 +35,12 @@ const ERRORS: Record<string, string> = {
   no_email: 'Google did not say which account that was. Press Connect again.',
   personal_account:
     'That was a personal Gmail account. Sign in with the Kept account instead. Nothing was connected.',
+  no_main:
+    'Connect the main Kept account first. Then you can add more mailboxes.',
+  is_main:
+    'That is the main account. It is already read, so nothing was added.',
+  other_domain:
+    'That account is not on the Kept domain. Only Kept mailboxes can be added. Nothing was added.',
 };
 
 const WHAT_IT_DOES = [
@@ -45,6 +55,10 @@ const WHAT_IT_DOES = [
   [
     'Drive',
     'Each deal gets a folder at valuation: Photos, Legal, Offer, Comps.',
+  ],
+  [
+    'Email log',
+    'Emails with a deal’s seller or solicitor are stored on that deal. Read from every connected mailbox.',
   ],
   [
     'Labels',
@@ -63,18 +77,24 @@ const WHAT_IT_DOES = [
 const GoogleSettingsPage = async ({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string; connected?: string }>;
+  searchParams: Promise<{ error?: string; connected?: string; added?: string }>;
 }) => {
   const { userId } = await auth();
   if (!userId) redirect('/sign-in');
 
-  const [{ error, connected }, status, sheetUrl, requestHeaders] =
-    await Promise.all([
-      searchParams,
-      getGoogleStatus(),
-      getPartnerSheetUrl(),
-      headers(),
-    ]);
+  const [
+    { error, connected, added },
+    status,
+    extras,
+    sheetUrl,
+    requestHeaders,
+  ] = await Promise.all([
+    searchParams,
+    getGoogleStatus(),
+    listExtraMailboxes(),
+    getPartnerSheetUrl(),
+    headers(),
+  ]);
 
   // Built from the address this page was opened on, because that is the
   // address the Connect button will send Google back to.
@@ -90,8 +110,9 @@ const GoogleSettingsPage = async ({
         <div>
           <h1 className="font-semibold text-2xl tracking-tight">Google</h1>
           <p className="mt-2 max-w-2xl text-muted-foreground text-sm">
-            One connection to the Kept Google account. Nothing is ever sent to a
-            seller from here: emails only reach your drafts.
+            The main Kept account, plus any other Kept mailboxes you want in the
+            email log. Nothing is ever sent to a seller from here: emails only
+            reach your drafts.
           </p>
         </div>
 
@@ -103,6 +124,12 @@ const GoogleSettingsPage = async ({
         {connected && status.connected && (
           <div className="rounded-xl border border-emerald-300 bg-emerald-50 p-4 text-emerald-900 text-sm dark:bg-emerald-950 dark:text-emerald-200">
             Connected. Everything below is now switched on.
+          </div>
+        )}
+        {added && (
+          <div className="rounded-xl border border-emerald-300 bg-emerald-50 p-4 text-emerald-900 text-sm dark:bg-emerald-950 dark:text-emerald-200">
+            Mailbox added. Its deal emails reach the log at the next check,
+            within 30 minutes.
           </div>
         )}
 
@@ -155,6 +182,65 @@ const GoogleSettingsPage = async ({
             </>
           )}
         </section>
+
+        {status.connected && (
+          <section className="space-y-4 rounded-xl border p-5">
+            <div>
+              <h2 className="font-semibold text-base">Other Kept mailboxes</h2>
+              <ul className="mt-2 list-disc space-y-1 pl-5 text-sm">
+                <li>
+                  Add a colleague&rsquo;s or a shared Kept mailbox, and its{' '}
+                  <strong>deal emails</strong> go in the email log too.
+                </li>
+                <li>
+                  It is used for <strong>nothing else</strong>: no drafts,
+                  calendar or Drive. Those stay on {status.email}.
+                </li>
+                <li>
+                  Only <strong>Kept accounts</strong> can be added. Whoever adds
+                  one signs in to it on the Google screen.
+                </li>
+                <li>
+                  The same email in two mailboxes is stored{' '}
+                  <strong>once</strong>.
+                </li>
+              </ul>
+            </div>
+
+            {extras.length > 0 && (
+              <ul className="divide-y rounded-lg border">
+                {extras.map((m) => (
+                  <li
+                    className="flex flex-wrap items-center justify-between gap-3 p-3"
+                    key={m.email}
+                  >
+                    <div className="min-w-0">
+                      <p className="break-all font-medium text-sm">{m.email}</p>
+                      <p className="text-muted-foreground text-xs">
+                        {m.broken
+                          ? 'Google stopped accepting it. Remove it, then add it again.'
+                          : `Added ${new Date(m.connectedAt).toLocaleDateString('en-GB')}.`}
+                      </p>
+                    </div>
+                    <form action={removeGoogleMailbox}>
+                      <input name="email" type="hidden" value={m.email} />
+                      <Button size="sm" type="submit" variant="outline">
+                        Remove
+                      </Button>
+                    </form>
+                  </li>
+                ))}
+              </ul>
+            )}
+
+            <Button asChild size="sm">
+              <a href="/api/google/connect?mailbox=1">Add a mailbox</a>
+            </Button>
+            <p className="text-muted-foreground text-xs">
+              Removing one stops it being read. Emails already in the log stay.
+            </p>
+          </section>
+        )}
 
         <section className="space-y-3">
           <h2 className="font-semibold text-base">What it does</h2>

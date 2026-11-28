@@ -3,6 +3,7 @@ import {
   isPrivatePath,
   noPostHogPageView,
 } from '@/components/cookie-consent';
+import { LeadSourceCapture } from '@/components/lead-source-capture';
 import { consentTags, hasConsentTags } from '@/lib/consent-tags';
 import { PostHogProvider } from '@repo/analytics/posthog/client';
 import { PostHogPageView } from '@repo/analytics/posthog/pageview';
@@ -46,6 +47,9 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           </Suspense>
           {children}
         </PostHogProvider>
+        {/* Notes which advert, search or site began this visit, in memory
+            only, so a form sent later can say so. See lib/lead-source.ts. */}
+        <LeadSourceCapture />
         {/* Tags load only after a visitor accepts — see cookie-consent.tsx. */}
         {hasConsentTags() && <CookieConsent {...consentTags()} />}
       </body>

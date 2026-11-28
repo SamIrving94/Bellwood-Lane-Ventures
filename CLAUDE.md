@@ -64,7 +64,7 @@ Business-logic packages (the custom part of this codebase):
 | `@repo/auctions` | Auction House UK / Savills / Clive Emson scrapers |
 | `@repo/email` | Resend wrapper with graceful fallback |
 | `@repo/calendly` | Booking-link generator + webhook verification |
-| `@repo/google` | The Kept Google Workspace connection (Gmail drafts, Calendar, Drive). Graceful skip when not connected. See `docs/GOOGLE-WORKSPACE.md` |
+| `@repo/google` | The Kept Google Workspace connection (Gmail drafts, Calendar, Drive), plus extra Kept mailboxes for the email log. Graceful skip when not connected. See `docs/GOOGLE-WORKSPACE.md` |
 | `@repo/whatsapp-parser` | Parse inbound WhatsApp intake messages |
 | `@repo/instant-offer`, `@repo/quote-ops`, `@repo/deal-updates`, `@repo/document-pipeline`, `@repo/knowledge-base`, `@repo/notifications` | Deal/offer/document/notification workflows |
 | `@repo/kept-tools` | Logic behind the ChatGPT plugin tools (sale routes, inherited-home plan, renovation bands, CGT, property facts). Pure; every stated fact sourced in `src/sources.ts` |
@@ -180,7 +180,8 @@ Run a task for one workspace with a filter, e.g.
 - **The email log reads Gmail, keeps only deal mail, and never guesses a
   deal** (founder, 23 Nov 2026: no Postmark, no address to CC). The
   google-sync cron runs `importDealMail` (`@repo/google`), which reads the
-  Kept mailbox through the Google connection and stores an email
+  Kept mailboxes (the main account, plus any extra Kept mailbox added in
+  Settings → Google) and stores an email
   (`DealEmail`) ONLY when it is deal mail: it continues a conversation
   already in the log, it is to or from a deal's seller or solicitor, or we
   wrote it to someone outside and a full postcode names one deal. Everything
@@ -193,11 +194,18 @@ Run a task for one workspace with a filter, e.g.
   deal", postcodes in inbound mail): a seller's email on the wrong deal is a
   privacy problem. It only READS mail; the one change it makes in Gmail is
   adding `Kept/Logged`. Attachments are listed by name, never copied out of
-  Gmail. The model's read (`deal_email_digest`) is display-only. See
-  `docs/GOOGLE-WORKSPACE.md` § Deal email log.
-- **Google is one connection, to the Kept Workspace account** (founder,
+  Gmail. The model's read (`deal_email_digest`) is display-only. An email
+  that reached two Kept mailboxes is stored once (same Message-ID; a
+  removed one stays removed). See `docs/GOOGLE-WORKSPACE.md` § Deal email
+  log.
+- **Google is one main connection, to the Kept Workspace account** (founder,
   22 Nov 2026), made from Settings → Google and stored encrypted in
-  `Setting`. Personal Gmail accounts are refused at the callback. Gmail is
+  `Setting`. Drafts, Calendar, Drive, labels and the morning brief use it
+  and only it. **Extra Kept mailboxes** (founder, 27 Nov 2026) can be added
+  beside it for the email log ONLY: narrower sign-in (`MAILBOX_SCOPES`:
+  Gmail only), the main account's own domain only (`mailboxRefusal`), never
+  used for drafts or anything else. Personal Gmail accounts are refused at
+  the callback. Gmail is
   **drafts only** for anything vendor-facing: `draftInGmail` never sends,
   and the only send (`sendGmailToSelf`) goes to the Kept mailbox itself.
   Every `@repo/google` feature returns `{ skipped: true }` when not

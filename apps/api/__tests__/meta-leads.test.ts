@@ -19,6 +19,7 @@ import {
   ensureMetaSubscriptions,
   extractLeadgenIds,
   mapPropertyType,
+  metaLeadSourceColumns,
   parseMetaLead,
   resolvePageToken,
   verifyMetaSignature,
@@ -333,5 +334,31 @@ describe('resolvePageToken', () => {
       vi.fn(async () => new Response('{}', { status: 400 }))
     );
     expect(await resolvePageToken('given-tok-2', '7')).toBe('given-tok-2');
+  });
+});
+
+describe('metaLeadSourceColumns', () => {
+  test('a paid Instagram lead is Meta ads, with the ad and campaign', () => {
+    expect(
+      metaLeadSourceColumns({
+        id: '1',
+        platform: 'ig',
+        campaign_name: 'Leads',
+        ad_name: 'AD2 - We Buy Inherited',
+      })
+    ).toEqual({
+      channel: 'meta_ads',
+      utmSource: 'instagram',
+      utmMedium: 'instant_form',
+      utmCampaign: 'Leads',
+      utmContent: 'AD2 - We Buy Inherited',
+    });
+  });
+
+  test('an organic lead is never called an advert', () => {
+    const cols = metaLeadSourceColumns({ id: '2', is_organic: true });
+    expect(cols.channel).toBe('meta');
+    expect(cols.utmSource).toBe('facebook');
+    expect(cols.utmCampaign).toBeNull();
   });
 });

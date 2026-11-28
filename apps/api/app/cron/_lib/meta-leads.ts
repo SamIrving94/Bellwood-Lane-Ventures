@@ -229,6 +229,23 @@ export function buildNotes(lead: MetaLead, parsed: ParsedMetaLead): string {
   return lines.join('\n');
 }
 
+/**
+ * The QuoteRequestSource row for an instant-form lead. Channel names come
+ * from LEAD_CHANNELS (@repo/analytics/lead-source): `meta_ads` for a paid
+ * ad, `meta` (Facebook / Instagram, not called an advert) when Meta says
+ * the lead is organic. Campaign and ad names are Meta's own, read off the
+ * lead, so the report can split by advert with no UTM tagging.
+ */
+export function metaLeadSourceColumns(lead: MetaLead) {
+  return {
+    channel: lead.is_organic ? 'meta' : 'meta_ads',
+    utmSource: lead.platform === 'ig' ? 'instagram' : 'facebook',
+    utmMedium: 'instant_form',
+    utmCampaign: lead.campaign_name ?? null,
+    utmContent: lead.ad_name ?? null,
+  };
+}
+
 // ── Graph API ───────────────────────────────────────────────────────────────
 
 function graphGet<T>(
@@ -542,6 +559,22 @@ export async function ingestMetaLead(lead: MetaLead): Promise<IngestResult> {
       },
       select: { id: true },
     });
+
+    // Where it came from, for the "Where enquiries came from" report.
+    // Best-effort and in its own table (QuoteRequestSource), exactly as the
+    // website does it: a missing table costs the source, not the lead.
+    // An instant form is only ever reached from an ad, unless Meta marks
+    // the lead organic (the form shared from the Page).
+    try {
+      await database.quoteRequestSource.create({
+        data: {
+          quoteRequestId: quote.id,
+          ...metaLeadSourceColumns(lead),
+        },
+      });
+    } catch (err) {
+      console.warn('[meta-leads] lead source not saved (non-fatal)', err);
+    }
 
     const answerLines = parsed.answers.map((a) => `${a.question}: ${a.answer}`);
     await database.founderAction.update({

@@ -1,6 +1,7 @@
 import { fileDealEmail } from '@/app/actions/deals/file-email';
 import { removeDealEmail } from '@/app/actions/deals/remove-email';
 import { syncHealth, toEmailCards } from '@/lib/deal-email-view';
+import { getEmailLogState } from '@/lib/email-log-db';
 import { auth } from '@repo/auth/server';
 import { database } from '@repo/database';
 import { Button } from '@repo/design-system/components/ui/button';
@@ -10,6 +11,7 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { Header } from '../../components/header';
 import { EmailCard } from '../components/email-card';
+import { SwitchOnEmailLog } from '../components/switch-on-email-log';
 
 export const metadata: Metadata = {
   title: 'Email log — Kept',
@@ -144,6 +146,10 @@ export default async function EmailLogPage() {
     }),
   ]);
   const health = syncHealth(sync.lastRunAt);
+  // While the table is missing nothing is read or stored, so the page says
+  // only that: no "last checked", no "nothing waiting".
+  const on = loaded !== null;
+  const logState = on ? 'current' : await getEmailLogState();
   const gmailAccount = google.connected ? google.email : null;
 
   // Live deals first: that is where a new email almost always belongs.
@@ -187,16 +193,17 @@ export default async function EmailLogPage() {
             </li>
           </ul>
 
-          {google.connected && health === 'ok' && sync.lastRun && (
+          {on && google.connected && health === 'ok' && sync.lastRun && (
             <p className="mt-3 text-muted-foreground text-sm">
-              <strong>Reading {google.email}.</strong> Last checked{' '}
-              {WHEN.format(new Date(sync.lastRun.at))}: {sync.lastRun.scanned}{' '}
-              new, {sync.lastRun.kept + sync.lastRun.unfiled} kept.
+              <strong>Reading {google.mailboxes.join(', ')}.</strong> Last
+              checked {WHEN.format(new Date(sync.lastRun.at))}:{' '}
+              {sync.lastRun.scanned} new,{' '}
+              {sync.lastRun.kept + sync.lastRun.unfiled} kept.
               {sync.lastRun.errors > 0 &&
                 ` ${sync.lastRun.errors} could not be read and will be tried again.`}
             </p>
           )}
-          {google.connected && health === 'never' && (
+          {on && google.connected && health === 'never' && (
             <p className="mt-3 text-muted-foreground text-sm">
               <strong>Connected to {google.email}.</strong> The first check runs
               within 30 minutes.
@@ -221,7 +228,7 @@ export default async function EmailLogPage() {
           </div>
         )}
 
-        {google.connected && health === 'stale' && sync.lastRunAt && (
+        {on && google.connected && health === 'stale' && sync.lastRunAt && (
           <div className="max-w-3xl rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm dark:border-amber-800 dark:bg-amber-950">
             <p className="font-medium">Gmail has not been checked lately.</p>
             <p className="mt-1">
@@ -233,89 +240,97 @@ export default async function EmailLogPage() {
           </div>
         )}
 
-        {loaded === null && (
-          <p className="max-w-3xl rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm dark:border-amber-800 dark:bg-amber-950">
-            The email log is not switched on yet. Run{' '}
-            <code className="rounded bg-muted px-1">pnpm migrate</code> once to
-            add its table.
-          </p>
+        {!on && (
+          <div className="max-w-3xl rounded-lg border border-amber-300 bg-amber-50 p-4 dark:border-amber-800 dark:bg-amber-950">
+            {logState === 'current' ? (
+              <p className="text-sm">
+                The email log could not be read just now. Try again shortly.
+              </p>
+            ) : (
+              <SwitchOnEmailLog state={logState} />
+            )}
+          </div>
         )}
 
-        <section className="max-w-3xl">
-          <h2 className="font-medium text-muted-foreground text-sm uppercase tracking-wide">
-            Needs a deal
-            <span className="ml-2 normal-case tracking-normal">
-              {unfiled.length}
-            </span>
-          </h2>
-          {unfiled.length === 0 ? (
-            <p className="mt-2 text-muted-foreground text-sm">
-              Nothing waiting. Every email found its deal.
-            </p>
-          ) : (
-            <ul className="mt-2 space-y-3">
-              {unfiled.map((e) => (
-                <li className="rounded-lg border bg-card p-3" key={e.id}>
-                  <EmailCard bare email={e} gmailAccount={gmailAccount} />
-                  <FileForm
-                    deals={dealOptions}
-                    emailId={e.id}
-                    label="File on this deal"
-                  />
-                  <RemoveForm emailId={e.id} />
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
-
-        <section className="max-w-3xl">
-          <h2 className="font-medium text-muted-foreground text-sm uppercase tracking-wide">
-            Latest emails
-          </h2>
-          {filed.length === 0 ? (
-            <p className="mt-2 text-muted-foreground text-sm">
-              No emails stored yet. They appear once Google is connected and a
-              deal has its seller&rsquo;s or solicitor&rsquo;s email on it.
-            </p>
-          ) : (
-            <ul className="mt-2 space-y-3">
-              {filed.map((e) => (
-                <li className="rounded-lg border bg-card p-3" key={e.id}>
-                  <p className="mb-2 text-xs">
-                    <Link
-                      className="font-medium underline-offset-2 hover:underline"
-                      href={`/deals/${e.dealId}`}
-                    >
-                      {dealLabel.get(e.id)}
-                    </Link>
-                    {e.matchedBy && MATCHED_BY[e.matchedBy] && (
-                      <span className="text-muted-foreground">
-                        {' '}
-                        · Here because {MATCHED_BY[e.matchedBy]}
-                      </span>
-                    )}
-                  </p>
-                  <EmailCard bare email={e} gmailAccount={gmailAccount} />
-                  <details className="mt-2">
-                    <summary className="cursor-pointer text-muted-foreground text-xs">
-                      Wrong deal?
-                    </summary>
-                    <p className="mt-2 text-muted-foreground text-xs">
-                      Moving it moves the whole conversation.
-                    </p>
+        {on && (
+          <section className="max-w-3xl">
+            <h2 className="font-medium text-muted-foreground text-sm uppercase tracking-wide">
+              Needs a deal
+              <span className="ml-2 normal-case tracking-normal">
+                {unfiled.length}
+              </span>
+            </h2>
+            {unfiled.length === 0 ? (
+              <p className="mt-2 text-muted-foreground text-sm">
+                Nothing waiting. Every email found its deal.
+              </p>
+            ) : (
+              <ul className="mt-2 space-y-3">
+                {unfiled.map((e) => (
+                  <li className="rounded-lg border bg-card p-3" key={e.id}>
+                    <EmailCard bare email={e} gmailAccount={gmailAccount} />
                     <FileForm
                       deals={dealOptions}
                       emailId={e.id}
-                      label="Move to this deal"
+                      label="File on this deal"
                     />
-                  </details>
-                  <RemoveForm emailId={e.id} />
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
+                    <RemoveForm emailId={e.id} />
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+        )}
+
+        {on && (
+          <section className="max-w-3xl">
+            <h2 className="font-medium text-muted-foreground text-sm uppercase tracking-wide">
+              Latest emails
+            </h2>
+            {filed.length === 0 ? (
+              <p className="mt-2 text-muted-foreground text-sm">
+                No emails stored yet. They appear once Google is connected and a
+                deal has its seller&rsquo;s or solicitor&rsquo;s email on it.
+              </p>
+            ) : (
+              <ul className="mt-2 space-y-3">
+                {filed.map((e) => (
+                  <li className="rounded-lg border bg-card p-3" key={e.id}>
+                    <p className="mb-2 text-xs">
+                      <Link
+                        className="font-medium underline-offset-2 hover:underline"
+                        href={`/deals/${e.dealId}`}
+                      >
+                        {dealLabel.get(e.id)}
+                      </Link>
+                      {e.matchedBy && MATCHED_BY[e.matchedBy] && (
+                        <span className="text-muted-foreground">
+                          {' '}
+                          · Here because {MATCHED_BY[e.matchedBy]}
+                        </span>
+                      )}
+                    </p>
+                    <EmailCard bare email={e} gmailAccount={gmailAccount} />
+                    <details className="mt-2">
+                      <summary className="cursor-pointer text-muted-foreground text-xs">
+                        Wrong deal?
+                      </summary>
+                      <p className="mt-2 text-muted-foreground text-xs">
+                        Moving it moves the whole conversation.
+                      </p>
+                      <FileForm
+                        deals={dealOptions}
+                        emailId={e.id}
+                        label="Move to this deal"
+                      />
+                    </details>
+                    <RemoveForm emailId={e.id} />
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+        )}
       </div>
     </>
   );

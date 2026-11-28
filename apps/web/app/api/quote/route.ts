@@ -6,6 +6,10 @@ import {
   retryAfterSeconds,
 } from '@/lib/rate-limit';
 import { CLAUDE_HAIKU, callClaudeForJson } from '@repo/ai/claude';
+import {
+  leadSourceColumns,
+  sanitizeLeadSource,
+} from '@repo/analytics/lead-source';
 import { brand } from '@repo/brand';
 import { database } from '@repo/database';
 import { recordDealUpdate } from '@repo/deal-updates';
@@ -67,6 +71,13 @@ const InputSchema = z.object({
   submissionSource: z.string().optional(),
   /** Free-text "anything else?" — drives the LLM triage signal in the inbox. */
   notes: z.string().max(2000).optional(),
+  /**
+   * Which advert, search or site began the visit (apps/web/lib/lead-source.ts).
+   * Deliberately unvalidated here: sanitizeLeadSource cleans it and drops
+   * what it does not recognise, so a malformed source can never turn a real
+   * enquiry into a 400.
+   */
+  leadSource: z.unknown().optional(),
 });
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -598,6 +609,24 @@ export async function POST(request: Request) {
         status: 'processing',
       },
     });
+
+    // Which advert, search or site brought them. Best-effort, and in its own
+    // table on purpose (QuoteRequestSource in schema.prisma): the enquiry is
+    // already saved above, so a missing table or a failed row costs us the
+    // source and nothing else.
+    const visitSource = sanitizeLeadSource(input.leadSource);
+    if (visitSource) {
+      try {
+        await database.quoteRequestSource.create({
+          data: {
+            quoteRequestId: quoteRequest.id,
+            ...leadSourceColumns(visitSource),
+          },
+        });
+      } catch (err) {
+        console.warn('[quote] lead source not saved (non-fatal)', err);
+      }
+    }
 
     // Increment agent's totalReferrals counter (best-effort)
     if (input.referralCode) {
