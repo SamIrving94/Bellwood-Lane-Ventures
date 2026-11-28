@@ -56,7 +56,8 @@ describe('public plugin', () => {
     const s = body.result.structuredContent;
     expect(s.kind).toBe('sale_routes');
     expect(s.routes[2].pricePence).toBeNull();
-    expect(s.nextStep.url).toContain('utm_source=chatgpt');
+    // No initialize in this harness, so the client is unknown.
+    expect(s.nextStep.url).toContain('utm_source=agent');
     expect(body.result.content[0].text).toMatch(/do not recommend a route/);
   });
 

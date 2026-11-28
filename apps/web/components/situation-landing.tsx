@@ -3,6 +3,13 @@ import { SituationOfferForm } from '@/components/home/situation-offer-form';
 import { SiteFooter } from '@/components/site-footer';
 import { METHODOLOGY_PUBLIC } from '@/lib/public-sections';
 import { SITUATION_CONTENT, type SituationKey } from '@/lib/situation-content';
+import { brand } from '@repo/brand';
+import {
+  type FAQPage,
+  JsonLd,
+  type Organization,
+  type WithContext,
+} from '@repo/seo/json-ld';
 import Image from 'next/image';
 import Link from 'next/link';
 
@@ -21,8 +28,30 @@ export function SituationLanding({
   situationKey,
 }: { situationKey: SituationKey }) {
   const c = SITUATION_CONTENT[situationKey];
+  // Structured data for search and AI assistants. The FAQ is the same signed-off
+  // copy the page shows (never a separate version), so what an assistant quotes
+  // is what a visitor reads. Organization carries no claims beyond who we are.
+  const faqLd: WithContext<FAQPage> = {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: c.faqs.map((f) => ({
+      '@type': 'Question',
+      name: f.q,
+      acceptedAnswer: { '@type': 'Answer', text: f.a },
+    })),
+  };
+  const orgLd: WithContext<Organization> = {
+    '@context': 'https://schema.org',
+    '@type': 'Organization',
+    name: brand.name,
+    legalName: brand.legalName,
+    url: brand.url,
+    email: brand.email,
+  };
   return (
     <>
+      <JsonLd code={faqLd} />
+      <JsonLd code={orgLd} />
       {/* ————— NAV ————— */}
       <header className="border-hair border-b bg-white">
         <div className="mx-auto flex max-w-[1100px] items-center justify-between gap-6 px-5 py-3.5 md:px-10">

@@ -28,7 +28,7 @@ import {
   poundsToPence,
 } from '@repo/kept-tools';
 import { z } from 'zod';
-import { keptHandoff } from './links';
+import { clientSource, keptHandoff } from './links';
 import { withUsageLogging } from './usage';
 import { WIDGET_HTML, WIDGET_MIME, WIDGET_URI } from './widget';
 
@@ -68,6 +68,8 @@ export const PUBLIC_TOOL_NAMES = [
 
 export function registerPublicPlugin(server: McpServer): void {
   withUsageLogging(server, 'public');
+  // Read per call: the client name only exists once initialize has run.
+  const source = () => clientSource(server.server.getClientVersion()?.name);
   server.registerResource(
     'kept-card',
     WIDGET_URI,
@@ -209,7 +211,7 @@ export function registerPublicPlugin(server: McpServer): void {
           structuredContent: {
             kind: 'sale_routes',
             ...result,
-            nextStep: keptHandoff('/sell', 'compare_sale_routes'),
+            nextStep: keptHandoff('/sell', 'compare_sale_routes', source()),
           },
           content: [
             {
@@ -274,7 +276,7 @@ export function registerPublicPlugin(server: McpServer): void {
           structuredContent: {
             kind: 'inherited_home_plan',
             ...plan,
-            nextStep: keptHandoff('/probate', 'plan_inherited_home'),
+            nextStep: keptHandoff('/probate', 'plan_inherited_home', source()),
           },
           content: [
             {
@@ -364,7 +366,8 @@ export function registerPublicPlugin(server: McpServer): void {
           sources: epc ? [...est.sources, SOURCES.epcRegister] : est.sources,
           nextStep: keptHandoff(
             '/problem-property',
-            'estimate_renovation_cost'
+            'estimate_renovation_cost',
+            source()
           ),
         },
         content: [
@@ -419,7 +422,7 @@ export function registerPublicPlugin(server: McpServer): void {
               SOURCES.landRegistry.label,
             ],
             sources: [SOURCES.epcRegister, SOURCES.landRegistry],
-            nextStep: keptHandoff('/sell', 'get_property_facts'),
+            nextStep: keptHandoff('/sell', 'get_property_facts', source()),
           },
           content: [
             {

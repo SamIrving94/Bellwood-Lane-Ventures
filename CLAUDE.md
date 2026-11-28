@@ -281,6 +281,13 @@ Run a task for one workspace with a filter, e.g.
   (60-second figures, 4-hour signed offers) in vendor-facing, agent-facing,
   or marketing copy — internal ops targets may be faster but are never
   advertised. If docs and the live site disagree, the live site wins.
+  `apps/web/lib/llms-txt.ts` (`PROMISE`, served at `/llms.txt`) restates the
+  promise for AI assistants: change it in the same commit as the site copy.
+  Landing-page FAQ JSON-LD reads straight from `situation-content.ts`, so it
+  cannot drift. AI crawlers are named on purpose in `apps/web/app/robots.ts`
+  (founder, 28 Nov 2026: be the source assistants quote). The plugin tags
+  `utm_source` with the calling assistant's name (`clientSource`), falling
+  back to `agent`.
 - **Tone of voice — the Beth Sims bar** (founder direction, 22 Aug 2026).
   The signed-off homepage copy is the standard all new copy must meet: people
   first, cut what adds nothing, neutral precision over drama, verify claims
