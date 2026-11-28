@@ -176,10 +176,17 @@ or changes their Facebook password.
 
 ### 3.4 Give it the app
 
-- **Do:** click **Assign assets** again.
-- **Do:** choose **Apps** → tick **Kept Leads** → turn on **Full
-  control** (or **Manage app**). Click **Save changes**.
-- **Why:** a token is always made "for" one app. This links the two.
+- **Do:** go to the left menu → **Accounts** → **Apps** → click **Kept
+  Leads**.
+- **Do:** click **Assign people** (or **Add people**) → pick the **Kept
+  Leads** system user → turn on **Full control** (or **Manage app**) →
+  **Save**.
+- **Why:** a token is always made "for" one app, and the system user
+  needs a role on that app first. Without it, step 3.5 says **"No
+  permissions available. Assign an app role to the system user"**.
+- **If Kept Leads is not in the Apps list:** the app is not connected
+  to the business. On the same page click **Add** → **Connect an app
+  ID** → paste the **App ID** (value 1). Then do this step.
 
 ### 3.5 Generate the token
 
@@ -194,6 +201,8 @@ or changes their Facebook password.
 - **Do:** copy it into your note as **value 3**.
 - ⚠️ **Meta shows it once only.** If you lose it, generate a new one.
   The old one keeps working until you revoke it.
+- **If it says "No permissions available":** the system user has no
+  role on the app. Do step 3.4 again.
 - **If a permission is missing from the list:** go back to step 1.6 and
   add it to the app first.
 
@@ -288,6 +297,7 @@ Delete the extra copy.
 | No lead after 30 minutes | Not connected yet | Check the 3 keys in Vercel (spelling, Production ticked), then redeploy |
 | Card: **"Meta leads are not coming through"** | Meta refused the token | Read the Meta error in the card. Usually a missing permission (1.6 / 3.5) or Leads access (3.6). Make a new token, replace value 3, redeploy |
 | Leads arrive, but only every 30 min | App not Live | Do Part 2 |
+| **"No permissions available"** when making the token | System user has no role on the app | Step 3.4, then try again |
 | Stuck on a Meta screen | Meta changed the layout | Send me a screenshot |
 
 **Leads are never lost.** Meta keeps every lead in **Business Suite →
