@@ -66,7 +66,7 @@ _Updated: 2026-10-01. ✅ = done by Claude. 👤 = needs you._
    - **Name:** Kept
    - **URL:** `https://<your domain from step 8>/mcp`
    - **Auth:** none
-4. Save. You should see **4 tools**.
+4. Save. You should see **5 tools**.
 
 ## 3. Try it (5 min) 👤
 

@@ -21,12 +21,13 @@ const call = (name: string, args: Record<string, unknown>) =>
   rpc(POST, 'tools/call', { name, arguments: args });
 
 describe('public plugin', () => {
-  it('lists exactly the four tools, all read-only with explicit hints', async () => {
+  it('lists exactly the five tools, all read-only with explicit hints', async () => {
     const { body } = await rpc(POST, 'tools/list');
     const tools = body.result.tools as Json[];
     expect(tools.map((t) => t.name).sort()).toEqual([
       'compare_sale_routes',
       'estimate_renovation_cost',
+      'get_enquiry_link',
       'get_property_facts',
       'plan_inherited_home',
     ]);
@@ -59,6 +60,29 @@ describe('public plugin', () => {
     // No initialize in this harness, so the client is unknown.
     expect(s.nextStep.url).toContain('utm_source=agent');
     expect(body.result.content[0].text).toMatch(/do not recommend a route/);
+  });
+
+  it('gives a link to the right page and takes no personal details', async () => {
+    const { body } = await call('get_enquiry_link', { situation: 'probate' });
+    const s = body.result.structuredContent;
+    expect(s.kind).toBe('enquiry_link');
+    expect(s.nextStep.url).toContain('/probate');
+    expect(s.nextStep.url).toContain('utm_campaign=get_enquiry_link');
+    expect(body.result.content[0].text).toMatch(/do not collect or submit/i);
+    expect(body.result.content[0].text).toMatch(/do not state a price/i);
+    // The schema has no field that could carry a name, phone, email or address.
+    const { body: list } = await rpc(POST, 'tools/list');
+    const tool = (list.result.tools as Json[]).find(
+      (t) => t.name === 'get_enquiry_link'
+    );
+    expect(Object.keys(tool?.inputSchema.properties)).toEqual(['situation']);
+  });
+
+  it('falls back to the general page when the situation is unclear', async () => {
+    const { body } = await call('get_enquiry_link', {});
+    expect(body.result.structuredContent.nextStep.url).toContain(
+      '/your-situation'
+    );
   });
 
   it('builds an inherited-home plan', async () => {
