@@ -1,3 +1,4 @@
+import { SCOUT_RUN_WHERE } from '@/lib/scout-runs';
 import { auth } from '@repo/auth/server';
 import { database } from '@repo/database';
 import type { Metadata } from 'next';
@@ -22,7 +23,7 @@ export default async function ScoutingSettingsPage() {
     getAreas(),
     getAreaLeadStats(),
     database.agentEvent.findFirst({
-      where: { eventType: 'leads_created' },
+      where: SCOUT_RUN_WHERE,
       orderBy: { createdAt: 'desc' },
     }),
     database.scoutLead.count({
