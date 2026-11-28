@@ -11,7 +11,6 @@ export const store = {
   investorTokens: [] as Row[],
   counters: new Map<string, number>(),
   quotes: [] as Row[],
-  sources: [] as Row[],
   actions: [] as Row[],
   deals: [] as Row[],
   interests: [] as Row[],
@@ -40,7 +39,6 @@ export function resetStore() {
   ];
   store.counters.clear();
   store.quotes = [];
-  store.sources = [];
   store.actions = [];
   store.deals = [
     {
@@ -98,20 +96,12 @@ export const fakeDatabase = {
   },
   quoteRequest: {
     findFirst: async ({ where }: Row) =>
-      store.quotes.find((q) =>
-        where.source === 'plugin_public'
-          ? q.source === 'plugin_public' &&
-            q.contactEmail === where.contactEmail &&
-            q.postcode === where.postcode &&
-            q.createdAt >= where.createdAt.gte
-          : q.referralCode === where.referralCode &&
-            q.postcode === where.postcode &&
-            ci(q.address, where.address.equals)
+      store.quotes.find(
+        (q) =>
+          q.referralCode === where.referralCode &&
+          q.postcode === where.postcode &&
+          ci(q.address, where.address.equals)
       ) ?? null,
-    count: async ({ where }: Row) =>
-      store.quotes.filter(
-        (q) => q.source === where.source && q.createdAt >= where.createdAt.gte
-      ).length,
     create: async ({ data }: Row) => {
       const row = {
         id: `q${store.quotes.length + 1}`,
@@ -123,12 +113,6 @@ export const fakeDatabase = {
     },
     findMany: async () =>
       store.quotes.map((q) => ({ ...q, trackToken: null, dealUpdates: [] })),
-  },
-  quoteRequestSource: {
-    create: async ({ data }: Row) => {
-      store.sources.push(data);
-      return data;
-    },
   },
   founderAction: {
     create: async ({ data }: Row) => {

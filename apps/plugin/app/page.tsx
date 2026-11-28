@@ -112,8 +112,9 @@ export default function Page() {
             certificate and recorded sale prices nearby.
           </li>
           <li>
-            <strong>Ask {brand.name} to get in touch.</strong> Only if you ask,
-            and only with your agreement.
+            <strong>Get a link to ask {brand.name} for a written offer.</strong>{' '}
+            You fill in {brand.name}&rsquo;s own form yourself. The tools never
+            ask for your details.
           </li>
         </ul>
       </Section>
@@ -161,14 +162,12 @@ export default function Page() {
       <Section title="What happens to what you type">
         <ul>
           <li>
-            The planning tools use what you type to work out the answer, and
-            store none of it.
+            The tools use what you type to work out the answer, and store none
+            of it. They never ask for your name or contact details.
           </li>
           <li>
-            If you ask {brand.name} to get in touch, {brand.name} receives the
-            details you give: your name, email, phone if you add one, the home’s
-            address and your situation. They are used only to contact you about
-            that home.
+            To ask {brand.name} for an offer, you use the form on {brand.name}
+            &rsquo;s own site.
           </li>
           <li>
             Our logs record which tool ran, which assistant it came from,

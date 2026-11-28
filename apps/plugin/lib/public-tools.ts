@@ -1,7 +1,5 @@
 /**
- * Kept's public plugin for ChatGPT and Claude: no login. Five read-only
- * tools that answer the seller's question in full, and one the user calls
- * to ask Kept to get in touch (consented, minimal fields, no figure).
+ * Kept's public plugin for ChatGPT and Claude: read-only tools, no login.
  *
  * Ranked and specified in docs/mcp/02-ranking.md; build notes in
  * docs/mcp/05-build-plan.md. The rules every tool here keeps:
@@ -9,10 +7,8 @@
  *  - **No Kept figure.** No AVM, no offer, no "indicative" range. Prices
  *    come from the user; data comes from open registers. (Founder rule.)
  *  - **No PropertyData.** Our licence is internal use only.
- *  - **No personal data stored by the planning tools.** Their inputs are
- *    used to compute the answer and are not written anywhere (probate
- *    firewall). The one exception is ask_kept_to_call, which the user calls,
- *    with their agreement, to send Kept their details as a draft enquiry.
+ *  - **No personal data stored.** Inputs are used to compute the answer and
+ *    are not written anywhere (probate firewall).
  *  - **No verdict.** Tools lay out the maths and the trade-offs; the user
  *    decides.
  *
@@ -28,9 +24,7 @@ import {
   type KnownIssue,
   type PlanSituation,
   SITUATIONS,
-  SITUATION_INFO,
   SOURCES,
-  type Situation,
   compareSaleRoutes,
   estimateRenovation,
   formatPounds,
@@ -39,13 +33,7 @@ import {
   poundsToPence,
 } from '@repo/kept-tools';
 import { z } from 'zod';
-import { db } from './db';
-import {
-  type AssistantHost,
-  HOST_LABELS,
-  HOST_UTM_SOURCE,
-  hostFromContext,
-} from './host';
+import { hostFromContext } from './host';
 import { keptHandoff, siteLink } from './links';
 import { withUsageLogging } from './usage';
 import { WIDGET_HTML, WIDGET_MIME, WIDGET_URI } from './widget';
@@ -57,22 +45,11 @@ async function loadPropertyFacts() {
 
 const UK_POSTCODE = /^[A-Z]{1,2}\d[A-Z\d]?\s*\d[A-Z]{2}$/i;
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
-const UK_PHONE = /^(?:\+44|0)[\d\s]{9,13}$/;
-const POSTCODE_PARTS = /^(.+)(\d[A-Z]{2})$/;
-const WHITESPACE = /\s+/g;
 
 const PLAN_SITUATIONS = SITUATIONS.filter((s) => s !== 'inherited') as [
   PlanSituation,
   ...PlanSituation[],
 ];
-
-/** "m14 5ab" / "M145AB" → "M14 5AB", the form the site's own forms store. */
-function normalisePostcode(postcode: string): string {
-  return postcode
-    .toUpperCase()
-    .replace(WHITESPACE, '')
-    .replace(POSTCODE_PARTS, '$1 $2');
-}
 
 const pounds = (max: number) => z.number().positive().max(max);
 
@@ -99,159 +76,7 @@ export const PUBLIC_TOOL_NAMES = [
   'plan_inherited_home',
   'estimate_renovation_cost',
   'get_property_facts',
-  'ask_kept_to_call',
 ] as const;
-
-/** QuoteRequest.source for enquiries made inside an assistant. */
-export const PLUGIN_ENQUIRY_SOURCE = 'plugin_public';
-/**
- * Ceilings on in-chat enquiries, against abuse of a no-login endpoint. Real
- * volume is a few a week; past a ceiling the user gets the site's form, so
- * no genuine enquiry is lost, and a flood stops at 30 Action Centre cards.
- */
-const MAX_ENQUIRIES_PER_HOUR = 10;
-const MAX_ENQUIRIES_PER_DAY = 30;
-const HOUR_MS = 3_600_000;
-const DAY_MS = 86_400_000;
-const TIMINGS = {
-  asap: { label: 'as soon as possible', urgencyDays: 14 },
-  within_3_months: { label: 'within 3 months', urgencyDays: 90 },
-  later: { label: 'later than 3 months', urgencyDays: 180 },
-  not_sure: { label: 'not sure yet', urgencyDays: null },
-} as const;
-type Timing = keyof typeof TIMINGS;
-const TIMING_KEYS = Object.keys(TIMINGS) as [Timing, ...Timing[]];
-
-type Database = Awaited<ReturnType<typeof db>>;
-
-/** An in-chat enquiry, cleaned: lower-case email, normalised postcode. */
-interface Enquiry {
-  name: string;
-  email: string;
-  phone: string | null;
-  addressLine: string;
-  postcode: string;
-  situation: Situation;
-  timing: Timing;
-  notes?: string;
-}
-
-/** The same email and postcode within a day is one enquiry, not two. */
-async function findRecentEnquiry(
-  database: Database,
-  e: Enquiry
-): Promise<string | null> {
-  const recent = await database.quoteRequest.findFirst({
-    where: {
-      source: PLUGIN_ENQUIRY_SOURCE,
-      contactEmail: e.email,
-      postcode: e.postcode,
-      createdAt: { gte: new Date(Date.now() - DAY_MS) },
-    },
-    select: { id: true },
-  });
-  return recent?.id ?? null;
-}
-
-async function underCeilings(database: Database): Promise<boolean> {
-  const since = (ms: number) =>
-    database.quoteRequest.count({
-      where: {
-        source: PLUGIN_ENQUIRY_SOURCE,
-        createdAt: { gte: new Date(Date.now() - ms) },
-      },
-    });
-  const [lastHour, lastDay] = await Promise.all([
-    since(HOUR_MS),
-    since(DAY_MS),
-  ]);
-  return lastHour < MAX_ENQUIRIES_PER_HOUR && lastDay < MAX_ENQUIRIES_PER_DAY;
-}
-
-/**
- * Saves the enquiry as a DRAFT quote, notes which assistant sent it, and
- * puts a card in the Action Centre for a person to reply. Sends nothing to
- * the seller. Returns the quote id.
- */
-async function recordEnquiry(
-  database: Database,
-  e: Enquiry,
-  host: AssistantHost
-): Promise<string> {
-  const info = SITUATION_INFO[e.situation];
-  const timing = TIMINGS[e.timing];
-  const quote = await database.quoteRequest.create({
-    data: {
-      source: PLUGIN_ENQUIRY_SOURCE,
-      contactName: e.name,
-      contactEmail: e.email,
-      contactPhone: e.phone,
-      role: 'seller',
-      address: e.addressLine,
-      postcode: e.postcode,
-      sellerSituation: info.sellerSituation,
-      urgencyDays: timing.urgencyDays,
-      notes: [
-        `Asked via ${HOST_LABELS[host]} (Kept plugin). Situation: ${info.label}. Timing: ${timing.label}.`,
-        e.notes ? `In their words: ${e.notes}` : null,
-      ]
-        .filter(Boolean)
-        .join('\n'),
-      status: 'draft',
-    },
-    select: { id: true },
-  });
-
-  // Which assistant sent it, for the dashboard's "Where enquiries came
-  // from" card. Best-effort, as on the site's own forms.
-  try {
-    await database.quoteRequestSource.create({
-      data: {
-        quoteRequestId: quote.id,
-        channel: 'ai_assistant',
-        utmSource: HOST_UTM_SOURCE[host],
-        utmMedium: 'plugin',
-        utmCampaign: 'ask_kept_to_call',
-      },
-    });
-  } catch {
-    console.warn('[plugin] enquiry source not saved (non-fatal)');
-  }
-
-  await database.founderAction.create({
-    data: {
-      type: 'general',
-      priority: 'high',
-      status: 'pending',
-      agent: 'liaison',
-      title: `Seller asked via ${HOST_LABELS[host]} to be contacted: ${e.postcode}`,
-      description: `${e.name} asked ${brand.name} to get in touch about ${e.addressLine}, ${e.postcode}. ${info.label}; wants to sell ${timing.label}.${e.notes ? ` Notes: ${e.notes}` : ''} Reply within 24 hours, Monday to Friday.`,
-      metadata: {
-        quoteRequestId: quote.id,
-        source: PLUGIN_ENQUIRY_SOURCE,
-        host,
-        link: `/quotes/${quote.id}`,
-      },
-      dedupKey: `plugin-contact:${quote.id}`,
-    },
-  });
-  return quote.id;
-}
-
-function contactReply(reference: string, duplicate: boolean) {
-  const text = duplicate
-    ? `${brand.name} already has these details from today (reference ${reference}). A person will be in touch within 24 hours, Monday to Friday.`
-    : `Sent (reference ${reference}). A person at ${brand.name} will be in touch within 24 hours, Monday to Friday, to arrange a viewing. ${brand.name} views every home first; a written offer follows within two working days of the viewing, and you are free to say no. The details are used only to contact you about this home: ${brand.url}/legal/privacy`;
-  return {
-    structuredContent: {
-      kind: 'contact_request',
-      received: true,
-      duplicate,
-      reference,
-    },
-    content: [{ type: 'text' as const, text }],
-  };
-}
 
 /** How a route's typical time compares with the user's date, in words. */
 function deadlineWords(meetsDeadline: boolean | null): string {
@@ -746,110 +571,6 @@ export function registerPublicPlugin(server: McpServer): void {
         console.error('[plugin] get_property_facts failed', err);
         return errorResult(
           'The public registers could not be reached just now. Try again shortly.'
-        );
-      }
-    }
-  );
-
-  // ---------------------------------------------------------------------
-  // Conversion: the user asks Kept to get in touch (consented)
-  // ---------------------------------------------------------------------
-  server.registerTool(
-    'ask_kept_to_call',
-    {
-      title: `Ask ${brand.name} to get in touch`,
-      description: `Use only when someone in the UK asks ${brand.name} to contact them about selling a home, and agrees to share their details. Examples: "yes, ask Kept to call me", "can Kept come and look at the house?", "pass my details to Kept". Sends ${brand.name} the name, email, phone (optional), the home's address and the situation the user gives. A person at ${brand.name} replies within 24 hours, Monday to Friday, to arrange a viewing; a written offer follows within two working days of the viewing, and the user is free to say no. Nothing is sent without the user's agreement.`,
-      inputSchema: z.object({
-        name: z.string().trim().min(2).max(120),
-        email: z.email().max(254),
-        phone: z
-          .string()
-          .trim()
-          .regex(UK_PHONE)
-          .optional()
-          .describe('UK phone number, if the user wants a call.'),
-        addressLine: z
-          .string()
-          .trim()
-          .min(2)
-          .max(200)
-          .describe('First line of the address of the home to sell.'),
-        postcode: z.string().trim().regex(UK_POSTCODE),
-        situation: z.enum(SITUATIONS).describe('Why they are selling.'),
-        timing: z
-          .enum(TIMING_KEYS)
-          .optional()
-          .describe('When they would like to sell.'),
-        notes: z
-          .string()
-          .trim()
-          .max(500)
-          .optional()
-          .describe('Anything the user wants Kept to know, in their words.'),
-        consent: z
-          .literal(true)
-          .describe(
-            `True once the user has agreed that ${brand.name} may contact them about selling this home.`
-          ),
-      }),
-      annotations: {
-        title: `Ask ${brand.name} to get in touch`,
-        readOnlyHint: false,
-        destructiveHint: false,
-        // The same request twice within a day is recorded once.
-        idempotentHint: true,
-        openWorldHint: true,
-      },
-      _meta: {
-        'openai/toolInvocation/invoking': `Sending your details to ${brand.name}…`,
-        'openai/toolInvocation/invoked': `Sent to ${brand.name}`,
-      },
-    },
-    async (args, ctx) => {
-      const host = hostFromContext(ctx);
-      const form = siteLink(
-        SITUATION_INFO[args.situation].path,
-        'ask_kept_to_call',
-        host
-      );
-      const notNow = () =>
-        errorResult(
-          `${brand.name} can't take details here just now. The form is here instead: ${form}`
-        );
-      if (!process.env.DATABASE_URL) {
-        return notNow();
-      }
-      const enquiry: Enquiry = {
-        name: args.name,
-        email: args.email.trim().toLowerCase(),
-        phone: args.phone ?? null,
-        addressLine: args.addressLine,
-        postcode: normalisePostcode(args.postcode),
-        situation: args.situation,
-        timing: args.timing ?? 'not_sure',
-        notes: args.notes,
-      };
-      try {
-        const database = await db();
-        const recent = await findRecentEnquiry(database, enquiry);
-        if (recent) {
-          return contactReply(recent, true);
-        }
-        if (!(await underCeilings(database))) {
-          return notNow();
-        }
-        return contactReply(
-          await recordEnquiry(database, enquiry, host),
-          false
-        );
-      } catch (err) {
-        // Never log the error itself: it can echo the details sent.
-        console.error(
-          '[plugin] ask_kept_to_call failed',
-          err instanceof Error ? err.name : 'unknown'
-        );
-        return errorResult(
-          `That didn't go through. The form is here instead: ${form}`
         );
       }
     }

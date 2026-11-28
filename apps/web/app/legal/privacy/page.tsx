@@ -66,10 +66,11 @@ export const metadata: Metadata = {
  * dropped (only which kind was there is kept). Change either and this page
  * changes first.
  *
- * v1.7 (Nov 2026): Kept in ChatGPT and Claude (apps/plugin). Its planning
- * tools store nothing; its one write tool (ask_kept_to_call) saves the
- * details the user agrees to send as a draft enquiry, tagged with the
- * assistant it came from. Its logs hold the tool, the assistant, the outcome
+ * v1.7 (Nov 2026): Kept in ChatGPT and Claude (apps/plugin). Its tools
+ * store nothing a user types and take no personal details: a seller who
+ * wants an offer gets a link to our own form (founder, link only, 28 Nov
+ * 2026). The link names the assistant in utm_source, saved with the form
+ * like any other source. Its logs hold the tool, the assistant, the outcome
  * and the time, never the inputs (apps/plugin/lib/usage.ts). Widen any of
  * that and this page changes first.
  */
@@ -117,9 +118,8 @@ const SECTIONS: Array<{
     body: (
       <>
         <p>
-          When you ask us for an offer, we ask for and store the following,
-          whether you use a form on this site, {brand.name} in ChatGPT or
-          Claude, email or WhatsApp:
+          When you ask us for an offer, through a form on this site, by email or
+          by WhatsApp, we ask for and store:
         </p>
         <ul>
           <li>
@@ -141,19 +141,18 @@ const SECTIONS: Array<{
             site, we keep a note of what brought you here: one of our adverts, a
             search, or a link on another site, and the first page you opened. It
             is read from that page&rsquo;s address, not from a cookie, and we do
-            not keep the code an advertiser attaches to your click. If you ask
-            us from ChatGPT or Claude, we note which of the two.
+            not keep the code an advertiser attaches to your click. If a link
+            from ChatGPT or Claude brought you here, we note which.
           </li>
         </ul>
         <p>
           <strong>If you use {brand.name} in ChatGPT or Claude</strong>, its
-          planning tools work out an answer from what you type and store none of
-          it. If you ask us to get in touch, the assistant sends us only what
-          that needs: your name, email, phone number if you add one, the
-          property&rsquo;s address, your situation and timescale, and any note
-          you add. Our logs record which tool ran and which assistant it came
-          from, never what you typed. The conversation itself is held by OpenAI
-          or Anthropic under their own privacy terms, not by us.
+          tools work out an answer from what you type and store none of it. They
+          never ask for your name or contact details: to ask us for an offer,
+          you use the form on this site. Our logs record which tool ran and
+          which assistant it came from, never what you typed. The conversation
+          itself is held by OpenAI or Anthropic under their own privacy terms,
+          not by us.
         </p>
         <p>
           Before you submit anything, the address-lookup box passes what you
