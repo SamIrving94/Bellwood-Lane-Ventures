@@ -44,7 +44,7 @@ they are always held for founder review.
 | `apps/email` | `email` | 3003 | React Email preview/dev |
 | `apps/docs` | `docs` | 3004 | Mintlify documentation site |
 | `apps/studio` | `studio` | 3005 | Prisma Studio (DB browser) |
-| `apps/plugin` | `plugin` | 3006 | **Kept in ChatGPT and Claude** (MCP): public `/mcp` (five read-only tools for every Kept situation, plus `ask_kept_to_call`, which saves a consented **draft** quote and an Action Centre card; needs `DATABASE_URL`, never emails the seller) + agent/investor `/pro/mcp` with OAuth. MCP SDK v2 + zod 4, isolated. Pro is parked while the agent side is hidden (`docs/mcp/08-review-2026-11.md`). Funnel and listing: `docs/mcp/10-funnel.md` |
+| `apps/plugin` | `plugin` | 3006 | **Kept in ChatGPT and Claude** (MCP): public `/mcp` (six read-only tools for every Kept situation; `get_enquiry_link` hands a seller a link to our own form and never takes their details: founder, link only, 28 Nov 2026) + agent/investor `/pro/mcp` with OAuth. MCP SDK v2 + zod 4, isolated. Pro is parked while the agent side is hidden (`docs/mcp/08-review-2026-11.md`). Funnel and listing: `docs/mcp/10-funnel.md` |
 | `apps/storybook` | `storybook` | 6006 | Design-system component explorer |
 
 `apps/app` route groups: `app/(authenticated)/*` (dashboard pages),
@@ -281,6 +281,14 @@ Run a task for one workspace with a filter, e.g.
   (60-second figures, 4-hour signed offers) in vendor-facing, agent-facing,
   or marketing copy — internal ops targets may be faster but are never
   advertised. If docs and the live site disagree, the live site wins.
+  `apps/web/lib/llms-txt.ts` (`PROMISE`, served at `/llms.txt`) restates the
+  promise for AI assistants: change it in the same commit as the site copy.
+  Landing-page FAQ JSON-LD reads straight from `situation-content.ts`, so it
+  cannot drift. AI crawlers are named on purpose in `apps/web/app/robots.ts`
+  (founder, 28 Nov 2026: be the source assistants quote). The plugin tags
+  `utm_source` with the calling assistant's name (`clientSource`, else the
+  User-Agent via `callSource` in `apps/plugin/lib/links.ts`), falling back
+  to `agent`.
 - **Tone of voice — the Beth Sims bar** (founder direction, 22 Aug 2026).
   The signed-off homepage copy is the standard all new copy must meet: people
   first, cut what adds nothing, neutral precision over drama, verify claims

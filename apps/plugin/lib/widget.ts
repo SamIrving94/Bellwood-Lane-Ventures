@@ -347,6 +347,8 @@ export const WIDGET_HTML = `<!doctype html>
     else if (data.kind === 'renovation') renderRenovation(data);
     else if (data.kind === 'property_facts') renderFacts(data);
     else if (data.kind === 'sale_plan') renderSalePlan(data);
+    // The link card is just the next-step box below (get_enquiry_link).
+    else if (data.kind === 'enquiry_link') root.appendChild(el('p', 'eyebrow', 'Next step'));
     else { root.appendChild(el('p', 'muted', 'Nothing to show.')); }
     var help = freeHelp(data);
     if (help) root.appendChild(help);

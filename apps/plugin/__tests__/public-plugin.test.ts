@@ -31,7 +31,7 @@ const NULL_WORD = /\bnull\b/;
 const NEXT_DATED_STEP = /Next dated step: .+ on \d{4}-\d{2}-\d{2}\./;
 
 describe('public plugin', () => {
-  it('lists the tools, all read-only with explicit hints', async () => {
+  it('lists the six tools, all read-only with explicit hints', async () => {
     const { body } = await rpc(POST, 'tools/list');
     const tools = body.result.tools as Json[];
     expect(tools.map((t) => t.name)).toEqual([
@@ -40,6 +40,7 @@ describe('public plugin', () => {
       'plan_inherited_home',
       'estimate_renovation_cost',
       'get_property_facts',
+      'get_enquiry_link',
     ]);
     for (const t of tools) {
       expect(typeof t.title).toBe('string');
@@ -97,7 +98,8 @@ describe('public plugin', () => {
     const s = body.result.structuredContent;
     expect(s.kind).toBe('sale_routes');
     expect(s.routes[2].pricePence).toBeNull();
-    expect(s.nextStep.url).toContain('utm_source=mcp');
+    // No initialize and no User-Agent in this harness: the client is unknown.
+    expect(s.nextStep.url).toContain('utm_source=agent');
     expect(body.result.content[0].text).toMatch(NOT_A_RECOMMENDATION);
   });
 
@@ -154,6 +156,42 @@ describe('public plugin', () => {
     expect(s.debtExceedsValue).toBe(true);
     expect(s.nextStep).toBeNull();
     expect(s.freeHelp.url).toBe('https://www.stepchange.org');
+  });
+
+  it('gives a link to the right page and takes no personal details', async () => {
+    const { body } = await call('get_enquiry_link', { situation: 'probate' });
+    const s = body.result.structuredContent;
+    expect(s.kind).toBe('enquiry_link');
+    expect(s.nextStep.url).toContain('/probate');
+    expect(s.nextStep.url).toContain('utm_campaign=get_enquiry_link');
+    expect(body.result.content[0].text).toMatch(/do not collect or submit/i);
+    expect(body.result.content[0].text).toMatch(/do not state a price/i);
+    // The schema has no field that could carry a name, phone, email or address.
+    const { body: list } = await rpc(POST, 'tools/list');
+    const tool = (list.result.tools as Json[]).find(
+      (t) => t.name === 'get_enquiry_link'
+    );
+    expect(Object.keys(tool?.inputSchema.properties)).toEqual(['situation']);
+  });
+
+  it('sends the enquiry link to the situation page, with its honest line', async () => {
+    const { body } = await call(
+      'get_enquiry_link',
+      { situation: 'chain_break' },
+      FROM_CLAUDE
+    );
+    const next = body.result.structuredContent.nextStep;
+    expect(next.url).toContain('/chain-break?utm_source=claude');
+    expect(next.context).toContain(
+      'the open market will almost certainly get you a better price'
+    );
+  });
+
+  it('falls back to the general page when the situation is unclear', async () => {
+    const { body } = await call('get_enquiry_link', {});
+    expect(body.result.structuredContent.nextStep.url).toContain(
+      '/your-situation'
+    );
   });
 
   it('builds an inherited-home plan', async () => {
@@ -296,13 +334,13 @@ describe('public plugin', () => {
       expect(JSON.parse(usage as string)).toMatchObject({
         surface: 'public',
         tool: 'get_property_facts',
-        host: 'other',
+        source: 'agent',
         outcome: 'ok',
       });
       expect(lines.join('\n')).not.toMatch(/Secret Lane|M14 5AB/);
     });
 
-    it('records which assistant called, from the user-agent only', async () => {
+    it('records which assistant called, by product name only', async () => {
       const log = vi.spyOn(console, 'log').mockImplementation(() => undefined);
       await call(
         'estimate_renovation_cost',
@@ -312,7 +350,7 @@ describe('public plugin', () => {
       const usage = log.mock.calls
         .map((c) => String(c[0]))
         .find((l) => l.includes('kept_plugin_tool'));
-      expect(JSON.parse(usage as string).host).toBe('chatgpt');
+      expect(JSON.parse(usage as string).source).toBe('chatgpt');
     });
 
     it('marks a tool error as tool_error', async () => {

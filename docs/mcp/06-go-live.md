@@ -5,7 +5,7 @@ _Last verified against the live site: 2026-11-28._
 
 > **Checked 28 Nov: not live yet.** There is no `kept-plugin` project on Vercel, so nothing answers at the plugin address. **Step 1 below is still to do.** Full review: `08-review-2026-11.md`.
 >
-> **New (28 Nov):** two more tools, for every Kept situation: `plan_my_sale`, and `ask_kept_to_call` (a seller asks Kept to get in touch, inside the chat). The second needs `DATABASE_URL` (step 1). Listing in Claude's and ChatGPT's directories: section 6 and `10-funnel.md`.
+> **New (28 Nov):** two more tools, both read-only: `plan_my_sale` (every Kept situation) and `get_enquiry_link` (#177: a link to Kept's own form; the plugin never takes a seller's details, founder decision). Listing in Claude's and ChatGPT's directories: section 6 and `10-funnel.md`.
 
 **Founder decision (1 Oct):** high risk tolerance. Go live without OpenAI's directory review, then test and learn.
 
@@ -47,19 +47,12 @@ _Last verified against the live site: 2026-11-28._
 3. **Project Name:** `kept-plugin`
    - It must say **kept**: the project name becomes the web address people paste into ChatGPT (`kept-plugin.vercel.app`). "Bellwoods" is the old brand.
 4. **Root Directory:** click **Edit** and pick **`apps/plugin`**. ⚠️ This is the only setting that matters.
-5. Open **Environment Variables** and add **two** before deploying:
-
-   **a) `EPC_API_TOKEN`**
+5. Open **Environment Variables** and add **one** before deploying:
    - **Key:** `EPC_API_TOKEN`
    - **Value:** copy it from **bellwood-api** (or **bellwood-web**) → Settings → Environment Variables.
    - **No copy to be found?** Get a free one: **get-energy-performance-data.communities.gov.uk** → sign in with **GOV.UK One Login** → **My account** → copy the token. Add it to **bellwood-web** as well (Keyhole needs it).
    - **Why:** energy certificates come from a government register that needs this free key. Without it, property facts can't read the EPC and renovation can't read the floor area. Land Registry sales work without any key.
-
-   **b) `DATABASE_URL`**
-   - **Value:** copy it from **bellwood-api** → Settings → Environment Variables.
-   - **Why:** when a seller asks Kept to get in touch from the chat, their details are saved as a **draft enquiry** with an **Action Centre** card. Without this key, the tool sends them to the website form instead.
-
-   Leave everything else as it is.
+   - Leave everything else as it is.
 6. Click **Deploy**. It takes about 3–5 minutes.
 
 **Then check one setting:**
@@ -100,7 +93,7 @@ New chat → **+ →** pick **Kept**. Or start your message with "Use Kept to". 
 | We're separating. If we sell for £300,000 with £180,000 left on the mortgage, what's my share? | After fees, after the mortgage, your 50% |
 | We owe £200,000 and the house would sell for £150,000. | A stop, pointing to free debt advice. **No Kept link.** That's correct. |
 | How much is my house worth? | **No value.** That's correct. |
-| Yes, ask Kept to call me. (Use your own details.) | A reference number, and an **Action Centre** card: "Seller asked via ChatGPT to be contacted". Then **dismiss it**. |
+| How do I get an offer from Kept? My mum left me her house. | A button to **Kept's probate page**. It asks for **no details**. That's correct. |
 
 ---
 
@@ -112,10 +105,11 @@ New chat → **+ →** pick **Kept**. Or start your message with "Use Kept to". 
 >
 > The steps below are kept for when Pro comes back. See `08-review-2026-11.md`.
 
-**a) Add 3 environment variables** (`EPC_API_TOKEN` and `DATABASE_URL` are already in from step 1): kept-plugin → **Settings → Environment Variables**.
+**a) Add 4 environment variables** (`EPC_API_TOKEN` is already in from step 1): kept-plugin → **Settings → Environment Variables**.
 
 | Name | Value |
 |:--|:--|
+| `DATABASE_URL` | Copy from **bellwood-api** |
 | `RESEND_TOKEN` | Copy from **bellwood-api** |
 | `RESEND_FROM` | `Kept <sam@wearekept.co.uk>`, the one live mailbox since #134 |
 | `PLUGIN_AUTH_SECRET` | New random text, 48+ characters. In a terminal: `openssl rand -base64 48` |
@@ -176,8 +170,7 @@ Unlisted, almost nobody can find it. Listing is how sellers find it. Full listin
 
 | What | Where |
 |:--|:--|
-| Which tools get used, and errors | Vercel → kept-plugin → **Logs**, search `kept_plugin_tool`. Each line has the tool, `host` (chatgpt or claude), the outcome and the time. **No user inputs are ever logged.** |
-| Sellers asking from the chat | **Action Centre**: "Seller asked via ChatGPT (or Claude) to be contacted: postcode". The draft enquiry is in **Quotes**. |
+| Which tools get used, and errors | Vercel → kept-plugin → **Logs**, search `kept_plugin_tool`. Each line has the tool, `source` (chatgpt or claude), the outcome and the time. **No user inputs are ever logged.** |
 | Where enquiries came from | Dashboard card: the **AI assistant** row |
 | Visits from the plugin | Website analytics: visits with `utm_source=chatgpt` or `claude`, then the forms they send |
 | Agent referrals and investor interest (Pro, parked) | **Action Centre**: cards titled "via ChatGPT" |
@@ -203,5 +196,5 @@ Unlisted, almost nobody can find it. Listing is how sellers find it. Full listin
 - **UK availability not confirmed** from OpenAI's own pages. Very likely fine (Rightmove and Zoopla have ChatGPT apps). Your first test settles it.
 - **Privacy page is still marked DRAFT** and has no ICO number. Fix before any wider sharing.
 - **No compliance opinion yet.** The tools make no legal claims and give general information only.
-- **The public endpoint is open to anyone with the URL.** Five tools read free public registers and store nothing. One saves the details a seller agrees to send, as a draft enquiry. Junk is capped: one per email and postcode a day, 10 an hour, 30 a day. Nothing is emailed to anyone.
+- **The public endpoint is open to anyone with the URL.** It reads free public registers only and stores nothing. It never takes a seller's details: the link tool sends them to Kept's own form.
 - **Pro's sign-in server is custom-built.** It's tested end to end, but there's been no outside security review.
