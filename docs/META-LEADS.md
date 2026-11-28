@@ -277,6 +277,10 @@ Delete the extra copy.
 
 ## Part 6 · Test it (5 min)
 
+**Do this last.** The testing tool only works once Kept has linked itself
+to the Page, up to 30 minutes after Part 5. Before that it says
+**"Selected page has no app associated with it"**.
+
 - **Do:** go to **developers.facebook.com/tools/lead-ads-testing**.
 - **Do:** Page: **Kept. Properties**. Form: the live instant form.
   Click **Create lead**.
@@ -297,6 +301,7 @@ Delete the extra copy.
 | No lead after 30 minutes | Not connected yet | Check the 3 keys in Vercel (spelling, Production ticked), then redeploy |
 | Card: **"Meta leads are not coming through"** | Meta refused the token | Read the Meta error in the card. Usually a missing permission (1.6 / 3.5) or Leads access (3.6). Make a new token, replace value 3, redeploy |
 | Leads arrive, but only every 30 min | App not Live | Do Part 2 |
+| Testing tool: **"Selected page has no app associated with it"** | Kept has not linked itself to the Page yet | Normal before Part 5. Wait 30 min after merging, then try again |
 | **"No permissions available"** when making the token | System user has no role on the app | Step 3.4, then try again |
 | Stuck on a Meta screen | Meta changed the layout | Send me a screenshot |
 
