@@ -45,6 +45,12 @@ export const SOURCES = {
     url: 'https://wearekept.co.uk/sell',
     checked: CHECKED,
   },
+  keptCompletion: {
+    label:
+      'Kept is a cash buyer and can complete in as little as two weeks, once it has viewed the home and confirmed an offer in writing',
+    url: 'https://wearekept.co.uk/chain-break',
+    checked: CHECKED,
+  },
   auctionFees: {
     label:
       'Auction seller commission is usually 2% to 4% of the sale price plus VAT, plus an entry fee',

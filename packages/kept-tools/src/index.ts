@@ -12,5 +12,7 @@ export * from './cgt';
 export * from './inherited-home';
 export * from './money';
 export * from './renovation';
+export * from './sale-plan';
 export * from './sale-routes';
+export * from './situations';
 export * from './sources';

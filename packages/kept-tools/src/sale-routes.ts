@@ -74,10 +74,17 @@ export interface CompareSaleRoutesResult {
 
 const DEFAULT_AGENT_FEE_PERCENT = 1.25;
 const DEFAULT_AUCTION_COMMISSION_PERCENT = 2.5;
-const DEFAULT_MONTHS: Record<SaleRoute, number> = {
+/** Typical months from deciding to sell to completion, per route (assumptions, shown as such). */
+export const DEFAULT_MONTHS: Record<SaleRoute, number> = {
   estate_agent: 5,
   auction: 2,
   cash_buyer: 1,
+};
+
+export const ROUTE_LABELS: Record<SaleRoute, string> = {
+  estate_agent: 'Estate agent (open market)',
+  auction: 'Auction',
+  cash_buyer: 'Cash buyer',
 };
 
 function pctWithVat(pricePence: number, percent: number): number {
@@ -176,7 +183,7 @@ export function compareSaleRoutes(
     buildRoute(
       {
         route: 'estate_agent',
-        label: 'Estate agent (open market)',
+        label: ROUTE_LABELS.estate_agent,
         pricePence: input.expectedPricePence,
         feeLines: [
           {
@@ -198,7 +205,7 @@ export function compareSaleRoutes(
     buildRoute(
       {
         route: 'auction',
-        label: 'Auction',
+        label: ROUTE_LABELS.auction,
         pricePence: auctionPrice,
         feeLines: [
           {
@@ -230,7 +237,7 @@ export function compareSaleRoutes(
     buildRoute(
       {
         route: 'cash_buyer',
-        label: 'Cash buyer',
+        label: ROUTE_LABELS.cash_buyer,
         pricePence: input.cashOfferPence ?? null,
         feeLines: [],
         monthsToComplete: months.cash_buyer,

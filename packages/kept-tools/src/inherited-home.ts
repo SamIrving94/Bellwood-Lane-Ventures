@@ -60,7 +60,7 @@ const DUE_SOON_DAYS = 30;
 const REGISTRATION_PENDING_DAYS = 21;
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
-function parseIsoDate(value: string, field: string): Date {
+export function parseIsoDate(value: string, field: string): Date {
   if (!ISO_DATE.test(value)) {
     throw new Error(`${field} must be a date in YYYY-MM-DD format`);
   }
