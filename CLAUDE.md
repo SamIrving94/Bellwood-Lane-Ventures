@@ -44,7 +44,7 @@ they are always held for founder review.
 | `apps/email` | `email` | 3003 | React Email preview/dev |
 | `apps/docs` | `docs` | 3004 | Mintlify documentation site |
 | `apps/studio` | `studio` | 3005 | Prisma Studio (DB browser) |
-| `apps/plugin` | `plugin` | 3006 | **ChatGPT plugins** (MCP): public `/mcp` + agent/investor `/pro/mcp` with OAuth. MCP SDK v2 + zod 4, isolated. See `docs/mcp/` |
+| `apps/plugin` | `plugin` | 3006 | **ChatGPT plugins** (MCP): public `/mcp` + agent/investor `/pro/mcp` with OAuth. MCP SDK v2 + zod 4, isolated. Pro is parked while the agent side is hidden (`docs/mcp/08-review-2026-11.md`). See `docs/mcp/` |
 | `apps/storybook` | `storybook` | 6006 | Design-system component explorer |
 
 `apps/app` route groups: `app/(authenticated)/*` (dashboard pages),
@@ -311,6 +311,7 @@ brand artefact in `apps/web`, update the derived docs in the same commit:**
 | `docs/brand/KEPT.md` | Voice, copy-truth rules, signature artefacts |
 | `docs/marketing/PLAN.md` | Segment framing, landing routes, channel copy |
 | `docs/templates/binding-offer-letter.md` | Offer wording |
+| `packages/kept-tools/src/sources.ts`, `apps/plugin/lib/*` | Figures and promise wording the ChatGPT plugin repeats (fall-through rate, response time, offer timing). Missed once: the site moved to "1 in 4" and the plugin kept "1 in 3" |
 
 Rules:
 

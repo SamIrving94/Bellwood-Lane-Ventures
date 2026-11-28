@@ -256,6 +256,7 @@
     <p class="mark">kept.</p>
     <h1>Put Kept live in ChatGPT</h1>
     <p class="lede">22 small steps, about 20 minutes. Do them in order. Tick each box when it's done. Your ticks are saved on this device.</p>
+    <p class="note">Checked 28 Nov: the plugin isn't live yet. Nothing has been set up on Vercel, so start at step 1.</p>
     <div class="already">
       <strong>Already done for you</strong>
       <ul>
@@ -402,9 +403,9 @@
     <article class="step" data-step="12">
       <div class="num">12</div>
       <div class="body">
-        <h3>Turn on Developer mode</h3>
-        <p>Go to <span class="path">Settings → Security and login → Developer mode</span>. Turn it <span class="path">On</span>.</p>
-        <p class="see">Can't see it? Search Settings for "Developer mode".</p>
+        <h3>Open Plugins</h3>
+        <p>Go to <span class="path">Settings → Plugins</span>.</p>
+        <p class="see">There used to be a Developer mode switch first. OpenAI removed it in October, so skip it.</p>
         <label class="tick"><input type="checkbox" id="s12"> Done</label>
       </div>
     </article>
@@ -412,8 +413,10 @@
     <article class="step" data-step="13">
       <div class="num">13</div>
       <div class="body">
-        <h3>Add a plugin</h3>
-        <p>Go to <span class="path">Settings → Plugins</span>. Click <span class="path">+</span> (Create).</p>
+        <h3>Add a custom server</h3>
+        <p>Click <span class="path">+</span>, then <span class="path">Add custom MCP server</span>.</p>
+        <p class="see">Can't see it? Search Settings for "MCP".</p>
+        <p class="note">Still not there? Your ChatGPT plan may not allow custom plugins. Tell Claude which plan you're on.</p>
         <label class="tick"><input type="checkbox" id="s13"> Done</label>
       </div>
     </article>
@@ -452,7 +455,8 @@
       <div class="num">16</div>
       <div class="body">
         <h3>Start a test chat</h3>
-        <p>Click <span class="path">New chat</span>. Click <span class="path">+</span>, then <span class="path">Developer mode</span>. Tick <span class="path">Kept</span>.</p>
+        <p>Click <span class="path">New chat</span>. Click <span class="path">+</span>, then pick <span class="path">Kept</span>.</p>
+        <p class="see">Can't see it there? Start each message with "Use Kept to".</p>
         <label class="tick"><input type="checkbox" id="s16"> Done</label>
       </div>
     </article>
@@ -536,7 +540,7 @@
       </div>
       <div class="help-row">
         <strong>Kept isn't used in the chat</strong>
-        <span>Check <span class="path">Kept</span> is ticked under <span class="path">+ → Developer mode</span>. Or start your message with "Use Kept to".</span>
+        <span>Check <span class="path">Kept</span> is picked under <span class="path">+</span>. Or start your message with "Use Kept to".</span>
       </div>
       <div class="help-row">
         <strong>Test 4 shows no energy rating</strong>
@@ -556,11 +560,10 @@
       <p>Do these later, when the steps above work.</p>
     </div>
     <details id="laterPro">
-      <summary>Turn on the Pro plugin for agents and investors</summary>
+      <summary>The Pro plugin for agents and investors (parked)</summary>
       <ul>
-        <li>Add 4 more keys to <span class="path">kept-plugin</span>: DATABASE_URL, RESEND_TOKEN, RESEND_FROM and PLUGIN_AUTH_SECRET.</li>
-        <li>Use a <strong>@wearekept.co.uk</strong> sender for RESEND_FROM.</li>
-        <li>Full steps are in the guide <span class="val">docs/mcp/06-go-live.md</span>, part 4. Or ask Claude.</li>
+        <li><strong>Don't turn it on for now.</strong> The agent side of the site is hidden (your decision, 11 Oct), and investors moved to fixed-price packs (10 Oct).</li>
+        <li>The reasons and what would bring it back are in <span class="val">docs/mcp/08-review-2026-11.md</span>.</li>
       </ul>
     </details>
     <details id="laterDomain">

@@ -1,6 +1,9 @@
 # Go live: Kept in ChatGPT
 
-_Updated: 2026-10-01. ✅ = done by Claude. 👤 = needs you._
+_Updated: 2026-11-28. ✅ = done by Claude. 👤 = needs you._
+_Last verified against the live site: 2026-11-28._
+
+> **Checked 28 Nov: not live yet.** There is no `kept-plugin` project on Vercel, so nothing answers at the plugin address. **Step 1 below is still to do.** Full review: `08-review-2026-11.md`.
 
 **Founder decision (1 Oct):** high risk tolerance. Go live without OpenAI's directory review, then test and learn.
 
@@ -8,9 +11,10 @@ _Updated: 2026-10-01. ✅ = done by Claude. 👤 = needs you._
 
 ## What "live without review" means
 
-- **It is live on the internet.** Anyone with the link can connect it to ChatGPT in **developer mode** (Plus, Pro or Business, on the web).
+- **It is live on the internet.** Anyone with the link can add it to ChatGPT as a **custom plugin**, if their plan allows custom MCP servers (Business does; Pro may be read-only, which is enough for Kept; Plus is unclear).
 - **It is not in the Plugin Directory,** and ChatGPT won't suggest it to strangers. That only happens after OpenAI's review.
-- **You choose who gets it:** you, friendly agents, a few executors. That suits test and learn.
+- **You choose who gets it:** you, friendly agents, a few executors. On personal accounts each person adds the URL themselves; there is no share button.
+- **Be honest about what that means:** almost nobody will find it this way. It tests the tools, not the channel.
 
 ---
 
@@ -21,9 +25,9 @@ _Updated: 2026-10-01. ✅ = done by Claude. 👤 = needs you._
 | Merge PR #122 (seller-email fix + plugin code) | ✅ Claude | See PR |
 | Public plugin builds with **no secrets** | ✅ Claude | Done |
 | Usage logging (privacy-safe) | ✅ Claude | Done |
-| **Create the Vercel project** | 👤 You | **2 minutes, below** |
+| **Create the Vercel project** | 👤 You | **Not done yet** (checked 28 Nov). 2 minutes, below |
 | Connect it in ChatGPT | 👤 You | 2 minutes |
-| Turn on Pro (agents and investors) | 👤 You | 5 minutes |
+| Turn on Pro (agents and investors) | ⏸ Parked | Don't do it for now. See section 4 |
 | Your own web address | 👤 You | Optional, later |
 
 **Why you have to do the Vercel part:**
@@ -60,9 +64,13 @@ _Updated: 2026-10-01. ✅ = done by Claude. 👤 = needs you._
 
 ## 2. Connect it in ChatGPT (2 min) 👤
 
+> **Changed in October:** the Developer mode switch is gone. You add a plugin straight from the Plugins page. (From search results; OpenAI's docs are blocked from Claude's sandbox, so the button names may differ slightly.)
+
 1. **chatgpt.com** on a computer.
-2. **Settings → Security and login → Developer mode → On.**
-3. **Settings → Plugins → +** (create).
+2. **Settings → Plugins → + → Add custom MCP server.**
+   - Can't see it? Search Settings for "MCP".
+   - Still not there? Your plan may not allow custom plugins. Tell Claude which plan you're on.
+3. Fill in:
    - **Name:** Kept
    - **URL:** `https://<your domain from step 8>/mcp`
    - **Auth:** none
@@ -70,7 +78,7 @@ _Updated: 2026-10-01. ✅ = done by Claude. 👤 = needs you._
 
 ## 3. Try it (5 min) 👤
 
-New chat → **+ → Developer mode →** tick **Kept**. Then type:
+New chat → **+ →** pick **Kept**. Or start your message with "Use Kept to". Then type:
 
 | Type this | You should see |
 |:--|:--|
@@ -81,7 +89,13 @@ New chat → **+ → Developer mode →** tick **Kept**. Then type:
 
 ---
 
-## 4. Turn on Pro: agents and investors (5 min) 👤
+## 4. Turn on Pro: agents and investors ⏸ PARKED
+
+> **Don't do this section for now** (28 Nov). Two founder decisions came after Pro was built:
+> - **11 Oct: the agent side is hidden.** `/partners/signup` now returns 404, so step c can't work, and a public agent plugin would undo the decision.
+> - **10 Oct: investors moved to fixed-price packs.** The Pro investor tools still read the older "released for resale" feed.
+>
+> The steps below are kept for when Pro comes back. See `08-review-2026-11.md`.
 
 **a) Add 4 environment variables** (`EPC_API_TOKEN` is already in from step 1): kept-plugin → **Settings → Environment Variables**.
 
@@ -89,7 +103,7 @@ New chat → **+ → Developer mode →** tick **Kept**. Then type:
 |:--|:--|
 | `DATABASE_URL` | Copy from **bellwood-api** |
 | `RESEND_TOKEN` | Copy from **bellwood-api** |
-| `RESEND_FROM` | Copy from **bellwood-api** |
+| `RESEND_FROM` | `Kept <sam@wearekept.co.uk>`, the one live mailbox since #134 |
 | `PLUGIN_AUTH_SECRET` | New random text, 48+ characters. In a terminal: `openssl rand -base64 48` |
 
 **b) Redeploy:** Deployments → latest → **⋯ → Redeploy**.
@@ -151,7 +165,8 @@ Your domain's DNS is at **GoDaddy**, so Claude can't add records.
 
 ## Risks you are accepting (high risk tolerance)
 
-- **Not reviewed by OpenAI.** Fine for developer mode. A directory listing needs a review later.
+- **Not reviewed by OpenAI.** Fine for testing. A directory listing needs a review later.
+- **UK availability not confirmed** from OpenAI's own pages. Very likely fine (Rightmove and Zoopla have ChatGPT apps). Your first test settles it.
 - **Privacy page is still marked DRAFT** and has no ICO number. Fix before any wider sharing.
 - **No compliance opinion yet.** The tools make no legal claims and give general information only.
 - **The public endpoint is open to anyone with the URL.** It reads free public registers only and stores nothing.

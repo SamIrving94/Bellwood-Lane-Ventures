@@ -1,10 +1,34 @@
 # Platform notes — ChatGPT plugins + MCP
 
-_Researched: 2026-10-01 · updated for DevDay (29 Sep 2026). Re-check before each phase — this changes often._
+_Researched: 2026-10-01 · updated for DevDay (29 Sep 2026) · changes to 28 Nov 2026 below. Re-check before each phase: this changes often._
 
 **Caveat:** the OpenAI docs sites (incl. developers.openai.com/plugins) are blocked from our build sandbox. Lines marked **[snippet]** come from search summaries of the official pages, not the page itself. npm package facts were read directly.
 
 **Naming:** we say **plugin** everywhere. A plugin is built on MCP. "MCP Apps" below is the name of the open UI standard, not a ChatGPT product.
+
+## Changes 1 Oct to 28 Nov 2026
+
+_Checked 28 Nov 2026. OpenAI's docs are still blocked from the sandbox, so OpenAI items are **[snippet]**. Package, spec and advisory facts were **[read]** from npm, the npm advisory API and the GitHub repos._
+
+**ChatGPT**
+- **Developer mode toggle is gone** (early Oct). You add a custom server from **Plugins → + → Add custom MCP server**. **[snippet]**
+- **Who can add one:** full MCP (read and write) is for Business, Enterprise and Edu on the web. Pro may be read-only. Plus, Free and Go: not stated. In workspaces the permission is "Create plugins with MCPs"; on Business only admins and owners have it. **[snippet, sources conflict]**
+- **Sharing an unsubmitted plugin:** Business/Enterprise can share inside the workspace. On personal accounts there is no share feature; each person adds the URL. **[snippet]**
+- **UK:** apps launched "outside the EU" in Oct 2025, and Rightmove and Zoopla have ChatGPT apps, so the UK very likely has plugins. One Oct 2026 blog says otherwise. **Test from a UK account.** **[snippet, conflicting]**
+- **In-chat suggestions** of uninstalled plugins exist (since 9 Jul) but go to directory plugins only, and plain prompts rarely trigger them. **[snippet]**
+- **No change found** to submission rules, `_meta` keys, `window.openai`, widget CSP, display modes or auth. Still: verified organisation, domain token at `/.well-known/openai-apps-challenge`, demo account for signed-in plugins, and you press "Publish" yourself after approval. **[snippet]**
+- **No owner analytics** yet. Our own `kept_plugin_tool` log lines stay the only measure. **[snippet]**
+
+**MCP**
+- **No new spec revision.** 2026-07-28 is current; the next is planned for **2027-03-30**. MCP Apps stable is still **2026-01-26**, the version our widget sends. **[read]**
+- **Draft only:** client ID metadata documents move to IETF draft-03 (stricter auth-method and error rules). Matters for Pro's sign-in later, not now. **[read]**
+
+**Security advisories that hit us (fixed 28 Nov)** **[read]**
+- `@modelcontextprotocol/server` < 2.3.0: **GHSA-46jr-4wx8-v453** (high). One request under 4 MiB could exhaust memory. Fix: upgrade **and** set `maxToolInputElements` **and** a smaller body limit. Done: 2.4.0, 200 elements, 64 KB (`apps/plugin/lib/request-limits.ts`).
+- Same package: GHSA-jm63-cq47-j5jp (high). Not us: mcp-handler builds a server per request.
+- `zod` < 4.6.6: **GHSA-mrhx-c7xc-m3w5** (high). Done: 4.6.7.
+- `next` 15.5.15: **30 advisories** (3 critical, 11 high). Done: **15.5.29** in every app (no advisories). Next 15's maintenance window was due to end 21 Oct 2026, though 15.5.29 shipped on 3 Nov. **Plan the move to Next 16.**
+- `mcp-handler` 2.4.0 adds OpenTelemetry spans, written only if the app registers a tracer provider. The plugin registers none.
 
 ## Big changes in 2026
 
