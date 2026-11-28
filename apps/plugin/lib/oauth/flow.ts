@@ -224,7 +224,7 @@ export async function startSignIn(
 
   if (granted.length > 0) {
     const { subject, text } = signInEmail(code);
-    await sendEmail({ to: email, subject, text });
+    await sendEmail({ to: email, subject, text, sensitive: true });
   }
   return { ok: true, pending };
 }

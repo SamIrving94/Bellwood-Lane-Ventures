@@ -7,6 +7,9 @@ import { mergeConfig } from 'vitest/config';
 export default mergeConfig(sharedConfig, {
   resolve: {
     alias: {
+      // The shared config points `@` at packages/testing; route handlers
+      // import `@/env`, so a test that loads a route needs the app root.
+      '@': new URL('./', import.meta.url).pathname.replace(/\/$/, ''),
       'server-only': new URL(
         '../../packages/property-data/test-shims/server-only.ts',
         import.meta.url

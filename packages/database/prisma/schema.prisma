@@ -1565,3 +1565,62 @@ model GuidePost {
   @@index([status, publishedAt])
   @@index([questionKey, createdAt])
 }
+
+// ─── Correspondence log ────────────────────────────────────
+//
+// Every email the platform sends (written by `sendEmail` in @repo/email) and
+// every email that comes back in (written by /webhooks/resend/inbound).
+// A conversation is simply all rows sharing a `counterparty`, the other
+// person's address, lower-cased. No thread table: one person, one thread is
+// what a two-founder desk needs, and it cannot drift out of sync.
+//
+// `dealId` / `quoteRequestId` are plain ids, not relations, on purpose: they
+// are a best-effort link made by matching the address at write time, and a
+// deleted deal must never take its correspondence with it.
+
+enum EmailDirection {
+  outbound
+  inbound
+}
+
+enum EmailDeliveryStatus {
+  sent
+  delayed
+  delivered
+  bounced
+  complained // the recipient marked it as spam
+  failed
+}
+
+model EmailMessage {
+  id              String               @id @default(cuid())
+  direction       EmailDirection
+  counterparty    String // the external party's address, lower-cased
+  fromAddress     String
+  toAddress       String
+  subject         String
+  textBody        String?              @db.Text
+  htmlBody        String?              @db.Text
+  // Resend's id: the sent-email id for outbound, `email_id` for inbound.
+  // Unique so a webhook replay creates zero rows.
+  providerId      String?              @unique
+  messageId       String? // RFC Message-ID (inbound only; used to thread replies)
+  inReplyTo       String?
+  attachmentCount Int                  @default(0)
+  dealId          String?
+  quoteRequestId  String?
+  sentBy          String? // Clerk userId when a founder replied from /inbox
+  readAt          DateTime? // inbound only; null = unread
+  // Outbound only. What Resend last told us happened to this email
+  // (/webhooks/resend/inbound handles the status events too). Null = Resend
+  // accepted it and we have heard nothing since.
+  deliveryStatus  EmailDeliveryStatus?
+  deliveryDetail  String? // the bounce reason, in Resend's words
+  deliveryAt      DateTime?
+  createdAt       DateTime             @default(now())
+
+  @@index([counterparty, createdAt])
+  @@index([direction, readAt])
+  @@index([dealId])
+  @@index([quoteRequestId])
+}

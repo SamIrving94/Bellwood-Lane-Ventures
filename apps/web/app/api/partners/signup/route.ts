@@ -114,7 +114,12 @@ export async function POST(request: Request) {
     </div>
   `;
 
-  const sendResult = await sendEmail({ to: email, subject, html });
+  const sendResult = await sendEmail({
+    to: email,
+    subject,
+    html,
+    sensitive: true,
+  });
 
   // Log the link in dev / when no Resend token
   if (sendResult.skipped) {

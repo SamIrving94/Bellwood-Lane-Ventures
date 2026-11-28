@@ -32,6 +32,7 @@ import {
   MailOpenIcon,
   MapIcon,
   MegaphoneIcon,
+  MessagesSquareIcon,
   RocketIcon,
   SearchIcon,
   Settings2Icon,
@@ -70,6 +71,7 @@ const keyholeUrl = `${process.env.NEXT_PUBLIC_WEB_URL || 'https://bellwood-web.v
 const data = {
   dealFlow: [
     { title: 'Today', url: '/', icon: InboxIcon, hasBadge: true },
+    { title: 'Inbox', url: '/inbox', icon: MessagesSquareIcon },
     { title: 'Quotes', url: '/quotes', icon: FileTextIcon },
     { title: 'Leads', url: '/leads', icon: TargetIcon },
     { title: 'Auctions', url: '/auctions', icon: HammerIcon },
