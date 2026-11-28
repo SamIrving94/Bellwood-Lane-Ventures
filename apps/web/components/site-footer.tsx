@@ -2,6 +2,7 @@ import { LogoLockup, Seal } from '@/components/brand';
 import { CookieSettingsButton } from '@/components/cookie-consent';
 import { hasConsentTags } from '@/lib/consent-tags';
 import { SITE_MAP } from '@/lib/site-map';
+import { brand } from '@repo/brand';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 
@@ -60,6 +61,18 @@ export function SiteFooter({
         </div>
 
         <div className="mt-11 border-hair border-t pt-6">
+          {/* Its own line, not beside the lockup: at tablet widths it ran
+              into the "Sellers" column there. The address comes from
+              @repo/brand so it follows the active brand's one live mailbox. */}
+          <p className="mb-4 text-sm text-stone-600">
+            Email us:{' '}
+            <a
+              href={`mailto:${brand.email}`}
+              className="underline hover:text-brand-deep"
+            >
+              {brand.email}
+            </a>
+          </p>
           <p className="font-serif text-[12px] text-stone-500">
             Property Redress Scheme (PRS) &middot; HMRC AML supervised &middot;
             ICO registered
