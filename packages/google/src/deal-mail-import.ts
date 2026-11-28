@@ -6,8 +6,10 @@
  *   1. Ask Gmail for the ids of mail since the last run, plus anything
  *      carrying the `Kept/Log` label. Ids only: no content yet.
  *   2. Drop the ids we already hold (including emails a founder removed).
- *   3. Read the HEADERS of the rest and decide, per email, whether it is
- *      deal mail (`resolveDeal`). Most of a mailbox stops here, unread.
+ *   3. Read the HEADERS of the rest. Drop any email already in the log from
+ *      another Kept mailbox (same Message-ID, different Gmail id). Decide,
+ *      per email, whether it is deal mail (`resolveDeal`). Most of a
+ *      mailbox stops here, unread.
  *   4. For the ones that are: read the full email, store it, and mark it in
  *      Gmail with `Kept/Logged` so the founder can see it was taken.
  *
@@ -47,11 +49,19 @@ export type MailToSave = DealMail & {
   dealId: string | null;
   matchedBy: DealMatch['matchedBy'];
   direction: 'inbound' | 'outbound';
+  /** The Kept mailbox it was read from. */
+  mailbox: string;
 };
 
 export type StorePort = {
   /** Which of these Gmail ids we already hold (kept OR removed). */
   knownGmailIds(ids: string[]): Promise<Set<string>>;
+  /**
+   * Which of these Message-IDs we already hold (kept OR removed), from any
+   * mailbox. The same email reaches every Kept mailbox it was sent to,
+   * under a different Gmail id in each.
+   */
+  knownMessageIds(ids: string[]): Promise<Set<string>>;
   lookups: DealLookups;
   /** False when another run stored it first. */
   save(mail: MailToSave): Promise<boolean>;
@@ -67,7 +77,7 @@ export type StorePort = {
 export type ImportInput = {
   gmail: GmailPort;
   store: StorePort;
-  /** The connected Kept mailbox. Its domain is "us". */
+  /** The Kept mailbox being read. Its domain is "us". */
   mailbox: string;
   labelIds: { log: string; logged: string };
   /** Gmail search for the mail to consider, e.g. `after:1763900000`. */
@@ -147,7 +157,7 @@ export const runDealMailImport = async (
 
   // 3. Headers, then oldest first: the start of a conversation has to be
   //    stored before the replies that are matched by its thread.
-  const metas = (
+  const read = (
     await inBatches(fresh, CONCURRENCY, async (id) => {
       try {
         return toDealMail(await gmail.getMeta(id), now);
@@ -158,14 +168,35 @@ export const runDealMailImport = async (
     })
   )
     .filter((m): m is DealMail => m !== null)
-    .filter((m) => !m.labelIds.some((l) => NOT_MAIL.has(l)))
+    .filter((m) => !m.labelIds.some((l) => NOT_MAIL.has(l)));
+
+  // Already in the log from another Kept mailbox, or removed from it there.
+  // Either way this copy is not stored again.
+  const messageIds = read
+    .map((m) => m.messageId)
+    .filter((id): id is string => id !== null);
+  const held =
+    messageIds.length > 0
+      ? await store.knownMessageIds(messageIds)
+      : new Set<string>();
+  const metas = read
+    .filter((m) => !(m.messageId && held.has(m.messageId)))
     .sort((a, b) => a.sentAt.getTime() - b.sentAt.getTime());
   result.scanned = metas.length;
 
+  // Two copies of one email in the same mailbox (rare, but list mail does
+  // it) are stored once.
+  const storedThisRun = new Set<string>();
   for (const meta of metas) {
+    if (meta.messageId && storedThisRun.has(meta.messageId)) {
+      continue;
+    }
     try {
       const outcome = await importOne(input, meta, now);
       result[outcome] += 1;
+      if (outcome !== 'ignored' && meta.messageId) {
+        storedThisRun.add(meta.messageId);
+      }
     } catch {
       // One bad email must not stop the run. It is not stored, so the next
       // run meets it again.
@@ -225,6 +256,7 @@ const importOne = async (
     dealId: match.dealId,
     matchedBy: match.matchedBy,
     direction: directionOf(full, mailbox),
+    mailbox: mailbox.toLowerCase(),
   };
   if (!(await store.save(mail))) {
     return 'ignored';

@@ -79,6 +79,28 @@ const domainOf = (address: string): string =>
 export const isOurs = (address: string, mailbox: string): boolean =>
   domainOf(address) === domainOf(mailbox);
 
+export type MailboxRefusal = 'no_main' | 'is_main' | 'other_domain';
+
+/**
+ * Can this account be added as another mailbox for the email log? Only an
+ * account on the main Kept account's own domain. The rule is the same one
+ * `isOurs` uses: if a second mailbox were on another domain, mail between
+ * colleagues would look like mail from outside, and a note between them
+ * could be stored as deal mail. Null means yes.
+ */
+export const mailboxRefusal = (
+  email: string,
+  mainEmail: string | null
+): MailboxRefusal | null => {
+  if (!mainEmail) {
+    return 'no_main';
+  }
+  if (email.toLowerCase() === mainEmail.toLowerCase()) {
+    return 'is_main';
+  }
+  return isOurs(email, mainEmail) ? null : 'other_domain';
+};
+
 /** Everyone on the email from outside the company, sender first. */
 export const outsideParties = (
   mail: Pick<MailForMatch, 'fromEmail' | 'toEmails' | 'ccEmails'>,

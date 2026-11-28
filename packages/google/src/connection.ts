@@ -6,8 +6,14 @@ import { keys } from '../keys';
 import { decryptToken, encryptToken } from './crypto';
 
 /**
- * The one Google connection for the platform: the Kept Workspace account,
- * connected once by a founder from Settings → Google.
+ * The Google connection for the platform: the main Kept Workspace account,
+ * connected once by a founder from Settings → Google. Drafts, Calendar,
+ * Drive, labels and the morning brief all use it.
+ *
+ * Other Kept mailboxes (a colleague's, a shared hello@) can be added beside
+ * it, for one job only: the deal email log reads them too. They have their
+ * own narrower sign-in (`MAILBOX_SCOPES`) and are never used for anything
+ * else. Each is stored under its own key, `google:mailbox:<address>`.
  *
  * It lives in the generic `Setting` table (key/value JSON) rather than a
  * model of its own, so shipping this needs no schema change and nothing
@@ -24,6 +30,19 @@ export const GOOGLE_SCOPES = [
   // Only files this app creates. It cannot see the rest of the Drive.
   'https://www.googleapis.com/auth/drive.file',
 ];
+
+/**
+ * An extra mailbox only needs to read mail and add the `Kept/Logged` label.
+ * No Calendar, no Drive.
+ */
+export const MAILBOX_SCOPES = [
+  'openid',
+  'email',
+  'https://www.googleapis.com/auth/gmail.modify',
+];
+
+const MAILBOX_PREFIX = 'google:mailbox:';
+const mailboxKey = (email: string) => `${MAILBOX_PREFIX}${email.toLowerCase()}`;
 
 type StoredConnection = {
   email: string;
@@ -42,6 +61,18 @@ export type GoogleStatus = {
   connectedAt: string | null;
   /** Connected once, but Google now refuses the token: reconnect needed. */
   broken: boolean;
+  /**
+   * Every mailbox the email log reads right now: the main account first,
+   * then any extra Kept mailbox that is still working.
+   */
+  mailboxes: string[];
+};
+
+export type MailboxStatus = {
+  email: string;
+  connectedAt: string;
+  /** Google refuses its token now: remove it and add it again. */
+  broken: boolean;
 };
 
 const env = () => keys();
@@ -56,16 +87,44 @@ const readConnection = async (): Promise<StoredConnection | null> => {
   return (row?.value as StoredConnection | undefined) ?? null;
 };
 
+const readMailboxes = async (): Promise<
+  { key: string; stored: StoredConnection }[]
+> => {
+  const rows = await database.setting.findMany({
+    where: { key: { startsWith: MAILBOX_PREFIX } },
+    orderBy: { key: 'asc' },
+  });
+  return rows
+    .map((r) => ({ key: r.key, stored: r.value as StoredConnection }))
+    .filter((r) => typeof r.stored?.email === 'string');
+};
+
 export const getGoogleStatus = async (): Promise<GoogleStatus> => {
-  const stored = await readConnection();
+  const [stored, extras] = await Promise.all([
+    readConnection(),
+    readMailboxes(),
+  ]);
+  const connected = Boolean(stored) && !stored?.brokenAt;
   return {
     configured: isGoogleConfigured(),
-    connected: Boolean(stored) && !stored?.brokenAt,
+    connected,
     email: stored?.email ?? null,
     connectedAt: stored?.connectedAt ?? null,
     broken: Boolean(stored?.brokenAt),
+    mailboxes: [
+      ...(connected && stored ? [stored.email] : []),
+      ...extras.filter((m) => !m.stored.brokenAt).map((m) => m.stored.email),
+    ],
   };
 };
+
+/** The extra mailboxes, for Settings → Google. Never returns a token. */
+export const listExtraMailboxes = async (): Promise<MailboxStatus[]> =>
+  (await readMailboxes()).map(({ stored }) => ({
+    email: stored.email,
+    connectedAt: stored.connectedAt,
+    broken: Boolean(stored.brokenAt),
+  }));
 
 export const saveGoogleConnection = async (input: {
   email: string;
@@ -87,12 +146,39 @@ export const saveGoogleConnection = async (input: {
     create: { key: CONNECTION_KEY, value, updatedBy: input.userId },
     update: { value, updatedBy: input.userId },
   });
-  cached = null;
+  cache.delete(CONNECTION_KEY);
 };
 
-/** Revoke at Google (best effort) and forget the token. */
-export const disconnectGoogle = async (): Promise<void> => {
-  const stored = await readConnection();
+/**
+ * Add (or reconnect) an extra Kept mailbox for the email log. The caller
+ * has already checked it is on the main account's domain
+ * (`mailboxRefusal`).
+ */
+export const saveExtraMailbox = async (input: {
+  email: string;
+  refreshToken: string;
+  userId: string;
+}): Promise<void> => {
+  const secret = env().GOOGLE_CLIENT_SECRET;
+  if (!secret) {
+    throw new Error('Google is not configured');
+  }
+  const key = mailboxKey(input.email);
+  const value: StoredConnection = {
+    email: input.email.toLowerCase(),
+    refreshTokenEnc: encryptToken(input.refreshToken, secret),
+    connectedAt: new Date().toISOString(),
+    connectedBy: input.userId,
+  };
+  await database.setting.upsert({
+    where: { key },
+    create: { key, value, updatedBy: input.userId },
+    update: { value, updatedBy: input.userId },
+  });
+  cache.delete(key);
+};
+
+const revoke = async (stored: StoredConnection | null): Promise<void> => {
   const secret = env().GOOGLE_CLIENT_SECRET;
   const token =
     stored && secret ? decryptToken(stored.refreshTokenEnc, secret) : null;
@@ -105,11 +191,32 @@ export const disconnectGoogle = async (): Promise<void> => {
       // Forgetting the token locally is what matters; revoke is a courtesy.
     });
   }
-  await database.setting.deleteMany({ where: { key: CONNECTION_KEY } });
-  cached = null;
 };
 
-let cached: { token: string; email: string; expiresAt: number } | null = null;
+/**
+ * Stop reading an extra mailbox: revoke at Google (best effort) and forget
+ * the token. Emails already stored from it stay in the log.
+ */
+export const removeExtraMailbox = async (email: string): Promise<void> => {
+  const key = mailboxKey(email);
+  const row = await database.setting.findUnique({ where: { key } });
+  await revoke((row?.value as StoredConnection | undefined) ?? null);
+  await database.setting.deleteMany({ where: { key } });
+  cache.delete(key);
+};
+
+/** Revoke at Google (best effort) and forget the token. */
+export const disconnectGoogle = async (): Promise<void> => {
+  await revoke(await readConnection());
+  await database.setting.deleteMany({ where: { key: CONNECTION_KEY } });
+  cache.delete(CONNECTION_KEY);
+};
+
+/** Live access tokens, by Setting key. */
+const cache = new Map<
+  string,
+  { token: string; email: string; expiresAt: number }
+>();
 
 export type GoogleSession = { accessToken: string; email: string };
 
@@ -119,21 +226,51 @@ export type GoogleSession = { accessToken: string; email: string };
  * calls this first and skips on null: Google being absent must never break
  * the flow it is attached to.
  */
-export const getGoogleSession = async (): Promise<GoogleSession | null> => {
-  if (cached && cached.expiresAt > Date.now() + 60_000) {
-    return { accessToken: cached.token, email: cached.email };
+export const getGoogleSession = async (): Promise<GoogleSession | null> =>
+  sessionFor(CONNECTION_KEY, readConnection);
+
+/**
+ * Sessions for every mailbox the email log reads: the main account first,
+ * then each extra Kept mailbox. One that is broken, or whose token cannot
+ * be refreshed right now, is left out; the rest still work.
+ */
+export const getMailboxSessions = async (): Promise<GoogleSession[]> => {
+  const main = await getGoogleSession();
+  const extras = await readMailboxes();
+  const sessions = await Promise.all(
+    extras.map(({ key, stored }) => sessionFor(key, async () => stored))
+  );
+  // An account that is both the main one and an extra (the main account
+  // was later switched to it) is read once.
+  const seen = new Set<string>();
+  return [main, ...sessions].filter((s): s is GoogleSession => {
+    if (!s || seen.has(s.email.toLowerCase())) {
+      return false;
+    }
+    seen.add(s.email.toLowerCase());
+    return true;
+  });
+};
+
+const sessionFor = async (
+  key: string,
+  read: () => Promise<StoredConnection | null>
+): Promise<GoogleSession | null> => {
+  const hit = cache.get(key);
+  if (hit && hit.expiresAt > Date.now() + 60_000) {
+    return { accessToken: hit.token, email: hit.email };
   }
   const { GOOGLE_CLIENT_ID: clientId, GOOGLE_CLIENT_SECRET: secret } = env();
   if (!(clientId && secret)) {
     return null;
   }
-  const stored = await readConnection();
+  const stored = await read();
   if (!stored || stored.brokenAt) {
     return null;
   }
   const refreshToken = decryptToken(stored.refreshTokenEnc, secret);
   if (!refreshToken) {
-    await markBroken(stored, 'stored token could not be decrypted');
+    await markBroken(key, stored, 'stored token could not be decrypted');
     return null;
   }
 
@@ -157,7 +294,11 @@ export const getGoogleSession = async (): Promise<GoogleSession | null> => {
     // invalid_grant = revoked or expired for good. Anything else (5xx,
     // network) may pass, so only invalid_grant marks the connection broken.
     if (json.error === 'invalid_grant') {
-      await markBroken(stored, 'Google rejected the token (invalid_grant)');
+      await markBroken(
+        key,
+        stored,
+        'Google rejected the token (invalid_grant)'
+      );
     } else {
       log.warn('google: token refresh failed', {
         status: response.status,
@@ -167,22 +308,27 @@ export const getGoogleSession = async (): Promise<GoogleSession | null> => {
     return null;
   }
 
-  cached = {
+  const fresh = {
     token: json.access_token,
     email: stored.email,
     expiresAt: Date.now() + (json.expires_in ?? 3600) * 1000,
   };
-  return { accessToken: cached.token, email: cached.email };
+  cache.set(key, fresh);
+  return { accessToken: fresh.token, email: fresh.email };
 };
 
 const markBroken = async (
+  key: string,
   stored: StoredConnection,
   reason: string
 ): Promise<void> => {
-  log.error('google: connection broken, reconnect needed', { reason });
+  log.error('google: connection broken, reconnect needed', {
+    reason,
+    mailbox: key === CONNECTION_KEY ? 'main' : 'extra',
+  });
   await database.setting
     .update({
-      where: { key: CONNECTION_KEY },
+      where: { key },
       data: { value: { ...stored, brokenAt: new Date().toISOString() } },
     })
     .catch(() => {

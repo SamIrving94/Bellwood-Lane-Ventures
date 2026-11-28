@@ -26,6 +26,99 @@ export type WhatsNewEntry = {
 /** Newest first. The popup shows index 0. */
 export const WHATS_NEW: WhatsNewEntry[] = [
   {
+    id: '2026-11-27-more-mailboxes',
+    date: '2026-11-28',
+    emoji: '📮',
+    title: 'Every Kept mailbox can feed the email log',
+    intro:
+      'Add a colleague’s or a shared Kept mailbox, and its deal emails land on the deal too.',
+    bullets: [
+      {
+        emoji: '➕',
+        text: 'Go to **Settings → Google → Other Kept mailboxes** and press **Add a mailbox**.',
+      },
+      {
+        emoji: '👯',
+        text: 'Same email in two mailboxes? It is stored **once**.',
+      },
+      {
+        emoji: '🔒',
+        text: 'Extra mailboxes are for the **email log only**. Drafts, calendar and Drive stay on the main account.',
+      },
+      {
+        emoji: '🧭',
+        text: '**Email log** now has its own spot in the menu, under Pipeline.',
+      },
+    ],
+    cta: { label: 'Add a mailbox', href: '/settings/google' },
+  },
+  {
+    id: '2026-11-27-where-enquiries-came-from',
+    date: '2026-11-27',
+    emoji: '🧭',
+    title: 'See which advert brought each enquiry',
+    intro:
+      'Every enquiry from the website now says where the person came from.',
+    bullets: [
+      {
+        emoji: '📍',
+        text: 'Open any quote. A new **Came from** card names the source: **Google Ads**, **Facebook / Instagram**, a search, or another site.',
+      },
+      {
+        emoji: '📊',
+        text: 'The Quotes page has a new table: **enquiries, accepted offers and deals** for each source.',
+      },
+      {
+        emoji: '🍪',
+        text: 'It counts **everyone**, including people who say no to cookies. Google and Meta only count the ones who say yes.',
+      },
+      {
+        emoji: '🏷️',
+        text: 'Want the **advert’s name** too? Tag the ad’s link once. The advert itself does not change.',
+      },
+      {
+        emoji: '🕰️',
+        text: 'Older enquiries show **Not recorded**. It starts now.',
+      },
+      {
+        emoji: '📝',
+        text: '**Meta Instant Forms** show as **Meta ads** once the Meta setup is done.',
+      },
+    ],
+    cta: { label: 'Open Quotes', href: '/quotes' },
+  },
+  {
+    id: '2026-11-27-meta-leads',
+    date: '2026-11-27',
+    emoji: '📥',
+    title: 'Facebook and Instagram leads land in Quotes',
+    intro:
+      'Someone fills in a form on one of our ads. They now show up here on their own. No more copying from Meta.',
+    bullets: [
+      {
+        emoji: '⚡',
+        text: 'A lead from a Meta **instant form** appears in **Quotes** within seconds.',
+      },
+      {
+        emoji: '🔔',
+        text: 'You get a **New Meta lead** card with their phone, email and answers. It is due in **24 hours**.',
+      },
+      {
+        emoji: '🧹',
+        text: 'Every **30 minutes** Kept checks Meta for anything it missed. If Meta stops answering, **you get told**.',
+      },
+      {
+        emoji: '🤝',
+        text: '**Nothing is sent to the seller.** First contact is still yours.',
+      },
+      {
+        emoji: '🔧',
+        text: 'It needs a **one-off setup** in Meta before it switches on. Steps are in docs/META-LEADS.md.',
+      },
+    ],
+    cta: { label: 'Open Quotes', href: '/quotes' },
+  },
+  {
     id: '2026-11-23-deal-email-log',
     date: '2026-11-23',
     emoji: '📬',

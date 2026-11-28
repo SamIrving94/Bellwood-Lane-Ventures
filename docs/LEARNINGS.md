@@ -6,6 +6,41 @@ the scout, the AVM, or any PropertyData call.
 
 ---
 
+## 2026-11-28 — The journey stand-in pages 404'd for a month
+
+**What broke.** The four `/journey/<name>` stand-in pages (offer letter,
+deal timeline, viewing booking, save the sale) returned 404 on the live
+site from the day they shipped, 24 Oct. A tracking audit found it on
+26 Nov. Nothing errored: not the build, not the types, not the browser.
+
+The tags were not dead. A 404 still renders the root layout, so the
+consent component ran inside the hidden frame and loaded what the visitor
+had allowed. On a production build of the broken code, GA sent a page view
+for `/journey/save-the-sale` with the title "404: This page could not be
+found." and the referrer cut to our origin. So rules on the URL could
+still match; anything that reads the page title saw "not found". Not
+checked inside the ad accounts.
+
+**Root cause.** The list of names (`JOURNEY_STAND_INS`) lived in
+`components/cookie-consent.tsx`, a `'use client'` file. The route
+(`app/journey/[page]/page.tsx`) is a server file. A server file that
+imports a value from a client file gets a placeholder: fine to pass on to
+a client component, empty if you read it. `Object.values(placeholder)` is
+`[]`, so `generateStaticParams` returned no pages, and with
+`dynamicParams = false` every name was a 404.
+
+**Rules.**
+
+- A value that server code reads lives in a plain module, never in a
+  `'use client'` file. Client files import it from there
+  (`apps/web/lib/journey-stand-ins.ts`).
+- A route whose only pages come from `generateStaticParams` fails the
+  build when the list is empty.
+- After a new public route ships, check its status code on the live site.
+  A page that renders is not proof: this one rendered, as a 404.
+
+---
+
 ## 2026-10-03 — The marketer ran every day for three weeks and produced nothing
 
 **What broke.** From 12 Sep every LinkedIn basket, paid-ad set, solicitor

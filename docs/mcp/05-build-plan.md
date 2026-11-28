@@ -39,7 +39,7 @@ Platform facts come from `00-platform-notes.md`. The OpenAI docs site is blocked
 
 ### 5. Hosting on Vercel 👤
 
-Create a **4th Vercel project**, `bellwood-plugin`:
+Create a **4th Vercel project**, `kept-plugin`:
 
 1. Import the repo and set the root directory to `apps/plugin`.
 2. Use the same build settings as the other apps (pnpm, Node 20+).
@@ -92,7 +92,7 @@ Redesigned at DevDay (29 Sep 2026); details are from search summaries, so check 
 ### 8. Order of release
 
 1. Merge. The website P0 fix goes live first.
-2. Deploy `bellwood-plugin`. Run the developer-mode tests.
+2. Deploy `kept-plugin`. Run the developer-mode tests.
 3. Ship-dark gate: 1 executor + 1 agent.
 4. Submit the **public** plugin.
 5. Give the **Pro** plugin to friendly agents through developer mode. Decide on a directory listing later.

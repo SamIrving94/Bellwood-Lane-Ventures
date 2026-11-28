@@ -1,6 +1,7 @@
 'use client';
 
 import { sendLead } from '@/components/cookie-consent';
+import { leadSource } from '@/lib/lead-source';
 import { useFunnelTrack } from '@/lib/use-funnel-track';
 import { type ReactNode, useState } from 'react';
 
@@ -190,6 +191,7 @@ export function OfferForm() {
           notes: notes.trim() || undefined,
           triggerLabel: situationLabel || undefined,
           submissionSource: 'homepage_offer_form',
+          leadSource: leadSource(),
         }),
       });
       if (!res.ok) {

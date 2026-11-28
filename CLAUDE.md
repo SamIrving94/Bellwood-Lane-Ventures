@@ -60,11 +60,11 @@ Business-logic packages (the custom part of this codebase):
 | `@repo/database` | Prisma client + Neon adapter; **schema is the data contract** |
 | `@repo/scouting` | Probate / distressed-seller discovery + lead scoring |
 | `@repo/valuation` | AVM orchestrator (base + risk + trend → offer) |
-| `@repo/property-data` | HMLR, EPC, OS Places, PropertyData adapters |
+| `@repo/property-data` | HMLR, EPC, PropertyData, postcodes.io adapters (UPRNs via PropertyData `/uprns`; OS Places retired Oct 2026) |
 | `@repo/auctions` | Auction House UK / Savills / Clive Emson scrapers |
 | `@repo/email` | Resend wrapper with graceful fallback |
 | `@repo/calendly` | Booking-link generator + webhook verification |
-| `@repo/google` | The Kept Google Workspace connection (Gmail drafts, Calendar, Drive). Graceful skip when not connected. See `docs/GOOGLE-WORKSPACE.md` |
+| `@repo/google` | The Kept Google Workspace connection (Gmail drafts, Calendar, Drive), plus extra Kept mailboxes for the email log. Graceful skip when not connected. See `docs/GOOGLE-WORKSPACE.md` |
 | `@repo/whatsapp-parser` | Parse inbound WhatsApp intake messages |
 | `@repo/instant-offer`, `@repo/quote-ops`, `@repo/deal-updates`, `@repo/document-pipeline`, `@repo/knowledge-base`, `@repo/notifications` | Deal/offer/document/notification workflows |
 | `@repo/kept-tools` | Logic behind the ChatGPT plugin tools (sale routes, inherited-home plan, renovation bands, CGT, property facts). Pure; every stated fact sourced in `src/sources.ts` |
@@ -107,7 +107,9 @@ This is the most important custom surface. Two families of route handlers:
 `event-poller`, `deep-appraisal`, `agent-prospecting`, `quote-ops`, `keep-alive`,
 `weekly-patterns`, `avm-backtest` (monthly, 28th), `guide-research` (Saturdays;
 drafts one evergreen guide a week into `GuidePost`, published by hand from
-/marketing/guides), `google-sync` (half-hourly) and `google-daily` (no-ops
+/marketing/guides), `meta-leads-sync` (half-hourly; the safety net behind
+`/webhooks/meta-leads`, which saves Meta instant-form leads to Quotes as
+drafts, see `docs/META-LEADS.md`), `google-sync` (half-hourly) and `google-daily` (no-ops
 until Google is connected). **Exception:** `scouting` has NO schedule (founder decision,
 27 Aug 2026) — it is founder-triggered from Settings → Scouting ("Run scout
 now") to control PropertyData spend; same route, same CRON_SECRET auth.
@@ -126,9 +128,24 @@ Marketer, Liaison) and their onboarding prompts are documented in
   `OutreachHold`, `FounderAction`, `FounderFeedback`, `AgentEvent`, `EvalConfig`,
   `AuctionLot`, `Campaign`, `Contact`, `QuoteRequest`/`QuoteOffer`,
   `LegalStep`/`LegalDocument`, `DealEmail`, `WhatsAppIntake`, `LlmCallLog`.
-- **Apply schema changes** (dev): from repo root run `pnpm migrate`
-  (= `prisma format && prisma generate && prisma db push` inside
-  `packages/database`).
+- **Apply schema changes:** from repo root run `pnpm migrate`. It runs
+  `prisma format` and `prisma generate`, then **looks before it pushes**: if
+  the push would delete a table, a column or an enum, it stops and changes
+  nothing. It prints which database it is looking at first; a `localhost`
+  address is the local placeholder, not live.
+  - `pnpm migrate:check` only looks: what a push would add, delete, change.
+  - `pnpm migrate:add-only` adds what is new and leaves everything else.
+  - `pnpm migrate --allow-deletes` pushes as before, for a deletion you mean.
+- **Why it will not delete.** Every branch pushes to the same live Neon
+  database, and `prisma db push` makes it match ONE schema, so it drops
+  whatever only another open branch has, with no warning while the table is
+  empty. 26 to 28 Nov 2026: master would have dropped an open PR's
+  `EmailMessage`, that PR would have dropped live `DealEmail`, and a day
+  later both would have dropped `QuoteRequestSource`. So a "would DELETE"
+  line for a table you do not recognise is usually another branch's work,
+  not a leftover: check `git grep "^model <Name>" <branch>` across open
+  branches before calling it dead. Never run a bare `prisma db push` at the
+  live database. Logic and tests live in `packages/database/scripts/`.
 - Browse data: `apps/studio` (`prisma studio`).
 - **Gotcha:** use `pnpm exec prisma` from inside `packages/database/` — a
   globally installed Prisma CLI may not match this schema.
@@ -151,7 +168,9 @@ pnpm preflight          # build api + app + web only (what the pre-push hook run
 pnpm test               # turbo test (Vitest across workspaces)
 pnpm lint               # ultracite (Biome) lint
 pnpm format             # ultracite (Biome) format
-pnpm migrate            # prisma format + generate + db push (packages/database)
+pnpm migrate            # prisma format + generate, then db push; stops if it would delete
+pnpm migrate:check      # show what a push would add / delete / change; changes nothing
+pnpm migrate:add-only   # add what is new to the database, delete nothing
 pnpm clean              # git clean -xdf node_modules
 ```
 
@@ -178,7 +197,8 @@ Run a task for one workspace with a filter, e.g.
 - **The email log reads Gmail, keeps only deal mail, and never guesses a
   deal** (founder, 23 Nov 2026: no Postmark, no address to CC). The
   google-sync cron runs `importDealMail` (`@repo/google`), which reads the
-  Kept mailbox through the Google connection and stores an email
+  Kept mailboxes (the main account, plus any extra Kept mailbox added in
+  Settings → Google) and stores an email
   (`DealEmail`) ONLY when it is deal mail: it continues a conversation
   already in the log, it is to or from a deal's seller or solicitor, or we
   wrote it to someone outside and a full postcode names one deal. Everything
@@ -191,11 +211,18 @@ Run a task for one workspace with a filter, e.g.
   deal", postcodes in inbound mail): a seller's email on the wrong deal is a
   privacy problem. It only READS mail; the one change it makes in Gmail is
   adding `Kept/Logged`. Attachments are listed by name, never copied out of
-  Gmail. The model's read (`deal_email_digest`) is display-only. See
-  `docs/GOOGLE-WORKSPACE.md` § Deal email log.
-- **Google is one connection, to the Kept Workspace account** (founder,
+  Gmail. The model's read (`deal_email_digest`) is display-only. An email
+  that reached two Kept mailboxes is stored once (same Message-ID; a
+  removed one stays removed). See `docs/GOOGLE-WORKSPACE.md` § Deal email
+  log.
+- **Google is one main connection, to the Kept Workspace account** (founder,
   22 Nov 2026), made from Settings → Google and stored encrypted in
-  `Setting`. Personal Gmail accounts are refused at the callback. Gmail is
+  `Setting`. Drafts, Calendar, Drive, labels and the morning brief use it
+  and only it. **Extra Kept mailboxes** (founder, 27 Nov 2026) can be added
+  beside it for the email log ONLY: narrower sign-in (`MAILBOX_SCOPES`:
+  Gmail only), the main account's own domain only (`mailboxRefusal`), never
+  used for drafts or anything else. Personal Gmail accounts are refused at
+  the callback. Gmail is
   **drafts only** for anything vendor-facing: `draftInGmail` never sends,
   and the only send (`sendGmailToSelf`) goes to the Kept mailbox itself.
   Every `@repo/google` feature returns `{ skipped: true }` when not

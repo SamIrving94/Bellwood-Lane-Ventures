@@ -15,6 +15,8 @@ export type EmailCardData = {
   id: string;
   dealId: string | null;
   gmailThreadId: string;
+  /** The Kept mailbox it was read from. Null: the main account. */
+  mailbox: string | null;
   threadKey: string;
   direction: string;
   fromEmail: string;
@@ -43,6 +45,7 @@ export type EmailRow = {
   id: string;
   dealId: string | null;
   gmailThreadId: string;
+  mailbox: string | null;
   threadKey: string;
   direction: string;
   fromEmail: string;
@@ -100,6 +103,7 @@ export function toEmailCards(rows: EmailRow[]): EmailCardData[] {
     id: r.id,
     dealId: r.dealId,
     gmailThreadId: r.gmailThreadId,
+    mailbox: r.mailbox,
     threadKey: r.threadKey,
     direction: r.direction,
     fromEmail: r.fromEmail,

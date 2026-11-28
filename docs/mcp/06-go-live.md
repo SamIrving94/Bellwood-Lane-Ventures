@@ -4,6 +4,8 @@ _Updated: 2026-10-01. ✅ = done by Claude. 👤 = needs you._
 
 **Founder decision (1 Oct):** high risk tolerance. Go live without OpenAI's directory review, then test and learn.
 
+> **Easiest way to follow this:** the tick-box checklist with copy buttons, `docs/mcp/07-setup-checklist.html` (also published as a private page for the founder).
+
 ## What "live without review" means
 
 - **It is live on the internet.** Anyone with the link can connect it to ChatGPT in **developer mode** (Plus, Pro or Business, on the web).
@@ -34,18 +36,24 @@ _Updated: 2026-10-01. ✅ = done by Claude. 👤 = needs you._
 
 1. Go to **vercel.com → Add New… → Project**.
 2. **Import** `SamIrving94/Bellwood-Lane-Ventures`.
-3. **Project Name:** `bellwood-plugin`
+3. **Project Name:** `kept-plugin`
+   - It must say **kept**: the project name becomes the web address people paste into ChatGPT (`kept-plugin.vercel.app`). "Bellwoods" is the old brand.
 4. **Root Directory:** click **Edit** and pick **`apps/plugin`**. ⚠️ This is the only setting that matters.
-5. Leave everything else as it is. **No environment variables needed yet.**
+5. Open **Environment Variables** and add **one** before deploying:
+   - **Key:** `EPC_API_TOKEN`
+   - **Value:** copy it from **bellwood-api** (or **bellwood-web**) → Settings → Environment Variables.
+   - **No copy to be found?** Get a free one: **get-energy-performance-data.communities.gov.uk** → sign in with **GOV.UK One Login** → **My account** → copy the token. Add it to **bellwood-web** as well (Keyhole needs it).
+   - **Why:** energy certificates come from a government register that needs this free key. Without it, property facts can't read the EPC and renovation can't read the floor area. Land Registry sales work without any key.
+   - Leave everything else as it is.
 6. Click **Deploy**. It takes about 3–5 minutes.
 
 **Then check one setting:**
 
-7. **bellwood-plugin → Settings → Deployment Protection → Vercel Authentication.**
+7. **kept-plugin → Settings → Deployment Protection → Vercel Authentication.**
    - It must say **"Standard Protection"** (previews only).
    - If it says "All Except Custom Domains", ChatGPT gets blocked. Change it to Standard and save.
 
-8. Open **bellwood-plugin → Overview** and copy the domain, e.g. `bellwood-plugin.vercel.app`.
+8. Open **kept-plugin → Overview** and copy the domain, e.g. `kept-plugin.vercel.app`.
 9. **Tell Claude it's done.** Claude will check it's working.
 
 ---
@@ -75,14 +83,13 @@ New chat → **+ → Developer mode →** tick **Kept**. Then type:
 
 ## 4. Turn on Pro: agents and investors (5 min) 👤
 
-**a) Add 5 environment variables:** bellwood-plugin → **Settings → Environment Variables**.
+**a) Add 4 environment variables** (`EPC_API_TOKEN` is already in from step 1): kept-plugin → **Settings → Environment Variables**.
 
 | Name | Value |
 |:--|:--|
 | `DATABASE_URL` | Copy from **bellwood-api** |
 | `RESEND_TOKEN` | Copy from **bellwood-api** |
 | `RESEND_FROM` | Copy from **bellwood-api** |
-| `EPC_API_TOKEN` | Copy from **bellwood-api** (also makes public property facts work fully) |
 | `PLUGIN_AUTH_SECRET` | New random text, 48+ characters. In a terminal: `openssl rand -base64 48` |
 
 **b) Redeploy:** Deployments → latest → **⋯ → Redeploy**.
@@ -113,7 +120,7 @@ Your domain's DNS is at **GoDaddy**, so Claude can't add records.
    - **Type:** CNAME
    - **Name:** `chatgpt`
    - **Value:** `cname.vercel-dns.com`
-2. **bellwood-plugin → Settings → Domains →** add `chatgpt.wearekept.co.uk`. Wait for ✅.
+2. **kept-plugin → Settings → Domains →** add `chatgpt.wearekept.co.uk`. Wait for ✅.
 3. Add the env var `PLUGIN_PUBLIC_URL` = `https://chatgpt.wearekept.co.uk`, then **Redeploy**.
 4. In ChatGPT, update both plugin URLs to the new address. Pro users sign in again once.
 
@@ -123,14 +130,24 @@ Your domain's DNS is at **GoDaddy**, so Claude can't add records.
 
 | What | Where |
 |:--|:--|
-| Which tools get used, and errors | Vercel → bellwood-plugin → **Logs**, search `kept_plugin_tool`. Each line has tool, outcome and time. **No user inputs are ever logged.** |
+| Which tools get used, and errors | Vercel → kept-plugin → **Logs**, search `kept_plugin_tool`. Each line has tool, outcome and time. **No user inputs are ever logged.** |
 | Leads from the plugin | Website analytics: visits with `utm_source=chatgpt`. Then the form submissions that follow. |
 | Agent referrals and investor interest | **Action Centre**: cards titled "via ChatGPT" |
 | Something wrong? | Ask Claude to read the logs. |
 
-**Kill switch:** bellwood-plugin → **Settings → General → Pause**. ChatGPT gets an error; nothing else is affected.
+**Kill switch:** kept-plugin → **Settings → General → Pause**. ChatGPT gets an error; nothing else is affected.
 
 ---
+
+## Branding: where "Bellwoods" can still appear
+
+| Where | Shows | Why |
+|:--|:--|:--|
+| Everything ChatGPT users see (plugin, tools, cards, sign-in page, links) | **Kept** | Read from `@repo/brand`, which is set to Kept |
+| The plugin web address | **Kept** if the project is named `kept-plugin` | Vercel names the address after the project |
+| Sign-in code emails (Pro) | Whatever `RESEND_FROM` is | Use a `@wearekept.co.uk` sender |
+| Privacy and legal pages, OpenAI organisation verification | **Bellwoods Lane Ventures Ltd** | Kept is a trading name; legal documents must name the registered company |
+| GitHub repo, other Vercel projects, code | Bellwood | Internal only. Nobody outside sees it. Renaming the repo would break the Vercel links, so leave it. |
 
 ## Risks you are accepting (high risk tolerance)
 

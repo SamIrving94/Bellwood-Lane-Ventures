@@ -97,6 +97,10 @@
       "schedule": "10,40 * * * *"
     },
     {
+      "path": "/cron/meta-leads-sync",
+      "schedule": "5,35 * * * *"
+    },
+    {
       "path": "/cron/google-daily",
       "schedule": "40 6 * * *"
     }

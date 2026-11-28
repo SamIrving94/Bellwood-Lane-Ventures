@@ -27,6 +27,7 @@ import {
   directionOf,
   outsideParties,
   pickOne,
+  mailboxRefusal,
   resolveDeal,
 } from '../deal-mail-match';
 import {
@@ -70,6 +71,8 @@ type MessageInput = {
   at?: string;
   labelIds?: string[];
   parts?: GmailPart[];
+  /** RFC Message-ID. Defaults to one made from the Gmail id. */
+  messageId?: string;
 };
 
 /** A `format=full` message. `meta()` strips it down to `format=metadata`. */
@@ -86,7 +89,10 @@ const full = (m: MessageInput): GmailMessage => ({
       { name: 'To', value: m.to ?? SELLER },
       ...(m.cc ? [{ name: 'Cc', value: m.cc }] : []),
       { name: 'Subject', value: m.subject ?? 'Your home' },
-      { name: 'Message-ID', value: `<${m.id}@mail.gmail.com>` },
+      {
+        name: 'Message-ID',
+        value: `<${m.messageId ?? `${m.id}@mail.gmail.com`}>`,
+      },
     ],
     parts: m.parts ?? [textPart(m.body ?? 'Hello.')],
   },
@@ -531,10 +537,21 @@ describe('resolveDeal', () => {
 
 // ───────────────────────────────────────────────────────────────────────────
 
-/** An in-memory mailbox and database for whole-run tests. */
-const world = (messages: MessageInput[], deals: DealRow[] = [DEAL]) => {
+/**
+ * An in-memory mailbox and database for whole-run tests. Pass `db` from
+ * another world to read a second Kept mailbox into the same database.
+ */
+const world = (
+  messages: MessageInput[],
+  deals: DealRow[] = [DEAL],
+  opts: {
+    mailbox?: string;
+    db?: { saved: MailToSave[]; removedMessageIds: Set<string> };
+  } = {}
+) => {
   const inbox = new Map(messages.map((m) => [m.id, full(m)]));
-  const saved: MailToSave[] = [];
+  const saved: MailToSave[] = opts.db?.saved ?? [];
+  const removedMessageIds = opts.db?.removedMessageIds ?? new Set<string>();
   const removed = new Set<string>();
   const cards: string[] = [];
   const calls = { meta: [] as string[], full: [] as string[] };
@@ -574,6 +591,13 @@ const world = (messages: MessageInput[], deals: DealRow[] = [DEAL]) => {
       new Set(
         ids.filter(
           (id) => removed.has(id) || saved.some((s) => s.gmailId === id)
+        )
+      ),
+    knownMessageIds: async (ids) =>
+      new Set(
+        ids.filter(
+          (id) =>
+            removedMessageIds.has(id) || saved.some((s) => s.messageId === id)
         )
       ),
     lookups: {
@@ -617,7 +641,7 @@ const world = (messages: MessageInput[], deals: DealRow[] = [DEAL]) => {
     runDealMailImport({
       gmail,
       store,
-      mailbox: MAILBOX,
+      mailbox: opts.mailbox ?? MAILBOX,
       labelIds: LABELS,
       query: over.query ?? 'after:0',
       max: over.max ?? 500,
@@ -625,7 +649,18 @@ const world = (messages: MessageInput[], deals: DealRow[] = [DEAL]) => {
       now: NOW,
     });
 
-  return { run, saved, removed, cards, calls, labelled, failOn, inbox };
+  return {
+    run,
+    saved,
+    removed,
+    removedMessageIds,
+    cards,
+    calls,
+    labelled,
+    failOn,
+    inbox,
+    db: { saved, removedMessageIds },
+  };
 };
 
 type DealRow = { id: string; postcode: string; sellerEmail: string };
@@ -801,6 +836,94 @@ describe('an import run', () => {
     ]);
     expect((await w.run({ max: 1 })).capped).toBe(true);
     expect((await world([{ id: 'a', to: SELLER }]).run()).capped).toBe(false);
+  });
+});
+
+describe('more than one Kept mailbox', () => {
+  const JO = 'jo@wearekept.co.uk';
+  // One email from the seller to Sam and Jo: a different Gmail id in each
+  // mailbox, the same Message-ID.
+  const toBoth = {
+    from: SELLER,
+    to: `${MAILBOX}, ${JO}`,
+    messageId: 'CAF-seller-1@mail.example.com',
+  };
+
+  test('an email in two mailboxes is stored once, from the first', async () => {
+    const sam = world([{ id: 'sam-1', ...toBoth }]);
+    const jo = world([{ id: 'jo-1', ...toBoth }], [DEAL], {
+      mailbox: JO,
+      db: sam.db,
+    });
+    expect(await sam.run()).toMatchObject({ kept: 1 });
+    expect(await jo.run()).toMatchObject({ scanned: 0, kept: 0, errors: 0 });
+    expect(sam.saved.map((s) => [s.gmailId, s.mailbox])).toEqual([
+      ['sam-1', MAILBOX],
+    ]);
+    // Jo's copy: headers read to see the Message-ID, body never opened.
+    expect(jo.calls.full).toEqual([]);
+  });
+
+  test('records the mailbox an email was read from', async () => {
+    const jo = world([{ id: 'jo-1', from: SELLER, to: JO }], [DEAL], {
+      mailbox: JO,
+    });
+    await jo.run();
+    expect(jo.saved[0]).toMatchObject({ mailbox: JO, direction: 'inbound' });
+  });
+
+  test('an email removed from the log does not come back from another mailbox', async () => {
+    const jo = world([{ id: 'jo-1', ...toBoth }], [DEAL], { mailbox: JO });
+    jo.removedMessageIds.add(toBoth.messageId);
+    expect(await jo.run()).toMatchObject({ scanned: 0, kept: 0 });
+    expect(jo.saved).toEqual([]);
+  });
+
+  test('two copies in the same mailbox are stored once', async () => {
+    const w = world([
+      { id: 'copy-1', ...toBoth, at: '2026-11-22T10:00:00Z' },
+      { id: 'copy-2', ...toBoth, at: '2026-11-22T10:00:01Z' },
+    ]);
+    await w.run();
+    expect(w.saved.map((s) => s.gmailId)).toEqual(['copy-1']);
+  });
+
+  test('a note between two Kept people is still ignored in either mailbox', async () => {
+    const note = {
+      from: `Sam <${MAILBOX}>`,
+      to: JO,
+      body: 'Popped round to M14 5AB, all fine.',
+    };
+    const jo = world([{ id: 'jo-1', ...note }], [DEAL], { mailbox: JO });
+    const sam = world([{ id: 'sam-1', ...note }]);
+    expect(await jo.run()).toMatchObject({ kept: 0, unfiled: 0, ignored: 1 });
+    expect(await sam.run()).toMatchObject({ kept: 0, unfiled: 0, ignored: 1 });
+  });
+});
+
+describe('which accounts can be added as a mailbox', () => {
+  const MAIN = 'sam@wearekept.co.uk';
+
+  test('a colleague on the Kept domain', () => {
+    expect(mailboxRefusal('jo@wearekept.co.uk', MAIN)).toBeNull();
+    expect(mailboxRefusal('Hello@WeAreKept.co.uk', MAIN)).toBeNull();
+  });
+
+  test('not before the main account is connected', () => {
+    expect(mailboxRefusal('jo@wearekept.co.uk', null)).toBe('no_main');
+  });
+
+  test('not the main account again', () => {
+    expect(mailboxRefusal('SAM@wearekept.co.uk', MAIN)).toBe('is_main');
+  });
+
+  test('not another domain, a personal Gmail, or a lookalike', () => {
+    expect(mailboxRefusal('jo@gmail.com', MAIN)).toBe('other_domain');
+    expect(mailboxRefusal('jo@agency.example', MAIN)).toBe('other_domain');
+    expect(mailboxRefusal('jo@wearekept.co.uk.evil.example', MAIN)).toBe(
+      'other_domain'
+    );
+    expect(mailboxRefusal('jo@sub.wearekept.co.uk', MAIN)).toBe('other_domain');
   });
 });
 

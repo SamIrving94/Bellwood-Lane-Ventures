@@ -19,7 +19,9 @@
     "copy-integrity": "node scripts/copy-integrity.mjs",
     "bump-deps": "npx npm-check-updates --deep -u -x react-day-picker && pnpm install",
     "bump-ui": "npx shadcn@latest add --all --overwrite -c packages/design-system",
-    "migrate": "cd packages/database && npx prisma format && npx prisma generate && npx prisma db push",
+    "migrate": "node packages/database/scripts/migrate.mjs",
+    "migrate:check": "node packages/database/scripts/migrate.mjs --check",
+    "migrate:add-only": "node packages/database/scripts/migrate.mjs --add-only",
     "clean": "git clean -xdf node_modules"
   },
   "devDependencies": {

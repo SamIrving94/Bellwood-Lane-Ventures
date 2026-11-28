@@ -2,6 +2,7 @@
 
 import type { SituationValue } from '@/lib/situations';
 import { sendLead } from '@/components/cookie-consent';
+import { leadSource } from '@/lib/lead-source';
 import { useFunnelTrack } from '@/lib/use-funnel-track';
 import { useState } from 'react';
 
@@ -162,6 +163,7 @@ export function SituationOfferForm({
           notes: notes.trim() || undefined,
           triggerLabel,
           submissionSource: source,
+          leadSource: leadSource(),
         }),
       });
       if (!res.ok) {
