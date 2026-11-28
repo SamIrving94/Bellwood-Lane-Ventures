@@ -43,7 +43,11 @@ export async function generateMetadata({
   return {
     title: `${guide.title} · Kept`,
     description: guide.metaDescription,
-    alternates: { canonical: `${brand.url}/guides/${guide.slug}` },
+    alternates: {
+      canonical: `${brand.url}/guides/${guide.slug}`,
+      // Plain-text twin for assistants that read markdown.
+      types: { 'text/markdown': `${brand.url}/guides/${guide.slug}/md` },
+    },
     openGraph: {
       type: 'article',
       title: guide.title,
