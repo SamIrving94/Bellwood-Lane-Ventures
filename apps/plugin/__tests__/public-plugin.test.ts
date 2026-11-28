@@ -88,6 +88,64 @@ describe('public plugin', () => {
     expect(summary).toMatch(NEXT_DATED_STEP);
   });
 
+  it('answers 413 for a body over the limit, declared or not (GHSA-46jr-4wx8-v453)', async () => {
+    const big = JSON.stringify({
+      jsonrpc: '2.0',
+      id: 1,
+      method: 'tools/list',
+      params: { pad: 'x'.repeat(70 * 1024) },
+    });
+    const headers = {
+      'content-type': 'application/json',
+      accept: 'application/json, text/event-stream',
+    };
+    const declared = await POST(
+      new Request('https://plugin.test/mcp', {
+        method: 'POST',
+        headers,
+        body: big,
+      })
+    );
+    expect(declared.status).toBe(413);
+
+    // Chunked: no content-length, so the bytes themselves are counted.
+    const bytes = new TextEncoder().encode(big);
+    const stream = new ReadableStream<Uint8Array>({
+      start(c) {
+        for (let i = 0; i < bytes.length; i += 8192) {
+          c.enqueue(bytes.slice(i, i + 8192));
+        }
+        c.close();
+      },
+    });
+    const chunked = await POST(
+      new Request('https://plugin.test/mcp', {
+        method: 'POST',
+        headers,
+        body: stream,
+        duplex: 'half',
+      } as RequestInit)
+    );
+    expect(chunked.status).toBe(413);
+  });
+
+  it('rejects tool arguments with too many elements (maxToolInputElements)', async () => {
+    // An unknown key: the tool schema alone would drop it and succeed, so
+    // only the element limit can turn this call away.
+    const padded = await call('compare_sale_routes', {
+      expectedPricePounds: 250_000,
+      padding: Array.from({ length: 500 }, (_, i) => i),
+    });
+    const rejected =
+      padded.body.error !== undefined || padded.body.result?.isError === true;
+    expect(rejected).toBe(true);
+
+    const normal = await call('compare_sale_routes', {
+      expectedPricePounds: 250_000,
+    });
+    expect(normal.body.result.isError).toBeFalsy();
+  });
+
   it('returns a clear error for an impossible date instead of throwing', async () => {
     const { body } = await call('plan_inherited_home', {
       dateOfDeath: '2026-02-30',
