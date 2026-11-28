@@ -58,6 +58,8 @@ export function emailPage(opts: {
   clientName: string;
   error?: string;
 }): string {
+  // No "join as a partner" link: /partners/signup 404s while the agent side
+  // is hidden (apps/web/lib/public-sections.ts, founder decision 11 Oct 2026).
   return page(
     `Connect ${brand.name}`,
     `<h1>Connect ${esc(brand.name)} to ${esc(opts.clientName)}</h1>
@@ -69,8 +71,7 @@ export function emailPage(opts: {
       <label for="email">Email</label>
       <input id="email" name="email" type="email" autocomplete="email" required maxlength="254" />
       <button type="submit">Email me a code</button>
-    </form>
-    <p class="small">Not a partner yet? Agents can join at ${esc(brand.url)}/partners/signup.</p>`
+    </form>`
   );
 }
 
