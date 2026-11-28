@@ -1,9 +1,61 @@
 # Tracking events: what the site sends, for the ad manager
 
-_Last verified against the live site: 2026-10-24_
+_Last verified against the live site: 2026-11-26 (the ad tags). "Our own
+record" was added 2026-11-27._
 
-Everything here fires **only after the visitor accepts cookies** in the
-banner. Advertising tags (GTM, Google Ads, Meta) need the *advertising*
+There are two records. They answer different questions.
+
+| | Who it counts | Where you read it |
+|:---|:---|:---|
+| **Our own record** (below) | **Every** enquiry sent from the site | Dashboard → Quotes → "Where enquiries came from" |
+| **The ad tags** (rest of this page) | Only visitors who **accept advertising cookies** | Google Ads, Meta Ads Manager |
+
+Use our own record to decide what is working. Use the ad tags so Google and
+Meta can learn who to show adverts to.
+
+## Our own record: where each enquiry came from
+
+When someone sends a form, the site saves what brought them: the platform,
+the campaign and advert if the link names them, the first page they opened,
+and the site that sent them. It is saved with the enquiry, in our database.
+Nothing goes to Google or Meta, and no cookie is used, so it does not depend
+on the banner. Code: `packages/analytics/lead-source.ts`.
+
+**It works with nothing changed in the ad accounts:**
+
+- **Google** adds `gclid` and `gad_campaignid` to every ad click on its own
+  (auto-tagging, on by default). We get "Google Ads" and the campaign number.
+- **Meta** adds `fbclid`. We get "Facebook / Instagram". Meta puts it on
+  clicks from posts too, so on its own it cannot say advert or post.
+
+**To name the campaign and the advert, tag the ad's link.** This is one
+field on the ad. The advert itself does not change.
+
+- **Meta** (Ads Manager → the ad → Tracking → *URL parameters*):
+
+  ```
+  utm_source=meta&utm_medium=paid_social&utm_campaign={{campaign.name}}&utm_term={{adset.name}}&utm_content={{ad.name}}
+  ```
+
+- **Google Ads** (campaign → Settings → *Campaign URL options* → Final URL
+  suffix). Type the campaign's name where shown:
+
+  ```
+  utm_source=google&utm_medium=cpc&utm_campaign=NAME-OF-CAMPAIGN&utm_term={keyword}
+  ```
+
+What it cannot see:
+
+- **Meta Instant Forms.** They are filled in on Facebook and never touch the
+  site. Those leads are in Meta's Leads Centre, not in the dashboard.
+- **A visit that reloads the page** before sending the form. The source is
+  held in memory, not stored, so a reload forgets it. The enquiry is saved as
+  "Not known", never guessed.
+
+## The ad tags
+
+Everything from here down fires **only after the visitor accepts cookies** in
+the banner. Advertising tags (GTM, Google Ads, Meta) need the *advertising*
 box; Google Analytics needs the *analytics* box. The code lives in
 `apps/web/components/cookie-consent.tsx`.
 
@@ -31,7 +83,10 @@ Out of scope on purpose: `/investors`, `/portal`, `/keyhole` (no tags).
 Each event goes three ways at once:
 
 - **GTM:** a dataLayer event with that name (use a *Custom Event* trigger).
-- **Google (GA4 / Ads, hard-coded):** a gtag event with that name.
+  This is how Google Ads gets its conversions today: the Google Ads tags
+  live in the GTM container, not in the site's code.
+- **Google Analytics (hard-coded):** a gtag event with that name. So does
+  Google Ads, but only if `NEXT_PUBLIC_GOOGLE_ADS_ID` is ever set. It is not.
 - **Meta:** sent straight to the pixel as a custom event
   (`fbq('trackCustom', …)`). **Don't add GTM tags for these too**, or
   Meta counts each one twice.

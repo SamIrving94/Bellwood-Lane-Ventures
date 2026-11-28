@@ -1,6 +1,7 @@
 # Bellwood Lane — Marketing Plan
 
-_Last verified against the live site: 2026-10-24._
+_Last verified against the live site: 2026-11-27 (the tracking paragraph in
+§4.2 only; the rest was last checked 2026-10-24)._
 
 > **Hidden for now (founder decision, 11 Oct 2026):** the agent side
 > (`/agents`, `/agents/score`, `/save-the-sale`, `/partners/signup`, the
@@ -164,9 +165,17 @@ etc.) so they can still feed audiences and exclusions. Every funnel step and
 form submission is sent as an event, and a submission with advertising consent
 carries hashed contact details (Google enhanced conversions, Meta advanced
 matching). Event names for the ad manager: `docs/marketing/TRACKING-EVENTS.md`.
-Setup: `NEXT_PUBLIC_GOOGLE_ADS_ID`, `NEXT_PUBLIC_META_PIXEL_ID`,
-`NEXT_PUBLIC_GA_MEASUREMENT_ID` on the web Vercel project; settings the privacy
-notice relies on are listed in `apps/web/app/legal/privacy/page.tsx`.
+**The dashboard is the complete count (Nov 2026):** every form sent from the
+site saves which advert, search or site brought the person, consent or not,
+and Quotes → "Where enquiries came from" shows enquiries, accepted offers and
+deals per source. The platform is known with nothing changed in the ad
+accounts; naming the advert needs UTM tags on the ad's link (same doc).
+Setup as it is live (checked 26 Nov 2026): GA and the GTM container are set in
+code (`apps/web/lib/consent-tags.ts`); the Google Ads conversion tags and the
+Meta Pixel run inside that GTM container, and `NEXT_PUBLIC_GOOGLE_ADS_ID` and
+`NEXT_PUBLIC_META_PIXEL_ID` are unset. Leave them unset while that is so, or
+each event counts twice. Settings the privacy notice relies on are listed in
+`apps/web/app/legal/privacy/page.tsx`.
 
 **Phase 1 budget:** £1,000/month on paid acquisition. Track cost-per-form-
 submission tightly. If a segment is <£250 CPA, scale. If >£600 CPA, kill.

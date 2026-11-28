@@ -56,9 +56,18 @@ export const metadata: Metadata = {
  * new: private journey pages count for audiences under a stand-in address
  * (/journey/offer-letter etc.), never the link. Both live in
  * components/cookie-consent.tsx.
+ *
+ * v1.6 (Nov 2026): a form sent on the site also saves how the sender found
+ * us (advert, search or other site, and the first page they opened), so the
+ * dashboard can say which adverts lead to enquiries. It stays with us; it is
+ * not sent to Google or Meta. It rests on two things in lib/lead-source.ts
+ * and packages/analytics/lead-source.ts: nothing is stored on the device
+ * (memory only, so no consent is asked), and the ad click id's value is
+ * dropped (only which kind was there is kept). Change either and this page
+ * changes first.
  */
-const LAST_UPDATED = '24 October 2026';
-const VERSION = '1.5';
+const LAST_UPDATED = '27 November 2026';
+const VERSION = '1.6';
 
 /** Verified against the Companies House register, 2026-07-31. */
 const REGISTERED_OFFICE = '20 Wenlock Road, London N1 7GU';
@@ -118,6 +127,13 @@ const SECTIONS: Array<{
           <li>
             <strong>Anything you type in a free-text field</strong>, including
             messages sent from a deal timeline page or over WhatsApp.
+          </li>
+          <li>
+            <strong>How you found us.</strong> When you send a form on this
+            site, we keep a note of what brought you here: one of our adverts, a
+            search, or a link on another site, and the first page you opened.
+            It is read from that page&rsquo;s address, not from a cookie, and
+            we do not keep the code an advertiser attaches to your click.
           </li>
         </ul>
         <p>
@@ -184,9 +200,10 @@ const SECTIONS: Array<{
           </li>
           <li>
             <strong>Our legitimate interests</strong> &mdash; running and
-            securing the service, preventing abuse of our forms, and keeping
-            records of what we offered and why. We do not think any of this
-            overrides your rights; if you disagree, you can object (see below).
+            securing the service, preventing abuse of our forms, keeping
+            records of what we offered and why, and knowing which of our
+            adverts lead to enquiries. We do not think any of this overrides
+            your rights; if you disagree, you can object (see below).
           </li>
           <li>
             <strong>Your consent</strong> &mdash; for analytics and advertising

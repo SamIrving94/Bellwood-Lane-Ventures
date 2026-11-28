@@ -1,6 +1,9 @@
 import Link from 'next/link';
 import type { Metadata } from 'next';
+import { leadChannelLabel } from '@repo/analytics/lead-source';
 import { database } from '@repo/database';
+import { loadChannels, loadSourceRows } from '@/lib/lead-source-queries';
+import { summariseLeadSources } from '@/lib/lead-sources';
 import { Header } from '../components/header';
 
 export const metadata: Metadata = {
@@ -82,6 +85,12 @@ const SLA_TONE: Record<'fresh' | 'warning' | 'breach', string> = {
   breach: 'bg-rose-100 text-rose-800',
 };
 
+/** How far back "Where enquiries came from" counts. */
+const SOURCE_WINDOW_DAYS = 90;
+
+const SOURCE_TH = 'px-5 py-2.5 text-right';
+const SOURCE_TD = 'px-5 py-2.5 text-right tabular-nums';
+
 export default async function QuotesPage() {
   const startOfMonth = new Date();
   startOfMonth.setDate(1);
@@ -89,6 +98,7 @@ export default async function QuotesPage() {
   const startOfToday = new Date();
   startOfToday.setHours(0, 0, 0, 0);
   const last48h = new Date(Date.now() - 48 * 60 * 60 * 1000);
+  const last90d = new Date(Date.now() - SOURCE_WINDOW_DAYS * 24 * 60 * 60 * 1000);
 
   const [
     quotes,
@@ -97,6 +107,8 @@ export default async function QuotesPage() {
     acceptedCount,
     requireReviewCount,
     agentInbox,
+    sourceRows,
+    windowCount,
   ] = await Promise.all([
     database.quoteRequest.findMany({
       include: { offer: true },
@@ -127,7 +139,16 @@ export default async function QuotesPage() {
       include: { offer: true },
       orderBy: { createdAt: 'asc' },
     }),
+    // Which advert, search or site each recent enquiry came from. Null
+    // until the QuoteRequestSource table exists (see lead-source-queries).
+    loadSourceRows(last90d),
+    database.quoteRequest.count({ where: { createdAt: { gte: last90d } } }),
   ]);
+
+  const sources = sourceRows
+    ? summariseLeadSources(sourceRows, windowCount)
+    : null;
+  const channels = await loadChannels(quotes.map((q) => q.id));
 
   return (
     <>
@@ -234,6 +255,106 @@ export default async function QuotesPage() {
           ))}
         </div>
 
+        {/* Where enquiries came from: which advert, search or site. Counted
+            from the source saved on each enquiry, so it includes visitors
+            who refused cookies, which Google's and Meta's own numbers don't. */}
+        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+          <div className="px-5 pt-5 pb-3">
+            <p className="text-muted-foreground text-xs uppercase tracking-widest">
+              Where enquiries came from · last {SOURCE_WINDOW_DAYS} days
+            </p>
+            {!sources && (
+              <p className="mt-3 text-sm">
+                <strong>Not switched on yet.</strong> The database needs one
+                update first: run <code>pnpm migrate</code>. Enquiries are
+                still being saved as normal.
+              </p>
+            )}
+            {sources && sources.channels.length === 0 && (
+              <p className="mt-3 text-sm">
+                <strong>Nothing recorded yet.</strong> Each new enquiry from
+                the website now saves where the person came from. It will
+                show here.
+              </p>
+            )}
+          </div>
+          {sources && sources.channels.length > 0 && (
+            <table className="min-w-full divide-y divide-slate-200 text-sm">
+              <thead className="bg-slate-50 text-muted-foreground text-xs uppercase tracking-widest">
+                <tr>
+                  <th className="px-5 py-2.5 text-left">Source</th>
+                  <th className={SOURCE_TH}>Enquiries</th>
+                  <th className={SOURCE_TH}>Offer accepted</th>
+                  <th className={SOURCE_TH}>Became a deal</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-200">
+                {sources.channels.map((c) => (
+                  <tr key={c.channel}>
+                    <td className="px-5 py-2.5 font-medium">{c.label}</td>
+                    <td className={SOURCE_TD}>{c.enquiries}</td>
+                    <td className={SOURCE_TD}>{c.accepted}</td>
+                    <td className={SOURCE_TD}>{c.deals}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+          {sources && sources.adverts.length > 0 && (
+            <table className="min-w-full divide-y divide-slate-200 border-slate-200 border-t text-sm">
+              <thead className="bg-slate-50 text-muted-foreground text-xs uppercase tracking-widest">
+                <tr>
+                  <th className="px-5 py-2.5 text-left">Campaign · advert</th>
+                  <th className={SOURCE_TH}>Enquiries</th>
+                  <th className={SOURCE_TH}>Offer accepted</th>
+                  <th className={SOURCE_TH}>Became a deal</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-200">
+                {sources.adverts.map((a) => (
+                  <tr key={`${a.channel}|${a.campaign}|${a.advert ?? ''}`}>
+                    <td className="px-5 py-2.5">
+                      <span className="font-medium">
+                        {a.campaign}
+                        {a.advert ? ` · ${a.advert}` : ''}
+                      </span>
+                      <span className="ml-2 text-muted-foreground text-xs">
+                        {a.label}
+                      </span>
+                    </td>
+                    <td className={SOURCE_TD}>{a.enquiries}</td>
+                    <td className={SOURCE_TD}>{a.accepted}</td>
+                    <td className={SOURCE_TD}>{a.deals}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+          {sources && (
+            <div className="space-y-1 border-slate-200 border-t px-5 py-3 text-muted-foreground text-xs">
+              {sources.notRecorded > 0 && (
+                <p>
+                  {sources.notRecorded} more{' '}
+                  {sources.notRecorded === 1
+                    ? 'enquiry has'
+                    : 'enquiries have'}{' '}
+                  no source. They arrived before this was switched on, or not
+                  through the website.
+                </p>
+              )}
+              <p>
+                <strong>Facebook / Instagram</strong> means an advert or a
+                post. They look the same until the ad&rsquo;s link is tagged.
+              </p>
+              {sources.channels.length > 0 && sources.adverts.length === 0 && (
+                <p>
+                  No advert names yet. Those need tags on each ad&rsquo;s link.
+                </p>
+              )}
+            </div>
+          )}
+        </div>
+
         {/* Table */}
         {quotes.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-12 text-center">
@@ -254,7 +375,7 @@ export default async function QuotesPage() {
                   <th className="px-5 py-3 text-right">Offer</th>
                   <th className="px-5 py-3 text-right">% AVM</th>
                   <th className="px-5 py-3 text-left">Submitted</th>
-                  <th className="px-5 py-3 text-right">Source</th>
+                  <th className="px-5 py-3 text-right">Came from</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-200">
@@ -315,8 +436,11 @@ export default async function QuotesPage() {
                         {timeAgo(q.createdAt)}
                       </td>
                       <td className="px-5 py-3 text-right">
+                        {/* The advert, search or site when we know it; the
+                            form it came through when we don't. */}
                         <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600">
-                          {q.source.replace(/_/g, ' ')}
+                          {leadChannelLabel(channels?.get(q.id)) ??
+                            q.source.replace(/_/g, ' ')}
                         </span>
                       </td>
                     </tr>
