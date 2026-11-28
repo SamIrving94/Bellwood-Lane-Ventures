@@ -61,11 +61,14 @@ To deploy your schema changes, run the following command:
 pnpm migrate
 ```
 
-This runs the following commands:
+This runs the following steps:
 
-- `npx prisma format` to format the schema file
-- `npx prisma generate` to generate the Prisma client
-- `npx prisma db push` to push the schema changes to the database
+- `prisma format` to format the schema file
+- `prisma generate` to generate the Prisma client
+- a read-only check of what the push would do. If it would delete a table, a column or an enum, it stops here and changes nothing
+- `prisma db push` to push the schema changes to the database
+
+Two variants: `pnpm migrate:check` only shows what a push would add, delete and change. `pnpm migrate:add-only` adds what is new and leaves everything else alone. To push a deletion you mean, run `pnpm migrate --allow-deletes`.
 
 ## Visual database editor
 

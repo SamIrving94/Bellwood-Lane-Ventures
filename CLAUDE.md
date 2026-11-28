@@ -126,9 +126,24 @@ Marketer, Liaison) and their onboarding prompts are documented in
   `OutreachHold`, `FounderAction`, `FounderFeedback`, `AgentEvent`, `EvalConfig`,
   `AuctionLot`, `Campaign`, `Contact`, `QuoteRequest`/`QuoteOffer`,
   `LegalStep`/`LegalDocument`, `DealEmail`, `WhatsAppIntake`, `LlmCallLog`.
-- **Apply schema changes** (dev): from repo root run `pnpm migrate`
-  (= `prisma format && prisma generate && prisma db push` inside
-  `packages/database`).
+- **Apply schema changes:** from repo root run `pnpm migrate`. It runs
+  `prisma format` and `prisma generate`, then **looks before it pushes**: if
+  the push would delete a table, a column or an enum, it stops and changes
+  nothing. It prints which database it is looking at first; a `localhost`
+  address is the local placeholder, not live.
+  - `pnpm migrate:check` only looks: what a push would add, delete, change.
+  - `pnpm migrate:add-only` adds what is new and leaves everything else.
+  - `pnpm migrate --allow-deletes` pushes as before, for a deletion you mean.
+- **Why it will not delete.** Every branch pushes to the same live Neon
+  database, and `prisma db push` makes it match ONE schema, so it drops
+  whatever only another open branch has, with no warning while the table is
+  empty. 26 to 28 Nov 2026: master would have dropped an open PR's
+  `EmailMessage`, that PR would have dropped live `DealEmail`, and a day
+  later both would have dropped `QuoteRequestSource`. So a "would DELETE"
+  line for a table you do not recognise is usually another branch's work,
+  not a leftover: check `git grep "^model <Name>" <branch>` across open
+  branches before calling it dead. Never run a bare `prisma db push` at the
+  live database. Logic and tests live in `packages/database/scripts/`.
 - Browse data: `apps/studio` (`prisma studio`).
 - **Gotcha:** use `pnpm exec prisma` from inside `packages/database/` — a
   globally installed Prisma CLI may not match this schema.
@@ -151,7 +166,9 @@ pnpm preflight          # build api + app + web only (what the pre-push hook run
 pnpm test               # turbo test (Vitest across workspaces)
 pnpm lint               # ultracite (Biome) lint
 pnpm format             # ultracite (Biome) format
-pnpm migrate            # prisma format + generate + db push (packages/database)
+pnpm migrate            # prisma format + generate, then db push; stops if it would delete
+pnpm migrate:check      # show what a push would add / delete / change; changes nothing
+pnpm migrate:add-only   # add what is new to the database, delete nothing
 pnpm clean              # git clean -xdf node_modules
 ```
 
